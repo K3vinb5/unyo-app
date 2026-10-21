@@ -14,7 +14,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$MangaDetailsState {
 
- User get loggedUser; MediaList get selectedMediaList; Manga get selectedManga; MediaListEntry get mediaListEntry; (bool, List<MediaCharacter>) get characters; (bool, List<Manga>) get recommendations; List<String> get banners; String get alternateImage; Set<Extension> get installedExtensions; bool get userLoaded; Extension? get selectedExtension; List<JSManga> get extensionMangaResults; List<JSChapter> get extensionEpisodeResults; List<JPage> get extensionVideoResults; List<AppEffect> get effects;
+ User get loggedUser; MediaList get selectedMediaList; Manga get selectedManga; MediaListEntry get mediaListEntry; (bool, List<MediaCharacter>) get characters; (bool, List<Manga>) get recommendations; List<String> get banners; String get alternateImage; Set<Extension> get installedExtensions; bool get userLoaded; Extension? get selectedExtension;// relations
+// voice actors
+ List<JSManga> get extensionMangaResults; List<JSChapter> get extensionEpisodeResults; List<JPage> get extensionVideoResults; List<AppEffect> get effects;
 /// Create a copy of MangaDetailsState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -246,7 +248,11 @@ class _MangaDetailsState extends MangaDetailsState {
 
 @override final  bool userLoaded;
 @override final  Extension? selectedExtension;
+// relations
+// voice actors
  final  List<JSManga> _extensionMangaResults;
+// relations
+// voice actors
 @override List<JSManga> get extensionMangaResults {
   if (_extensionMangaResults is EqualUnmodifiableListView) return _extensionMangaResults;
   // ignore: implicit_dynamic_type

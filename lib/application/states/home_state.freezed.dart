@@ -14,7 +14,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$HomeState {
 
- User get loggedUser; SelectedMenuOption get selectedMenuOption; List<Anime> get continueWatching; List<Manga> get continueReading; List<String> get mediaCoverImages; bool get isLoading; bool get userLoaded; List<AppEffect> get effects;
+ User get loggedUser; SelectedMenuOption get selectedMenuOption;//TODO recommended anime / manga
+ List<Anime> get continueWatching; List<Manga> get continueReading; List<String> get mediaCoverImages; bool get isLoading; bool get userLoaded; List<AppEffect> get effects;
 /// Create a copy of HomeState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -218,7 +219,9 @@ class _HomeState extends HomeState {
 
 @override final  User loggedUser;
 @override final  SelectedMenuOption selectedMenuOption;
+//TODO recommended anime / manga
  final  List<Anime> _continueWatching;
+//TODO recommended anime / manga
 @override List<Anime> get continueWatching {
   if (_continueWatching is EqualUnmodifiableListView) return _continueWatching;
   // ignore: implicit_dynamic_type

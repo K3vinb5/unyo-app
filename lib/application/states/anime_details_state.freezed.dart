@@ -14,7 +14,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AnimeDetailsState {
 
- User get loggedUser; MediaList get selectedMediaList; Anime get selectedAnime; MediaListEntry get mediaListEntry; MediaListEntry get newMediaListEntry; (bool, List<MediaCharacter>) get characters; (bool, List<Anime>) get recommendations; List<EpisodeInfo> get episodesInfo; List<String> get banners; String get alternateImage; Set<Extension> get installedExtensions; bool get userLoaded; bool get animeServerDialogReady; bool get animeServerDialogLoading; Extension? get selectedExtension; List<JSAnime> get extensionAnimeResults; int get selectedAnimeResultIndex; List<JSEpisode> get extensionEpisodeResults; List<ext.Video> get extensionVideoResults; List<AppEffect> get effects;
+ User get loggedUser; MediaList get selectedMediaList; Anime get selectedAnime; MediaListEntry get mediaListEntry; MediaListEntry get newMediaListEntry; (bool, List<MediaCharacter>) get characters; (bool, List<Anime>) get recommendations; List<EpisodeInfo> get episodesInfo; List<String> get banners; String get alternateImage; Set<Extension> get installedExtensions; bool get userLoaded; bool get animeServerDialogReady; bool get animeServerDialogLoading; Extension? get selectedExtension;// relations
+// voice actors
+ List<JSAnime> get extensionAnimeResults; int get selectedAnimeResultIndex; List<JSEpisode> get extensionEpisodeResults; List<ext.Video> get extensionVideoResults; List<AppEffect> get effects;
 /// Create a copy of AnimeDetailsState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -261,7 +263,11 @@ class _AnimeDetailsState extends AnimeDetailsState {
 @override final  bool animeServerDialogReady;
 @override final  bool animeServerDialogLoading;
 @override final  Extension? selectedExtension;
+// relations
+// voice actors
  final  List<JSAnime> _extensionAnimeResults;
+// relations
+// voice actors
 @override List<JSAnime> get extensionAnimeResults {
   if (_extensionAnimeResults is EqualUnmodifiableListView) return _extensionAnimeResults;
   // ignore: implicit_dynamic_type
