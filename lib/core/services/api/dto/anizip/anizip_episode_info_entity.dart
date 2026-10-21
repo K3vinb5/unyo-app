@@ -10,7 +10,7 @@ class AnizipEpisodeInfoEntity {
 	late int seasonNumber = 0;
 	late int episodeNumber = 0;
 	late int absoluteEpisodeNumber = 0;
-	late AnizipEpisodeInfoTitle title;
+	late AnizipEpisodeInfoTitle title = AnizipEpisodeInfoTitle();
 	late String airDate = '';
 	late String airDateUtc = '';
 	late int runtime = 0;

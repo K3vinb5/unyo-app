@@ -6,7 +6,7 @@ export 'package:unyo/generated/json/media_advanced_search_query_graphql_entity.g
 @JsonSerializable()
 class MediaAdvancedSearchQueryGraphqlEntity {
 	@JSONField(name: "Page")
-	late MediaAdvancedSearchQueryGraphqlPage page;
+	late MediaAdvancedSearchQueryGraphqlPage page = MediaAdvancedSearchQueryGraphqlPage();
 
 	MediaAdvancedSearchQueryGraphqlEntity();
 
@@ -40,16 +40,16 @@ class MediaAdvancedSearchQueryGraphqlPage {
 class MediaAdvancedSearchQueryGraphqlPageMedia {
 	late int id = 0;
 	late int idMal = 0;
-	late MediaAdvancedSearchQueryGraphqlPageMediaTitle title;
+	late MediaAdvancedSearchQueryGraphqlPageMediaTitle title = MediaAdvancedSearchQueryGraphqlPageMediaTitle();
 	late int averageScore = 0;
 	late String bannerImage = '';
 	late int chapters = 0;
 	late String countryOfOrigin = '';
-	late MediaAdvancedSearchQueryGraphqlPageMediaCoverImage coverImage;
+	late MediaAdvancedSearchQueryGraphqlPageMediaCoverImage coverImage = MediaAdvancedSearchQueryGraphqlPageMediaCoverImage();
 	late String description = '';
 	late int duration = 0;
-	late MediaAdvancedSearchQueryGraphqlPageMediaEndDate endDate;
-	late MediaAdvancedSearchQueryGraphqlPageMediaStartDate startDate;
+	late MediaAdvancedSearchQueryGraphqlPageMediaEndDate endDate = MediaAdvancedSearchQueryGraphqlPageMediaEndDate();
+	late MediaAdvancedSearchQueryGraphqlPageMediaStartDate startDate = MediaAdvancedSearchQueryGraphqlPageMediaStartDate();
 	late int episodes = 0;
 	late List<String> genres = [];
 	late String format = '';

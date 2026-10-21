@@ -5,7 +5,7 @@ export 'package:unyo/generated/json/media_collection_graphql_entity.g.dart';
 
 @JsonSerializable()
 class MediaCollectionGraphqlEntity {
-	late MediaCollectionGraphqlDtoData data;
+	late MediaCollectionGraphqlDtoData data = MediaCollectionGraphqlDtoData();
 
 	MediaCollectionGraphqlEntity();
 
@@ -22,7 +22,7 @@ class MediaCollectionGraphqlEntity {
 @JsonSerializable()
 class MediaCollectionGraphqlDtoData {
 	@JSONField(name: "MediaListCollection")
-	late MediaCollectionGraphqlDtoDataMediaListCollection mediaListCollection;
+	late MediaCollectionGraphqlDtoDataMediaListCollection mediaListCollection = MediaCollectionGraphqlDtoDataMediaListCollection();
 
 	MediaCollectionGraphqlDtoData();
 
@@ -73,7 +73,7 @@ class MediaCollectionGraphqlDtoDataMediaListCollectionLists {
 
 @JsonSerializable()
 class MediaCollectionGraphqlDtoDataMediaListCollectionListsEntries {
-	late MediaCollectionGraphqlDtoDataMediaListCollectionListsEntriesMedia media;
+	late MediaCollectionGraphqlDtoDataMediaListCollectionListsEntriesMedia media = MediaCollectionGraphqlDtoDataMediaListCollectionListsEntriesMedia();
 
 	MediaCollectionGraphqlDtoDataMediaListCollectionListsEntries();
 
@@ -91,16 +91,16 @@ class MediaCollectionGraphqlDtoDataMediaListCollectionListsEntries {
 class MediaCollectionGraphqlDtoDataMediaListCollectionListsEntriesMedia {
 	late int id = 0;
 	late int idMal = 0;
-	late MediaCollectionGraphqlDtoDataMediaListCollectionListsEntriesMediaTitle title;
+	late MediaCollectionGraphqlDtoDataMediaListCollectionListsEntriesMediaTitle title = MediaCollectionGraphqlDtoDataMediaListCollectionListsEntriesMediaTitle();
 	late int averageScore = 0;
 	late String bannerImage = '';
 	late int? chapters = 0;
 	late String countryOfOrigin = '';
-	late MediaCollectionGraphqlDtoDataMediaListCollectionListsEntriesMediaCoverImage coverImage;
+	late MediaCollectionGraphqlDtoDataMediaListCollectionListsEntriesMediaCoverImage coverImage = MediaCollectionGraphqlDtoDataMediaListCollectionListsEntriesMediaCoverImage();
 	late String description = '';
 	late int duration = 0;
-	late MediaCollectionGraphqlDtoDataMediaListCollectionListsEntriesMediaEndDate endDate;
-	late MediaCollectionGraphqlDtoDataMediaListCollectionListsEntriesMediaStartDate startDate;
+	late MediaCollectionGraphqlDtoDataMediaListCollectionListsEntriesMediaEndDate endDate = MediaCollectionGraphqlDtoDataMediaListCollectionListsEntriesMediaEndDate();
+	late MediaCollectionGraphqlDtoDataMediaListCollectionListsEntriesMediaStartDate startDate = MediaCollectionGraphqlDtoDataMediaListCollectionListsEntriesMediaStartDate();
 	late int episodes = 0;
 	late List<String> genres = [];
 	late String format = '';

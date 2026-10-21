@@ -6,7 +6,7 @@ export 'package:unyo/generated/json/media_details_media_list_entry_entity.g.dart
 @JsonSerializable()
 class MediaDetailsMediaListEntryEntity {
 	@JSONField(name: 'Media')
-	late MediaDetailsMediaListEntryMedia media;
+	late MediaDetailsMediaListEntryMedia media = MediaDetailsMediaListEntryMedia();
 
 	MediaDetailsMediaListEntryEntity();
 

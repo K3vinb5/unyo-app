@@ -6,7 +6,7 @@ export 'package:unyo/generated/json/media_collection_recently_released_graphql_e
 @JsonSerializable()
 class MediaCollectionRecentlyReleasedGraphqlEntity {
 	@JSONField(name: "Page")
-	late MediaCollectionRecentlyReleasedGraphqlDtoPage page;
+	late MediaCollectionRecentlyReleasedGraphqlDtoPage page = MediaCollectionRecentlyReleasedGraphqlDtoPage();
 
 	MediaCollectionRecentlyReleasedGraphqlEntity();
 
@@ -38,7 +38,7 @@ class MediaCollectionRecentlyReleasedGraphqlDtoPage {
 
 @JsonSerializable()
 class MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedules {
-	late MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMedia media;
+	late MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMedia media = MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMedia();
 
 	MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedules();
 
@@ -66,16 +66,16 @@ class MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMedia {
 	late List<String> genres = [];
 	late String format = '';
 	late int episodes = 0;
-	late MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMediaEndDate endDate;
-	late MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMediaStartDate startDate;
+	late MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMediaEndDate endDate = MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMediaEndDate();
+	late MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMediaStartDate startDate = MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMediaStartDate();
 	late int duration = 0;
 	late String description = '';
-	late MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMediaCoverImage coverImage;
+	late MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMediaCoverImage coverImage = MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMediaCoverImage();
 	late String countryOfOrigin = '';
 	late int chapters = 0;
 	late String bannerImage = '';
 	late int averageScore = 0;
-	late MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMediaTitle title;
+	late MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMediaTitle title = MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMediaTitle();
 
 	MediaCollectionRecentlyReleasedGraphqlDtoPageAiringSchedulesMedia();
 

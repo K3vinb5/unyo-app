@@ -6,7 +6,7 @@ export 'package:unyo/generated/json/viewer_graphql_entity.g.dart';
 @JsonSerializable()
 class ViewerGraphqlEntity {
 	@JSONField(name: "Viewer")
-	late ViewerGraphqlDtoViewer viewer;
+	late ViewerGraphqlDtoViewer viewer = ViewerGraphqlDtoViewer();
 
 	ViewerGraphqlEntity();
 
@@ -24,8 +24,8 @@ class ViewerGraphqlEntity {
 class ViewerGraphqlDtoViewer {
 	late int id = 0;
 	late String bannerImage = '';
-	late ViewerGraphqlDtoViewerAvatar avatar;
-	late ViewerGraphqlDtoViewerMediaListOptions mediaListOptions;
+	late ViewerGraphqlDtoViewerAvatar avatar = ViewerGraphqlDtoViewerAvatar();
+	late ViewerGraphqlDtoViewerMediaListOptions mediaListOptions = ViewerGraphqlDtoViewerMediaListOptions();
 	late String name = '';
 
 	ViewerGraphqlDtoViewer();
@@ -58,8 +58,8 @@ class ViewerGraphqlDtoViewerAvatar {
 
 @JsonSerializable()
 class ViewerGraphqlDtoViewerMediaListOptions {
-	late ViewerGraphqlDtoViewerMediaListOptionsAnimeList animeList;
-	late ViewerGraphqlDtoViewerMediaListOptionsMangaList mangaList;
+	late ViewerGraphqlDtoViewerMediaListOptionsAnimeList animeList = ViewerGraphqlDtoViewerMediaListOptionsAnimeList();
+	late ViewerGraphqlDtoViewerMediaListOptionsMangaList mangaList = ViewerGraphqlDtoViewerMediaListOptionsMangaList();
 	late String scoreFormat = '';
 
 	ViewerGraphqlDtoViewerMediaListOptions();

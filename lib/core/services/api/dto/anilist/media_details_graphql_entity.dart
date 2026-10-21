@@ -6,7 +6,7 @@ export 'package:unyo/generated/json/media_details_graphql_entity.g.dart';
 @JsonSerializable()
 class MediaDetailsGraphqlEntity {
 	@JSONField(name: 'Media')
-	late MediaDetailsGraphqlMedia media;
+	late MediaDetailsGraphqlMedia media = MediaDetailsGraphqlMedia();
 
 	MediaDetailsGraphqlEntity();
 
@@ -23,9 +23,9 @@ class MediaDetailsGraphqlEntity {
 @JsonSerializable()
 class MediaDetailsGraphqlMedia {
 	late int id = 0;
-	late MediaDetailsGraphqlMediaTitle title;
+	late MediaDetailsGraphqlMediaTitle title = MediaDetailsGraphqlMediaTitle();
 	late MediaDetailsGraphqlMediaRecommendations recommendations = MediaDetailsGraphqlMediaRecommendations();
-	late MediaDetailsGraphqlMediaCharacters characters;
+	late MediaDetailsGraphqlMediaCharacters characters = MediaDetailsGraphqlMediaCharacters();
 
 	MediaDetailsGraphqlMedia();
 
@@ -215,11 +215,11 @@ class MediaDetailsGraphqlMediaCharacters {
 @JsonSerializable()
 class MediaDetailsGraphqlMediaCharactersNodes {
 	int id = 0;
-	late MediaDetailsGraphqlMediaCharactersNodesImage image;
-	late MediaDetailsGraphqlMediaCharactersNodesName name;
+	late MediaDetailsGraphqlMediaCharactersNodesImage image = MediaDetailsGraphqlMediaCharactersNodesImage();
+	late MediaDetailsGraphqlMediaCharactersNodesName name = MediaDetailsGraphqlMediaCharactersNodesName();
 	String gender = '';
 	String description = '';
-	late MediaDetailsGraphqlMediaCharactersNodesDateOfBirth dateOfBirth;
+	late MediaDetailsGraphqlMediaCharactersNodesDateOfBirth dateOfBirth = MediaDetailsGraphqlMediaCharactersNodesDateOfBirth();
 	String age = '';
 
 	MediaDetailsGraphqlMediaCharactersNodes();

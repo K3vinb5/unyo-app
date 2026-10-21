@@ -6,7 +6,7 @@ export 'package:unyo/generated/json/media_collection_upcoming_graphql_entity.g.d
 @JsonSerializable()
 class MediaCollectionUpcomingGraphqlEntity {
 	@JSONField(name: "Page")
-	late MediaCollectionUpcomingGraphqlDtoPage page;
+	late MediaCollectionUpcomingGraphqlDtoPage page = MediaCollectionUpcomingGraphqlDtoPage();
 
 	MediaCollectionUpcomingGraphqlEntity();
 
@@ -50,16 +50,16 @@ class MediaCollectionUpcomingGraphqlDtoPageMedia {
 	late List<String> genres = [];
 	late String format = '';
 	late int episodes = 0;
-	late MediaCollectionUpcomingGraphqlDtoPageMediaEndDate endDate;
-	late MediaCollectionUpcomingGraphqlDtoPageMediaStartDate startDate;
+	late MediaCollectionUpcomingGraphqlDtoPageMediaEndDate endDate = MediaCollectionUpcomingGraphqlDtoPageMediaEndDate();
+	late MediaCollectionUpcomingGraphqlDtoPageMediaStartDate startDate = MediaCollectionUpcomingGraphqlDtoPageMediaStartDate();
 	late int duration = 0;
 	late String description = '';
-	late MediaCollectionUpcomingGraphqlDtoPageMediaCoverImage coverImage;
+	late MediaCollectionUpcomingGraphqlDtoPageMediaCoverImage coverImage = MediaCollectionUpcomingGraphqlDtoPageMediaCoverImage();
 	late String countryOfOrigin = '';
 	late int chapters = 0;
 	late String bannerImage = '';
 	late int averageScore = 0;
-	late MediaCollectionUpcomingGraphqlDtoPageMediaTitle title;
+	late MediaCollectionUpcomingGraphqlDtoPageMediaTitle title = MediaCollectionUpcomingGraphqlDtoPageMediaTitle();
 
 	MediaCollectionUpcomingGraphqlDtoPageMedia();
 

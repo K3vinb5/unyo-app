@@ -6,7 +6,7 @@ export 'package:unyo/generated/json/save_media_list_entry_entity.g.dart';
 @JsonSerializable()
 class SaveMediaListEntryEntity {
 	@JSONField(name: 'SaveMediaListEntry')
-	late SaveMediaListEntrySaveMediaListEntry saveMediaListEntry;
+	late SaveMediaListEntrySaveMediaListEntry saveMediaListEntry = SaveMediaListEntrySaveMediaListEntry();
 
 	SaveMediaListEntryEntity();
 
@@ -27,8 +27,8 @@ class SaveMediaListEntrySaveMediaListEntry {
 	int repeat = 0;
 	double score = 0;
 	String status = '';
-	late SaveMediaListEntrySaveMediaListEntryStartedAt startedAt;
-	late SaveMediaListEntrySaveMediaListEntryCompletedAt completedAt;
+	late SaveMediaListEntrySaveMediaListEntryStartedAt startedAt = SaveMediaListEntrySaveMediaListEntryStartedAt();
+	late SaveMediaListEntrySaveMediaListEntryCompletedAt completedAt = SaveMediaListEntrySaveMediaListEntryCompletedAt();
 
 	SaveMediaListEntrySaveMediaListEntry();
 

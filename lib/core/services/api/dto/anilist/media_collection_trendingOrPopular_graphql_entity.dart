@@ -6,7 +6,7 @@ export 'package:unyo/generated/json/media_collection_trendingOrPopular_graphql_e
 @JsonSerializable()
 class MediaCollectionTrendingOrPopularGraphqlEntity {
 	@JSONField(name: "Page")
-	late MediaCollectionTrendingOrPopularGraphqlDtoPage page;
+	late MediaCollectionTrendingOrPopularGraphqlDtoPage page = MediaCollectionTrendingOrPopularGraphqlDtoPage();
 
 	MediaCollectionTrendingOrPopularGraphqlEntity();
 
@@ -50,16 +50,16 @@ class MediaCollectionTrendingOrPopularGraphqlDtoPageMedia {
 	late List<String> genres = [];
 	late String format = '';
 	late int episodes = 0;
-	late MediaCollectionTrendingOrPopularGraphqlDtoPageMediaEndDate endDate;
-	late MediaCollectionTrendingOrPopularGraphqlDtoPageMediaStartDate startDate;
+	late MediaCollectionTrendingOrPopularGraphqlDtoPageMediaEndDate endDate = MediaCollectionTrendingOrPopularGraphqlDtoPageMediaEndDate();
+	late MediaCollectionTrendingOrPopularGraphqlDtoPageMediaStartDate startDate = MediaCollectionTrendingOrPopularGraphqlDtoPageMediaStartDate();
 	late int duration = 0;
 	late String description = '';
-	late MediaCollectionTrendingOrPopularGraphqlDtoPageMediaCoverImage coverImage;
+	late MediaCollectionTrendingOrPopularGraphqlDtoPageMediaCoverImage coverImage = MediaCollectionTrendingOrPopularGraphqlDtoPageMediaCoverImage();
 	late String countryOfOrigin = '';
 	late int chapters = 0;
 	late String bannerImage = '';
 	late int averageScore = 0;
-	late MediaCollectionTrendingOrPopularGraphqlDtoPageMediaTitle title;
+	late MediaCollectionTrendingOrPopularGraphqlDtoPageMediaTitle title = MediaCollectionTrendingOrPopularGraphqlDtoPageMediaTitle();
 
 	MediaCollectionTrendingOrPopularGraphqlDtoPageMedia();
 

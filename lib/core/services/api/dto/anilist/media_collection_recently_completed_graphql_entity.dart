@@ -6,7 +6,7 @@ export 'package:unyo/generated/json/media_collection_recently_completed_graphql_
 @JsonSerializable()
 class MediaCollectionRecentlyCompletedGraphqlEntity {
 	@JSONField(name: "Page")
-	late MediaCollectionRecentlyCompletedGraphqlDtoPage page;
+	late MediaCollectionRecentlyCompletedGraphqlDtoPage page = MediaCollectionRecentlyCompletedGraphqlDtoPage();
 
 	MediaCollectionRecentlyCompletedGraphqlEntity();
 
@@ -50,16 +50,16 @@ class MediaCollectionRecentlyCompletedGraphqlDtoPageMedia {
 	late List<String> genres = [];
 	late String format = '';
 	late int episodes = 0;
-	late MediaCollectionRecentlyCompletedGraphqlDtoPageMediaEndDate endDate;
-	late MediaCollectionRecentlyCompletedGraphqlDtoPageMediaStartDate startDate;
+	late MediaCollectionRecentlyCompletedGraphqlDtoPageMediaEndDate endDate = MediaCollectionRecentlyCompletedGraphqlDtoPageMediaEndDate();
+	late MediaCollectionRecentlyCompletedGraphqlDtoPageMediaStartDate startDate = MediaCollectionRecentlyCompletedGraphqlDtoPageMediaStartDate();
 	late int duration = 0;
 	late String description = '';
-	late MediaCollectionRecentlyCompletedGraphqlDtoPageMediaCoverImage coverImage;
+	late MediaCollectionRecentlyCompletedGraphqlDtoPageMediaCoverImage coverImage = MediaCollectionRecentlyCompletedGraphqlDtoPageMediaCoverImage();
 	late String countryOfOrigin = '';
 	late int chapters = 0;
 	late String bannerImage = '';
 	late int averageScore = 0;
-	late MediaCollectionRecentlyCompletedGraphqlDtoPageMediaTitle title;
+	late MediaCollectionRecentlyCompletedGraphqlDtoPageMediaTitle title = MediaCollectionRecentlyCompletedGraphqlDtoPageMediaTitle();
 
 	MediaCollectionRecentlyCompletedGraphqlDtoPageMedia();
 
