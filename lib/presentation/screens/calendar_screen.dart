@@ -82,6 +82,7 @@ class _CalendarViewState extends State<_CalendarView>
                   IconButton(
                     onPressed: () => context.read<CalendarCubit>().popScreen(context),
                     icon: Icon(
+                      key: const ValueKey('back-button'),
                       Icons.arrow_back_ios_new_rounded,
                       color: ColorScheme.of(context).tertiary,
                     ),

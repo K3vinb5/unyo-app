@@ -72,6 +72,7 @@ class _TabsView extends StatelessWidget {
                       onIconTap: () => context.read<TabsCubit>().showUserOptionsDrawer(),
                       icons: [
                         UnyoMenuIcon(
+                          key: const ValueKey('menu-home'),
                           isSelected:
                               state.selectedMenuOption ==
                               SelectedMenuOption.home,
@@ -84,6 +85,7 @@ class _TabsView extends StatelessWidget {
                           selectedIcon: Icons.home,
                         ),
                         UnyoMenuIcon(
+                          key: const ValueKey('menu-anime'),
                           isSelected:
                               state.selectedMenuOption ==
                               SelectedMenuOption.anime,
@@ -96,6 +98,7 @@ class _TabsView extends StatelessWidget {
                           selectedIcon: Icons.movie,
                         ),
                         UnyoMenuIcon(
+                          key: const ValueKey('menu-manga'),
                           isSelected:
                               state.selectedMenuOption ==
                               SelectedMenuOption.manga,
@@ -108,6 +111,7 @@ class _TabsView extends StatelessWidget {
                           selectedIcon: Icons.menu_book,
                         ),
                         UnyoMenuIcon(
+                          key: const ValueKey('menu-extensions'),
                           isSelected:
                               state.selectedMenuOption ==
                               SelectedMenuOption.extensions,
@@ -120,6 +124,7 @@ class _TabsView extends StatelessWidget {
                           selectedIcon: Icons.extension,
                         ),
                         UnyoMenuIcon(
+                          key: const ValueKey('menu-settings'),
                           isSelected:
                               state.selectedMenuOption ==
                               SelectedMenuOption.settings,

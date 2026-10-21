@@ -119,7 +119,7 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
                       padding: const EdgeInsets.all(10.0),
                       child: IconButton(
                         onPressed: () => context.read<MangaDetailsCubit>().navigateBackToMangaPage(context),
-                        icon: Icon(Icons.arrow_back_ios_new_rounded, color: ColorScheme.of(context).tertiary),
+                        icon: Icon(key: const ValueKey('back-button'), Icons.arrow_back_ios_new_rounded, color: ColorScheme.of(context).tertiary),
                       ),
                     ),
                   ],

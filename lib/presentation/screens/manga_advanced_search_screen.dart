@@ -72,7 +72,7 @@ class _MangaAdvancedSearchViewState extends State<_MangaAdvancedSearchView> {
                   const SizedBox(width: 5),
                   IconButton(
                     onPressed: () => context.read<MangaAdvancedSearchCubit>().popScreen(context),
-                    icon: Icon(Icons.arrow_back_ios_new_rounded, color: ColorScheme.of(context).tertiary),
+                    icon: Icon(key: const ValueKey('back-button'), Icons.arrow_back_ios_new_rounded, color: ColorScheme.of(context).tertiary),
                   ),
                   const SizedBox(width: 10),
                   Column(

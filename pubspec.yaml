@@ -77,6 +77,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_driver:
+    sdk: flutter
   # Linting and code quality
   flutter_lints: ^6.0.0
   bloc_lint: ^0.3.5

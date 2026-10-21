@@ -132,7 +132,7 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                       padding: const EdgeInsets.all(10.0),
                       child: IconButton(
                         onPressed: () => context.read<AnimeDetailsCubit>().navigateBackToAnimePage(context),
-                        icon: Icon(Icons.arrow_back_ios_new_rounded, color: ColorScheme.of(context).tertiary),
+                        icon: Icon(key: const ValueKey('back-button'), Icons.arrow_back_ios_new_rounded, color: ColorScheme.of(context).tertiary),
                       ),
                     ),
                   ],
