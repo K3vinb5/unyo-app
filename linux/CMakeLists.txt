@@ -121,6 +121,24 @@ install(CODE "
 install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
 
+# Debug builds: symlink the custom JRE from the sibling unyo-lib checkout into
+# the bundle. The bundle dir is wiped on every install (see "clean build bundle
+# directory" above), so this must run as part of the install itself. This
+# replaces manually running unyo-lib/installJREDebug.sh after each build.
+if(CMAKE_BUILD_TYPE MATCHES "Debug")
+  set(UNYO_JRE_SRC "${CMAKE_SOURCE_DIR}/../../unyo-lib/jre/linux/customjre")
+  if(EXISTS "${UNYO_JRE_SRC}")
+    install(CODE "
+      file(MAKE_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/jre\")
+      execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink
+        \"${UNYO_JRE_SRC}\" \"\${CMAKE_INSTALL_PREFIX}/jre/customjre\")
+      " COMPONENT Runtime)
+  else()
+    message(WARNING "unyo-lib custom JRE not found at ${UNYO_JRE_SRC}; "
+      "JNI will not work in this debug build.")
+  endif()
+endif()
+
 # Install the AOT library on non-Debug builds only.
 if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
