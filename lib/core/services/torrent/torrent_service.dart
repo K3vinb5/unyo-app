@@ -136,9 +136,9 @@ class TorrentService {
     final body = {
       "action": "add",
       "link": link,
-      if (title != null) "title": title,
-      if (poster != null) "poster": poster,
-      if (category != null) "category": category,
+      "title": ?title,
+      "poster": ?poster,
+      "category": ?category,
       "save_to_db": saveToDb,
     };
     final response = await _httpService.post<TorrentStatus>(

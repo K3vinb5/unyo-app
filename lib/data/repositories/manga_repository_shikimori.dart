@@ -8,7 +8,6 @@ import 'package:logger/logger.dart';
 import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/api/graphql/graphql_service.dart';
-import 'package:unyo/core/services/api/graphql/queries/shikimori_queries.dart' as shikimori_queries;
 import 'package:unyo/data/repositories/repository_mixin.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/media/manga_details.dart';

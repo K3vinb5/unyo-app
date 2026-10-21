@@ -56,7 +56,7 @@ flutter analyze
 
 ## Flutter Version
 
-Pinned to **3.38.1** (see `.fvmrc`). Use `fvm flutter` if managing multiple versions.
+Pinned to **3.47.7** (see `.fvmrc`). Use `fvm flutter` if managing multiple versions.
 
 ## Release Process
 

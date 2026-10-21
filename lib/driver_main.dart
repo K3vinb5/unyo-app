@@ -11,7 +11,7 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 // ignore: depend_on_referenced_packages -- dev-only automation entrypoint
 import 'package:flutter_driver/driver_extension.dart';

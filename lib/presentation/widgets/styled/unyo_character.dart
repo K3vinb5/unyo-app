@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:unyo/presentation/widgets/styled/hover_animated_container.dart';
 
 class UnyoCharacter extends StatelessWidget {

@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/torrent/torrent_service.dart';
 import 'package:window_manager/window_manager.dart';

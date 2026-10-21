@@ -2,7 +2,7 @@
 // Do not modify
 // Check in to version control
 
-import 'package:hive_ce/hive.dart';
+import 'package:hive_ce/hive_ce.dart';
 import 'package:unyo/core/enums/episode_service.dart';
 import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/data/models/anilist/media/anilist_anime_details.dart';

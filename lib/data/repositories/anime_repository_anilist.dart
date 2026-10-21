@@ -350,7 +350,7 @@ class AnimeRepositoryAnilist with RepositoryMixin implements AnimeRepository {
             if (query.isNotEmpty) "search": query,
             if (selectedGenres.isNotEmpty) "genres": selectedGenres,
             if (selectedSeason != null && selectedSeason.isNotEmpty) "season": selectedSeason.toUpperCase(),
-            if (selectedYear != null) "seasonYear": selectedYear,
+            "seasonYear": ?selectedYear,
             if (selectedAiringStatus != null && selectedAiringStatus.isNotEmpty)
               "status": selectedAiringStatus.toUpperCase().replaceAll(' ', '_'),
             if (selectedFormat != null && selectedFormat.isNotEmpty)

@@ -1,7 +1,7 @@
 // External dependencies
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:cast/cast.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:unyo_lib/jmodels/jsepisode.dart';
 import 'package:unyo_lib/jmodels/jvideo.dart';

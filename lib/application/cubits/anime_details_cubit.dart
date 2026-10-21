@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:auto_route/auto_route.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:collection/collection.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:fuzzywuzzy/fuzzywuzzy.dart';
 import 'package:unyo_lib/jmodels/jsanime.dart';
 import 'package:unyo_lib/jmodels/jsepisode.dart';
@@ -237,6 +237,16 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   Future<void> openAnimeServerSelectionDrawer(BuildContext context, int episodeIndex) async {
     if (state.animeServerDialogLoading) return;
     emit(state.copyWith(animeServerDialogReady: false, animeServerDialogLoading: true, extensionVideoResults: []));
+    if (state.extensionAnimeResults.isEmpty || state.selectedAnimeResultIndex >= state.extensionAnimeResults.length) {
+      _logger.w("Cannot open server selection: no extension anime results available.");
+      showSnackBarEffect(
+        "${state.selectedExtension?.name} Error",
+        message: "No results from the extension. Try again.",
+        contentType: ContentType.warning,
+      );
+      emit(state.copyWith(animeServerDialogLoading: false));
+      return;
+    }
     // TODO - You may not want to select the found index (selectedAnimeResultIndex) on extensionAnimeResults
     bool canOpenDrawer = await _getEpisodesFromSelectedExtension(
       state.selectedExtension,

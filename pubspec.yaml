@@ -24,7 +24,7 @@ dependencies:
   logger: ^2.6.0
   # Code generation
   freezed: ^3.1.0
-  freezed_annotation: ^3.1.0
+  freezed_annotation: ^3.1.0 # keep freezed 3.x (4.x is a breaking codegen change)
   json_annotation: ^4.9.0
   # HTTP requests
   http: ^1.6.0
@@ -38,8 +38,8 @@ dependencies:
   awesome_snackbar_content: ^0.1.8
   flutter_svg: ^2.2.3
 #  fl_chart: ^1.1.1
-  dynamic_color: ^1.8.1
-  material_color_utilities: ^0.11.1
+  dynamic_color: ^2.1.0
+  material_color_utilities: ^0.13.0
   palette_generator: ^0.3.3+7
   flutter_colorpicker: ^1.1.0
   # Platform Integration
@@ -48,8 +48,8 @@ dependencies:
   flutter_discord_rpc: ^1.1.0
   # Media
   smooth_video_progress: ^0.0.4
-  fvp: 0.33.1
-  video_player: 2.10.0
+  fvp: ^0.39.1
+  video_player: ^2.14.1
   # Backend/Server
   shelf: ^1.4.2
   # Storage
@@ -72,6 +72,7 @@ dependencies:
   unyo_lib:
     path: ../unyo-lib
   wakelock_plus: ^1.4.0
+  material_ui: ^1.8.0
 
 # Dev dependencies
 dev_dependencies:
@@ -79,9 +80,8 @@ dev_dependencies:
     sdk: flutter
   flutter_driver:
     sdk: flutter
-  # Linting and code quality
   flutter_lints: ^6.0.0
-  bloc_lint: ^0.3.5
+  bloc_lint: ^0.4.1
   # Testing
   bloc_test: ^10.0.0
   mocktail: ^1.0.4
@@ -92,6 +92,11 @@ dev_dependencies:
   # Asset Management
   flutter_launcher_icons: ^0.14.4
   icons_launcher: ^3.0.3
+
+dependency_overrides:
+  # cast 2.1.0 (stale upstream) is incompatible with bonsoir 7.x
+  # (BonsoirDiscoveryEventType renamed). Pin to the last compatible release.
+  bonsoir: 5.1.11
 
 # The following section is specific to Flutter packages.
 flutter:

@@ -9,8 +9,9 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+
 import 'package:auto_route/auto_route.dart' as _i16;
-import 'package:flutter/material.dart' as _i17;
+import 'package:material_ui/material_ui.dart' as _i17;
 import 'package:unyo/presentation/screens/anime_advanced_search_screen.dart'
     as _i1;
 import 'package:unyo/presentation/screens/anime_details_screen.dart' as _i2;

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:logger/logger.dart';
 import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/application/states/manga_state.dart';

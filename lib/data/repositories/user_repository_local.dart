@@ -3,9 +3,7 @@ import 'package:logger/logger.dart';
 
 // Internal Dependencies
 import 'package:unyo/core/di/locator.dart';
-import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/entities.dart';
-import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/repositories/user_repository.dart';
 
 class UserRepositoryLocal implements UserRepository {

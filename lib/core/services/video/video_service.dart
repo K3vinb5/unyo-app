@@ -3,7 +3,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:fuzzywuzzy/fuzzywuzzy.dart';
 import 'package:fvp/mdk.dart' as mdk;
 import 'package:logger/logger.dart';
@@ -43,6 +43,8 @@ class VideoService {
   bool _isBuffering = true;
   bool _isLoading = false;
   bool _isDisposed = false;
+  StreamSubscription<({mdk.MediaStatus oldValue, mdk.MediaStatus newValue})>?
+  _mediaStatusSubscription;
   static const mdk.SeekFlag _seekFlags = mdk.SeekFlag(
     mdk.SeekFlag.fromStart | mdk.SeekFlag.inCache | mdk.SeekFlag.fast,
   );
@@ -69,7 +71,9 @@ class VideoService {
   Future<void> _initAsync() async {
     _initialFullscreen = await windowManager.isFullScreen();
     _isFullscreen = _initialFullscreen;
-    _player.onMediaStatus(_onMediaStatusInit);
+    _mediaStatusSubscription = _player.onMediaStatus.listen(
+      (event) => _onMediaStatusInit(event.oldValue, event.newValue),
+    );
     try {
       final resolvedUrl = await _resolveVideoUrl(_video.videoUrl);
       _player.media = resolvedUrl;
@@ -281,7 +285,7 @@ class VideoService {
 
   void dispose() {
     _isDisposed = true;
-    _player.onMediaStatus(null);
+    _mediaStatusSubscription?.cancel();
     setFullscreen(_initialFullscreen);
     _player.dispose();
     _attemptDisposeTorrent();
