@@ -61,3 +61,12 @@ Pinned to **3.38.1** (see `.fvmrc`). Use `fvm flutter` if managing multiple vers
 ## Release Process
 
 Releases are triggered by **git tags**. The CI workflow (`main.yml`) builds Go bindings for all three platforms, then runs the Flutter build. Do not manually edit generated `.g.dart` files before a release tag.
+
+## Shared Knowledge (unyo-docs)
+
+Cross-project knowledge lives in the sibling repo `../unyo-docs`
+(https://gitea.k3vinb5.dev/Unyo/unyo-docs). When a task spans multiple unyo
+repos, or you're stuck on tooling/environment, scan `../unyo-docs/INDEX.md`
+first and read only what's relevant. When you discover a hard-won, non-obvious
+fact, add it following the rules in `../unyo-docs/README.md` — brevity over
+completeness; repo-specific facts stay in this file.
