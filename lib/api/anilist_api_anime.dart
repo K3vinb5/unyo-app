@@ -128,17 +128,17 @@ Future<List<AnimeModel>> getAnimeModelListSeasonPopular(
 }
 
 Future<List<AnimeModel>> getAnimeModelListSearch(
-  String search, 
+  String search,
   String genre,
-  String sort, 
-  String season, 
+  String sort,
+  String season,
   String status,
-  String format, 
-  String year, 
+  String format,
+  String year,
   int n,
 ) async {
   String finalSearch = search.isNotEmpty ? "search:\"$search\"" : "";
-  
+
   Map<String, dynamic> query = {
     "query":
         "query(\$page:Int = 1 \$id:Int \$type:MediaType \$isAdult:Boolean = false \$format:[MediaFormat] \$status:MediaStatus \$countryOfOrigin:CountryCode \$source:MediaSource \$season:MediaSeason \$seasonYear:Int \$year:String \$onList:Boolean \$yearLesser:FuzzyDateInt \$yearGreater:FuzzyDateInt \$episodeLesser:Int \$episodeGreater:Int \$durationLesser:Int \$durationGreater:Int \$chapterLesser:Int \$chapterGreater:Int \$volumeLesser:Int \$volumeGreater:Int \$licensedBy:[Int]\$isLicensed:Boolean \$genres:[String]\$excludedGenres:[String]\$tags:[String]\$excludedTags:[String]\$minimumTagRank:Int \$sort:[MediaSort]=[POPULARITY_DESC,SCORE_DESC]){Page(page:\$page,perPage:$n){pageInfo{total perPage currentPage lastPage hasNextPage}media(id:\$id type:\$type season:\$season format_in:\$format status:\$status countryOfOrigin:\$countryOfOrigin source:\$source $finalSearch onList:\$onList seasonYear:\$seasonYear startDate_like:\$year startDate_lesser:\$yearLesser startDate_greater:\$yearGreater episodes_lesser:\$episodeLesser episodes_greater:\$episodeGreater duration_lesser:\$durationLesser duration_greater:\$durationGreater chapters_lesser:\$chapterLesser chapters_greater:\$chapterGreater volumes_lesser:\$volumeLesser volumes_greater:\$volumeGreater licensedById_in:\$licensedBy isLicensed:\$isLicensed genre_in:\$genres genre_not_in:\$excludedGenres tag_in:\$tags tag_not_in:\$excludedTags minimumTagRank:\$minimumTagRank sort:\$sort isAdult:\$isAdult){id idMal title{userPreferred english romaji}coverImage{extraLarge large color}startDate{year month day}endDate{year month day}bannerImage season seasonYear description type format status(version:2)episodes duration chapters volumes genres isAdult averageScore popularity nextAiringEpisode{airingAt timeUntilAiring episode}mediaListEntry{id status}studios(isMain:true){edges{isMain node{id name}}}}}}",
@@ -149,11 +149,13 @@ Future<List<AnimeModel>> getAnimeModelListSearch(
         "sort": "SEARCH_MATCH"
       else
         "sort": "${sort.toUpperCase()}_DESC",
-      if (format != "Select Format") "format": [format.toUpperCase().replaceAll(' ', '_')],
+      if (format != "Select Format")
+        "format": [format.toUpperCase().replaceAll(' ', '_')],
       if (season != "Select Season") "season": season.toUpperCase(),
       if (year != "Select Year") "seasonYear": int.parse(year),
       if (genre != "Select Genre") "genres": [genre],
-      if (status != "Select Status") "status": status.toUpperCase().replaceAll(' ', '_')
+      if (status != "Select Status")
+        "status": status.toUpperCase().replaceAll(' ', '_')
     }
   };
   var url = Uri.parse(anilistEndpoint);
@@ -228,7 +230,8 @@ String capitalize(String s) {
   return s.substring(0, 1).toUpperCase() + s.substring(1).toLowerCase();
 }
 
-Future<Map<String, Map<String, double>>> getUserStatsMaps({int? newAttempt}) async {
+Future<Map<String, Map<String, double>>> getUserStatsMaps(
+    {int? newAttempt}) async {
   Map<String, Map<String, double>> userStatsMaps = {};
   int attempt = newAttempt ?? 0;
   var url = Uri.parse(anilistEndpoint);

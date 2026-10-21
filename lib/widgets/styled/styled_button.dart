@@ -22,10 +22,10 @@ class _StyledButtonState extends State<StyledButton> {
   Widget build(BuildContext context) {
     return ElevatedButton(
       style: ButtonStyle(
-        backgroundColor: MaterialStatePropertyAll(
+        backgroundColor: WidgetStatePropertyAll(
           widget.backgroundColor ?? const Color.fromARGB(255, 37, 37, 37),
         ),
-        foregroundColor: const MaterialStatePropertyAll(
+        foregroundColor: const WidgetStatePropertyAll(
           Colors.white,
         ),
       ),
