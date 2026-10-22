@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class UnyoSortWidget extends StatefulWidget {
   final List<String> sortingOptions;
@@ -80,7 +81,7 @@ class _UnyoSortWidgetState extends State<UnyoSortWidget> {
                           children:
                               widget.sortingOptions.map((option) {
                                 final isSelected = option == _selectedOption;
-                                return InkWell(
+                                return UnyoInkWell(
                                   onTap: () {
                                     setState(() => _selectedOption = option);
                                     widget.onSortChanged?.call(option);
@@ -133,7 +134,7 @@ class _UnyoSortWidgetState extends State<UnyoSortWidget> {
       height: 50,
       child: CompositedTransformTarget(
         link: _layerLink,
-        child: InkWell(
+        child: UnyoInkWell(
           borderRadius: BorderRadius.circular(16),
           child: Row(
             children: [

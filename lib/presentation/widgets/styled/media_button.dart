@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/presentation/widgets/styled/styled.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class MediaButton extends StatelessWidget {
   final void Function()? onPressed;
@@ -12,7 +13,7 @@ class MediaButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-        return InkWell(
+        return UnyoInkWell(
             onTap: onPressed,
             child: HoverAnimatedContainer(
               duration: const Duration(milliseconds: 130),

@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:unyo/presentation/widgets/styled/hover_animated_container.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class MediaCard extends StatelessWidget {
   final String title;
@@ -33,7 +34,7 @@ class MediaCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          InkWell(
+          UnyoInkWell(
             onTap: onPressed,
             // TODO maybe Stack over HoverAnimatedContainer
             child: Stack(

@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class UnyoVideoListButton extends StatefulWidget {
   final String? tooltip;
@@ -22,7 +23,7 @@ class _UnyoVideoListButtonState extends State<UnyoVideoListButton> {
       child: MouseRegion(
         onEnter: (_) => setState(() => isHovered = true),
         onExit: (_) => setState(() => isHovered = false),
-        child: InkWell(
+        child: UnyoInkWell(
           onTap: widget.onPressed,
           splashColor: Colors.transparent,
           highlightColor: Colors.transparent,

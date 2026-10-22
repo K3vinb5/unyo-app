@@ -18,6 +18,7 @@ import 'package:unyo/presentation/widgets/styled/unyo_media_banner.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_character_list.dart';
 import 'package:unyo/presentation/widgets/text/text_body_medium.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 @RoutePage()
 class AnimeDetailsScreen extends StatelessWidget {
@@ -196,7 +197,7 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                                             ],
                                           ),
                                           // TODO: extract to a widget
-                                          InkWell(
+                                          UnyoInkWell(
                                             child: Container(
                                               width: 120.w,
                                               height: 40,

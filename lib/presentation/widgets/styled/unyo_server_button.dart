@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/domain/entities/extension/video.dart' as ext;
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class UnyoServerButton extends StatelessWidget {
   final ext.Video videoServer;
@@ -10,7 +11,7 @@ class UnyoServerButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return UnyoInkWell(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(16.0),
       child: Container(

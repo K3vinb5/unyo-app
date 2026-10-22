@@ -70,16 +70,19 @@ class _UnyoDropdownState extends State<UnyoDropdown> {
             trailingIcon:
                 widget.selectedValue == null || widget.selectedValue!.isEmpty || searchController.text.isEmpty
                     ? Icon(Icons.arrow_drop_down, color: ColorScheme.of(context).tertiary.withValues(alpha: 0.7))
-                    : GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          searchController.clear();
-                        });
-                        if (widget.reactOnCancel == true) {
-                          widget.onPressed?.call(null);
-                        }
-                      },
-                      child: Icon(Icons.clear, color: ColorScheme.of(context).tertiary.withValues(alpha: 0.7)),
+                    : MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            searchController.clear();
+                          });
+                          if (widget.reactOnCancel == true) {
+                            widget.onPressed?.call(null);
+                          }
+                        },
+                        child: Icon(Icons.clear, color: ColorScheme.of(context).tertiary.withValues(alpha: 0.7)),
+                      ),
                     ),
             enableFilter: true,
             menuStyle: MenuStyle(

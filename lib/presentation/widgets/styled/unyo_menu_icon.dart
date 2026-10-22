@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class UnyoMenuIcon extends StatefulWidget {
   final bool isSelected;
@@ -29,7 +30,7 @@ class _UnyoMenuIconState extends State<UnyoMenuIcon> {
         onEnter: (_) => setState(() => isHovered = true),
         onExit: (_) => setState(() => isHovered = false),
         cursor: SystemMouseCursors.click,
-        child: InkWell(
+        child: UnyoInkWell(
           onTap: widget.onPressed,
           borderRadius: BorderRadius.circular(15.0),
           child: AnimatedContainer(

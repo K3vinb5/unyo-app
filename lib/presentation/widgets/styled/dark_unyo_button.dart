@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class DarkUnyoButton extends StatelessWidget {
   final String? text;
@@ -37,7 +38,7 @@ class DarkUnyoButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      child: InkWell(
+      child: UnyoInkWell(
         onTap: isEnabled ? onPressed : null,
         highlightColor: Color.lerp(Colors.white, color, 1.0),
         borderRadius: BorderRadius.circular(20.0),

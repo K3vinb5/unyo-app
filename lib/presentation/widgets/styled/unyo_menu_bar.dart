@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/presentation/widgets/styled/styled.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class UnyoMenuBar extends StatelessWidget {
   final List<UnyoMenuIcon> icons;
@@ -42,7 +43,7 @@ class UnyoMenuBar extends StatelessWidget {
                    const SizedBox(height: 20,),
                      Material(
                        color: Colors.transparent,
-                       child: InkWell(
+                       child: UnyoInkWell(
                          borderRadius: BorderRadius.circular(35),
                          onTap: onIconTap,
                          child: CircleAvatar(

@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class UnyoEpisodeButton extends StatefulWidget {
   final String secondaryTitle;
@@ -33,7 +34,7 @@ class _UnyoEpisodeButtonState extends State<UnyoEpisodeButton> {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return UnyoInkWell(
       onTap: widget.released >= widget.episodeNumber
           ? widget.onPressed
           : null,

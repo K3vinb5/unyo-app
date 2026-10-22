@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:unyo/presentation/widgets/text/text_headline_medium.dart';
 import 'package:unyo/presentation/widgets/text/text_label_medium.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class LoginCard extends StatelessWidget {
   final String title;
@@ -18,7 +19,7 @@ class LoginCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 12.0.w),
-      child: InkWell(
+      child: UnyoInkWell(
         borderRadius: BorderRadius.circular(20.0.r),
         onTap: onTap,
         child: Container(

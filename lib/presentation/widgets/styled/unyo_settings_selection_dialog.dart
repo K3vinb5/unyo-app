@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class UnyoSettingsSelectionDialog extends StatelessWidget {
   final String title;
@@ -19,7 +20,7 @@ class UnyoSettingsSelectionDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return UnyoInkWell(
       onTap: openDialog,
       child: Container(
         color: Colors.transparent,

@@ -82,6 +82,12 @@ final Color _defaultTertiaryColor = const Color.fromARGB(255, 213, 188, 234);
 final _defaultTheme = ThemeData(
   brightness: Brightness.dark,
   scaffoldBackgroundColor: const Color.fromARGB(255, 44, 44, 44),
+  // Flutter 3.47 changed the default IconButton mouse cursor to
+  // WidgetStateMouseCursor.adaptiveClickable, which resolves to the plain
+  // arrow on non-web platforms. Restore the hand cursor for every IconButton.
+  iconButtonTheme: const IconButtonThemeData(
+    style: ButtonStyle(mouseCursor: WidgetStateMouseCursor.clickable),
+  ),
   textTheme: const TextTheme(
     // Display styles (largest) - white
     displayLarge: TextStyle(

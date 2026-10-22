@@ -7,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/presentation/widgets/styled/hover_animated_container.dart';
 import 'package:unyo/presentation/widgets/text/text_headline_large.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class AddUserAvatar extends StatelessWidget {
   final void Function() onPressed;
@@ -33,7 +34,7 @@ class AddUserAvatar extends StatelessWidget {
               borderRadius: BorderRadius.circular(250),
               border: Border.all(color: Colors.white, width: 5),
             ),
-            child: InkWell(
+            child: UnyoInkWell(
               borderRadius: BorderRadius.circular(140.r),
               onTap: onPressed,
               child: CircleAvatar(

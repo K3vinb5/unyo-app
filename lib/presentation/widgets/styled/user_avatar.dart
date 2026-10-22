@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/presentation/widgets/styled/hover_animated_container.dart';
 import 'package:unyo/presentation/widgets/text/text_headline_large.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class UserAvatar extends StatelessWidget {
   final User user;
@@ -32,7 +33,7 @@ class UserAvatar extends StatelessWidget {
               borderRadius: BorderRadius.circular(250),
               border: Border.all(color: Colors.white, width: 5),
             ),
-            child: InkWell(
+            child: UnyoInkWell(
               borderRadius: BorderRadius.circular(140.r),
               onTap: onPressed,
               child: CircleAvatar(

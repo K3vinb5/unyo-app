@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_pill.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class UnyoExtensionButton extends StatelessWidget {
   final void Function()? onDownloadPressed;
@@ -109,7 +110,7 @@ class UnyoExtensionButton extends StatelessWidget {
                       child: Tooltip(
                         waitDuration: const Duration(milliseconds: 1000),
                         message: "Download",
-                        child: InkWell(
+                        child: UnyoInkWell(
                           onTap: onDownloadPressed,
                           child: Container(
                             width: 45,
@@ -130,7 +131,7 @@ class UnyoExtensionButton extends StatelessWidget {
                       child: Tooltip(
                         waitDuration: const Duration(milliseconds: 1000),
                         message: "Update",
-                        child: InkWell(
+                        child: UnyoInkWell(
                           onTap: onUpdatePressed,
                           child: Container(
                             width: 45,
@@ -151,7 +152,7 @@ class UnyoExtensionButton extends StatelessWidget {
                       child: Tooltip(
                         waitDuration: const Duration(milliseconds: 1000),
                         message: "Settings",
-                        child: InkWell(
+                        child: UnyoInkWell(
                           onTap: onSettingsPressed,
                           child: Container(
                             width: 45,
@@ -172,7 +173,7 @@ class UnyoExtensionButton extends StatelessWidget {
                       child: Tooltip(
                         waitDuration: const Duration(milliseconds: 1000),
                         message: "Delete",
-                        child: InkWell(
+                        child: UnyoInkWell(
                           onTap: onDeletePressed,
                           child: Container(
                             width: 45,

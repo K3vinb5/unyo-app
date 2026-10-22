@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class UnyoSettingsCategory extends StatefulWidget {
   final String title;
@@ -67,7 +68,7 @@ class _UnyoSettingsCategoryState extends State<UnyoSettingsCategory> with Single
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InkWell(
+        UnyoInkWell(
           onTap: _toggleExpanded,
           child: Container(
             width: double.infinity,

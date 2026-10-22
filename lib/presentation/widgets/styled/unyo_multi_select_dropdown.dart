@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class UnyoMultiSelectDropdown extends StatefulWidget {
   final void Function(List<String>)? onChanged;
@@ -108,7 +109,7 @@ class _UnyoMultiSelectDropdownState extends State<UnyoMultiSelectDropdown> {
                           children:
                               widget.children.map((item) {
                                 final isSelected = _selectedItems.contains(item);
-                                return InkWell(
+                                return UnyoInkWell(
                                   onTap: () {
                                     // manage internal state here (not relying on external controller)
                                     if (isSelected) {
@@ -162,7 +163,7 @@ class _UnyoMultiSelectDropdownState extends State<UnyoMultiSelectDropdown> {
       height: 50,
       child: CompositedTransformTarget(
         link: _layerLink,
-        child: InkWell(
+        child: UnyoInkWell(
           onTap: _toggleDropdown,
           borderRadius: BorderRadius.circular(16),
           child: Container(

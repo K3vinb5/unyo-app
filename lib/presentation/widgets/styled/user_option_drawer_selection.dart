@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class UserOptionDrawerSelection extends StatelessWidget {
   const UserOptionDrawerSelection({super.key, required this.text, required this.icon, required this.onPressed});
@@ -16,7 +17,7 @@ class UserOptionDrawerSelection extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.1))
       ),
-      child: InkWell(
+      child: UnyoInkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: onPressed,
         child: Row(

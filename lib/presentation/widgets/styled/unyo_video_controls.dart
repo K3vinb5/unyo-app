@@ -18,6 +18,7 @@ import 'package:unyo/presentation/widgets/styled/unyo_video_header_controls.dart
 import 'package:unyo/presentation/widgets/styled/unyo_video_list_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_volume_button.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class UnyoVideoControls extends StatefulWidget {
   final VideoCubit videoCubit;
@@ -172,7 +173,7 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                       waitDuration: const Duration(milliseconds: 2000),
                                       textAlign: TextAlign.center,
                                       message: "Resume Play",
-                                      child: InkWell(
+                                      child: UnyoInkWell(
                                         onTap: () => playVideo(),
                                         // highlightColor: Colors.white12,
                                         hoverColor: Colors.white10,
