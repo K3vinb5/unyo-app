@@ -6,6 +6,7 @@
 flutter pub get
 flutter pub run build_runner build --delete-conflicting-outputs
 flutter build linux --release
+../unyo-lib/installJREDebug.sh linux   # copy the custom built JRE into the debug bundle (release: installJRERelease.sh)
 ```
 
 **Always run `build_runner` after `flutter pub get`** or after modifying any files using code generation (freezed, json_serializable, hive_ce_generator, auto_route). Do NOT manually edit `*.g.dart` files — they are generated.
