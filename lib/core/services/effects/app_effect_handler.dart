@@ -15,6 +15,15 @@ class AppEffectHandler {
   Timer timer = Timer(Duration.zero, () {});
   late BuildContext rootContext;
 
+  /// Effects are kept on the state snapshot. When a cubit emits again before
+  /// the BlocListener has drained them (e.g. `addEffect` followed by a
+  /// `copyWith` emit), consecutive states carry the SAME effect instances and
+  /// every snapshot would run them again — double dialogs that then fight over
+  /// a single `Navigator.pop`, double snackbars. Each instance is one-shot, so
+  /// remember what already ran. An [Expando] keeps it weak: effects are
+  /// collected along with their states.
+  final Expando<bool> _handledEffects = Expando<bool>('AppEffectHandler.handled');
+
   AppEffectHandler();
 
   void attachRootContext(BuildContext context) {
@@ -27,6 +36,8 @@ class AppEffectHandler {
     void Function() clearAppEffects,
   ) {
     for (var effect in effects) {
+      if (_handledEffects[effect] ?? false) continue;
+      _handledEffects[effect] = true;
       handle(effect, context);
     }
     clearAppEffects();
