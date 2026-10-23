@@ -78,6 +78,10 @@ Future<void> _tapAt(Offset global) async {
         GestureBinding.instance.handlePointerEvent(event),
     kind: PointerDeviceKind.mouse,
   );
+  // Mouse pointers need the hover event to establish the pointer position
+  // before the click: without it InkWell-style targets still fire, but
+  // text-field-style ones (e.g. the DropdownMenu field) never see a tap.
+  await gesture.moveTo(global);
   await gesture.down(global);
   await gesture.up();
 }
