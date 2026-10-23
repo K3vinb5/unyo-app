@@ -27,7 +27,7 @@ Commit message convention (see `git log`): lowercase type prefix, a colon, then 
 Examples: `rewrite: Added a factory pattern for episode metadata services`, `fix: make AppImage entrypoint executable`.
 
 Rules:
-- **Never push on request — open a pull request instead.** When asked to push a commit, do not push to `master` (or any shared branch). Push the branch holding the commit and open a PR against `master` with `gh pr create`, then hand back the PR URL so the user reviews and merges it themselves. Never merge the PR yourself.
+- **Ask per commit: push directly or open a PR?** Never decide this yourself. For each commit you plan to create, and for each commit already sitting locally, ask the user how it should reach the remote — direct push or pull request. If PR: push the branch holding the commit, open it against `master` with `gh pr create`, hand back the PR URL, and never merge it yourself. If direct push: push only the commits the user approved.
 - Always check `git log --oneline -20` before committing to confirm the current convention.
 - Do not commit `lib/generated/json/**` or other `*.g.dart` changes separately from the source change that caused them — regenerate and include them in the same commit.
 - Never commit throwaway test entities/scratch files.
