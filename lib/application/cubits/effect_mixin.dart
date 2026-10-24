@@ -21,6 +21,10 @@ mixin EffectMixin<State> on Cubit<State> {
   };
 
   void addEffect(AppEffect effect) {
+    if (isClosed) {
+      logger.d("Skipping AppEffect on a closed cubit: $effect");
+      return;
+    }
     logger.d("Adding AppEffect: $effect");
     final current = state;
     final newEffects = [..._currentEffects, effect];
@@ -29,6 +33,7 @@ mixin EffectMixin<State> on Cubit<State> {
 
   void clearEffects() {
     logger.d("Clearing all effects");
+    if (isClosed) return;
     emit(copyStateWithEffects(state, []));
   }
 

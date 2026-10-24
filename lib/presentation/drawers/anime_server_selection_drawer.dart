@@ -37,7 +37,13 @@ class _AnimeServerSelectionDrawerState extends State<AnimeServerSelectionDrawer>
   }
 
   Future<void> asyncInit() async {
-    bool remainOpen = await widget.onOpen();
+    bool remainOpen = false;
+    try {
+      remainOpen = await widget.onOpen();
+    } catch (e, stackTrace) {
+      // Never let a drawer open failure surface as an unhandled async error.
+      widget.cubit.logger.e("Failed to open the server selection drawer: $e", stackTrace: stackTrace);
+    }
     if (!remainOpen && mounted) {
       Navigator.of(context).pop();
     }

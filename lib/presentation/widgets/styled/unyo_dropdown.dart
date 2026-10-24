@@ -57,6 +57,7 @@ class _UnyoDropdownState extends State<UnyoDropdown> {
     return LayoutBuilder(
       builder:
           (context, constrains) => DropdownMenu<String?>(
+            key: const ValueKey('unyo-dropdown'),
             width: widget.width ?? constrains.maxWidth,
             controller: searchController,
             onSelected: widget.onPressed,
