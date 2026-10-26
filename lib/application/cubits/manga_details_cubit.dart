@@ -143,19 +143,26 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
             .where((extension) => selectedMangaExtensionName == extension.name)
             .firstOrNull;
     if (selectedExtension != null) {
+      emit(state.copyWith(selectedExtension: selectedExtension));
       switch (state.loggedUser) {
         case AnilistUserModel anilistUserModel:
-          SettingsModel userSettings = anilistUserModel.settings as SettingsModel;
-          Map<String, Extension> mediaExtensionsConfigUpdated = Map.from(userSettings.mediaExtensionConfigs);
-          mediaExtensionsConfigUpdated.addAll({state.selectedManga.id.toString(): selectedExtension});
-          await _userRepositoryAnilist.updateUserInfo(
-            anilistUserModel.copyWith(
-              settings: userSettings.copyWith(mediaExtensionConfigs: mediaExtensionsConfigUpdated),
-            ),
-          );
+          // Persisting the choice must never block fetching from the extension.
+          try {
+            SettingsModel userSettings = anilistUserModel.settings as SettingsModel;
+            Map<String, Extension> mediaExtensionsConfigUpdated = Map.from(userSettings.mediaExtensionConfigs);
+            mediaExtensionsConfigUpdated.addAll({state.selectedManga.id.toString(): selectedExtension});
+            await _userRepositoryAnilist.updateUserInfo(
+              anilistUserModel.copyWith(
+                settings: userSettings.copyWith(mediaExtensionConfigs: mediaExtensionsConfigUpdated),
+              ),
+            );
+          } catch (e, stackTrace) {
+            _logger.w("Failed to persist the selected extension: $e", stackTrace: stackTrace);
+          }
         case LocalUserModel localUserModel:
       }
-      _getMangaInfoFromSelectedExtension(selectedExtension);
+      if (isClosed) return;
+      await _getMangaInfoFromSelectedExtension(selectedExtension);
     } else {
       _logger.w("Selected extension $selectedMangaExtensionName not found among installed extensions.");
       showSnackBarEffect(
@@ -200,6 +207,7 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
       Set<Extension> installedExtensions = await _extensionRepositoryAniyomi.getInstalledMangaExtensions(
         state.loggedUser,
       );
+      if (isClosed) return;
       emit(state.copyWith(installedExtensions: installedExtensions));
       _setSelectedExtension(state.loggedUser, state.selectedManga);
     } catch (e, stackTrace) {
@@ -225,6 +233,7 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
         state.selectedManga.title.userPreferred,
         selectedExtension,
       );
+      if (isClosed) return;
       emit(state.copyWith(extensionMangaResults: mangaResults));
     } catch (e, stackTrace) {
       handleError("Error fetching Manga Info from selected extension: $e", stackTrace: stackTrace);
@@ -265,20 +274,67 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
     }
   }
 
+  /// Handles a tap on a chapter button in the manga details page.
+  ///
+  /// Named after the anime-side equivalent (`openAnimeServerSelectionDrawer`).
+  /// There is no manga reader in the app yet, so this only gives feedback
+  /// instead of silently swallowing the tap.
+  void openMangaServerSelectionDrawer(BuildContext context, int chapterIndex) {
+    if (isClosed) return;
+    _logger.i("Chapter ${chapterIndex + 1} pressed for ${state.selectedManga.title.userPreferred}");
+    if (state.selectedExtension == null) {
+      _logger.w("No extension selected to fetch chapters.");
+      showSnackBarEffect(
+        "No Extension Selected",
+        message: "Select an extension to fetch chapters.",
+        contentType: ContentType.warning,
+      );
+      return;
+    }
+    showSnackBarEffect(
+      "Manga Reader",
+      message: "The manga reader is not available yet.",
+      contentType: ContentType.warning,
+    );
+  }
+
   Future<void> _setSelectedExtension(User loggedUser, Manga selectedManga) async {
     try {
+      Extension? savedExtension;
       switch (loggedUser) {
         case AnilistUserModel anilistUserModel:
           SettingsModel userSettings = anilistUserModel.settings as SettingsModel;
-          Extension? selectedExtension = userSettings.mediaExtensionConfigs[selectedManga.id.toString()];
-          if (selectedExtension != null) {
-            selectMangaExtension(selectedExtension.name);
-            emit(state.copyWith(selectedExtension: selectedExtension));
-          }
+          savedExtension = userSettings.mediaExtensionConfigs[selectedManga.id.toString()];
         case LocalUserModel localUserModel:
       }
+      if (savedExtension != null) {
+        await selectMangaExtension(savedExtension.name);
+        return;
+      }
+      if (isClosed) return;
+      _showNoExtensionSelectedPrompt();
     } catch (e, stackTrace) {
       handleError("Error setting selected extension: $e", stackTrace: stackTrace);
     }
+  }
+
+  /// Proactive prompt when the details page opens without a usable extension.
+  void _showNoExtensionSelectedPrompt() {
+    if (isClosed) return;
+    if (state.installedExtensions.isEmpty) {
+      _logger.w("No installed extensions available to fetch manga info.");
+      showSnackBarEffect(
+        "No Installed Extensions",
+        message: "Install some extensions to watch some content",
+        contentType: ContentType.warning,
+      );
+      return;
+    }
+    _logger.w("No extension selected to fetch chapters.");
+    showSnackBarEffect(
+      "No Extension Selected",
+      message: "Select an extension to fetch chapters.",
+      contentType: ContentType.warning,
+    );
   }
 }
