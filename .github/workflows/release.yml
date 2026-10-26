@@ -166,6 +166,16 @@ jobs:
       # locally too.
       - name: Vendor unyo_lib for pub resolution
         shell: bash
+        env:
+          # Analyze/test never touch unyo_lib's binary payloads (jar/JRE — the
+          # tests mock AniyomiBridge), so skip Git LFS smudge entirely. Besides
+          # saving ~61MB per job, it avoids a 123-request LFS download burst
+          # that CrowdSec's crowdsecurity/http-crawl-non_statics on
+          # gitea.k3vinb5.dev reads as an aggressive web crawl and answers with
+          # a 4h IP ban mid-clone ("batch response: Authorization error") —
+          # that is what failed Release run 40409961519. The release *build*
+          # jobs do not set this: they need the real files.
+          GIT_LFS_SKIP_SMUDGE: "1"
         run: |
           set -euo pipefail
           git clone --depth 1 https://gitea.k3vinb5.dev/Unyo/unyo-lib.git ../unyo-lib
