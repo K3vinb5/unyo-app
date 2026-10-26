@@ -52,5 +52,9 @@ libmtorrentserver.so
 /.fvmrc
 /pubspec.lock
 
+# Local dependency overrides (points unyo_lib at the sibling ../unyo-lib checkout
+# for development; CI resolves the git dependency from pubspec.yaml instead)
+pubspec_overrides.yaml
+
 # VsCode related
 .vscode/
