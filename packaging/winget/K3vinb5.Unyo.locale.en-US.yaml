@@ -1,0 +1,29 @@
+# Rendered by ./render.sh <version> [path/to/SHA256SUMS]; do not edit by hand.
+# Default-locale manifest for the winget submission of K3vinb5.Unyo.
+PackageIdentifier: K3vinb5.Unyo
+PackageVersion: 0.0.0
+PackageLocale: en-US
+Publisher: K3vinb5
+PublisherUrl: https://unyo.dev
+PublisherSupportUrl: https://github.com/K3vinb5/unyo-app/issues
+Author: Kevin Rodrigues Borges
+PackageName: Unyo
+PackageUrl: https://unyo.dev
+License: BSD-3-Clause
+LicenseUrl: https://github.com/K3vinb5/unyo-app/blob/rewrite/LICENSE
+Copyright: Copyright (c) 2026 Kevin Rodrigues Borges
+ShortDescription: Ad-free anime streaming and manga reader for the desktop
+Description: >-
+  Unyo is an ad-free anime streaming and manga reader desktop application. It
+  aggregates anime and manga sources, tracks your watch and reading progress,
+  and ships its own Java runtime so no external JVM is required.
+Moniker: unyo
+Tags:
+  - anime
+  - manga
+  - streaming
+  - video
+  - desktop
+ReleaseNotesUrl: https://github.com/K3vinb5/unyo-app/releases/tag/v0.0.0
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

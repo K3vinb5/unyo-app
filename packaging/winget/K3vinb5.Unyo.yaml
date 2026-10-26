@@ -1,0 +1,8 @@
+# Rendered by ./render.sh <version> [path/to/SHA256SUMS]; do not edit by hand.
+# Version manifest for the winget submission of K3vinb5.Unyo.
+# See README.md for the submission flow.
+PackageIdentifier: K3vinb5.Unyo
+PackageVersion: 0.0.0
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.6.0

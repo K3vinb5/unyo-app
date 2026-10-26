@@ -1,0 +1,21 @@
+VERIFICATION
+Verification is intended to assist the Chocolatey moderators and community
+in verifying that this package's contents are trustworthy.
+
+This package downloads the official Windows installer published on the project's
+GitHub releases; nothing is bundled in the package itself or built locally.
+
+Version: 0.0.0
+Publisher: K3vinb5
+Project: https://unyo.dev
+Source: https://github.com/K3vinb5/unyo-app
+License: BSD-3-Clause (https://github.com/K3vinb5/unyo-app/blob/rewrite/LICENSE)
+
+1. Download the release asset:
+  https://github.com/K3vinb5/unyo-app/releases/download/v0.0.0/Unyo-v0.0.0-windows-setup.exe
+
+2. Confirm its SHA256 against the SHA256SUMS asset attached to the same release
+   (https://github.com/K3vinb5/unyo-app/releases/download/v0.0.0/SHA256SUMS):
+  0000000000000000000000000000000000000000000000000000000000000000
+
+3. The same digest is in checksum64 in tools/chocolateyinstall.ps1.

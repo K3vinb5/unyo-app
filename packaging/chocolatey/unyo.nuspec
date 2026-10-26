@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rendered by ./render.sh <version> [path/to/SHA256SUMS]; do not edit by hand.
+     Chocolatey package definition for Unyo (silent Inno Setup installer). -->
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>unyo</id>
+    <version>0.0.0</version>
+    <title>Unyo</title>
+    <authors>Kevin Rodrigues Borges</authors>
+    <owners>K3vinb5</owners>
+    <projectUrl>https://unyo.dev</projectUrl>
+    <packageSourceUrl>https://github.com/K3vinb5/unyo-app/tree/rewrite/packaging/chocolatey</packageSourceUrl>
+    <projectSourceUrl>https://github.com/K3vinb5/unyo-app</projectSourceUrl>
+    <licenseUrl>https://github.com/K3vinb5/unyo-app/blob/rewrite/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <summary>Ad-free anime streaming and manga reader for the desktop</summary>
+    <description>Unyo is an ad-free anime streaming and manga reader desktop application.
+It aggregates anime and manga sources, tracks watch and reading progress, and ships
+its own Java runtime, so no external JVM is required.</description>
+    <releaseNotes>https://github.com/K3vinb5/unyo-app/releases/tag/v0.0.0</releaseNotes>
+    <copyright>Copyright (c) 2026 Kevin Rodrigues Borges</copyright>
+    <tags>unyo anime manga streaming video desktop</tags>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
