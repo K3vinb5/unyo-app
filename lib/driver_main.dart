@@ -41,6 +41,13 @@ void _registerUnyoAutomation() {
     return _json({'ok': true, 'x': center.dx, 'y': center.dy});
   });
 
+  developer.registerExtension('ext.unyo.hoverAt', (method, params) async {
+    final x = double.parse(params['x']!);
+    final y = double.parse(params['y']!);
+    await _hoverAt(Offset(x, y));
+    return _json({'ok': true});
+  });
+
   developer.registerExtension('ext.unyo.findKey', (method, params) async {
     final found = _findByKey(params['key']!);
     if (found == null) return _json({'ok': false, 'error': 'not found'});
@@ -80,6 +87,17 @@ Future<void> _tapAt(Offset global) async {
   );
   await gesture.down(global);
   await gesture.up();
+}
+
+Future<void> _hoverAt(Offset global) async {
+  final gesture = TestGesture(
+    dispatcher: (event) async =>
+        GestureBinding.instance.handlePointerEvent(event),
+    kind: PointerDeviceKind.mouse,
+  );
+  // Hover only: moves the mouse pointer to [global] without clicking, so the
+  // hover state (and cursor) of what is underneath can be inspected.
+  await gesture.moveTo(global);
 }
 
 developer.ServiceExtensionResponse _json(Map<String, dynamic> data) =>
