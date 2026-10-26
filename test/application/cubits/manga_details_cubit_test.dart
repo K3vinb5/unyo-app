@@ -137,9 +137,9 @@ void main() {
     });
   });
 
-  group('MangaDetailsCubit.onMangaChapterPressed', () {
+  group('MangaDetailsCubit.openMangaServerSelectionDrawer', () {
     test('warns that a chapter needs an extension when none is selected', () {
-      cubit.onMangaChapterPressed(MockBuildContext(), 0);
+      cubit.openMangaServerSelectionDrawer(MockBuildContext(), 0);
 
       final List<ShowSnackbarEffect> snackbars = cubit.state.effects.whereType<ShowSnackbarEffect>().toList();
       expect(
@@ -156,7 +156,7 @@ void main() {
       when(() => extensionRepository.getMangaSearchResults(any(), any())).thenAnswer((_) async => []);
       await cubit.selectMangaExtension(testExtension.name);
 
-      cubit.onMangaChapterPressed(MockBuildContext(), 0);
+      cubit.openMangaServerSelectionDrawer(MockBuildContext(), 0);
 
       final List<ShowSnackbarEffect> snackbars = cubit.state.effects.whereType<ShowSnackbarEffect>().toList();
       expect(

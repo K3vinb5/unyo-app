@@ -276,9 +276,10 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
 
   /// Handles a tap on a chapter button in the manga details page.
   ///
+  /// Named after the anime-side equivalent (`openAnimeServerSelectionDrawer`).
   /// There is no manga reader in the app yet, so this only gives feedback
   /// instead of silently swallowing the tap.
-  void onMangaChapterPressed(BuildContext context, int chapterIndex) {
+  void openMangaServerSelectionDrawer(BuildContext context, int chapterIndex) {
     if (isClosed) return;
     _logger.i("Chapter ${chapterIndex + 1} pressed for ${state.selectedManga.title.userPreferred}");
     if (state.selectedExtension == null) {

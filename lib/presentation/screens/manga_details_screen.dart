@@ -96,7 +96,7 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
           progress: state.mediaListEntry.progress,
           released: numChapters,
           showDivider: i != 0,
-          onPressed: () => context.read<MangaDetailsCubit>().onMangaChapterPressed(context, i),
+          onPressed: () => context.read<MangaDetailsCubit>().openMangaServerSelectionDrawer(context, i),
         ),
       );
     }
