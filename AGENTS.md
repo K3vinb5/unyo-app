@@ -65,7 +65,14 @@ Pinned to **3.47.7** (see `.fvmrc`). Use `fvm flutter` if managing multiple vers
 
 ## Release Process
 
-Releases are triggered by **git tags** (`v*`) via `.github/workflows/release.yml`; `workflow_dispatch` runs it with `dry_run` (default `true`), which builds and uploads artifacts without publishing a release. `.github/workflows/ci.yml` runs analyze + tests on every push to `rewrite` and every PR. All releases ship **unsigned**. Do not manually edit generated `.g.dart` files before a release tag.
+Releases run through three lanes in `.github/workflows/release.yml`, all versioned from `pubspec.yaml`'s `version:` (the `+build` metadata is stripped):
+
+- **dev** — every merge to `rewrite` publishes `v<base>-dev.<run_number>.g<short_sha>` as a prerelease.
+- **rc / stable** — `workflow_dispatch` with `channel: rc|stable` and an optional `version` (defaults to the pubspec version). rc publishes `v<base>-rc.<run_number>` as a prerelease, stable publishes `v<base>` as a full release. The publish job creates the tag when it does not exist yet (a tag pushed with `GITHUB_TOKEN` would not re-trigger the workflow, so this avoids loops).
+- **Version bump** — after a clean stable release (`X.Y.Z`), the publish job opens a `chore: bump version to X.Y.(Z+1)` PR against `rewrite` (never merged automatically); suffixed tags such as `v0.0.0-ci-test.2` never bump.
+- **`dry_run`** (default `true`) builds and uploads artifacts without publishing a release. Only the dev lane cancels superseded runs.
+
+`.github/workflows/ci.yml` runs analyze + tests on every push to `rewrite` and every PR. All releases ship **unsigned**. Do not manually edit generated `.g.dart` files before a release tag.
 
 ## Shared Knowledge (unyo-docs)
 

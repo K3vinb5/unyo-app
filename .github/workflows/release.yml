@@ -1,10 +1,24 @@
 name: Release
 
 on:
+  # Dev lane: every merge to the integration branch.
   push:
+    branches: [rewrite]
     tags: ['v*']
+  # rc / stable lane: dispatch computes the version and, when dry_run is false,
+  # the publish job creates the tag. A tag pushed with GITHUB_TOKEN does not
+  # re-trigger `push: tags`, so there is no loop.
   workflow_dispatch:
     inputs:
+      version:
+        description: 'Version to release, without the leading v (default: pubspec version)'
+        type: string
+        required: false
+      channel:
+        description: 'Release channel'
+        type: choice
+        options: [stable, rc]
+        default: stable
       dry_run:
         description: 'Build every package and upload artifacts, but do not publish a GitHub release'
         type: boolean
@@ -12,17 +26,125 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: false
+  # Superseded dev builds on `rewrite` are useless; tag and dispatch runs are not cancelled.
+  cancel-in-progress: ${{ github.ref == 'refs/heads/rewrite' }}
 
 env:
   UNYO_LIB_URL: https://gitea.k3vinb5.dev/Unyo/unyo-lib.git
 
 jobs:
+  # Single source of truth for the version. Every build job copies these
+  # outputs into its own `steps.ver` step, and the publish job uses them for the
+  # tag name, prerelease flag and the post-release bump.
+  prepare:
+    name: Compute version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.ver.outputs.tag }}
+      version: ${{ steps.ver.outputs.version }}
+      build_name: ${{ steps.ver.outputs.build_name }}
+      lane: ${{ steps.ver.outputs.lane }}
+      prerelease: ${{ steps.ver.outputs.prerelease }}
+      publish: ${{ steps.ver.outputs.publish }}
+      bump: ${{ steps.ver.outputs.bump }}
+      next_version: ${{ steps.ver.outputs.next_version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_CHANNEL: ${{ inputs.channel }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+
+          # pubspec version with the +build metadata stripped: 0.7.0+12 -> 0.7.0
+          base="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/p' pubspec.yaml | head -n1)"
+          if [[ -z "$base" ]]; then
+            echo "::error::could not read version: from pubspec.yaml"
+            exit 1
+          fi
+          sha="$(git rev-parse --short=7 HEAD)"
+
+          if [[ "$EVENT" == "workflow_dispatch" ]]; then
+            requested="${INPUT_VERSION#v}"
+            requested="${requested:-$base}"
+            if [[ "${INPUT_CHANNEL:-stable}" == "rc" ]]; then
+              lane=rc
+              tag="v${requested}-rc.${GITHUB_RUN_NUMBER}"
+            else
+              lane=stable
+              tag="v${requested}"
+            fi
+            if [[ "$INPUT_DRY_RUN" == "false" ]]; then
+              publish=true
+            else
+              publish=false
+            fi
+          elif [[ "$REF_TYPE" == "tag" ]]; then
+            # An existing tag fixes both version and lane.
+            tag="$REF_NAME"
+            case "$tag" in
+              *-dev.*) lane=dev ;;
+              *-rc.*) lane=rc ;;
+              *) lane=stable ;;
+            esac
+            publish=true
+          else
+            # Dev lane: every merge to `rewrite`.
+            lane=dev
+            tag="v${base}-dev.${GITHUB_RUN_NUMBER}.g${sha}"
+            publish=true
+          fi
+
+          version="${tag#v}"
+          # Flutter's --build-name must stay a plain version: 0.7.0-dev.4.gabc1234 -> 0.7.0
+          build_name="${version%%-*}"
+          if [[ "$lane" == "stable" ]]; then
+            prerelease=false
+          else
+            prerelease=true
+          fi
+
+          # Bump only after a clean stable release: v0.7.0 -> 0.7.1. Test tags
+          # with a suffix (v0.0.0-ci-test.2) never bump.
+          bump=false
+          next_version=""
+          if [[ "$lane" == "stable" && "$publish" == "true" && "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            IFS=. read -r major minor patch <<< "$version"
+            next_version="${major}.${minor}.$((patch + 1))"
+            bump=true
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build_name=$build_name" >> "$GITHUB_OUTPUT"
+          echo "lane=$lane" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "bump=$bump" >> "$GITHUB_OUTPUT"
+          echo "next_version=$next_version" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Release version"
+            echo ""
+            echo "| lane | tag | prerelease | publish | next bump |"
+            echo "| --- | --- | --- | --- | --- |"
+            echo "| $lane | $tag | $prerelease | $publish | ${next_version:-none} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   linux:
     name: Linux (zip, AppImage, deb)
+    needs: prepare
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,15 +169,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ref="${{ github.ref_name }}"
-          if [[ "$ref" == v* ]]; then
-            tag="$ref"; version="${ref#v}"
-          else
-            tag="v0.0.0-dev.${{ github.run_number }}"; version="0.0.0-dev.${{ github.run_number }}"
-          fi
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "build_name=${version%%-*}" >> "$GITHUB_OUTPUT"
+          echo "tag=${{ needs.prepare.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          echo "version=${{ needs.prepare.outputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "build_name=${{ needs.prepare.outputs.build_name }}" >> "$GITHUB_OUTPUT"
 
       - name: Install Linux build deps
         run: |
@@ -145,6 +261,7 @@ jobs:
 
   windows:
     name: Windows (zip, Inno setup)
+    needs: prepare
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -174,15 +291,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ref="${{ github.ref_name }}"
-          if [[ "$ref" == v* ]]; then
-            tag="$ref"; version="${ref#v}"
-          else
-            tag="v0.0.0-dev.${{ github.run_number }}"; version="0.0.0-dev.${{ github.run_number }}"
-          fi
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "build_name=${version%%-*}" >> "$GITHUB_OUTPUT"
+          echo "tag=${{ needs.prepare.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          echo "version=${{ needs.prepare.outputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "build_name=${{ needs.prepare.outputs.build_name }}" >> "$GITHUB_OUTPUT"
 
       - name: Install project dependencies
         run: flutter pub get
@@ -292,6 +403,7 @@ jobs:
 
   macos:
     name: macOS (zip, dmg)
+    needs: prepare
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -314,15 +426,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ref="${{ github.ref_name }}"
-          if [[ "$ref" == v* ]]; then
-            tag="$ref"; version="${ref#v}"
-          else
-            tag="v0.0.0-dev.${{ github.run_number }}"; version="0.0.0-dev.${{ github.run_number }}"
-          fi
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "build_name=${version%%-*}" >> "$GITHUB_OUTPUT"
+          echo "tag=${{ needs.prepare.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          echo "version=${{ needs.prepare.outputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "build_name=${{ needs.prepare.outputs.build_name }}" >> "$GITHUB_OUTPUT"
 
       - name: Install project dependencies
         run: flutter pub get
@@ -375,10 +481,14 @@ jobs:
 
   publish:
     name: Publish GitHub release
-    needs: [linux, windows, macos]
-    if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
+    needs: [prepare, linux, windows, macos]
+    if: ${{ needs.prepare.outputs.publish == 'true' }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -392,12 +502,52 @@ jobs:
           sha256sum Unyo-* > SHA256SUMS
           cat SHA256SUMS
 
+      # tag_name comes from the prepare job, so dispatch runs create the tag
+      # here (softprops does that when the tag does not exist yet).
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: ${{ needs.prepare.outputs.tag }}
           draft: false
-          prerelease: false
+          prerelease: ${{ needs.prepare.outputs.prerelease }}
           files: |
             dist/Unyo-*
             dist/SHA256SUMS
+
+      # Stable releases only (bump is false for dev/rc and for suffixed test
+      # tags). Opens a PR against `rewrite`; it is never merged here.
+      - name: Open version bump PR
+        if: ${{ needs.prepare.outputs.bump == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT_VERSION: ${{ needs.prepare.outputs.next_version }}
+          RELEASED_TAG: ${{ needs.prepare.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch="chore/bump-to-${NEXT_VERSION}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "::notice::$branch already exists — leaving it alone"
+          else
+            git fetch --no-tags origin rewrite
+            git checkout -B "$branch" origin/rewrite
+            # Build number restarts at 1 for the new version.
+            sed -i -E "s/^version:.*/version: ${NEXT_VERSION}+1/" pubspec.yaml
+            git add pubspec.yaml
+            git commit -m "chore: bump version to ${NEXT_VERSION} after release"
+            git push origin "$branch"
+          fi
+
+          if [ "$(gh pr list --head "$branch" --state all --json number --jq 'length')" = "0" ]; then
+            gh pr create \
+              --base rewrite \
+              --head "$branch" \
+              --title "chore: bump version to ${NEXT_VERSION}" \
+              --body "Automated patch bump after releasing \`${RELEASED_TAG}\`."
+          else
+            echo "::notice::a pull request for $branch already exists — nothing to do"
+          fi
