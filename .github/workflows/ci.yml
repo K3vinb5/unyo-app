@@ -30,7 +30,7 @@ jobs:
         run: |
           set -euo pipefail
           git clone --depth 1 https://gitea.k3vinb5.dev/Unyo/unyo-lib.git ../unyo-lib
-          printf 'dependency_overrides:\n  unyo_lib:\n    path: ../unyo-lib\n' > pubspec_overrides.yaml
+          printf 'dependency_overrides:\n  unyo_lib:\n    path: ../unyo-lib\n  bonsoir: 5.1.11\n' > pubspec_overrides.yaml
 
       - uses: subosito/flutter-action@v2
         with:

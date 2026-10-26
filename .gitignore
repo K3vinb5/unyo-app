@@ -50,7 +50,7 @@ libmtorrentserver.so
 # FVM Version Cache
 .fvm/
 /.fvmrc
-/pubspec.lock
+
 
 # Local dependency overrides (points unyo_lib at the sibling ../unyo-lib checkout
 # for development; CI resolves the git dependency from pubspec.yaml instead)
