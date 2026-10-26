@@ -27,6 +27,9 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # id-token / attestations are NOT granted here: the build and test jobs run
+  # third-party actions and resolve arbitrary pub packages, so OIDC and
+  # attestation write are scoped to the `publish` job only (see below).
 
 concurrency:
   group: release-${{ github.ref }}
@@ -176,8 +179,14 @@ jobs:
       - name: Install Linux desktop build deps
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+          for i in 1 2 3; do
+            if sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update \
+              && sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev; then
+              exit 0
+            fi
+            echo "apt attempt $i failed; retrying in $((i*10))s"; sleep $((i*10))
+          done
+          echo "apt-get failed after 3 attempts"; exit 1
 
       - name: Install project dependencies
         run: flutter pub get
@@ -229,8 +238,14 @@ jobs:
 
       - name: Install Linux build deps
         run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libfuse2
+          for i in 1 2 3; do
+            if sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update \
+              && sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libfuse2; then
+              exit 0
+            fi
+            echo "apt attempt $i failed; retrying in $((i*10))s"; sleep $((i*10))
+          done
+          echo "apt-get failed after 3 attempts"; exit 1
 
       - name: Install project dependencies
         run: flutter pub get
@@ -305,6 +320,22 @@ jobs:
           sha256sum Unyo-* > SHA256SUMS
           cat SHA256SUMS
 
+      # SPDX SBOM of the shipped bundle (app + bundled custom JRE), so the
+      # release has a machine-readable inventory of what it contains.
+      # Integrity extra, never fatal: a syft/anchore failure must not take the
+      # platform's packages down with it (best-effort release policy).
+      - name: Generate SPDX SBOM
+        continue-on-error: true
+        uses: anchore/sbom-action@v0
+        with:
+          path: build/linux/x64/release/bundle
+          format: spdx-json
+          output-file: dist/sbom-linux.spdx.json
+          artifact-name: sbom-linux
+          upload-artifact: false
+          upload-release-assets: false
+          dependency-snapshot: false
+
       - uses: actions/upload-artifact@v4
         with:
           name: linux-dist
@@ -312,6 +343,7 @@ jobs:
           path: |
             dist/Unyo-*
             dist/SHA256SUMS
+            dist/sbom-*.spdx.json
 
   windows:
     name: Windows (zip, Inno setup)
@@ -457,6 +489,20 @@ jobs:
           sha256sum Unyo-* > SHA256SUMS
           cat SHA256SUMS
 
+      # SPDX SBOM of the shipped bundle (app + bundled custom JRE).
+      # Integrity extra, never fatal (see the linux job).
+      - name: Generate SPDX SBOM
+        continue-on-error: true
+        uses: anchore/sbom-action@v0
+        with:
+          path: build/windows/x64/runner/Release
+          format: spdx-json
+          output-file: dist/sbom-windows.spdx.json
+          artifact-name: sbom-windows
+          upload-artifact: false
+          upload-release-assets: false
+          dependency-snapshot: false
+
       - uses: actions/upload-artifact@v4
         with:
           name: windows-dist
@@ -464,6 +510,7 @@ jobs:
           path: |
             dist/Unyo-*
             dist/SHA256SUMS
+            dist/sbom-*.spdx.json
 
   macos:
     name: macOS (zip, dmg)
@@ -541,6 +588,20 @@ jobs:
           shasum -a 256 Unyo-* > SHA256SUMS
           cat SHA256SUMS
 
+      # SPDX SBOM of the shipped bundle (app + bundled custom JRE).
+      # Integrity extra, never fatal (see the linux job).
+      - name: Generate SPDX SBOM
+        continue-on-error: true
+        uses: anchore/sbom-action@v0
+        with:
+          path: build/macos/Build/Products/Release/unyo.app
+          format: spdx-json
+          output-file: dist/sbom-macos.spdx.json
+          artifact-name: sbom-macos
+          upload-artifact: false
+          upload-release-assets: false
+          dependency-snapshot: false
+
       - uses: actions/upload-artifact@v4
         with:
           name: macos-dist
@@ -548,6 +609,7 @@ jobs:
           path: |
             dist/Unyo-*
             dist/SHA256SUMS
+            dist/sbom-*.spdx.json
 
   publish:
     name: Publish GitHub release
@@ -559,10 +621,24 @@ jobs:
     # publishing a half-built release.
     if: ${{ !cancelled() && needs.prepare.outputs.publish == 'true' && (needs.linux.result == 'success' || needs.windows.result == 'success' || needs.macos.result == 'success') }}
     runs-on: ubuntu-latest
+    # Only this job needs OIDC + attestation write (build-provenance attestation
+    # of the release assets). Scoped here instead of workflow-wide so the test
+    # and build jobs — which run third-party actions and resolve arbitrary pub
+    # packages — cannot mint tokens or write attestations.
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    # `secrets` is not usable directly in a step `if:`, so the presence check is
+    # surfaced as an env flag. Empty secret => GPG signing steps are skipped.
+    env:
+      HAS_GPG_KEY: ${{ secrets.GPG_PRIVATE_KEY != '' }}
     steps:
+      # fetch-depth 0 + tags: the changelog is generated from the full history.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       - uses: actions/download-artifact@v4
         with:
@@ -570,12 +646,40 @@ jobs:
           merge-multiple: true
 
       - name: Regenerate checksums over every asset
+        shell: bash
         run: |
           set -euo pipefail
           cd dist
           find . -name SHA256SUMS -delete
-          sha256sum Unyo-* > SHA256SUMS
+          shopt -s nullglob
+          files=(Unyo-* sbom-*.spdx.json)
+          shopt -u nullglob
+          sha256sum "${files[@]}" > SHA256SUMS
           cat SHA256SUMS
+
+      # Detached ASCII-armored signature over the published SHA256SUMS. Skipped
+      # silently when no key is configured, so secretless runs stay green.
+      # (Signed here, not per build job: this job regenerates SHA256SUMS over
+      # all collected assets, so a signature made earlier would not match it.)
+      - name: Sign checksums (GPG)
+        if: ${{ env.HAS_GPG_KEY == 'true' }}
+        shell: bash
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          cd dist
+          printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --quiet --import
+          key_id="$(gpg --list-secret-keys --with-colons | awk -F: '/^sec:/ {print $5; exit}')"
+          pass_args=()
+          if [ -n "${GPG_PASSPHRASE:-}" ]; then
+            pass_args=(--pinentry-mode loopback --passphrase "$GPG_PASSPHRASE")
+          fi
+          gpg --batch "${pass_args[@]}" --local-user "$key_id" \
+            --armor --detach-sign --output SHA256SUMS.asc SHA256SUMS
+          gpg --verify SHA256SUMS.asc SHA256SUMS
+          echo "::notice::SHA256SUMS.asc signed with key $key_id"
 
       - name: Compose release notes
         shell: bash
@@ -592,6 +696,63 @@ jobs:
           fi
           cat dist/release-body.md
 
+      # Changelog from git history. Best effort on purpose: a git-cliff or
+      # template problem must never block a release — the warning-only body
+      # from the step above is then used as-is.
+      # NOTE: the action has no `output` input. Its run.sh pulls the output path
+      # out of `-o/--output` in `args` and defaults to git-cliff/CHANGELOG.md, so
+      # the path has to be passed through args or dist/changelog.md never exists.
+      - name: Generate changelog
+        id: changelog
+        continue-on-error: true
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --verbose --latest --output dist/changelog.md
+
+      - name: Append changelog to release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -s dist/changelog.md ]; then
+            { cat dist/release-body.md; printf '\n'; cat dist/changelog.md; } > dist/release-body.tmp
+            mv dist/release-body.tmp dist/release-body.md
+          else
+            echo "::notice::changelog unavailable; releasing with the plain body"
+          fi
+          cat dist/release-body.md
+
+      # Explicit, existing-files-only subject list (globs alone are unsafe here:
+      # a wildcard-free path such as SHA256SUMS.asc is not dropped by nullglob).
+      - name: Collect attestation subjects
+        id: subjects
+        shell: bash
+        run: |
+          set -euo pipefail
+          subjects=()
+          shopt -s nullglob
+          for f in dist/Unyo-* dist/sbom-*.spdx.json dist/SHA256SUMS dist/SHA256SUMS.asc; do
+            [ -f "$f" ] || continue
+            subjects+=("$f")
+          done
+          shopt -u nullglob
+          if [ ${#subjects[@]} -eq 0 ]; then
+            echo "::error::no release assets found to attest"
+            exit 1
+          fi
+          {
+            echo "paths<<SUBJECTS_EOF"
+            printf '%s\n' "${subjects[@]}"
+            echo "SUBJECTS_EOF"
+          } >> "$GITHUB_OUTPUT"
+          printf '%s\n' "${subjects[@]}"
+
+      # `gh attestation verify <asset> -R <owner>/<repo>` uses this.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: ${{ steps.subjects.outputs.paths }}
+
       # tag_name comes from the prepare job, so dispatch runs create the tag
       # here (softprops does that when the tag does not exist yet).
       - uses: softprops/action-gh-release@v2
@@ -601,9 +762,9 @@ jobs:
           draft: false
           prerelease: ${{ needs.prepare.outputs.prerelease }}
           body_path: dist/release-body.md
-          files: |
-            dist/Unyo-*
-            dist/SHA256SUMS
+          # Exactly the attested/checksummed assets: packages, Sboms, SHA256SUMS
+          # and (when a key is configured) SHA256SUMS.asc.
+          files: ${{ steps.subjects.outputs.paths }}
 
       # Stable releases only (bump is false for dev/rc and for suffixed test
       # tags). Requires a COMPLETE release — a best-effort release missing a
@@ -642,3 +803,143 @@ jobs:
             exit 0
           fi
           echo "::notice::bumped version to ${NEXT_VERSION}+1 on rewrite after ${RELEASED_TAG}"
+
+  # Downstream distribution channels (Homebrew cask, AUR, Scoop) each own a Gitea
+  # repo with an update script that pins one release asset. They are bumped here,
+  # after a clean stable release, so a published version never sits behind on
+  # a channel for long.
+  #
+  # This job is deliberately NOT part of the release's critical path: it runs
+  # after `publish` and a failure inside it turns only this job red — the GitHub
+  # release, its assets, checksums, attestation and signature are already out.
+  # A channel whose platform asset is missing from the release is skipped
+  # instead of failed (best-effort releases publish whatever platform built).
+  #
+  # Requires a GITEA_TOKEN secret (a Gitea PAT on gitea.k3vinb5.dev with write
+  # access to Unyo/homebrew-unyo, Unyo/unyo-aur and Unyo/scoop-unyo). Without it
+  # the whole job skips silently, the same policy as the GPG signing step.
+  bump-channels:
+    name: Bump distribution channels (Homebrew, AUR, Scoop)
+    needs: [prepare, publish]
+    # Reuses the prepare job's computed lane/tag — never re-derives the version.
+    # `bump` is true only for lane=stable + publish (not dry_run) + bare X.Y.Z.
+    if: ${{ !cancelled() && needs.publish.result == 'success' && needs.prepare.outputs.lane == 'stable' && needs.prepare.outputs.publish == 'true' && needs.prepare.outputs.bump == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # `secrets` cannot be used directly in a step `if:`; surface presence here.
+      HAS_GITEA_TOKEN: ${{ secrets.GITEA_TOKEN != '' }}
+      RELEASED_TAG: ${{ needs.prepare.outputs.tag }}
+      GITEA_HOST: gitea.k3vinb5.dev/Unyo
+    steps:
+      - name: No Gitea credentials
+        if: ${{ env.HAS_GITEA_TOKEN != 'true' }}
+        shell: bash
+        run: echo "::notice::GITEA_TOKEN is not configured; Homebrew/AUR/Scoop bumps skipped (the release itself is unaffected)"
+
+      # Asset names come from the Package steps above:
+      #   Unyo-<tag>-linux.zip / -linux.AppImage / -linux.deb
+      #   Unyo-<tag>-windows.zip / -windows-setup.exe
+      #   Unyo-<tag>-macos.zip / -macos.dmg
+      # Each channel is gated on its own input asset existing in the release.
+      - name: Detect channel input assets
+        id: assets
+        if: ${{ env.HAS_GITEA_TOKEN == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          names="$(gh release view "$RELEASED_TAG" --json assets --jq '.assets[].name')"
+          printf '%s\n' "$names"
+          for pair in cask:macos.dmg aur:linux.zip scoop:windows.zip; do
+            channel="${pair%%:*}"
+            asset="Unyo-${RELEASED_TAG}-${pair#*:}"
+            if grep -Fxq "$asset" <<< "$names"; then
+              echo "has_${channel}=true" >> "$GITHUB_OUTPUT"
+              echo "ok: $asset present for the ${channel} channel"
+            else
+              echo "has_${channel}=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::${asset} is not in ${RELEASED_TAG}; ${channel} channel left untouched"
+            fi
+          done
+
+      # The token goes into the clone URL (Gitea accepts x-access-token) and is
+      # masked before anything else runs; the clone lives in a temp dir and is
+      # removed on exit, so it never lands in the workspace or the artifact set.
+      - name: Bump Homebrew cask (homebrew-unyo)
+        if: ${{ env.HAS_GITEA_TOKEN == 'true' && steps.assets.outputs.has_cask == 'true' }}
+        continue-on-error: false
+        shell: bash
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$GITEA_TOKEN"
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          git clone --depth 1 "https://x-access-token:${GITEA_TOKEN}@${GITEA_HOST}/homebrew-unyo.git" "$tmp/homebrew-unyo"
+          cd "$tmp/homebrew-unyo"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # update-cask.sh downloads the dmg itself and rewrites the cask.
+          ./update-cask.sh "$RELEASED_TAG"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "::notice::homebrew-unyo already at ${RELEASED_TAG}; nothing to commit"
+            exit 0
+          fi
+          git commit -m "chore: bump unyo to ${RELEASED_TAG}"
+          git push origin HEAD
+
+      - name: Bump AUR package (unyo-aur)
+        if: ${{ env.HAS_GITEA_TOKEN == 'true' && steps.assets.outputs.has_aur == 'true' }}
+        continue-on-error: false
+        shell: bash
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$GITEA_TOKEN"
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          git clone --depth 1 "https://x-access-token:${GITEA_TOKEN}@${GITEA_HOST}/unyo-aur.git" "$tmp/unyo-aur"
+          cd "$tmp/unyo-aur"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # update-pkgbuild.sh pins the linux.zip and refreshes .SRCINFO.
+          ./update-pkgbuild.sh "$RELEASED_TAG"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "::notice::unyo-aur already at ${RELEASED_TAG}; nothing to commit"
+            exit 0
+          fi
+          git commit -m "chore: bump unyo to ${RELEASED_TAG}"
+          git push origin HEAD
+
+      - name: Bump Scoop manifest (scoop-unyo)
+        if: ${{ env.HAS_GITEA_TOKEN == 'true' && steps.assets.outputs.has_scoop == 'true' }}
+        continue-on-error: false
+        shell: bash
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$GITEA_TOKEN"
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          git clone --depth 1 "https://x-access-token:${GITEA_TOKEN}@${GITEA_HOST}/scoop-unyo.git" "$tmp/scoop-unyo"
+          cd "$tmp/scoop-unyo"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # update-manifest.sh [path/to/SHA256SUMS] is optional; without it the
+          # script downloads the checksums from the release itself.
+          ./update-manifest.sh "$RELEASED_TAG"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "::notice::scoop-unyo already at ${RELEASED_TAG}; nothing to commit"
+            exit 0
+          fi
+          git commit -m "chore: bump unyo to ${RELEASED_TAG}"
+          git push origin HEAD

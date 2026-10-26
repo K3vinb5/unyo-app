@@ -1,0 +1,33 @@
+# Rendered by ./render.sh <version> [path/to/SHA256SUMS]; do not edit by hand.
+# Installer manifest for the winget submission of K3vinb5.Unyo.
+#
+# InstallerType inno: the release ships Unyo-<tag>-windows-setup.exe, an Inno
+# Setup 6 installer (windows-inno-script.iss). winget understands Inno natively
+# (uninstall entry, upgrade behaviour, silent switches), so the zip is not used.
+# Scope machine / elevationRequired: the .iss installs to {autopf}\Unyo and
+# elevates for the VC++ 2015-2022 redistributable (PrivilegesRequired=admin).
+PackageIdentifier: K3vinb5.Unyo
+PackageVersion: 0.0.0
+InstallerType: inno
+Scope: machine
+ElevationRequirement: elevationRequired
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+UpgradeBehavior: install
+ReleaseDate: 1970-01-01
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/K3vinb5/unyo-app/releases/download/v0.0.0/Unyo-v0.0.0-windows-setup.exe
+    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+    InstallerSwitches:
+      Silent: /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+      SilentWithProgress: /SILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+    ProductCode: '{F90925D3-ED12-4E10-93DC-536BCA639295}'
+    AppsAndFeaturesEntries:
+      - DisplayName: Unyo
+        Publisher: Kevin Borges
+        DisplayVersion: 0.0.0
+ManifestType: installer
+ManifestVersion: 1.6.0

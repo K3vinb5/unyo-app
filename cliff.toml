@@ -1,0 +1,41 @@
+# Minimal git-cliff config for release notes.
+# The repo uses conventional commits plus a house style where most changes are
+# prefixed `rewrite:`; both are mapped to groups below and a catch-all parser
+# keeps anything else (merge commits, `Bump ...` etc.) out of nowhere — every
+# commit ends up in some group, none are dropped.
+
+[changelog]
+header = ""
+body = """
+{% if version %}## What's changed in {{ version }}{% else %}## What's changed{% endif %}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group }}
+{% for commit in commits %}
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}{{ commit.message | split(pat="\\n") | first | upper_first }}
+{%- endfor %}
+{% endfor %}
+"""
+footer = ""
+trim = true
+
+[git]
+conventional_commits = true
+# Unconventional messages must still be rendered, not silently filtered out.
+filter_unconventional = false
+split_commits = false
+commit_parsers = [
+  { message = "^Merge ", skip = true },
+  { message = "^rewrite", group = "Changed" },
+  { message = "^feat", group = "Added" },
+  { message = "^fix", group = "Fixed" },
+  { message = "^perf", group = "Performance" },
+  { message = "^refactor", group = "Refactored" },
+  { message = "^docs", group = "Documentation" },
+  { message = "^test", group = "Tests" },
+  { message = "^chore|^ci|^build|^style|^revert", group = "Housekeeping" },
+  { message = ".*", group = "Other" },
+]
+protect_breaking_commits = false
+filter_commits = false
+tag_pattern = "v[0-9]*"
+sort_commits = "newest"

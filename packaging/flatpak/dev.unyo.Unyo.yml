@@ -1,0 +1,66 @@
+# Flatpak manifest skeleton for Unyo.
+#
+# This is the Flathub-submission starting point only (submission itself is
+# WP 71 section B) — it is not wired into CI yet. Rendered by
+# ./render.sh <version> [path/to/SHA256SUMS], which fills the extra-data URL,
+# digest and size plus the AppStream release entry; the committed copy is a
+# placeholder.
+#
+# The app is shipped as the release's AppImage (Unyo-<tag>-linux.AppImage) via
+# extra-data: FUSE is unavailable inside the sandbox, so the wrapper runs it
+# with --appimage-extract-and-run. A native flatpak build (Flutter SDK module)
+# is the eventual goal and would replace this module wholesale.
+app-id: dev.unyo.Unyo
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+command: unyo
+separate-locales: false
+
+finish-args:
+  # Streaming, extension downloads and API calls.
+  - --share=network
+  # Clipboard and X11/GTK shared memory.
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  # Video decoding / GPU compositing.
+  - --device=dri
+  # Local media the user opens by hand.
+  - --filesystem=xdg-download
+  - --filesystem=xdg-videos:ro
+  - --talk-name=org.freedesktop.Notifications
+
+modules:
+  - name: unyo
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 unyo.sh /app/bin/unyo
+      - install -Dm644 dev.unyo.Unyo.desktop /app/share/applications/dev.unyo.Unyo.desktop
+      - install -Dm644 dev.unyo.Unyo.metainfo.xml /app/share/metainfo/dev.unyo.Unyo.metainfo.xml
+      # logo.png is the 100x100 AppImage header icon; replace it with a 512x512
+      # export before the actual Flathub submission.
+      - install -Dm644 logo.png /app/share/icons/hicolor/100x100/apps/dev.unyo.Unyo.png
+    sources:
+      - type: file
+        path: dev.unyo.Unyo.desktop
+      - type: file
+        path: dev.unyo.Unyo.metainfo.xml
+      - type: file
+        path: logo.png
+      - type: script
+        dest-filename: unyo.sh
+        commands:
+          # /app/extra is populated from the extra-data source at install time.
+          - exec /app/extra/Unyo.AppImage --appimage-extract-and-run "$@"
+      - type: extra-data
+        filename: Unyo.AppImage
+        # size must be the exact byte length of the AppImage; render.sh fills it
+        # from $APPIMAGE_SIZE or the GitHub release API. flatpak-builder refuses
+        # to download while it is still this placeholder.
+        size: __APPIMAGE_SIZE__
+        only-arches:
+          - x86_64
+        url: https://github.com/K3vinb5/unyo-app/releases/download/v0.0.0/Unyo-v0.0.0-linux.AppImage
+        sha256: 0000000000000000000000000000000000000000000000000000000000000000

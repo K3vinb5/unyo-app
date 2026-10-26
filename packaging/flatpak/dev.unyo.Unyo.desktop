@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Unyo
+Comment=Ad-free anime streaming and manga reader
+Exec=unyo
+Icon=dev.unyo.Unyo
+Terminal=false
+Type=Application
+Categories=AudioVideo;Video;
+Keywords=anime;manga;streaming;video;
+StartupWMClass=dev.unyo.Unyo
