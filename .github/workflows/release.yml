@@ -32,9 +32,10 @@ permissions:
   # attestation write are scoped to the `publish` job only (see below).
 
 concurrency:
-  group: release-${{ github.ref }}
-  # Superseded dev builds on `rewrite` are useless; tag and dispatch runs are not cancelled.
-  cancel-in-progress: ${{ github.ref == 'refs/heads/rewrite' }}
+  # Group by event too: dev builds (push to rewrite) supersede each other, but a
+  # dispatch/tag run must never be cancelled by a merge landing mid-release.
+  group: release-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' && github.ref == 'refs/heads/rewrite' }}
 
 env:
   UNYO_LIB_URL: https://gitea.k3vinb5.dev/Unyo/unyo-lib.git
