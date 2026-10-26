@@ -45,6 +45,7 @@ import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/entities/media/video_info.dart';
 import 'package:unyo/presentation/dialogs/anime_details_media_entry_dialog.dart';
 import 'package:unyo/presentation/drawers/anime_server_selection_drawer.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_date_picker.dart';
 
 class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeDetailsState> {
   // Repositories
@@ -355,25 +356,10 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   }
 
   Future<void> updateMediaListEntryStartedAt(BuildContext context) async {
-    DateTime? selectedDateTime = await showDatePicker(
+    DateTime? selectedDateTime = await showUnyoDatePicker(
       context: context,
       firstDate: DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            datePickerTheme: DatePickerThemeData(
-              confirmButtonStyle: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-              ),
-              cancelButtonStyle: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
     if (selectedDateTime == null) return;
     try {
@@ -391,25 +377,10 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   }
 
   Future<void> updateMediaListEntryCompletedAt(BuildContext context) async {
-    DateTime? selectedDateTime = await showDatePicker(
+    DateTime? selectedDateTime = await showUnyoDatePicker(
       context: context,
       firstDate: DateTime.now().subtract(const Duration(days: 365)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            datePickerTheme: DatePickerThemeData(
-              confirmButtonStyle: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-              ),
-              cancelButtonStyle: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
     if (selectedDateTime == null) return;
     try {
