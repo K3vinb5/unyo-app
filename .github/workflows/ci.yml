@@ -1,8 +1,8 @@
 name: CI
 
 on:
-  push:
-    branches: [rewrite]
+  # PR-only. Post-merge testing lives in release.yml's `test` gate job — the
+  # dev lane runs it before any build, so a broken merge produces no release.
   pull_request:
 
 concurrency:

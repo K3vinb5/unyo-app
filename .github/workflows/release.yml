@@ -142,9 +142,63 @@ jobs:
             echo "| $lane | $tag | $prerelease | $publish | ${next_version:-none} |"
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # Post-merge + pre-publish gate (this is the old ci.yml push trigger, folded
+  # in so a merge runs one workflow instead of two). Every build job needs it,
+  # so a broken merge produces no dev release and a bad tag publishes nothing.
+  test:
+    name: Analyze & test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      # pubspec.yaml points unyo_lib at https://gitea.k3vinb5.dev/Unyo/unyo-lib.git,
+      # but a full clone of that repo times out server-side (HTTP 504 after ~90s,
+      # it carries ~110MB of committed JREs). A shallow sibling checkout plus the
+      # path override resolves in seconds and is what pubspec_overrides.yaml does
+      # locally too.
+      - name: Vendor unyo_lib for pub resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://gitea.k3vinb5.dev/Unyo/unyo-lib.git ../unyo-lib
+          printf 'dependency_overrides:\n  unyo_lib:\n    path: ../unyo-lib\n  bonsoir: 5.1.11\n' > pubspec_overrides.yaml
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: .fvmrc
+          cache: true
+
+      - name: Install Linux desktop build deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Install project dependencies
+        run: flutter pub get
+
+      - name: Generate code
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Generated files must be committed
+        run: git diff --exit-code
+
+      # rewrite already carries 24 warnings / 34 infos (0 errors), so only
+      # analyzer errors are fatal here. Tighten once the backlog is cleared.
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Test
+        run: flutter test
+
   linux:
     name: Linux (zip, AppImage, deb)
-    needs: prepare
+    needs: [prepare, test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -261,7 +315,7 @@ jobs:
 
   windows:
     name: Windows (zip, Inno setup)
-    needs: prepare
+    needs: [prepare, test]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -405,7 +459,7 @@ jobs:
 
   macos:
     name: macOS (zip, dmg)
-    needs: prepare
+    needs: [prepare, test]
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
