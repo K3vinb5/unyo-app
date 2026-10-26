@@ -944,3 +944,94 @@ jobs:
           fi
           git commit -m "chore: bump unyo to ${RELEASED_TAG}"
           git push origin HEAD
+
+  # Chocolatey is the last unwired channel. Unlike the Gitea channel repos above,
+  # the package definition lives in this repository (packaging/chocolatey), so the
+  # job checks out this repo, renders the placeholders, packs and pushes to the
+  # community feed. Runs on windows-latest because `choco` ships preinstalled.
+  #
+  # Same gating as bump-channels — clean stable release only (lane=stable,
+  # publish=true i.e. not dry_run, and a bare X.Y.Z version, which `bump` encodes)
+  # — and it skips silently when no API key secret exists, like the GPG and
+  # GITEA_TOKEN steps. Like bump-channels it is off the release's critical path:
+  # the GitHub release is already out before this runs.
+  chocolatey:
+    name: Publish Chocolatey package
+    needs: [prepare, publish]
+    # Reuses the prepare job's computed lane/version/tag — never re-derives them.
+    if: ${{ !cancelled() && needs.publish.result == 'success' && needs.prepare.outputs.lane == 'stable' && needs.prepare.outputs.publish == 'true' && needs.prepare.outputs.bump == 'true' }}
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    env:
+      # `secrets` is not usable directly in a step `if:`, so surface presence here.
+      HAS_CHOCO_KEY: ${{ secrets.CHOCO_API_KEY != '' }}
+      RELEASED_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - name: No Chocolatey API key
+        if: ${{ env.HAS_CHOCO_KEY != 'true' }}
+        shell: bash
+        run: echo "::notice::CHOCO_API_KEY is not configured; Chocolatey publish skipped (the release itself is unaffected)"
+
+      # render.sh matches anchored patterns such as `^  [0-9a-f]{64}$` against the
+      # committed (LF) templates. A Windows checkout with core.autocrlf would rewrite
+      # them to CRLF and those anchors would stop matching, so pin LF job-wide before
+      # the checkout runs.
+      - name: Keep packaging files LF
+        if: ${{ env.HAS_CHOCO_KEY == 'true' }}
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      - name: Checkout
+        if: ${{ env.HAS_CHOCO_KEY == 'true' }}
+        uses: actions/checkout@v4
+
+      # The checksums come from the published release, not from a rebuild: the
+      # nuspec/install script must pin exactly what users download. A best-effort
+      # release without a Windows installer is skipped, like an absent channel
+      # asset above.
+      - name: Download release checksums
+        id: sums
+        if: ${{ env.HAS_CHOCO_KEY == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          asset="Unyo-${RELEASED_TAG}-windows-setup.exe"
+          dir="$RUNNER_TEMP/choco"
+          mkdir -p "$dir"
+          gh release download "$RELEASED_TAG" --pattern SHA256SUMS --dir "$dir" --clobber
+          if grep -Eq "[[:space:]]\\*?\\./?${asset}$" "$dir/SHA256SUMS"; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::${asset} is not in ${RELEASED_TAG}/SHA256SUMS; Chocolatey package not published for this release"
+          fi
+
+      - name: Render package
+        if: ${{ env.HAS_CHOCO_KEY == 'true' && steps.sums.outputs.ready == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash packaging/chocolatey/render.sh "$RELEASE_VERSION" "$RUNNER_TEMP/choco/SHA256SUMS"
+          git diff --stat
+
+      # The key reaches choco through the environment and is masked before the
+      # first command; it is never interpolated into a run block or a file.
+      - name: Pack and push
+        if: ${{ env.HAS_CHOCO_KEY == 'true' && steps.sums.outputs.ready == 'true' }}
+        shell: bash
+        env:
+          CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$CHOCO_API_KEY"
+          cd packaging/chocolatey
+          choco pack unyo.nuspec
+          nupkg="unyo.${RELEASE_VERSION}.nupkg"
+          ls -l "$nupkg"
+          choco push "$nupkg" --source https://push.chocolatey.org/ --key "$CHOCO_API_KEY"
