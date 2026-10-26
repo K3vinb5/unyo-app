@@ -61,6 +61,41 @@ If you are on **Linux**, you can:
 
 When setting up Unyo, make sure your AniList profile is set to either public or semi-public. Currently, Unyo won't be able to pull your anime and manga lists if your account is set to private.
 
+### Verify your download
+
+Every release ships a `SHA256SUMS` file listing the checksums of the assets, plus a detached GPG signature `SHA256SUMS.asc`. The signature proves the checksum file came from me and was not tampered with, and the checksums prove the asset you downloaded matches. Releases are **not** signed at the OS level (see below), so this is the way to confirm you have a genuine build.
+
+1. From the release page, download the asset you want along with `SHA256SUMS` and `SHA256SUMS.asc`. Grab the public key from this repo, at [`packaging/keys/unyo-release-signing.asc`](./packaging/keys/unyo-release-signing.asc).
+2. Import the key and verify the signature:
+
+   ```sh
+   gpg --import unyo-release-signing.asc
+   gpg --verify SHA256SUMS.asc SHA256SUMS
+   ```
+
+3. After importing, check that the key fingerprint is exactly:
+
+   ```
+   0A9B6992862F7DCC64DCBBA04A8D3E435706ECC9
+   ```
+
+   (`gpg --fingerprint releases@unyo.dev` prints it again if you want to re-check. If it doesn't match, the key is not mine — stop and report it.)
+
+4. Verify the asset you downloaded (run it in the folder containing both the asset and `SHA256SUMS`):
+
+   ```sh
+   sha256sum -c SHA256SUMS --ignore-missing
+   ```
+
+   That last flag makes `sha256sum` check only the files you actually downloaded instead of complaining about the ones you didn't. You should see `<asset>: OK`.
+
+**A note on OS warnings.** Unyo releases are unsigned at the OS level, so your system may warn you. The GPG signature only covers the checksum file, not the OS code-signing chain. As a result:
+
+- **macOS Gatekeeper** will refuse to open the app on first launch. Open it from Finder by **right-clicking the app → Open**, then confirm. You only need to do this once.
+- **Windows SmartScreen** may show "Windows protected your PC". Click **More info → Run anyway**.
+
+If the signature verifies and the checksums match, those prompts are expected for an unsigned build.
+
 ## Available Extensions
 
 ### Remote Extensions
