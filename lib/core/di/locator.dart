@@ -7,6 +7,7 @@ import 'dart:io';
 
 // Internal dependencies
 import 'package:unyo/config/config.dart' as config;
+import 'package:unyo/core/di/app_support_dir.dart';
 import 'package:unyo/application/cubits/anime_advanced_search_cubit.dart';
 import 'package:unyo/application/cubits/extensions_cubit.dart';
 import 'package:unyo/application/cubits/manga_advanced_search_cubit.dart';
@@ -59,7 +60,10 @@ final sl = GetIt.instance;
 void setupLocator() async{
   // Singletons
   sl.registerSingletonAsync<Directory>(
-    () => getApplicationSupportDirectory(),
+    () => resolveAppSupportDir(
+      environment: Platform.environment,
+      fallback: getApplicationSupportDirectory,
+    ),
     instanceName: config.applicationSupportDirectory,
   );
   await sl.isReady<Directory>(instanceName: config.applicationSupportDirectory);
