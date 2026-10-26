@@ -427,6 +427,14 @@ jobs:
           Compress-Archive -Path "build\windows\x64\runner\Release\*" `
             -DestinationPath "dist\Unyo-${{ steps.ver.outputs.tag }}-windows.zip"
 
+      # InnoDependencyInstaller supplies the [Code] helpers that install the
+      # VC++ 2015-2022 redistributable, included by windows-inno-script.iss as
+      # build\inno-depend\CodeDependencies.iss (relative to the script at the
+      # repo root), so the checkout has to land exactly there.
+      - name: Fetch InnoDependencyInstaller
+        shell: bash
+        run: git clone --depth 1 https://github.com/DomGries/InnoDependencyInstaller build/inno-depend
+
       - name: Build Windows installer (Inno Setup)
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.4
         with:
@@ -437,7 +445,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          src=$(ls build/windows/x64/runner/unyo-*-windows-setup.exe | head -n 1)
+          src=$(ls build/windows/x64/runner/Unyo-*-windows-setup.exe | head -n 1)
           cp "$src" "dist/Unyo-${{ steps.ver.outputs.tag }}-windows-setup.exe"
           ls -l dist
 
