@@ -72,8 +72,12 @@ dependencies:
   jni: ^0.14.2
   meta: ^1.17.0
   jwt_decoder: ^2.0.1
+  # Git dependency so CI (which has no sibling checkout) can resolve it.
+  # Local dev keeps using the sibling path via pubspec_overrides.yaml.
   unyo_lib:
-    path: ../unyo-lib
+    git:
+      url: https://gitea.k3vinb5.dev/Unyo/unyo-lib.git
+      ref: master
   wakelock_plus: ^1.4.0
   material_ui: ^1.8.0
 

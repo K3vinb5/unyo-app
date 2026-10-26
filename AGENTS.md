@@ -53,7 +53,10 @@ flutter analyze
 
 ## Dependencies
 
-- `unyo_lib` is a local path dependency (`../unyo_lib`). Ensure it exists as a sibling directory.
+- `unyo_lib` is a **git dependency** on `https://gitea.k3vinb5.dev/Unyo/unyo-lib.git` (`ref: master`) in `pubspec.yaml`, because CI has no sibling checkout.
+- Local development uses the live sibling repo instead: `pubspec_overrides.yaml` (git-ignored) overrides it with `path: ../unyo-lib`. `flutter pub get` picks that file up automatically; delete it to test the git dependency exactly as CI does.
+- Heads-up: a *full* clone of unyo-lib from gitea times out server-side (HTTP 504, ~110MB of committed JREs). Both workflows therefore `git clone --depth 1` it into `../unyo-lib` and write the same override file before `flutter pub get`.
+- Custom JREs ship inside unyo_lib (`jre/{linux,macos}/customjre`); copy one into a release bundle with `bash scripts/copy_jre.sh <linux|macos|windows>` (resolves unyo_lib from `../unyo-lib` or `.dart_tool/package_config.json`, honours `$UNYO_JRE_SRC`).
 - Local extensions require **Java 17+** installed.
 
 ## Flutter Version
@@ -62,7 +65,14 @@ Pinned to **3.47.7** (see `.fvmrc`). Use `fvm flutter` if managing multiple vers
 
 ## Release Process
 
-Releases are triggered by **git tags**. The CI workflow (`main.yml`) builds Go bindings for all three platforms, then runs the Flutter build. Do not manually edit generated `.g.dart` files before a release tag.
+Releases run through three lanes in `.github/workflows/release.yml`, all versioned from `pubspec.yaml`'s `version:` (the `+build` metadata is stripped):
+
+- **dev** — every merge to `rewrite` publishes `v<base>-dev.<run_number>.g<short_sha>` as a prerelease.
+- **rc / stable** — `workflow_dispatch` with `channel: rc|stable` and an optional `version` (defaults to the pubspec version). rc publishes `v<base>-rc.<run_number>` as a prerelease, stable publishes `v<base>` as a full release. The publish job creates the tag when it does not exist yet (a tag pushed with `GITHUB_TOKEN` would not re-trigger the workflow, so this avoids loops).
+- **Version bump** — after a clean stable release (`X.Y.Z`), the publish job commits `version: X.Y.(Z+1)+1` straight to `rewrite` (`[skip ci]` so it spawns no dev release) — fully automatic, no PR to merge. Suffixed tags such as `v0.0.0-ci-test.2` never bump.
+- **`dry_run`** (default `true`) builds and uploads artifacts without publishing a release. Only the dev lane cancels superseded runs.
+
+`.github/workflows/ci.yml` runs analyze + tests on every push to `rewrite` and every PR. All releases ship **unsigned**. Do not manually edit generated `.g.dart` files before a release tag.
 
 ## Shared Knowledge (unyo-docs)
 

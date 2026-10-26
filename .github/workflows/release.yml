@@ -1,0 +1,552 @@
+name: Release
+
+on:
+  # Dev lane: every merge to the integration branch.
+  push:
+    branches: [rewrite]
+    tags: ['v*']
+  # rc / stable lane: dispatch computes the version and, when dry_run is false,
+  # the publish job creates the tag. A tag pushed with GITHUB_TOKEN does not
+  # re-trigger `push: tags`, so there is no loop.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, without the leading v (default: pubspec version)'
+        type: string
+        required: false
+      channel:
+        description: 'Release channel'
+        type: choice
+        options: [stable, rc]
+        default: stable
+      dry_run:
+        description: 'Build every package and upload artifacts, but do not publish a GitHub release'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  # Superseded dev builds on `rewrite` are useless; tag and dispatch runs are not cancelled.
+  cancel-in-progress: ${{ github.ref == 'refs/heads/rewrite' }}
+
+env:
+  UNYO_LIB_URL: https://gitea.k3vinb5.dev/Unyo/unyo-lib.git
+
+jobs:
+  # Single source of truth for the version. Every build job copies these
+  # outputs into its own `steps.ver` step, and the publish job uses them for the
+  # tag name, prerelease flag and the post-release bump.
+  prepare:
+    name: Compute version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.ver.outputs.tag }}
+      version: ${{ steps.ver.outputs.version }}
+      build_name: ${{ steps.ver.outputs.build_name }}
+      lane: ${{ steps.ver.outputs.lane }}
+      prerelease: ${{ steps.ver.outputs.prerelease }}
+      publish: ${{ steps.ver.outputs.publish }}
+      bump: ${{ steps.ver.outputs.bump }}
+      next_version: ${{ steps.ver.outputs.next_version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_CHANNEL: ${{ inputs.channel }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+
+          # pubspec version with the +build metadata stripped: 0.7.0+12 -> 0.7.0
+          base="$(sed -nE 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/p' pubspec.yaml | head -n1)"
+          if [[ -z "$base" ]]; then
+            echo "::error::could not read version: from pubspec.yaml"
+            exit 1
+          fi
+          sha="$(git rev-parse --short=7 HEAD)"
+
+          if [[ "$EVENT" == "workflow_dispatch" ]]; then
+            requested="${INPUT_VERSION#v}"
+            requested="${requested:-$base}"
+            if [[ "${INPUT_CHANNEL:-stable}" == "rc" ]]; then
+              lane=rc
+              tag="v${requested}-rc.${GITHUB_RUN_NUMBER}"
+            else
+              lane=stable
+              tag="v${requested}"
+            fi
+            if [[ "$INPUT_DRY_RUN" == "false" ]]; then
+              publish=true
+            else
+              publish=false
+            fi
+          elif [[ "$REF_TYPE" == "tag" ]]; then
+            # An existing tag fixes both version and lane.
+            tag="$REF_NAME"
+            case "$tag" in
+              *-dev.*) lane=dev ;;
+              *-rc.*) lane=rc ;;
+              *) lane=stable ;;
+            esac
+            publish=true
+          else
+            # Dev lane: every merge to `rewrite`.
+            lane=dev
+            tag="v${base}-dev.${GITHUB_RUN_NUMBER}.g${sha}"
+            publish=true
+          fi
+
+          version="${tag#v}"
+          # Flutter's --build-name must stay a plain version: 0.7.0-dev.4.gabc1234 -> 0.7.0
+          build_name="${version%%-*}"
+          if [[ "$lane" == "stable" ]]; then
+            prerelease=false
+          else
+            prerelease=true
+          fi
+
+          # Bump only after a clean stable release: v0.7.0 -> 0.7.1. Test tags
+          # with a suffix (v0.0.0-ci-test.2) never bump.
+          bump=false
+          next_version=""
+          if [[ "$lane" == "stable" && "$publish" == "true" && "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            IFS=. read -r major minor patch <<< "$version"
+            next_version="${major}.${minor}.$((patch + 1))"
+            bump=true
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build_name=$build_name" >> "$GITHUB_OUTPUT"
+          echo "lane=$lane" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "bump=$bump" >> "$GITHUB_OUTPUT"
+          echo "next_version=$next_version" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Release version"
+            echo ""
+            echo "| lane | tag | prerelease | publish | next bump |"
+            echo "| --- | --- | --- | --- | --- |"
+            echo "| $lane | $tag | $prerelease | $publish | ${next_version:-none} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  linux:
+    name: Linux (zip, AppImage, deb)
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # See .github/workflows/ci.yml for why the git dependency is vendored with
+      # a shallow sibling checkout instead of being resolved by pub directly.
+      - name: Vendor unyo_lib for pub resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 "$UNYO_LIB_URL" ../unyo-lib
+          printf 'dependency_overrides:\n  unyo_lib:\n    path: ../unyo-lib\n  bonsoir: 5.1.11\n' > pubspec_overrides.yaml
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: .fvmrc
+          cache: true
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "tag=${{ needs.prepare.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          echo "version=${{ needs.prepare.outputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "build_name=${{ needs.prepare.outputs.build_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Linux build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libfuse2
+
+      - name: Install project dependencies
+        run: flutter pub get
+
+      - name: Generate code
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Build
+        run: >-
+          flutter build linux --release
+          --build-name "${{ steps.ver.outputs.build_name }}"
+          --build-number "${{ github.run_number }}"
+
+      - name: Copy custom JRE into bundle
+        run: bash scripts/copy_jre.sh linux
+
+      - name: Package zip
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cd build/linux/x64/release/bundle
+          zip -r -y "$GITHUB_WORKSPACE/dist/Unyo-${{ steps.ver.outputs.tag }}-linux.zip" .
+
+      - name: Package AppImage
+        run: |
+          set -euo pipefail
+          cp -r linux-appimage/Unyo.AppDir dist/Unyo.AppDir
+          cp -r build/linux/x64/release/bundle/. dist/Unyo.AppDir/
+          cp linux-appimage/appimagetool.AppImage dist/appimagetool.AppImage
+          chmod 755 dist/appimagetool.AppImage
+          ARCH=x86_64 ./dist/appimagetool.AppImage \
+            dist/Unyo.AppDir "dist/Unyo-${{ steps.ver.outputs.tag }}-linux.AppImage"
+          rm -rf dist/Unyo.AppDir dist/appimagetool.AppImage
+
+      - name: Package deb
+        run: |
+          set -euo pipefail
+          tag="${{ steps.ver.outputs.tag }}"
+          version="${{ steps.ver.outputs.version }}"
+          root="dist/deb-root"
+          mkdir -p "$root/DEBIAN" "$root/usr/lib/unyo" "$root/usr/bin" \
+                   "$root/usr/share/applications" "$root/usr/share/icons/hicolor/512x512/apps"
+          cp -r build/linux/x64/release/bundle/. "$root/usr/lib/unyo/"
+          ln -s /usr/lib/unyo/unyo "$root/usr/bin/unyo"
+          cp linux-appimage/Unyo.AppDir/Unyo.desktop "$root/usr/share/applications/unyo.desktop"
+          # Unyo.desktop refers to Icon=logo
+          cp linux-appimage/logo.png "$root/usr/share/icons/hicolor/512x512/apps/logo.png"
+          {
+            echo "Package: unyo"
+            echo "Version: $version"
+            echo "Architecture: amd64"
+            echo "Maintainer: Kevin Borges <k3vinb5@users.noreply.github.com>"
+            echo "Section: video"
+            echo "Priority: optional"
+            echo "Installed-Size: $(du -sk "$root/usr" | cut -f1)"
+            echo "Description: Anime streaming and manga reader desktop app"
+            echo " Unyo is an ad-free anime streaming and manga reader for the desktop."
+          } > "$root/DEBIAN/control"
+          dpkg-deb --root-owner-group --build "$root" "dist/Unyo-$tag-linux.deb"
+          rm -rf "$root"
+          deb_version=$(dpkg-deb -f "dist/Unyo-$tag-linux.deb" Version)
+          echo "deb Version: $deb_version"
+          if [ "$deb_version" != "$version" ]; then
+            echo "::error::deb Version '$deb_version' does not match tag version '$version'"
+            exit 1
+          fi
+
+      - name: Checksums
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum Unyo-* > SHA256SUMS
+          cat SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-dist
+          if-no-files-found: error
+          path: |
+            dist/Unyo-*
+            dist/SHA256SUMS
+
+  windows:
+    name: Windows (zip, Inno setup)
+    needs: prepare
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vendor unyo_lib for pub resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 "$UNYO_LIB_URL" ../unyo-lib
+          printf 'dependency_overrides:\n  unyo_lib:\n    path: ../unyo-lib\n  bonsoir: 5.1.11\n' > pubspec_overrides.yaml
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: .fvmrc
+          cache: true
+
+      # JDK 17 is needed twice: the jni plugin's CMake build links against
+      # jvm.lib, and jlink produces the custom JRE below.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "tag=${{ needs.prepare.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          echo "version=${{ needs.prepare.outputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "build_name=${{ needs.prepare.outputs.build_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Install project dependencies
+        run: flutter pub get
+
+      - name: Generate code
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Build
+        run: >-
+          flutter build windows --release
+          --build-name "${{ steps.ver.outputs.build_name }}"
+          --build-number "${{ github.run_number }}"
+
+      - name: Build custom JRE (jlink)
+        shell: pwsh
+        run: |
+          $jre = "build/windows/x64/runner/Release/jre/customjre"
+          New-Item -ItemType Directory -Force -Path $jre | Out-Null
+          & "$env:JAVA_HOME\bin\jlink.exe" `
+            --module-path "$env:JAVA_HOME\jmods" `
+            --add-modules java.base,java.instrument,java.prefs,java.sql,jdk.management,jdk.unsupported,jdk.crypto.cryptoki,jdk.crypto.ec,java.security.jgss,jdk.zipfs `
+            --output $jre `
+            --strip-debug --no-man-pages --no-header-files --compress=2
+
+      # unyo_lib ships no Windows JRE, so the platform bits that live in
+      # jre/<os>/customjre/lib/server on linux/macos are assembled here.
+      - name: Add Dart-JNI bits to the Windows JRE
+        shell: bash
+        run: |
+          set -euo pipefail
+          release="build/windows/x64/runner/Release"
+          server="$release/jre/customjre/lib/server"
+          mkdir -p "$server"
+          # dartjni.dll: built by the jni plugin's MSVC build during
+          # `flutter build windows` and shipped next to the exe.
+          cp "$release/dartjni.dll" "$server/dartjni.dll"
+          # jni.jar: pure Java, identical on every platform — take it from the
+          # unyo_lib checkout.
+          unyo_lib=$(bash scripts/copy_jre.sh --unyo-lib-dir)
+          cp "$unyo_lib/jre/linux/customjre/lib/server/jni.jar" "$server/jni.jar"
+          # jvm.dll sits in bin/server after jlink; mirror it into lib/server the
+          # way linux/macos put libjvm there.
+          cp "$release/jre/customjre/bin/server/jvm.dll" "$server/jvm.dll"
+
+      # Loud check rather than a silent skip: the Windows JRE bundle is
+      # assembled here and must at least be complete before we ship it. NOTE:
+      # the JVM is located by the delay-loaded jvm.dll at runtime, which is not
+      # verified by this workflow (no Windows JRE exists upstream to compare
+      # against) — see the PR description.
+      - name: Verify Windows JRE bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="build/windows/x64/runner/Release/jre/customjre/lib/server"
+          missing=0
+          for file in jni.jar dartjni.dll jvm.dll; do
+            if [ -f "$server/$file" ]; then
+              echo "ok: $server/$file"
+            else
+              echo "::error::missing $server/$file"
+              missing=1
+            fi
+          done
+          if [ ! -f "build/windows/x64/runner/Release/jre/customjre/bin/java.dll" ]; then
+            echo "::error::jlink output looks incomplete (bin/java.dll missing)"
+            missing=1
+          fi
+          echo "::warning::Windows JRE runtime loading (delay-loaded jvm.dll) is not verified by this workflow"
+          exit $missing
+
+      - name: Package zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" `
+            -DestinationPath "dist\Unyo-${{ steps.ver.outputs.tag }}-windows.zip"
+
+      - name: Build Windows installer (Inno Setup)
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.4
+        with:
+          path: windows-inno-script.iss
+          options: /O+ /dMyAppVersion=${{ steps.ver.outputs.tag }}
+
+      - name: Collect installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=$(ls build/windows/x64/runner/unyo-*-windows-setup.exe | head -n 1)
+          cp "$src" "dist/Unyo-${{ steps.ver.outputs.tag }}-windows-setup.exe"
+          ls -l dist
+
+      - name: Checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum Unyo-* > SHA256SUMS
+          cat SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-dist
+          if-no-files-found: error
+          path: |
+            dist/Unyo-*
+            dist/SHA256SUMS
+
+  macos:
+    name: macOS (zip, dmg)
+    needs: prepare
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vendor unyo_lib for pub resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 "$UNYO_LIB_URL" ../unyo-lib
+          printf 'dependency_overrides:\n  unyo_lib:\n    path: ../unyo-lib\n  bonsoir: 5.1.11\n' > pubspec_overrides.yaml
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: .fvmrc
+          cache: true
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "tag=${{ needs.prepare.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          echo "version=${{ needs.prepare.outputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "build_name=${{ needs.prepare.outputs.build_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Install project dependencies
+        run: flutter pub get
+
+      - name: Generate code
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Build
+        run: >-
+          flutter build macos --release
+          --build-name "${{ steps.ver.outputs.build_name }}"
+          --build-number "${{ github.run_number }}"
+
+      - name: Copy custom JRE into bundle
+        run: bash scripts/copy_jre.sh macos
+
+      - name: Package zip
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cd build/macos/Build/Products/Release
+          zip -r -y "$GITHUB_WORKSPACE/dist/Unyo-${{ steps.ver.outputs.tag }}-macos.zip" unyo.app
+
+      - name: Package dmg
+        run: |
+          set -euo pipefail
+          brew install create-dmg
+          create-dmg \
+            --no-code-sign \
+            --volname "Unyo-${{ steps.ver.outputs.tag }}-macos" \
+            --window-pos 200 120 --window-size 800 450 --icon-size 100 \
+            --app-drop-link 600 185 \
+            "dist/Unyo-${{ steps.ver.outputs.tag }}-macos.dmg" \
+            build/macos/Build/Products/Release/unyo.app
+
+      - name: Checksums
+        run: |
+          set -euo pipefail
+          cd dist
+          shasum -a 256 Unyo-* > SHA256SUMS
+          cat SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dist
+          if-no-files-found: error
+          path: |
+            dist/Unyo-*
+            dist/SHA256SUMS
+
+  publish:
+    name: Publish GitHub release
+    needs: [prepare, linux, windows, macos]
+    if: ${{ needs.prepare.outputs.publish == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Regenerate checksums over every asset
+        run: |
+          set -euo pipefail
+          cd dist
+          find . -name SHA256SUMS -delete
+          sha256sum Unyo-* > SHA256SUMS
+          cat SHA256SUMS
+
+      # tag_name comes from the prepare job, so dispatch runs create the tag
+      # here (softprops does that when the tag does not exist yet).
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: ${{ needs.prepare.outputs.tag }}
+          draft: false
+          prerelease: ${{ needs.prepare.outputs.prerelease }}
+          files: |
+            dist/Unyo-*
+            dist/SHA256SUMS
+
+      # Stable releases only (bump is false for dev/rc and for suffixed test
+      # tags). Commits the patch bump straight to `rewrite` — fully automatic,
+      # no PR to merge. `[skip ci]` keeps the bump commit from triggering the
+      # dev lane.
+      - name: Bump version on rewrite
+        if: ${{ needs.prepare.outputs.bump == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT_VERSION: ${{ needs.prepare.outputs.next_version }}
+          RELEASED_TAG: ${{ needs.prepare.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch --no-tags origin rewrite
+          git checkout -B rewrite origin/rewrite
+          # Build number restarts at 1 for the new version.
+          sed -i -E "s/^version:.*/version: ${NEXT_VERSION}+1/" pubspec.yaml
+          git add pubspec.yaml
+          git commit -m "chore: bump version to ${NEXT_VERSION} after release [skip ci]"
+          # Rebase on whatever landed on rewrite while the release was running,
+          # then push. A rejected push means concurrent commits won the race —
+          # the release itself is already published, so report and move on.
+          if ! git pull --rebase --no-tags origin rewrite; then
+            git rebase --abort || true
+            echo "::warning::bump rebase failed; rewrite moved during release — bump ${NEXT_VERSION} needs a manual commit"
+            exit 0
+          fi
+          if ! git push origin rewrite; then
+            echo "::warning::bump push rejected; rewrite moved during release — bump ${NEXT_VERSION} needs a manual commit"
+            exit 0
+          fi
+          echo "::notice::bumped version to ${NEXT_VERSION}+1 on rewrite after ${RELEASED_TAG}"
