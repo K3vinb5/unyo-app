@@ -275,7 +275,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       // Episode buttons pass the 0-based button index, the episode number is +1.
       // The drawer indexes the extension episode list, which does not have to
       // match the anime metadata episode list.
-      int resolvedEpisodeIndex = resolveExtensionEpisodeIndex(state.extensionEpisodeResults, episodeIndex + 1);
+      int resolvedEpisodeIndex = EpisodeIndex.resolveExtensionEpisodeIndex(state.extensionEpisodeResults, episodeIndex + 1);
       if (resolvedEpisodeIndex < 0) {
         _logger.w("Episode ${episodeIndex + 1} is not part of the extension episode results.");
         showSnackBarEffect(
