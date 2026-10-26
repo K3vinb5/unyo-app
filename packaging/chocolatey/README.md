@@ -52,3 +52,26 @@ choco push unyo.<version>.nupkg --source https://push.chocolatey.org/
 
 The package id is `unyo` (lowercase, as Chocolatey requires) and is permanent —
 do not rename it after the first push.
+
+## How publishing works
+
+Publishing is automatic. The `chocolatey` job in
+`.github/workflows/release.yml` (`Publish Chocolatey package`) runs on a
+`windows-latest` runner after a **clean stable release** (`X.Y.Z`, not `rc`/`dev`,
+not `dry_run`, release published successfully) and skips silently on every other
+lane and when the `CHOCO_API_KEY` secret is not configured. It downloads
+`SHA256SUMS` from the published release, runs `render.sh`, then `choco pack`s and
+`choco push`es the result to https://push.chocolatey.org/.
+
+Manual fallback, when the automated job cannot run (missing key, failed job, a
+release that needs a re-push):
+
+```sh
+cd packaging/chocolatey
+./render.sh <version> /path/to/SHA256SUMS
+choco pack unyo.nuspec
+choco push unyo.<version>.nupkg --source https://push.chocolatey.org/ --key <api-key>
+```
+
+Never bump the package version by hand: Chocolatey rejects a version that is
+already on the feed.
