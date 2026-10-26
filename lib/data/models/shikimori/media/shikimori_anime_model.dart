@@ -47,7 +47,7 @@ abstract class ShikimoriAnimeModel with _$ShikimoriAnimeModel implements Anime {
   factory ShikimoriAnimeModel.fromRelatedEntry(AnimeDetailsQueryAnimesRelatedAnime anime) {
     return ShikimoriAnimeModel(
         id: _formatId(anime.id),
-        idMal: anime.malId != "0" ? _formatId(anime.malId) : _formatId(anime.id),
+        idMal: _parseMalId(anime.malId),
         title: TitleModel(
           romaji: anime.russian,
           english: anime.english,
@@ -78,7 +78,7 @@ abstract class ShikimoriAnimeModel with _$ShikimoriAnimeModel implements Anime {
   factory ShikimoriAnimeModel.fromAnimesPopularQuery(AnimePopularQueryAnimes anime) {
     return ShikimoriAnimeModel(
         id: _formatId(anime.id),
-        idMal: anime.malId != "0" ? _formatId(anime.malId) : _formatId(anime.id),
+        idMal: _parseMalId(anime.malId),
         title: TitleModel(
           romaji: anime.russian,
           english: anime.english,
@@ -109,7 +109,7 @@ abstract class ShikimoriAnimeModel with _$ShikimoriAnimeModel implements Anime {
   factory ShikimoriAnimeModel.fromAnimesTrendingQuery(AnimeTrendingQueryAnimes anime) {
     return ShikimoriAnimeModel(
         id: _formatId(anime.id),
-        idMal: anime.malId != "0" ? _formatId(anime.malId) : _formatId(anime.id),
+        idMal: _parseMalId(anime.malId),
         title: TitleModel(
           romaji: anime.russian,
           english: anime.english,
@@ -140,7 +140,7 @@ abstract class ShikimoriAnimeModel with _$ShikimoriAnimeModel implements Anime {
   factory ShikimoriAnimeModel.fromAnimesRecentlyReleasedQuery(AnimeRecentlyReleasedQueryAnimes anime) {
     return ShikimoriAnimeModel(
         id: _formatId(anime.id),
-        idMal: anime.malId != "0" ? _formatId(anime.malId) : _formatId(anime.id),
+        idMal: _parseMalId(anime.malId),
         title: TitleModel(
           romaji: anime.russian,
           english: anime.english,
@@ -216,4 +216,18 @@ String _formatSeason(String season) {
 int _formatId(String id) {
   // r'\D' is a raw string representing the regex for non-digits
   return int.tryParse(id.replaceAll(RegExp(r'\D'), '')) ?? 0;
+}
+
+/// Maps Shikimori's GraphQL `malId` to the domain `idMal`.
+///
+/// Shikimori native ids and MAL ids are different sequences — unlinked
+/// records sit at `1015xxxxx` while MAL-linked records carry their MAL id —
+/// so a missing MAL id must stay unset (`0`, the `AnimeModel.empty()`
+/// sentinel) and must never be backfilled from `anime.id`. Shikimori reports
+/// a missing link as JSON `null`/absent (the DTO default `''`); `"0"` is a
+/// legacy sentinel that some payloads still use.
+int _parseMalId(String malId) {
+  final parsed = int.tryParse(malId.trim());
+  if (parsed == null || parsed <= 0) return 0;
+  return parsed;
 }
