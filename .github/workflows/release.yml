@@ -27,6 +27,10 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # Needed by the publish job's build-provenance attestation (OIDC token +
+  # writing the attestation bundle to the repo's attestation store).
+  id-token: write
+  attestations: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -317,6 +321,19 @@ jobs:
           sha256sum Unyo-* > SHA256SUMS
           cat SHA256SUMS
 
+      # SPDX SBOM of the shipped bundle (app + bundled custom JRE), so the
+      # release has a machine-readable inventory of what it contains.
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: build/linux/x64/release/bundle
+          format: spdx-json
+          output-file: dist/sbom-linux.spdx.json
+          artifact-name: sbom-linux
+          upload-artifact: false
+          upload-release-assets: false
+          dependency-snapshot: false
+
       - uses: actions/upload-artifact@v4
         with:
           name: linux-dist
@@ -324,6 +341,7 @@ jobs:
           path: |
             dist/Unyo-*
             dist/SHA256SUMS
+            dist/sbom-*.spdx.json
 
   windows:
     name: Windows (zip, Inno setup)
@@ -469,6 +487,18 @@ jobs:
           sha256sum Unyo-* > SHA256SUMS
           cat SHA256SUMS
 
+      # SPDX SBOM of the shipped bundle (app + bundled custom JRE).
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: build/windows/x64/runner/Release
+          format: spdx-json
+          output-file: dist/sbom-windows.spdx.json
+          artifact-name: sbom-windows
+          upload-artifact: false
+          upload-release-assets: false
+          dependency-snapshot: false
+
       - uses: actions/upload-artifact@v4
         with:
           name: windows-dist
@@ -476,6 +506,7 @@ jobs:
           path: |
             dist/Unyo-*
             dist/SHA256SUMS
+            dist/sbom-*.spdx.json
 
   macos:
     name: macOS (zip, dmg)
@@ -553,6 +584,18 @@ jobs:
           shasum -a 256 Unyo-* > SHA256SUMS
           cat SHA256SUMS
 
+      # SPDX SBOM of the shipped bundle (app + bundled custom JRE).
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: build/macos/Build/Products/Release/unyo.app
+          format: spdx-json
+          output-file: dist/sbom-macos.spdx.json
+          artifact-name: sbom-macos
+          upload-artifact: false
+          upload-release-assets: false
+          dependency-snapshot: false
+
       - uses: actions/upload-artifact@v4
         with:
           name: macos-dist
@@ -560,6 +603,7 @@ jobs:
           path: |
             dist/Unyo-*
             dist/SHA256SUMS
+            dist/sbom-*.spdx.json
 
   publish:
     name: Publish GitHub release
@@ -571,10 +615,16 @@ jobs:
     # publishing a half-built release.
     if: ${{ !cancelled() && needs.prepare.outputs.publish == 'true' && (needs.linux.result == 'success' || needs.windows.result == 'success' || needs.macos.result == 'success') }}
     runs-on: ubuntu-latest
+    # `secrets` is not usable directly in a step `if:`, so the presence check is
+    # surfaced as an env flag. Empty secret => GPG signing steps are skipped.
+    env:
+      HAS_GPG_KEY: ${{ secrets.GPG_PRIVATE_KEY != '' }}
     steps:
+      # fetch-depth 0 + tags: the changelog is generated from the full history.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       - uses: actions/download-artifact@v4
         with:
@@ -582,12 +632,40 @@ jobs:
           merge-multiple: true
 
       - name: Regenerate checksums over every asset
+        shell: bash
         run: |
           set -euo pipefail
           cd dist
           find . -name SHA256SUMS -delete
-          sha256sum Unyo-* > SHA256SUMS
+          shopt -s nullglob
+          files=(Unyo-* sbom-*.spdx.json)
+          shopt -u nullglob
+          sha256sum "${files[@]}" > SHA256SUMS
           cat SHA256SUMS
+
+      # Detached ASCII-armored signature over the published SHA256SUMS. Skipped
+      # silently when no key is configured, so secretless runs stay green.
+      # (Signed here, not per build job: this job regenerates SHA256SUMS over
+      # all collected assets, so a signature made earlier would not match it.)
+      - name: Sign checksums (GPG)
+        if: ${{ env.HAS_GPG_KEY == 'true' }}
+        shell: bash
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          cd dist
+          printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --quiet --import
+          key_id="$(gpg --list-secret-keys --with-colons | awk -F: '/^sec:/ {print $5; exit}')"
+          pass_args=()
+          if [ -n "${GPG_PASSPHRASE:-}" ]; then
+            pass_args=(--pinentry-mode loopback --passphrase "$GPG_PASSPHRASE")
+          fi
+          gpg --batch "${pass_args[@]}" --local-user "$key_id" \
+            --armor --detach-sign --output SHA256SUMS.asc SHA256SUMS
+          gpg --verify SHA256SUMS.asc SHA256SUMS
+          echo "::notice::SHA256SUMS.asc signed with key $key_id"
 
       - name: Compose release notes
         shell: bash
@@ -604,6 +682,61 @@ jobs:
           fi
           cat dist/release-body.md
 
+      # Changelog from git history. Best effort on purpose: a git-cliff or
+      # template problem must never block a release — the warning-only body
+      # from the step above is then used as-is.
+      - name: Generate changelog
+        id: changelog
+        continue-on-error: true
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --verbose --latest
+          output: dist/changelog.md
+
+      - name: Append changelog to release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -s dist/changelog.md ]; then
+            { cat dist/release-body.md; printf '\n'; cat dist/changelog.md; } > dist/release-body.tmp
+            mv dist/release-body.tmp dist/release-body.md
+          else
+            echo "::notice::changelog unavailable; releasing with the plain body"
+          fi
+          cat dist/release-body.md
+
+      # Explicit, existing-files-only subject list (globs alone are unsafe here:
+      # a wildcard-free path such as SHA256SUMS.asc is not dropped by nullglob).
+      - name: Collect attestation subjects
+        id: subjects
+        shell: bash
+        run: |
+          set -euo pipefail
+          subjects=()
+          shopt -s nullglob
+          for f in dist/Unyo-* dist/sbom-*.spdx.json dist/SHA256SUMS dist/SHA256SUMS.asc; do
+            [ -f "$f" ] || continue
+            subjects+=("$f")
+          done
+          shopt -u nullglob
+          if [ ${#subjects[@]} -eq 0 ]; then
+            echo "::error::no release assets found to attest"
+            exit 1
+          fi
+          {
+            echo "paths<<SUBJECTS_EOF"
+            printf '%s\n' "${subjects[@]}"
+            echo "SUBJECTS_EOF"
+          } >> "$GITHUB_OUTPUT"
+          printf '%s\n' "${subjects[@]}"
+
+      # `gh attestation verify <asset> -R <owner>/<repo>` uses this.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: ${{ steps.subjects.outputs.paths }}
+
       # tag_name comes from the prepare job, so dispatch runs create the tag
       # here (softprops does that when the tag does not exist yet).
       - uses: softprops/action-gh-release@v2
@@ -613,9 +746,9 @@ jobs:
           draft: false
           prerelease: ${{ needs.prepare.outputs.prerelease }}
           body_path: dist/release-body.md
-          files: |
-            dist/Unyo-*
-            dist/SHA256SUMS
+          # Exactly the attested/checksummed assets: packages, Sboms, SHA256SUMS
+          # and (when a key is configured) SHA256SUMS.asc.
+          files: ${{ steps.subjects.outputs.paths }}
 
       # Stable releases only (bump is false for dev/rc and for suffixed test
       # tags). Requires a COMPLETE release — a best-effort release missing a
