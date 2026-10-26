@@ -27,10 +27,9 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  # Needed by the publish job's build-provenance attestation (OIDC token +
-  # writing the attestation bundle to the repo's attestation store).
-  id-token: write
-  attestations: write
+  # id-token / attestations are NOT granted here: the build and test jobs run
+  # third-party actions and resolve arbitrary pub packages, so OIDC and
+  # attestation write are scoped to the `publish` job only (see below).
 
 concurrency:
   group: release-${{ github.ref }}
@@ -323,7 +322,10 @@ jobs:
 
       # SPDX SBOM of the shipped bundle (app + bundled custom JRE), so the
       # release has a machine-readable inventory of what it contains.
+      # Integrity extra, never fatal: a syft/anchore failure must not take the
+      # platform's packages down with it (best-effort release policy).
       - name: Generate SPDX SBOM
+        continue-on-error: true
         uses: anchore/sbom-action@v0
         with:
           path: build/linux/x64/release/bundle
@@ -488,7 +490,9 @@ jobs:
           cat SHA256SUMS
 
       # SPDX SBOM of the shipped bundle (app + bundled custom JRE).
+      # Integrity extra, never fatal (see the linux job).
       - name: Generate SPDX SBOM
+        continue-on-error: true
         uses: anchore/sbom-action@v0
         with:
           path: build/windows/x64/runner/Release
@@ -585,7 +589,9 @@ jobs:
           cat SHA256SUMS
 
       # SPDX SBOM of the shipped bundle (app + bundled custom JRE).
+      # Integrity extra, never fatal (see the linux job).
       - name: Generate SPDX SBOM
+        continue-on-error: true
         uses: anchore/sbom-action@v0
         with:
           path: build/macos/Build/Products/Release/unyo.app
@@ -615,6 +621,14 @@ jobs:
     # publishing a half-built release.
     if: ${{ !cancelled() && needs.prepare.outputs.publish == 'true' && (needs.linux.result == 'success' || needs.windows.result == 'success' || needs.macos.result == 'success') }}
     runs-on: ubuntu-latest
+    # Only this job needs OIDC + attestation write (build-provenance attestation
+    # of the release assets). Scoped here instead of workflow-wide so the test
+    # and build jobs — which run third-party actions and resolve arbitrary pub
+    # packages — cannot mint tokens or write attestations.
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     # `secrets` is not usable directly in a step `if:`, so the presence check is
     # surfaced as an env flag. Empty secret => GPG signing steps are skipped.
     env:
@@ -685,14 +699,16 @@ jobs:
       # Changelog from git history. Best effort on purpose: a git-cliff or
       # template problem must never block a release — the warning-only body
       # from the step above is then used as-is.
+      # NOTE: the action has no `output` input. Its run.sh pulls the output path
+      # out of `-o/--output` in `args` and defaults to git-cliff/CHANGELOG.md, so
+      # the path has to be passed through args or dist/changelog.md never exists.
       - name: Generate changelog
         id: changelog
         continue-on-error: true
         uses: orhun/git-cliff-action@v4
         with:
           config: cliff.toml
-          args: --verbose --latest
-          output: dist/changelog.md
+          args: --verbose --latest --output dist/changelog.md
 
       - name: Append changelog to release notes
         shell: bash
