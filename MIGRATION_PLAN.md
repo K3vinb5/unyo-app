@@ -1,7 +1,8 @@
 # Flutter 3.38.1 → 3.47.7 Migration Plan
 
 Overnight migration executed 2026-10-21/22. This file is the checklist of record.
-Proof of success lives in `../research/flutter-3.47-migration/`.
+Proof of success lived in `../research/flutter-3.47-migration/` (retired 2026-10-26
+with the research/ cleanup; the report's conclusions are recorded in this file).
 
 ## Versions
 
@@ -19,7 +20,7 @@ FVM pin (`.fvmrc`) must be bumped in **unyo-app** and **unyo-lib** together
    - [x] `flutter test` passes on 3.38.1 — N/A, no test files exist in `test/`
    - [x] Linux debug build works on 3.38.1 ✓
    - [x] analyze baseline: 62 issues, 0 errors (`baseline/analyze-3.38.1.log`)
-   - [x] Reference screenshots already exist in `research/unyo-app-screens/` (Oct 21)
+   - [x] Reference screenshots already exist in `unyo-design/screens/` (Oct 21)
 2. **SDK bump** — DONE: `fvm use 3.47.7 --force` in unyo-app + unyo-lib
    (`--force` needed because pub resolution fails until deps are upgraded).
    Existing pubspec env constraints (`sdk: ">=3.10.0 <4.0.0"`,
@@ -64,8 +65,9 @@ FVM pin (`.fvmrc`) must be bumped in **unyo-app** and **unyo-lib** together
    - [x] Theme settings render (dynamic_color 2.1.0)
    - [x] No Hive lock issues across multiple restarts
    - [x] Release binary smoke test passed
-9. **Proof** — DONE: `research/flutter-3.47-migration/` contains REPORT.md,
-   baseline/, logs/, screens/ (16 shots), video/ (5 shots).
+9. **Proof** — DONE: the migration proof bundle (REPORT.md, baseline/, logs/,
+   screens/ 16 shots, video/ 5 shots) was retired in the 2026-10-26 research/
+   cleanup; the report contents summarized above.
 
 ## Known traps (from project memory)
 
