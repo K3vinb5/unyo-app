@@ -515,8 +515,10 @@ jobs:
             dist/SHA256SUMS
 
       # Stable releases only (bump is false for dev/rc and for suffixed test
-      # tags). Opens a PR against `rewrite`; it is never merged here.
-      - name: Open version bump PR
+      # tags). Commits the patch bump straight to `rewrite` — fully automatic,
+      # no PR to merge. `[skip ci]` keeps the bump commit from triggering the
+      # dev lane.
+      - name: Bump version on rewrite
         if: ${{ needs.prepare.outputs.bump == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -525,29 +527,26 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          branch="chore/bump-to-${NEXT_VERSION}"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
-            echo "::notice::$branch already exists — leaving it alone"
-          else
-            git fetch --no-tags origin rewrite
-            git checkout -B "$branch" origin/rewrite
-            # Build number restarts at 1 for the new version.
-            sed -i -E "s/^version:.*/version: ${NEXT_VERSION}+1/" pubspec.yaml
-            git add pubspec.yaml
-            git commit -m "chore: bump version to ${NEXT_VERSION} after release"
-            git push origin "$branch"
+          git fetch --no-tags origin rewrite
+          git checkout -B rewrite origin/rewrite
+          # Build number restarts at 1 for the new version.
+          sed -i -E "s/^version:.*/version: ${NEXT_VERSION}+1/" pubspec.yaml
+          git add pubspec.yaml
+          git commit -m "chore: bump version to ${NEXT_VERSION} after release [skip ci]"
+          # Rebase on whatever landed on rewrite while the release was running,
+          # then push. A rejected push means concurrent commits won the race —
+          # the release itself is already published, so report and move on.
+          if ! git pull --rebase --no-tags origin rewrite; then
+            git rebase --abort || true
+            echo "::warning::bump rebase failed; rewrite moved during release — bump ${NEXT_VERSION} needs a manual commit"
+            exit 0
           fi
-
-          if [ "$(gh pr list --head "$branch" --state all --json number --jq 'length')" = "0" ]; then
-            gh pr create \
-              --base rewrite \
-              --head "$branch" \
-              --title "chore: bump version to ${NEXT_VERSION}" \
-              --body "Automated patch bump after releasing \`${RELEASED_TAG}\`."
-          else
-            echo "::notice::a pull request for $branch already exists — nothing to do"
+          if ! git push origin rewrite; then
+            echo "::warning::bump push rejected; rewrite moved during release — bump ${NEXT_VERSION} needs a manual commit"
+            exit 0
           fi
+          echo "::notice::bumped version to ${NEXT_VERSION}+1 on rewrite after ${RELEASED_TAG}"

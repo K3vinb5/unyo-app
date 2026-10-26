@@ -69,7 +69,7 @@ Releases run through three lanes in `.github/workflows/release.yml`, all version
 
 - **dev** — every merge to `rewrite` publishes `v<base>-dev.<run_number>.g<short_sha>` as a prerelease.
 - **rc / stable** — `workflow_dispatch` with `channel: rc|stable` and an optional `version` (defaults to the pubspec version). rc publishes `v<base>-rc.<run_number>` as a prerelease, stable publishes `v<base>` as a full release. The publish job creates the tag when it does not exist yet (a tag pushed with `GITHUB_TOKEN` would not re-trigger the workflow, so this avoids loops).
-- **Version bump** — after a clean stable release (`X.Y.Z`), the publish job opens a `chore: bump version to X.Y.(Z+1)` PR against `rewrite` (never merged automatically); suffixed tags such as `v0.0.0-ci-test.2` never bump.
+- **Version bump** — after a clean stable release (`X.Y.Z`), the publish job commits `version: X.Y.(Z+1)+1` straight to `rewrite` (`[skip ci]` so it spawns no dev release) — fully automatic, no PR to merge. Suffixed tags such as `v0.0.0-ci-test.2` never bump.
 - **`dry_run`** (default `true`) builds and uploads artifacts without publishing a release. Only the dev lane cancels superseded runs.
 
 `.github/workflows/ci.yml` runs analyze + tests on every push to `rewrite` and every PR. All releases ship **unsigned**. Do not manually edit generated `.g.dart` files before a release tag.
