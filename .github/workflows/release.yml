@@ -552,7 +552,12 @@ jobs:
   publish:
     name: Publish GitHub release
     needs: [prepare, linux, windows, macos]
-    if: ${{ needs.prepare.outputs.publish == 'true' }}
+    # Best effort: publish whatever platforms succeeded — one failing platform
+    # does not block the release, its absence is called out in the release body.
+    # A failed `test` gate skips the build jobs entirely, so a broken merge
+    # still publishes nothing. `!cancelled()` keeps a manual cancel from
+    # publishing a half-built release.
+    if: ${{ !cancelled() && needs.prepare.outputs.publish == 'true' && (needs.linux.result == 'success' || needs.windows.result == 'success' || needs.macos.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -572,6 +577,21 @@ jobs:
           sha256sum Unyo-* > SHA256SUMS
           cat SHA256SUMS
 
+      - name: Compose release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=""
+          [ "${{ needs.linux.result }}" = "success" ] || missing="$missing Linux"
+          [ "${{ needs.windows.result }}" = "success" ] || missing="$missing Windows"
+          [ "${{ needs.macos.result }}" = "success" ] || missing="$missing macOS"
+          if [ -n "$missing" ]; then
+            printf '> [!WARNING]\n> Best-effort release — the %s build(s) failed; no assets for those platforms.\n' "${missing# }" > dist/release-body.md
+          else
+            : > dist/release-body.md
+          fi
+          cat dist/release-body.md
+
       # tag_name comes from the prepare job, so dispatch runs create the tag
       # here (softprops does that when the tag does not exist yet).
       - uses: softprops/action-gh-release@v2
@@ -580,16 +600,18 @@ jobs:
           name: ${{ needs.prepare.outputs.tag }}
           draft: false
           prerelease: ${{ needs.prepare.outputs.prerelease }}
+          body_path: dist/release-body.md
           files: |
             dist/Unyo-*
             dist/SHA256SUMS
 
       # Stable releases only (bump is false for dev/rc and for suffixed test
-      # tags). Commits the patch bump straight to `rewrite` — fully automatic,
-      # no PR to merge. `[skip ci]` keeps the bump commit from triggering the
-      # dev lane.
+      # tags). Requires a COMPLETE release — a best-effort release missing a
+      # platform must not consume the version number. Commits the patch bump
+      # straight to `rewrite` — fully automatic, no PR to merge. `[skip ci]`
+      # keeps the bump commit from triggering the dev lane.
       - name: Bump version on rewrite
-        if: ${{ needs.prepare.outputs.bump == 'true' }}
+        if: ${{ needs.prepare.outputs.bump == 'true' && needs.linux.result == 'success' && needs.windows.result == 'success' && needs.macos.result == 'success' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEXT_VERSION: ${{ needs.prepare.outputs.next_version }}
