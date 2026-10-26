@@ -72,7 +72,7 @@ Releases run through three lanes in `.github/workflows/release.yml`, all version
 - **Version bump** — after a clean stable release (`X.Y.Z`), the publish job commits `version: X.Y.(Z+1)+1` straight to `rewrite` (`[skip ci]` so it spawns no dev release) — fully automatic, no PR to merge. Suffixed tags such as `v0.0.0-ci-test.2` never bump.
 - **`dry_run`** (default `true`) builds and uploads artifacts without publishing a release. Only the dev lane cancels superseded runs.
 
-`.github/workflows/ci.yml` runs analyze + tests on every push to `rewrite` and every PR. All releases ship **unsigned**. Do not manually edit generated `.g.dart` files before a release tag.
+`.github/workflows/ci.yml` runs analyze + tests on every PR only. Post-merge testing is the `test` gate job inside `release.yml` — it runs before any build, so a broken merge produces no dev release. All releases ship **unsigned**. Do not manually edit generated `.g.dart` files before a release tag.
 
 ## Shared Knowledge (unyo-docs)
 
