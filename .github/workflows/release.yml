@@ -1005,7 +1005,21 @@ jobs:
           dir="$RUNNER_TEMP/choco"
           mkdir -p "$dir"
           gh release download "$RELEASED_TAG" --pattern SHA256SUMS --dir "$dir" --clobber
-          if grep -Eq "[[:space:]]\\*?\\./?${asset}$" "$dir/SHA256SUMS"; then
+          # Compare the extracted filename exactly instead of regex-matching the
+          # asset: `sha256sum` writes `<hash>  <name>` (two spaces, sometimes a
+          # leading `*` for binary mode, and a `./` prefix only when the file was
+          # passed with one), so a pattern that requires a literal `.` misses the
+          # real bare-name line. Each line's second field is stripped of `*`/`./`
+          # and compared verbatim, so the dots in the asset name need no escaping.
+          if awk -v want="$asset" '
+            {
+              name = $2
+              sub(/^\*/, "", name)
+              sub(/^\.\//, "", name)
+              if (name == want) found = 1
+            }
+            END { exit(found ? 0 : 1) }
+          ' "$dir/SHA256SUMS"; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
