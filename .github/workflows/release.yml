@@ -311,7 +311,9 @@ jobs:
         shell: pwsh
         run: |
           $jre = "build/windows/x64/runner/Release/jre/customjre"
-          New-Item -ItemType Directory -Force -Path $jre | Out-Null
+          # jlink refuses to write into an existing directory
+          New-Item -ItemType Directory -Force -Path (Split-Path $jre -Parent) | Out-Null
+          if (Test-Path $jre) { Remove-Item -Recurse -Force $jre }
           & "$env:JAVA_HOME\bin\jlink.exe" `
             --module-path "$env:JAVA_HOME\jmods" `
             --add-modules java.base,java.instrument,java.prefs,java.sql,jdk.management,jdk.unsupported,jdk.crypto.cryptoki,jdk.crypto.ec,java.security.jgss,jdk.zipfs `
@@ -456,8 +458,14 @@ jobs:
         run: |
           set -euo pipefail
           brew install create-dmg
+          # flag names differ across create-dmg versions (--no-code-sign was
+          # unknown to the 1.3.0 bottle); pass it only when supported
+          sign_flag=""
+          if create-dmg --help 2>&1 | grep -q -- '--no-code-sign'; then
+            sign_flag="--no-code-sign"
+          fi
           create-dmg \
-            --no-code-sign \
+            ${sign_flag:+$sign_flag} \
             --volname "Unyo-${{ steps.ver.outputs.tag }}-macos" \
             --window-pos 200 120 --window-size 800 450 --icon-size 100 \
             --app-drop-link 600 185 \
