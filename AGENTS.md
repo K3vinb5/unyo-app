@@ -69,7 +69,8 @@ Releases run through three lanes in `.github/workflows/release.yml`, all version
 
 - **dev** — every merge to `rewrite` publishes `v<base>-dev.<run_number>.g<short_sha>` as a prerelease.
 - **rc / stable** — `workflow_dispatch` with `channel: rc|stable` and an optional `version` (defaults to the pubspec version). rc publishes `v<base>-rc.<run_number>` as a prerelease, stable publishes `v<base>` as a full release. The publish job creates the tag when it does not exist yet (a tag pushed with `GITHUB_TOKEN` would not re-trigger the workflow, so this avoids loops).
-- **Version bump** — after a clean stable release (`X.Y.Z`), the publish job commits `version: X.Y.(Z+1)+1` straight to `rewrite` (`[skip ci]` so it spawns no dev release) — fully automatic, no PR to merge. Suffixed tags such as `v0.0.0-ci-test.2` never bump.
+- **Version bump** — after a clean stable release (`X.Y.Z`), the publish job commits `version: X.Y.(Z+1)+1` straight to `rewrite` (`[skip ci]` so it spawns no dev release) — fully automatic, no PR to merge. Suffixed tags such as `v0.0.0-ci-test.2` never bump, and neither does a best-effort release that is missing a platform.
+- **Best-effort publish** — if one platform's build fails, the release is still created with the assets that succeeded; the release body warns which platform is missing. The `test` gate failure still blocks publishing entirely.
 - **`dry_run`** (default `true`) builds and uploads artifacts without publishing a release. Only the dev lane cancels superseded runs.
 
 `.github/workflows/ci.yml` runs analyze + tests on every PR only. Post-merge testing is the `test` gate job inside `release.yml` — it runs before any build, so a broken merge produces no dev release. All releases ship **unsigned**. Do not manually edit generated `.g.dart` files before a release tag.
