@@ -803,3 +803,143 @@ jobs:
             exit 0
           fi
           echo "::notice::bumped version to ${NEXT_VERSION}+1 on rewrite after ${RELEASED_TAG}"
+
+  # Downstream distribution channels (Homebrew cask, AUR, Scoop) each own a Gitea
+  # repo with an update script that pins one release asset. They are bumped here,
+  # after a clean stable release, so a published version never sits behind on
+  # a channel for long.
+  #
+  # This job is deliberately NOT part of the release's critical path: it runs
+  # after `publish` and a failure inside it turns only this job red — the GitHub
+  # release, its assets, checksums, attestation and signature are already out.
+  # A channel whose platform asset is missing from the release is skipped
+  # instead of failed (best-effort releases publish whatever platform built).
+  #
+  # Requires a GITEA_TOKEN secret (a Gitea PAT on gitea.k3vinb5.dev with write
+  # access to Unyo/homebrew-unyo, Unyo/unyo-aur and Unyo/scoop-unyo). Without it
+  # the whole job skips silently, the same policy as the GPG signing step.
+  bump-channels:
+    name: Bump distribution channels (Homebrew, AUR, Scoop)
+    needs: [prepare, publish]
+    # Reuses the prepare job's computed lane/tag — never re-derives the version.
+    # `bump` is true only for lane=stable + publish (not dry_run) + bare X.Y.Z.
+    if: ${{ !cancelled() && needs.publish.result == 'success' && needs.prepare.outputs.lane == 'stable' && needs.prepare.outputs.publish == 'true' && needs.prepare.outputs.bump == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # `secrets` cannot be used directly in a step `if:`; surface presence here.
+      HAS_GITEA_TOKEN: ${{ secrets.GITEA_TOKEN != '' }}
+      RELEASED_TAG: ${{ needs.prepare.outputs.tag }}
+      GITEA_HOST: gitea.k3vinb5.dev/Unyo
+    steps:
+      - name: No Gitea credentials
+        if: ${{ env.HAS_GITEA_TOKEN != 'true' }}
+        shell: bash
+        run: echo "::notice::GITEA_TOKEN is not configured; Homebrew/AUR/Scoop bumps skipped (the release itself is unaffected)"
+
+      # Asset names come from the Package steps above:
+      #   Unyo-<tag>-linux.zip / -linux.AppImage / -linux.deb
+      #   Unyo-<tag>-windows.zip / -windows-setup.exe
+      #   Unyo-<tag>-macos.zip / -macos.dmg
+      # Each channel is gated on its own input asset existing in the release.
+      - name: Detect channel input assets
+        id: assets
+        if: ${{ env.HAS_GITEA_TOKEN == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          names="$(gh release view "$RELEASED_TAG" --json assets --jq '.assets[].name')"
+          printf '%s\n' "$names"
+          for pair in cask:macos.dmg aur:linux.zip scoop:windows.zip; do
+            channel="${pair%%:*}"
+            asset="Unyo-${RELEASED_TAG}-${pair#*:}"
+            if grep -Fxq "$asset" <<< "$names"; then
+              echo "has_${channel}=true" >> "$GITHUB_OUTPUT"
+              echo "ok: $asset present for the ${channel} channel"
+            else
+              echo "has_${channel}=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::${asset} is not in ${RELEASED_TAG}; ${channel} channel left untouched"
+            fi
+          done
+
+      # The token goes into the clone URL (Gitea accepts x-access-token) and is
+      # masked before anything else runs; the clone lives in a temp dir and is
+      # removed on exit, so it never lands in the workspace or the artifact set.
+      - name: Bump Homebrew cask (homebrew-unyo)
+        if: ${{ env.HAS_GITEA_TOKEN == 'true' && steps.assets.outputs.has_cask == 'true' }}
+        continue-on-error: false
+        shell: bash
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$GITEA_TOKEN"
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          git clone --depth 1 "https://x-access-token:${GITEA_TOKEN}@${GITEA_HOST}/homebrew-unyo.git" "$tmp/homebrew-unyo"
+          cd "$tmp/homebrew-unyo"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # update-cask.sh downloads the dmg itself and rewrites the cask.
+          ./update-cask.sh "$RELEASED_TAG"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "::notice::homebrew-unyo already at ${RELEASED_TAG}; nothing to commit"
+            exit 0
+          fi
+          git commit -m "chore: bump unyo to ${RELEASED_TAG}"
+          git push origin HEAD
+
+      - name: Bump AUR package (unyo-aur)
+        if: ${{ env.HAS_GITEA_TOKEN == 'true' && steps.assets.outputs.has_aur == 'true' }}
+        continue-on-error: false
+        shell: bash
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$GITEA_TOKEN"
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          git clone --depth 1 "https://x-access-token:${GITEA_TOKEN}@${GITEA_HOST}/unyo-aur.git" "$tmp/unyo-aur"
+          cd "$tmp/unyo-aur"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # update-pkgbuild.sh pins the linux.zip and refreshes .SRCINFO.
+          ./update-pkgbuild.sh "$RELEASED_TAG"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "::notice::unyo-aur already at ${RELEASED_TAG}; nothing to commit"
+            exit 0
+          fi
+          git commit -m "chore: bump unyo to ${RELEASED_TAG}"
+          git push origin HEAD
+
+      - name: Bump Scoop manifest (scoop-unyo)
+        if: ${{ env.HAS_GITEA_TOKEN == 'true' && steps.assets.outputs.has_scoop == 'true' }}
+        continue-on-error: false
+        shell: bash
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$GITEA_TOKEN"
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          git clone --depth 1 "https://x-access-token:${GITEA_TOKEN}@${GITEA_HOST}/scoop-unyo.git" "$tmp/scoop-unyo"
+          cd "$tmp/scoop-unyo"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # update-manifest.sh [path/to/SHA256SUMS] is optional; without it the
+          # script downloads the checksums from the release itself.
+          ./update-manifest.sh "$RELEASED_TAG"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "::notice::scoop-unyo already at ${RELEASED_TAG}; nothing to commit"
+            exit 0
+          fi
+          git commit -m "chore: bump unyo to ${RELEASED_TAG}"
+          git push origin HEAD
