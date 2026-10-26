@@ -42,7 +42,8 @@ DisableProgramGroupPage=yes
 ; Administrative install mode is required: the VC++ redistributable installer
 ; (see [Code]) needs elevation. Do not lower this to "lowest".
 ; PrivilegesRequired=lowest
-LicenseFile=windows-installer\LICENSE.txt
+; Show the project LICENSE itself — one source of truth, no stale copy.
+LicenseFile=LICENSE
 OutputDir=build\windows\x64\runner
 OutputBaseFilename={#MyAppName}-{#MyAppVersion}-windows-setup
 SetupIconFile=windows\runner\resources\app_icon.ico

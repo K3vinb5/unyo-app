@@ -6,7 +6,7 @@
 <p align="center">A simple desktop app for streaming anime and reading manga.</p>
 
 <p align="center">
-<a href="https://img.shields.io/github/license/K3vinb5/Unyo?style=for-the-badge"><img src="https://img.shields.io/github/license/K3vinb5/Unyo?style=for-the-badge&color=F48041"></a>
+<a href="https://img.shields.io/github/license/K3vinb5/unyo-app?style=for-the-badge"><img src="https://img.shields.io/github/license/K3vinb5/unyo-app?style=for-the-badge&color=F48041"></a>
 <a href="https://img.shields.io/github/v/release/K3vinb5/Unyo?style=for-the-badge"><img src="https://img.shields.io/github/v/release/K3vinb5/Unyo?style=for-the-badge&color=0E80C0"></a>
 <a href="https://img.shields.io/codefactor/grade/github/k3vinb5/unyo?style=for-the-badge&color=03A363"><img src="https://img.shields.io/codefactor/grade/github/k3vinb5/unyo?style=for-the-badge&color=03A363"></a>
 <a href="https://img.shields.io/github/downloads/K3vinb5/Unyo/total.svg?style=for-the-badge"><img src="https://img.shields.io/github/downloads/K3vinb5/Unyo/total.svg?style=for-the-badge&color=CAF979"></a>
@@ -154,7 +154,7 @@ We appreciate your contributions! 😊
 
 ## License
 
-This project is licensed under the **GNU Public License version 3.0**. An extra clause states that you must mention this project if you use any portion of its code.
+This project is licensed under the **BSD 3-Clause License** — see [LICENSE](LICENSE) for the full text.
 This project contains two very small portions of code from [mangayomi](https://github.com/kodjodevf/mangayomi): the torrent server and an audio slider. A big shout-out to the developer!
 
 ## Disclaimer
