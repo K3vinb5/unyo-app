@@ -1,11 +1,20 @@
 // External dependencies
+import 'dart:async';
+import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jni/jni.dart' show JString;
 import 'package:material_ui/material_ui.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:unyo_lib/jmodels/jsanime.dart';
 // Internal dependencies
 import 'package:unyo/application/cubits/anime_details_cubit.dart';
 import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/application/states/anime_details_state.dart';
+import 'package:unyo/domain/entities/media/anime.dart';
+import 'package:unyo/domain/entities/media/anime_details.dart';
+import 'package:unyo/domain/entities/list/media_list_entry.dart';
+import 'package:unyo/domain/entities/media/episode_info.dart';
+import 'package:unyo/domain/entities/media/title.dart';
 import 'package:unyo/core/notification/anime_genres_notifier.dart';
 import 'package:unyo/core/notification/anime_notifier.dart';
 import 'package:unyo/core/notification/episode_info_notifier.dart';
@@ -41,6 +50,9 @@ class MockMediaListEntryNotifier extends Mock implements MediaListEntryNotifier 
 class MockExtensionNotifier extends Mock implements ExtensionNotifier {}
 class MockEpisodesNotifier extends Mock implements EpisodesNotifier {}
 class MockReloadNotifier extends Mock implements ReloadNotifier {}
+
+class MockJSAnime extends Mock implements JSAnime {}
+class MockJString extends Mock implements JString {}
 
 void main() {
   late AnimeDetailsCubit cubit;
@@ -97,6 +109,8 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     registerFallbackValue(UserModel.empty());
     registerFallbackValue(ExtensionModel.empty());
+    registerFallbackValue(AnimeModel.empty());
+    registerFallbackValue(MediaListEntryModel.empty());
   });
 
   setUp(() async {
@@ -174,6 +188,137 @@ void main() {
         isTrue,
       );
       expect(snackbars.any((effect) => effect.title.contains('null')), isFalse);
+    });
+  });
+
+  group('AnimeDetailsCubit.selectAnimeExtension', () {
+    const String userPreferredTitle = 'Kusuriya no Hitorigoto 3rd Season';
+    const String englishTitle = 'The Apothecary Diaries Season 3';
+    const String nativeTitle = '薬屋のひとりごと 第3期';
+    const String romajiTitle = 'Kusuriya no Hitorigoto 3rd Season';
+
+    final AnimeModel testAnime = AnimeModel.empty().copyWith(
+      id: 170942,
+      idMal: 58514,
+      title: const TitleModel(
+        romaji: romajiTitle,
+        english: englishTitle,
+        nativeTitle: nativeTitle,
+        userPreferred: userPreferredTitle,
+      ),
+    );
+
+    late StreamController<Anime> animeStreamController;
+
+    MockJSAnime mockAnimeWithTitle(String title) {
+      final MockJSAnime anime = MockJSAnime();
+      final MockJString jTitle = MockJString();
+      when(() => jTitle.toDartString()).thenReturn(title);
+      when(() => anime.getTitle()).thenReturn(jTitle);
+      return anime;
+    }
+
+    /// Puts a real anime into the cubit state the way the details page does, and
+    /// stubs every repository/notifier call the stream listener fans out to, so
+    /// no unrelated path can leak a MissingStubError into the effects.
+    Future<void> emitAnimeIntoState() async {
+      animeStreamController = StreamController<Anime>.broadcast();
+      addTearDown(animeStreamController.close);
+      when(() => animeNotifier.animeStream).thenAnswer((_) => animeStreamController.stream);
+      when(() => animeRepository.getAnimeDetails(any(), any()))
+          .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
+      when(() => animeRepository.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (false, <Anime>[]));
+      when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => <String>[]);
+      when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => <EpisodeInfo>[]);
+      when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => '');
+      when(() => episodesInfoNotifier.updateSelectedEpisodeInfo(any())).thenReturn(null);
+      when(() => mediaListEntryNotifier.updateSelectedMediaListEntry(any())).thenReturn(null);
+      when(() => extensionNotifier.updateSelectedExtension(any())).thenReturn(null);
+      when(() => episodesNotifier.updateSelectedJSEpisodes(any())).thenReturn(null);
+      when(() => extensionRepository.getInstalledAnimeExtensions(any()))
+          .thenAnswer((_) async => <Extension>{testExtension});
+
+      cubit = buildCubit();
+      await pumpEventQueue();
+      animeStreamController.add(testAnime);
+      await pumpEventQueue();
+      expect(cubit.state.selectedAnime.title.userPreferred, userPreferredTitle);
+    }
+
+    test('warns with the extension name when the extension has no results after all title fallbacks (no leaked Bad state)', () async {
+      when(() => extensionRepository.getAnimeSearchResults(any(), any())).thenAnswer((_) async => []);
+      await emitAnimeIntoState();
+
+      await cubit.selectAnimeExtension(testExtension.name);
+      await pumpEventQueue();
+
+      final List<ShowSnackbarEffect> snackbars = snackbarsOf(cubit.state);
+      final List<String> rendered = snackbars.map((effect) => '${effect.title} / ${effect.message}').toList();
+      expect(
+        snackbars.any(
+          (effect) =>
+              effect.title == testExtension.name &&
+              effect.message == 'No results found in ${testExtension.name} for $userPreferredTitle' &&
+              effect.contentType == ContentType.warning,
+        ),
+        isTrue,
+        reason: 'expected the designed no-results warning, got: $rendered',
+      );
+      expect(
+        snackbars.any((effect) => effect.title == 'Something went wrong'),
+        isFalse,
+        reason: 'no failure snackbar should be raised for an empty result set, got: $rendered',
+      );
+      expect(
+        snackbars.any((effect) => effect.message.contains('Bad state')),
+        isFalse,
+        reason: 'the empty result set must not leak StateError: Bad state, got: $rendered',
+      );
+      expect(
+        snackbars.any((effect) => effect.message.contains('Error fetching Anime Info')),
+        isFalse,
+        reason: 'no error path should be taken for an empty result set, got: $rendered',
+      );
+
+      expect(cubit.state.extensionAnimeResults, isEmpty);
+      expect(cubit.state.selectedAnimeResultIndex, 0);
+
+      final List<String> queries = verify(
+        () => extensionRepository.getAnimeSearchResults(captureAny(), any()),
+      ).captured.cast<String>();
+      expect(queries, hasLength(4));
+      expect(queries, containsAll(<String>[userPreferredTitle, englishTitle, nativeTitle, romajiTitle]));
+    });
+
+    test('selects the best fuzzy match and shows Found: when results exist', () async {
+      final MockJSAnime unrelated = mockAnimeWithTitle('Unrelated Show');
+      final MockJSAnime match = mockAnimeWithTitle(userPreferredTitle);
+      when(() => extensionRepository.getAnimeSearchResults(any(), any()))
+          .thenAnswer((_) async => <JSAnime>[unrelated, match]);
+      await emitAnimeIntoState();
+
+      await cubit.selectAnimeExtension(testExtension.name);
+      await pumpEventQueue();
+
+      final List<ShowSnackbarEffect> snackbars = snackbarsOf(cubit.state);
+      final List<String> rendered = snackbars.map((effect) => '${effect.title} / ${effect.message}').toList();
+      expect(
+        snackbars.any(
+          (effect) =>
+              effect.title == testExtension.name &&
+              effect.message.startsWith('Found: ') &&
+              effect.contentType == ContentType.success,
+        ),
+        isTrue,
+        reason: 'expected a Found: success snackbar, got: $rendered',
+      );
+      expect(cubit.state.extensionAnimeResults, hasLength(2));
+      expect(cubit.state.selectedAnimeResultIndex, 1);
+      expect(snackbars.any((effect) => effect.title == 'Something went wrong'), isFalse, reason: rendered.join('; '));
     });
   });
 }

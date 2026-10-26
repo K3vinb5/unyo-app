@@ -563,6 +563,9 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   }
 
   Future<int> _fuzzySelectAnimeResultIndex(List<JSAnime> animeResults) async {
+    // No candidates to score; 0 is the canonical index for an empty result set
+    // (consumers guard on state.extensionAnimeResults.isEmpty before using it).
+    if (animeResults.isEmpty) return 0;
     Set<String> animeTitles = {
       state.selectedAnime.title.userPreferred.toLowerCase(),
       if (state.selectedAnime.title.english.isNotEmpty)
