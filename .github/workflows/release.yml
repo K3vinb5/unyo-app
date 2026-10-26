@@ -1,0 +1,403 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build every package and upload artifacts, but do not publish a GitHub release'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  UNYO_LIB_URL: https://gitea.k3vinb5.dev/Unyo/unyo-lib.git
+
+jobs:
+  linux:
+    name: Linux (zip, AppImage, deb)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # See .github/workflows/ci.yml for why the git dependency is vendored with
+      # a shallow sibling checkout instead of being resolved by pub directly.
+      - name: Vendor unyo_lib for pub resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 "$UNYO_LIB_URL" ../unyo-lib
+          printf 'dependency_overrides:\n  unyo_lib:\n    path: ../unyo-lib\n' > pubspec_overrides.yaml
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: .fvmrc
+          cache: true
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="${{ github.ref_name }}"
+          if [[ "$ref" == v* ]]; then
+            tag="$ref"; version="${ref#v}"
+          else
+            tag="v0.0.0-dev.${{ github.run_number }}"; version="0.0.0-dev.${{ github.run_number }}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build_name=${version%%-*}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Linux build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libfuse2
+
+      - name: Install project dependencies
+        run: flutter pub get
+
+      - name: Generate code
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Build
+        run: >-
+          flutter build linux --release
+          --build-name "${{ steps.ver.outputs.build_name }}"
+          --build-number "${{ github.run_number }}"
+
+      - name: Copy custom JRE into bundle
+        run: bash scripts/copy_jre.sh linux
+
+      - name: Package zip
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cd build/linux/x64/release/bundle
+          zip -r -y "$GITHUB_WORKSPACE/dist/Unyo-${{ steps.ver.outputs.tag }}-linux.zip" .
+
+      - name: Package AppImage
+        run: |
+          set -euo pipefail
+          cp -r linux-appimage/Unyo.AppDir dist/Unyo.AppDir
+          cp -r build/linux/x64/release/bundle/. dist/Unyo.AppDir/
+          cp linux-appimage/appimagetool.AppImage dist/appimagetool.AppImage
+          chmod 755 dist/appimagetool.AppImage
+          ARCH=x86_64 ./dist/appimagetool.AppImage \
+            dist/Unyo.AppDir "dist/Unyo-${{ steps.ver.outputs.tag }}-linux.AppImage"
+          rm -rf dist/Unyo.AppDir dist/appimagetool.AppImage
+
+      - name: Package deb
+        run: |
+          set -euo pipefail
+          tag="${{ steps.ver.outputs.tag }}"
+          version="${{ steps.ver.outputs.version }}"
+          root="dist/deb-root"
+          mkdir -p "$root/DEBIAN" "$root/usr/lib/unyo" "$root/usr/bin" \
+                   "$root/usr/share/applications" "$root/usr/share/icons/hicolor/512x512/apps"
+          cp -r build/linux/x64/release/bundle/. "$root/usr/lib/unyo/"
+          ln -s /usr/lib/unyo/unyo "$root/usr/bin/unyo"
+          cp linux-appimage/Unyo.AppDir/Unyo.desktop "$root/usr/share/applications/unyo.desktop"
+          # Unyo.desktop refers to Icon=logo
+          cp linux-appimage/logo.png "$root/usr/share/icons/hicolor/512x512/apps/logo.png"
+          {
+            echo "Package: unyo"
+            echo "Version: $version"
+            echo "Architecture: amd64"
+            echo "Maintainer: Kevin Borges <k3vinb5@users.noreply.github.com>"
+            echo "Section: video"
+            echo "Priority: optional"
+            echo "Installed-Size: $(du -sk "$root/usr" | cut -f1)"
+            echo "Description: Anime streaming and manga reader desktop app"
+            echo " Unyo is an ad-free anime streaming and manga reader for the desktop."
+          } > "$root/DEBIAN/control"
+          dpkg-deb --root-owner-group --build "$root" "dist/Unyo-$tag-linux.deb"
+          rm -rf "$root"
+          deb_version=$(dpkg-deb -f "dist/Unyo-$tag-linux.deb" Version)
+          echo "deb Version: $deb_version"
+          if [ "$deb_version" != "$version" ]; then
+            echo "::error::deb Version '$deb_version' does not match tag version '$version'"
+            exit 1
+          fi
+
+      - name: Checksums
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum Unyo-* > SHA256SUMS
+          cat SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-dist
+          if-no-files-found: error
+          path: |
+            dist/Unyo-*
+            dist/SHA256SUMS
+
+  windows:
+    name: Windows (zip, Inno setup)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vendor unyo_lib for pub resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 "$UNYO_LIB_URL" ../unyo-lib
+          printf 'dependency_overrides:\n  unyo_lib:\n    path: ../unyo-lib\n' > pubspec_overrides.yaml
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: .fvmrc
+          cache: true
+
+      # JDK 17 is needed twice: the jni plugin's CMake build links against
+      # jvm.lib, and jlink produces the custom JRE below.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="${{ github.ref_name }}"
+          if [[ "$ref" == v* ]]; then
+            tag="$ref"; version="${ref#v}"
+          else
+            tag="v0.0.0-dev.${{ github.run_number }}"; version="0.0.0-dev.${{ github.run_number }}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build_name=${version%%-*}" >> "$GITHUB_OUTPUT"
+
+      - name: Install project dependencies
+        run: flutter pub get
+
+      - name: Generate code
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Build
+        run: >-
+          flutter build windows --release
+          --build-name "${{ steps.ver.outputs.build_name }}"
+          --build-number "${{ github.run_number }}"
+
+      - name: Build custom JRE (jlink)
+        shell: pwsh
+        run: |
+          $jre = "build/windows/x64/runner/Release/jre/customjre"
+          New-Item -ItemType Directory -Force -Path $jre | Out-Null
+          & "$env:JAVA_HOME\bin\jlink.exe" `
+            --module-path "$env:JAVA_HOME\jmods" `
+            --add-modules java.base,java.instrument,java.prefs,java.sql,jdk.management,jdk.unsupported,jdk.crypto.cryptoki,jdk.crypto.ec,java.security.jgss,jdk.zipfs `
+            --output $jre `
+            --strip-debug --no-man-pages --no-header-files --compress=2
+
+      # unyo_lib ships no Windows JRE, so the platform bits that live in
+      # jre/<os>/customjre/lib/server on linux/macos are assembled here.
+      - name: Add Dart-JNI bits to the Windows JRE
+        shell: bash
+        run: |
+          set -euo pipefail
+          release="build/windows/x64/runner/Release"
+          server="$release/jre/customjre/lib/server"
+          mkdir -p "$server"
+          # dartjni.dll: built by the jni plugin's MSVC build during
+          # `flutter build windows` and shipped next to the exe.
+          cp "$release/dartjni.dll" "$server/dartjni.dll"
+          # jni.jar: pure Java, identical on every platform — take it from the
+          # unyo_lib checkout.
+          unyo_lib=$(bash scripts/copy_jre.sh --unyo-lib-dir)
+          cp "$unyo_lib/jre/linux/customjre/lib/server/jni.jar" "$server/jni.jar"
+          # jvm.dll sits in bin/server after jlink; mirror it into lib/server the
+          # way linux/macos put libjvm there.
+          cp "$release/jre/customjre/bin/server/jvm.dll" "$server/jvm.dll"
+
+      # Loud check rather than a silent skip: the Windows JRE bundle is
+      # assembled here and must at least be complete before we ship it. NOTE:
+      # the JVM is located by the delay-loaded jvm.dll at runtime, which is not
+      # verified by this workflow (no Windows JRE exists upstream to compare
+      # against) — see the PR description.
+      - name: Verify Windows JRE bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          server="build/windows/x64/runner/Release/jre/customjre/lib/server"
+          missing=0
+          for file in jni.jar dartjni.dll jvm.dll; do
+            if [ -f "$server/$file" ]; then
+              echo "ok: $server/$file"
+            else
+              echo "::error::missing $server/$file"
+              missing=1
+            fi
+          done
+          if [ ! -f "build/windows/x64/runner/Release/jre/customjre/bin/java.dll" ]; then
+            echo "::error::jlink output looks incomplete (bin/java.dll missing)"
+            missing=1
+          fi
+          echo "::warning::Windows JRE runtime loading (delay-loaded jvm.dll) is not verified by this workflow"
+          exit $missing
+
+      - name: Package zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" `
+            -DestinationPath "dist\Unyo-${{ steps.ver.outputs.tag }}-windows.zip"
+
+      - name: Build Windows installer (Inno Setup)
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.4
+        with:
+          path: windows-inno-script.iss
+          options: /O+ /dMyAppVersion=${{ steps.ver.outputs.tag }}
+
+      - name: Collect installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=$(ls build/windows/x64/runner/unyo-*-windows-setup.exe | head -n 1)
+          cp "$src" "dist/Unyo-${{ steps.ver.outputs.tag }}-windows-setup.exe"
+          ls -l dist
+
+      - name: Checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum Unyo-* > SHA256SUMS
+          cat SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-dist
+          if-no-files-found: error
+          path: |
+            dist/Unyo-*
+            dist/SHA256SUMS
+
+  macos:
+    name: macOS (zip, dmg)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vendor unyo_lib for pub resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 "$UNYO_LIB_URL" ../unyo-lib
+          printf 'dependency_overrides:\n  unyo_lib:\n    path: ../unyo-lib\n' > pubspec_overrides.yaml
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: .fvmrc
+          cache: true
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref="${{ github.ref_name }}"
+          if [[ "$ref" == v* ]]; then
+            tag="$ref"; version="${ref#v}"
+          else
+            tag="v0.0.0-dev.${{ github.run_number }}"; version="0.0.0-dev.${{ github.run_number }}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build_name=${version%%-*}" >> "$GITHUB_OUTPUT"
+
+      - name: Install project dependencies
+        run: flutter pub get
+
+      - name: Generate code
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Build
+        run: >-
+          flutter build macos --release
+          --build-name "${{ steps.ver.outputs.build_name }}"
+          --build-number "${{ github.run_number }}"
+
+      - name: Copy custom JRE into bundle
+        run: bash scripts/copy_jre.sh macos
+
+      - name: Package zip
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cd build/macos/Build/Products/Release
+          zip -r -y "$GITHUB_WORKSPACE/dist/Unyo-${{ steps.ver.outputs.tag }}-macos.zip" unyo.app
+
+      - name: Package dmg
+        run: |
+          set -euo pipefail
+          brew install create-dmg
+          create-dmg \
+            --no-code-sign \
+            --volname "Unyo-${{ steps.ver.outputs.tag }}-macos" \
+            --window-pos 200 120 --window-size 800 450 --icon-size 100 \
+            --app-drop-link 600 185 \
+            "dist/Unyo-${{ steps.ver.outputs.tag }}-macos.dmg" \
+            build/macos/Build/Products/Release/unyo.app
+
+      - name: Checksums
+        run: |
+          set -euo pipefail
+          cd dist
+          shasum -a 256 Unyo-* > SHA256SUMS
+          cat SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dist
+          if-no-files-found: error
+          path: |
+            dist/Unyo-*
+            dist/SHA256SUMS
+
+  publish:
+    name: Publish GitHub release
+    needs: [linux, windows, macos]
+    if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Regenerate checksums over every asset
+        run: |
+          set -euo pipefail
+          cd dist
+          find . -name SHA256SUMS -delete
+          sha256sum Unyo-* > SHA256SUMS
+          cat SHA256SUMS
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            dist/Unyo-*
+            dist/SHA256SUMS
