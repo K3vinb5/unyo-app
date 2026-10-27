@@ -58,20 +58,5 @@ class ShowSnackbarEffect extends AppEffect {
   final String message;
   final ContentType contentType;
 
-  /// Optional call to action, rendered as a button inside the banner.
-  final String? actionLabel;
-  final void Function()? onAction;
-
-  /// How long the banner stays on screen before hiding itself. Defaults to the
-  /// handler's per-contentType duration when null.
-  final Duration? duration;
-
-  ShowSnackbarEffect(
-    this.title, {
-    required this.message,
-    required this.contentType,
-    this.actionLabel,
-    this.onAction,
-    this.duration,
-  });
+  ShowSnackbarEffect(this.title, {required this.message, required this.contentType});
 }

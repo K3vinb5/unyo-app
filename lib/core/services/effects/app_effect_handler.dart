@@ -117,9 +117,6 @@ class AppEffectHandler {
     ShowSnackbarEffect effect,
   ) {
     _logger.d("Handling ShowSnackbarEffect");
-    final messenger = ScaffoldMessenger.of(context);
-    final actionLabel = effect.actionLabel;
-    final onAction = effect.onAction;
     final snackBar = MaterialBanner(
       elevation: double.maxFinite,
       backgroundColor: Colors.transparent,
@@ -130,31 +127,15 @@ class AppEffectHandler {
         contentType: effect.contentType,
         inMaterialBanner: true,
       ),
-      actions: actionLabel == null || onAction == null
-          ? const [SizedBox.shrink()]
-          : [
-              TextButton(
-                onPressed: () {
-                  messenger.hideCurrentMaterialBanner();
-                  onAction();
-                },
-                child: Text(actionLabel),
-              ),
-              IconButton(
-                onPressed: messenger.hideCurrentMaterialBanner,
-                icon: const Icon(Icons.close_rounded),
-                tooltip: "Dismiss",
-              ),
-            ],
+      actions: const [SizedBox.shrink()],
     );
 
     timer.cancel();
-    messenger
+    ScaffoldMessenger.of(context)
       ..hideCurrentMaterialBanner()
       ..showMaterialBanner(snackBar);
-    final duration = effect.duration ?? Duration(seconds: effect.contentType == ContentType.success ? 1 : 3);
-    timer = Timer(duration, () {
-      messenger.hideCurrentMaterialBanner();
+    timer = Timer(Duration(seconds: effect.contentType == ContentType.success ? 1 : 3), () {
+      ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
     });
   }
 
