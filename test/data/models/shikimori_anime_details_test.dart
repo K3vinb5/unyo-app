@@ -48,14 +48,14 @@ void main() {
   }
 
   ShikimoriAnimeDetailsModel mapRelated(List<AnimeDetailsQueryAnimesRelated> related) {
-    final animeDetails = AnimeDetailsQueryAnimes()..related = related;
-    final query = AnimeDetailsQueryEntity()..animes = [animeDetails];
+    final AnimeDetailsQueryAnimes animeDetails = AnimeDetailsQueryAnimes()..related = related;
+    final AnimeDetailsQueryEntity query = AnimeDetailsQueryEntity()..animes = [animeDetails];
     return ShikimoriAnimeDetailsModel.fromAnimeDetailsQuery(query);
   }
 
   group('ShikimoriAnimeDetailsModel related mapping', () {
     test('keeps real anime relations and drops manga relations', () {
-      final details = mapRelated([mangaRelation(), animeRelation(realAnime())]);
+      final ShikimoriAnimeDetailsModel details = mapRelated([mangaRelation(), animeRelation(realAnime())]);
 
       expect(details.recommendedAnimes, hasLength(1));
       expect(details.recommendedAnimes.single.id, 42);
@@ -64,13 +64,13 @@ void main() {
     });
 
     test('manga-only relations produce no recommended anime at all', () {
-      final details = mapRelated([mangaRelation(), mangaRelation()]);
+      final ShikimoriAnimeDetailsModel details = mapRelated([mangaRelation(), mangaRelation()]);
 
       expect(details.recommendedAnimes, isEmpty);
     });
 
     test('legacy "0" id snapshot is skipped', () {
-      final details = mapRelated([
+      final ShikimoriAnimeDetailsModel details = mapRelated([
         animeRelation(realAnime(id: '0')),
         animeRelation(realAnime()),
       ]);
@@ -80,13 +80,13 @@ void main() {
     });
 
     test('whitespace-only id is treated as an absent anime payload', () {
-      final details = mapRelated([animeRelation(realAnime(id: '   '))]);
+      final ShikimoriAnimeDetailsModel details = mapRelated([animeRelation(realAnime(id: '   '))]);
 
       expect(details.recommendedAnimes, isEmpty);
     });
 
     test('default DTOs still map a usable media list entry and characters', () {
-      final details = mapRelated([mangaRelation()]);
+      final ShikimoriAnimeDetailsModel details = mapRelated([mangaRelation()]);
 
       expect(details.mediaListEntry.progress, 0);
       expect(details.characters, isEmpty);

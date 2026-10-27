@@ -178,7 +178,7 @@ abstract class ShikimoriAnimeModel with _$ShikimoriAnimeModel implements Anime {
 /// `Anime(id: 0, idMal: 0, title: '')` card. `'0'` is the same kind of legacy
 /// empty sentinel the `malId` parser guards against.
 bool isRealRelatedAnime(AnimeDetailsQueryAnimesRelatedAnime anime) {
-  final id = anime.id.trim();
+  final String id = anime.id.trim();
   return id.isNotEmpty && id != '0';
 }
 
