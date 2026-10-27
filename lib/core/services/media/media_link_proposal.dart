@@ -1,5 +1,14 @@
 import 'package:unyo/core/enums/service.dart';
-import 'package:unyo/domain/services/media_id_resolver.dart';
+import 'package:unyo/core/services/media/media_link_candidate.dart';
+
+/// Cache/dedup key for one entry of one provider pair: prompting is gated per
+/// entry, per app session.
+String mediaLinkEntryKey({
+  required Service source,
+  required String nativeId,
+  required Service target,
+}) =>
+    '${source.name}:$nativeId->${target.name}';
 
 /// A pending "which of these is it?" question for the link-confirmation dialog.
 ///
@@ -16,7 +25,6 @@ class MediaLinkProposal {
   final Service sourceService;
 
   final String sourceNativeId;
-  final bool isAnime;
   final List<MediaLinkCandidate> candidates;
 
   const MediaLinkProposal({
@@ -25,9 +33,11 @@ class MediaLinkProposal {
     required this.sourceService,
     required this.sourceNativeId,
     required this.candidates,
-    this.isAnime = true,
   });
 
-  /// Cache/dedup key: prompting is gated per entry, per app session.
-  String get entryKey => '${sourceService.name}:$sourceNativeId->${metadataService.name}';
+  String get entryKey => mediaLinkEntryKey(
+        source: sourceService,
+        nativeId: sourceNativeId,
+        target: metadataService,
+      );
 }

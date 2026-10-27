@@ -32,7 +32,10 @@ import 'package:unyo/domain/entities/extension/extension.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
 import 'package:unyo/domain/repositories/episode_repository.dart';
-import 'package:unyo/domain/services/media_link_exception.dart';
+import 'package:unyo/core/services/media/media_id_service.dart';
+import 'package:unyo/core/services/media/media_link_exception.dart';
+import 'package:unyo/domain/repositories/media_id_cache.dart';
+
 import '../../core/di/locator.dart' show setupTestLocator;
 
 class MockBuildContext extends Mock implements BuildContext {}
@@ -104,6 +107,7 @@ void main() {
       extensionNotifier,
       episodesNotifier,
       reloadNotifier,
+      MediaIdService(cache: InMemoryMediaIdCache()),
     );
   }
 

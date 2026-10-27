@@ -28,7 +28,7 @@ import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
 import 'package:unyo/core/services/video/video_service.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
-import 'package:unyo/domain/services/media_link_exception.dart';
+import 'package:unyo/core/services/media/media_link_exception.dart';
 import 'package:unyo/data/repositories/extension_repository_aniyomi.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/episode_info.dart';

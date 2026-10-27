@@ -5,7 +5,6 @@ import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_manga_model.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
-import 'package:unyo/domain/services/media_id_resolver.dart';
 
 /// Which provider produced a media record.
 ///
@@ -76,18 +75,7 @@ int? yearOfStartDate(String startDate) {
   return int.tryParse(parts[2]);
 }
 
-/// Title-search input for the MAL-pivot chain, built from a provider record.
-MediaLinkQuery mediaLinkQueryForAnime(Anime anime, {bool isAnime = true}) {
-  final String preferred = anime.title.userPreferred.isNotEmpty ? anime.title.userPreferred : anime.title.romaji;
-  return MediaLinkQuery(
-    title: preferred,
-    alternativeTitles: <String>[
-      anime.title.english,
-      anime.title.romaji,
-      anime.title.nativeTitle,
-    ].where((title) => title.isNotEmpty).toList(),
-    year: yearOfStartDate(anime.startDate),
-    isAnime: isAnime,
-    format: anime.format,
-  );
-}
+/// Title used by the heuristic title-search stage of the MAL-pivot chain.
+String animeSearchTitle(Anime anime) =>
+    anime.title.userPreferred.isNotEmpty ? anime.title.userPreferred : anime.title.romaji;
+

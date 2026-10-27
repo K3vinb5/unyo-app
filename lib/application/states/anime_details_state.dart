@@ -11,7 +11,6 @@ import 'package:unyo/domain/entities/media/media_character.dart';
 import 'package:unyo/domain/entities/list/media_list.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/user/user.dart';
-import 'package:unyo/domain/services/media_link_proposal.dart';
 
 part 'anime_details_state.freezed.dart';
 
@@ -39,8 +38,6 @@ abstract class AnimeDetailsState with _$AnimeDetailsState implements HasEffects{
     required int selectedAnimeResultIndex,
     required List<JSEpisode> extensionEpisodeResults,
     required List<ext.Video> extensionVideoResults,
-    /// Pending "which entry is this?" question from the MAL-pivot chain.
-    MediaLinkProposal? mediaLinkProposal,
     /// True when the opened record could not be matched to the metadata
     /// provider, so the page shows user-provider details and offers the manual
     /// relink action.

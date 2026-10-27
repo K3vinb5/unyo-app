@@ -30,9 +30,11 @@ import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
 import 'package:unyo/domain/repositories/episode_repository.dart';
-import 'package:unyo/domain/services/id_mapping.dart';
-import 'package:unyo/domain/services/media_id_cache.dart';
-import 'package:unyo/domain/services/media_id_resolver.dart';
+import 'package:unyo/domain/repositories/media_id_cache.dart';
+import 'package:unyo/core/services/media/media_id_service.dart';
+import 'package:unyo/core/services/media/media_link_candidate.dart';
+import 'package:unyo/core/services/media/media_link_proposal.dart';
+import 'package:unyo/presentation/widgets/media_link_dialog.dart';
 import '../../core/di/locator.dart' show setupTestLocator;
 
 class MockAnimeRepository extends Mock implements AnimeRepository {}
@@ -76,7 +78,7 @@ class FakeMediaMappingLookup implements MediaMappingLookup {
   }
 
   @override
-  Future<List<MediaLinkCandidate>> searchCandidates(Service target, MediaLinkQuery query) async {
+  Future<List<MediaLinkCandidate>> searchCandidates(Service target, String title) async {
     searchCalls++;
     return searchResults;
   }
@@ -118,6 +120,9 @@ void main() {
   List<ShowWidgetDialogEffect> dialogsOf(AnimeDetailsState state) =>
       state.effects.whereType<ShowWidgetDialogEffect>().toList();
 
+  MediaLinkProposal proposalOf(AnimeDetailsState state) =>
+      (dialogsOf(state).last.dialog as MediaLinkDialog).proposal;
+
   Future<void> openDetails({Anime? anime}) async {
     userStreamController.add(testUser);
     await pumpEventQueue();
@@ -134,7 +139,6 @@ void main() {
   });
 
   setUp(() async {
-    AnimeDetailsCubit.resetPromptedMediaLinks();
     await setupTestLocator();
     cache = InMemoryMediaIdCache();
     mappingLookup = FakeMediaMappingLookup();
@@ -196,7 +200,7 @@ void main() {
       extensionNotifier,
       episodesNotifier,
       reloadNotifier,
-      mediaIdResolver: MediaIdResolver(cache: cache, mappingLookup: mappingLookup),
+      MediaIdService(cache: cache, mappingLookup: mappingLookup),
     );
     await pumpEventQueue();
   });
@@ -230,12 +234,13 @@ void main() {
       await openDetails();
 
       final AnimeDetailsState state = cubit.state;
-      expect(state.mediaLinkProposal, isNotNull);
-      expect(state.mediaLinkProposal!.userService, Service.anilist);
-      expect(state.mediaLinkProposal!.metadataService, Service.shikimori);
-      expect(state.mediaLinkProposal!.sourceNativeId, '4242');
-      expect(state.mediaLinkProposal!.candidates, hasLength(2));
-      expect(state.mediaLinkProposal!.candidates.first.nativeId, '55555', reason: 'best-first order preserved');
+      expect(dialogsOf(state), hasLength(1), reason: 'the dialog must be raised exactly once for this entry');
+      final MediaLinkProposal proposal = proposalOf(state);
+      expect(proposal.userService, Service.anilist);
+      expect(proposal.metadataService, Service.shikimori);
+      expect(proposal.sourceNativeId, '4242');
+      expect(proposal.candidates, hasLength(2));
+      expect(proposal.candidates.first.nativeId, '55555', reason: 'best-first order preserved');
       expect(state.mediaLinkUnresolved, isTrue);
       expect(dialogsOf(state), hasLength(1), reason: 'the dialog must be raised exactly once for this entry');
       expect(mappingLookup.searchCalls, 1);
@@ -246,14 +251,13 @@ void main() {
       mappingLookup.searchResults = candidates();
       await openDetails();
 
-      await cubit.confirmMediaLink(cubit.state.mediaLinkProposal!.candidates.first);
+      await cubit.confirmMediaLink(candidates().first);
       await pumpEventQueue();
 
       final IdMapping? link = await cache.getByNativeId(Service.shikimori, '55555');
       expect(link, isNotNull);
       expect(link!.state, IdMappingState.confirmed);
       expect(link.malId, 58514);
-      expect(cubit.state.mediaLinkProposal, isNull);
       expect(cubit.state.mediaLinkUnresolved, isFalse);
       expect(mappingLookup.searchCalls, 1, reason: 'the confirmed link is reused by the refetch');
       final List<Service?> services = verify(
@@ -269,14 +273,12 @@ void main() {
       await cubit.declineMediaLink();
       await pumpEventQueue();
 
-      expect(cubit.state.mediaLinkProposal, isNull);
       expect(cubit.state.mediaLinkUnresolved, isTrue);
       final IdMapping? row = await cache.getByNativeId(Service.anilist, '4242');
       expect(row!.state, IdMappingState.unresolved);
 
       await openDetails();
 
-      expect(cubit.state.mediaLinkProposal, isNull);
       expect(dialogsOf(cubit.state), hasLength(1), reason: 'one prompt per entry per session');
       expect(mappingLookup.searchCalls, 1, reason: 'the in-session unresolved row short-circuits the chain');
     });
@@ -288,14 +290,12 @@ void main() {
       cubit.dismissMediaLink();
       await pumpEventQueue();
 
-      expect(cubit.state.mediaLinkProposal, isNull);
       expect(cubit.state.mediaLinkUnresolved, isTrue);
       expect(await cache.getByNativeId(Service.anilist, '4242'), isNull, reason: 'dismiss caches nothing');
 
       await openDetails();
 
-      expect(cubit.state.mediaLinkProposal, isNull);
-      expect(dialogsOf(cubit.state), hasLength(1));
+      expect(dialogsOf(cubit.state), hasLength(1), reason: 'a dismissal is not a nag');
       final List<Service?> services = verify(
         () => animeRepository.getAnimeDetails(any(), any(), service: captureAny(named: 'service')),
       ).captured.cast<Service?>();
@@ -313,7 +313,7 @@ void main() {
       await cubit.requestMediaLink();
       await pumpEventQueue();
 
-      expect(cubit.state.mediaLinkProposal, isNotNull);
+      expect(proposalOf(cubit.state), isNotNull);
       expect(dialogsOf(cubit.state), hasLength(2), reason: 'the manual action reopens the dialog');
     });
   });

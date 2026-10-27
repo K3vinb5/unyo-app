@@ -3,8 +3,7 @@ import 'package:hive_ce/hive.dart';
 
 // Internal dependencies
 import 'package:unyo/core/enums/service.dart';
-import 'package:unyo/domain/services/id_mapping.dart';
-import 'package:unyo/domain/services/media_id_cache.dart';
+import 'package:unyo/domain/repositories/media_id_cache.dart';
 
 /// Hive-backed [MediaIdCache]. Own box, opened on first use (the box is not
 /// registered as an adapter-backed type — rows are plain maps so the cache can

@@ -12,9 +12,8 @@ import 'package:unyo/domain/entities/media/anime_details.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
-import 'package:unyo/domain/services/id_mapping.dart';
-import 'package:unyo/domain/services/media_id_resolver.dart';
-import 'package:unyo/domain/services/media_link_exception.dart';
+import 'package:unyo/core/services/media/media_id_service.dart';
+import 'package:unyo/core/services/media/media_link_exception.dart';
 
 /// Factory that resolves the correct [AnimeRepository] implementation.
 ///
@@ -30,7 +29,7 @@ class AnimeRepositoryFactory implements AnimeRepository {
   final AnimeRepositoryAnilist _animeRepositoryAnilist = sl<AnimeRepositoryAnilist>();
   final AnimeRepositoryShikimori _animeRepositoryShikimori = sl<AnimeRepositoryShikimori>();
   final Logger _logger = sl<Logger>();
-  final MediaIdResolver _mediaIdResolver = sl<MediaIdResolver>();
+  final MediaIdService _mediaIdService = sl<MediaIdService>();
 
   @override
   Future<(bool, List<Anime>)> getRecentlyReleasedAnimes(
@@ -357,30 +356,17 @@ class AnimeRepositoryFactory implements AnimeRepository {
 
   /// Null when the record cannot be translated to the user provider.
   Future<Anime?> _asUserProviderRecordOrNull(Anime selectedAnime, User loggedUser, {required String operation}) async {
-    final Service userService = loggedUser.settings.userService;
-    final Service provenance = serviceOfAnime(selectedAnime);
-    if (provenance == userService) return selectedAnime;
-
-    final MediaIdResolution resolution = await _mediaIdResolver.resolveTarget(
-      source: provenance,
-      nativeId: '${selectedAnime.id}',
-      target: userService,
-      query: mediaLinkQueryForAnime(selectedAnime),
-      knownMalId: selectedAnime.idMal,
-    );
-    final IdMapping? mapping = resolution.mapping;
-    final int? nativeId = mapping == null || !resolution.isResolved || mapping.service != userService
-        ? null
-        : int.tryParse(mapping.nativeId);
+    // Identity path: the record already is the user provider's own, so it is
+    // passed through untouched (never copied, never re-addressed).
+    if (serviceOfAnime(selectedAnime) == loggedUser.settings.userService) return selectedAnime;
+    final int? nativeId = await _mediaIdService.userNativeIdFor(selectedAnime, loggedUser.settings.userService);
     if (nativeId == null) {
       _logger.w(
-        "Cannot resolve ${serviceOfAnime(selectedAnime).name}:${selectedAnime.id} to ${userService.name} for list $operation",
+        "Cannot resolve ${serviceOfAnime(selectedAnime).name}:${selectedAnime.id} to "
+        "${loggedUser.settings.userService.name} for list $operation",
       );
       return null;
     }
-    _logger.i(
-      "Resolved ${serviceOfAnime(selectedAnime).name}:${selectedAnime.id} to ${userService.name}:$nativeId for list $operation",
-    );
     return withAnimeNativeId(selectedAnime, nativeId);
   }
 }

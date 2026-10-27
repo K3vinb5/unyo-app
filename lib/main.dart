@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:material_ui/material_ui.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -16,7 +15,6 @@ import 'package:unyo/core/theme/theme_service.dart';
 import 'package:unyo/hive_registrar.g.dart';
 import 'package:unyo/data/adapters/type_adapters/settings_model_migration_adapter.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
-import 'package:unyo/domain/services/media_id_resolver.dart';
 
 final _appRouter = AppRouter();
 
@@ -32,17 +30,13 @@ void main() async {
   Hive
     ..init(sl<Directory>(instanceName: config.applicationSupportDirectory).path)
     ..registerAdapter(ColorAdapter())
-    ..registerAdapters();
-  // The generated settings adapter is replaced by one that reconciles
-  // pre-split rows on read and mirrors the legacy `service` field on write.
-  // Box data is binary, so this adapter — not SettingsModel.fromJson — is what
-  // migrates real installs.
-  Hive.registerAdapter<SettingsModel>(SettingsModelMigrationAdapter(), override: true);
+    ..registerAdapters()
+    // The generated settings adapter cannot reconcile pre-split rows on read
+    // nor mirror the legacy `service` field on write. Box data is binary, so
+    // this adapter — not SettingsModel.fromJson — is what migrates real installs.
+    ..registerAdapter<SettingsModel>(SettingsModelMigrationAdapter(), override: true);
   // Inject the remaining dependencies that rely on Hive and are not Lazy
   setupLocatorAfterHiveInit();
-  // Unresolved MAL mappings are remembered for one session only; drop last
-  // session's misses so the resolution chain retries them.
-  unawaited(sl<MediaIdResolver>().purgeUnresolved());
   // Setup Window Manager options
   WindowOptions windowOptions = const WindowOptions(
     minimumSize: Size(1200, 675),

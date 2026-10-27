@@ -28,9 +28,7 @@ import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/core/notification/video_info_notifier.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/core/services/media/media_provenance.dart';
-import 'package:unyo/data/models/anilist/media/anilist_anime_model.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
-import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
 import 'package:unyo/domain/repositories/user_repository.dart';
@@ -46,10 +44,10 @@ import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/entities/media/video_info.dart';
-import 'package:unyo/domain/services/id_mapping.dart';
-import 'package:unyo/domain/services/media_id_resolver.dart';
-import 'package:unyo/domain/services/media_link_exception.dart';
-import 'package:unyo/domain/services/media_link_proposal.dart';
+import 'package:unyo/core/services/media/media_id_service.dart';
+import 'package:unyo/core/services/media/media_link_candidate.dart';
+import 'package:unyo/core/services/media/media_link_exception.dart';
+import 'package:unyo/core/services/media/media_link_proposal.dart';
 import 'package:unyo/domain/utils/episode_index.dart';
 import 'package:unyo/presentation/dialogs/anime_details_media_entry_dialog.dart';
 import 'package:unyo/presentation/drawers/anime_server_selection_drawer.dart';
@@ -64,21 +62,11 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   final ExtensionRepositoryAniyomi _extensionRepositoryAniyomi;
   final UserRepository _userRepository;
 
-  final MediaIdResolver? _providedMediaIdResolver;
+  // Services
+  final MediaIdService _mediaIdService;
 
-  /// Resolved on first use so a cubit can be built before the mapping layer is
-  /// registered (and in tests that inject their own resolver).
-  MediaIdResolver? _mediaIdResolverCache;
-  MediaIdResolver get _mediaIdResolver => _mediaIdResolverCache ??= _providedMediaIdResolver ?? sl<MediaIdResolver>();
-
-  /// Entries already prompted in this app session (static so reopening the
-  /// details page does not ask again). Never a nag, but the details page keeps
-  /// the manual relink action.
-  static final Set<String> _promptedLinks = <String>{};
-
-  /// Test hook: the session memory is static so it survives a cubit rebuild.
-  @visibleForTesting
-  static void resetPromptedMediaLinks() => _promptedLinks.clear();
+  /// Question the link dialog is currently asking, if any.
+  MediaLinkProposal? _mediaLinkProposal;
 
   // Notifiers / Subscriptions
   final UserNotifier _loggedUserNotifier;
@@ -113,10 +101,9 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     this._mediaListEntryNotifier,
     this._selectedExtensionNotifier,
     this._selectedEpisodesNotifier,
-    this._reloadNotifier, {
-    MediaIdResolver? mediaIdResolver,
-  })  : _providedMediaIdResolver = mediaIdResolver,
-        super(
+    this._reloadNotifier,
+    this._mediaIdService,
+  ) : super(
         AnimeDetailsState(
           loggedUser: UserModel.empty(),
           selectedMediaList: MediaListModel.empty(),
@@ -482,8 +469,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         loggedUser,
         ignoreCache: ignoreCache,
       );
-      emit(state.copyWith(mediaListEntry: mediaListEntry, newMediaListEntry: mediaListEntry));
-      _mediaListEntryNotifier.updateSelectedMediaListEntry(mediaListEntry);
+      _emitMediaListEntry(mediaListEntry);
     } on HttpServerException catch (e, stackTrace) {
       handleError("Error fetching User Media List entry:", responseBody: e.message, stackTrace: stackTrace);
     } catch (e, stackTrace) {
@@ -493,47 +479,32 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   Future<void> _getAnimeDetails(User loggedUser, Anime selectedAnime) async {
     try {
-      final Service provenance = serviceOfAnime(selectedAnime);
-      final Service metadataService = loggedUser.settings.metadataService;
-      Anime detailsRecord = selectedAnime;
-      Service detailsService = provenance;
-      if (metadataService != provenance) {
-        final MediaIdResolution resolution = await _resolveMetadataRecord(
-          loggedUser,
-          selectedAnime,
-          provenance,
-          metadataService,
-        );
-        final IdMapping? mapping = resolution.mapping;
-        if (resolution.isResolved && mapping != null && mapping.service == metadataService) {
-          detailsRecord = _withNativeId(selectedAnime, int.tryParse(mapping.nativeId) ?? selectedAnime.id);
-          detailsService = metadataService;
-        }
-      }
+      final MediaDetailsSource source = await _mediaIdService.detailsSource(selectedAnime, loggedUser);
+      if (source.proposal != null) _openMediaLinkDialog(source.proposal!);
       _logger.i(
-        "Fetching Anime Details for ${state.selectedAnime.title.userPreferred} from ${detailsService.name}",
+        "Fetching Anime Details for ${state.selectedAnime.title.userPreferred} from ${source.service.name}",
       );
       (bool, AnimeDetails) animeDetails = await _animeRepository.getAnimeDetails(
-        detailsRecord,
+        source.anime,
         loggedUser,
-        service: detailsService,
+        service: source.service,
       );
-      // List state always belongs to the user provider (WP #61 decision 3): a
-      // metadata-provider details payload must never seed the list editor, or a
-      // save would write that provider's (possibly empty) values.
-      final bool detailsOwnsListState = detailsService == loggedUser.settings.userService;
       emit(
         state.copyWith(
           characters: (animeDetails.$2.characters.isNotEmpty, animeDetails.$2.characters),
-          mediaListEntry: detailsOwnsListState ? animeDetails.$2.mediaListEntry : state.mediaListEntry,
-          newMediaListEntry: detailsOwnsListState ? animeDetails.$2.mediaListEntry : state.newMediaListEntry,
           recommendations: (
             animeDetails.$2.recommendedAnimes.isNotEmpty,
             animeDetails.$2.recommendedAnimes,
           ),
+          mediaLinkUnresolved: source.isUnresolved,
         ),
       );
-      if (!detailsOwnsListState) {
+      // List state always belongs to the user provider (WP #61 decision 3): a
+      // metadata-provider payload must never seed the list editor, or a save
+      // would write that provider's (possibly empty) values.
+      if (source.service == loggedUser.settings.userService) {
+        _emitMediaListEntry(animeDetails.$2.mediaListEntry);
+      } else {
         await _getUserMediaListEntry(loggedUser, selectedAnime);
       }
       if (animeDetails.$2.recommendedAnimes.isEmpty) {
@@ -551,61 +522,13 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     }
   }
 
-  /// Translates the opened record to the metadata provider through the MAL
-  /// pivot. When the chain can only propose title-search hits, the proposal is
-  /// surfaced (state + dialog) once per entry per session; the caller then
-  /// falls back to the record's own provider details.
-  Future<MediaIdResolution> _resolveMetadataRecord(
-    User loggedUser,
-    Anime selectedAnime,
-    Service provenance,
-    Service metadataService,
-  ) async {
-    final MediaIdResolution resolution = await _mediaIdResolver.resolveTarget(
-      source: provenance,
-      nativeId: '${selectedAnime.id}',
-      target: metadataService,
-      query: MediaLinkQuery(
-        title: selectedAnime.title.userPreferred.isNotEmpty
-            ? selectedAnime.title.userPreferred
-            : selectedAnime.title.romaji,
-        alternativeTitles: <String>[
-          selectedAnime.title.english,
-          selectedAnime.title.romaji,
-          selectedAnime.title.nativeTitle,
-        ].where((title) => title.isNotEmpty).toList(),
-        year: int.tryParse(TextUtils.extractYearFromStartDate(selectedAnime.startDate, loggedUser)),
-        isAnime: true,
-      ),
-      knownMalId: selectedAnime.idMal,
-    );
-
-    if (resolution.needsConfirmation) {
-      final MediaLinkProposal proposal = MediaLinkProposal(
-        userService: loggedUser.settings.userService,
-        metadataService: metadataService,
-        sourceService: provenance,
-        sourceNativeId: '${selectedAnime.id}',
-        candidates: resolution.candidates,
-      );
-      if (isClosed) return resolution;
-      if (_promptedLinks.add(proposal.entryKey)) {
-        emit(state.copyWith(mediaLinkProposal: proposal, mediaLinkUnresolved: true));
-        _openMediaLinkDialog(proposal);
-      } else {
-        // Already asked once this session: stay quiet and keep the fallback.
-        emit(state.copyWith(mediaLinkProposal: null, mediaLinkUnresolved: true));
-      }
-      return resolution;
-    }
-
-    if (!isClosed) {
-      emit(state.copyWith(mediaLinkUnresolved: resolution.isUnresolved, mediaLinkProposal: null));
-    }
-    return resolution;
+  void _emitMediaListEntry(MediaListEntry mediaListEntry) {
+    emit(state.copyWith(mediaListEntry: mediaListEntry, newMediaListEntry: mediaListEntry));
+    _mediaListEntryNotifier.updateSelectedMediaListEntry(mediaListEntry);
   }
 
   void _openMediaLinkDialog(MediaLinkProposal proposal) {
+    _mediaLinkProposal = proposal;
     showWidgetDialogEffect(
       dialog: MediaLinkDialog(
         proposal: proposal,
@@ -616,22 +539,13 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     );
   }
 
-  /// Copies the record with a different provider-native id, so the metadata
-  /// repository queries the right entry (the domain entity keeps its own id).
-  Anime _withNativeId(Anime anime, int nativeId) {
-    if (anime is AnimeModel) return anime.copyWith(id: nativeId);
-    if (anime is ShikimoriAnimeModel) return anime.copyWith(id: nativeId);
-    if (anime is AnilistAnimeModel) return anime.copyWith(id: nativeId);
-    return anime;
-  }
-
-  /// "Link" in the link-confirmation dialog: cache the user's choice and
-  /// re-render the details page from the freshly linked metadata entry.
+  /// "Link" in the confirmation dialog: cache the user's choice and re-render
+  /// the details page from the freshly linked metadata entry.
   Future<void> confirmMediaLink(MediaLinkCandidate candidate) async {
-    final MediaLinkProposal? proposal = state.mediaLinkProposal;
+    final MediaLinkProposal? proposal = _mediaLinkProposal;
     if (proposal == null) return;
-    if (!isClosed) emit(state.copyWith(mediaLinkProposal: null, mediaLinkUnresolved: false));
-    await _mediaIdResolver.confirmLink(
+    _mediaLinkProposal = null;
+    await _mediaIdService.confirmLink(
       source: proposal.sourceService,
       nativeId: proposal.sourceNativeId,
       candidate: candidate,
@@ -641,10 +555,10 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   /// "None of these": the entry stays unresolved, nothing is linked.
   Future<void> declineMediaLink() async {
-    final MediaLinkProposal? proposal = state.mediaLinkProposal;
+    final MediaLinkProposal? proposal = _mediaLinkProposal;
     if (proposal == null) return;
-    if (!isClosed) emit(state.copyWith(mediaLinkProposal: null, mediaLinkUnresolved: true));
-    await _mediaIdResolver.declineLink(
+    _mediaLinkProposal = null;
+    await _mediaIdService.declineLink(
       source: proposal.sourceService,
       nativeId: proposal.sourceNativeId,
     );
@@ -653,9 +567,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   /// Dialog dismissed without choosing: quietly keep the user-provider
   /// fallback, no mapping is cached.
   void dismissMediaLink() {
-    if (state.mediaLinkProposal == null) return;
-    if (isClosed) return;
-    emit(state.copyWith(mediaLinkProposal: null, mediaLinkUnresolved: true));
+    _mediaLinkProposal = null;
   }
 
   /// Manual "Link metadata entry…" action on an unresolved details page: drop
@@ -665,8 +577,11 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     final Service provenance = serviceOfAnime(selectedAnime);
     final Service metadataService = state.loggedUser.settings.metadataService;
     if (metadataService == provenance) return;
-    await _mediaIdResolver.forget(provenance, '${selectedAnime.id}');
-    _promptedLinks.remove('${provenance.name}:${selectedAnime.id}->${metadataService.name}');
+    await _mediaIdService.resetLink(
+      source: provenance,
+      nativeId: '${selectedAnime.id}',
+      target: metadataService,
+    );
     await _getAnimeDetails(state.loggedUser, selectedAnime);
   }
 

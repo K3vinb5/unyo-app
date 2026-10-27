@@ -1,6 +1,4 @@
-import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/services/media/media_provenance.dart';
-import 'package:unyo/domain/entities/user/user.dart' show User;
 
 class TextUtils {
   static String parseHtmlToPlainText(String html) {
@@ -32,20 +30,12 @@ class TextUtils {
     return text.trim();
   }
 
-  /// Year out of the metadata provider's `startDate` string. The year lives in
-  /// the same `d/m/yyyy` slot for every provider we render today, so this
-  /// follows the metadata provider and degrades to an empty string instead of
-  /// throwing for providers whose details are not implemented yet.
-  static String extractYearFromStartDate(String startDate, User loggedUser) {
-    switch (loggedUser.settings.metadataService) {
-      case Service.anilist:
-      case Service.shikimori:
-      case Service.mal:
-      case Service.kitsu:
-      case Service.simkl:
-        final int? year = yearOfStartDate(startDate);
-        return year == null ? "" : "$year";
-    }
+  /// Year out of a provider `startDate` string (`d/m/yyyy`). Every provider we
+  /// render stores the year in that slot; anything else degrades to an empty
+  /// string instead of throwing.
+  static String extractYearFromStartDate(String startDate) {
+    final int? year = yearOfStartDate(startDate);
+    return year == null ? "" : "$year";
   }
 
   static List<String> formatISO8601DateTime(String isoDateTime) {

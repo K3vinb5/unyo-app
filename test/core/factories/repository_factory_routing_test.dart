@@ -22,9 +22,10 @@ import 'package:unyo/domain/entities/media/title.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/core/di/locator.dart' show sl;
-import 'package:unyo/domain/services/media_id_cache.dart';
-import 'package:unyo/domain/services/media_id_resolver.dart';
-import 'package:unyo/domain/services/media_link_exception.dart';
+import 'package:unyo/domain/repositories/media_id_cache.dart';
+import 'package:unyo/core/services/media/media_id_service.dart';
+import 'package:unyo/core/services/media/media_link_candidate.dart';
+import 'package:unyo/core/services/media/media_link_exception.dart';
 
 class MockLogger extends Mock implements Logger {}
 
@@ -48,7 +49,7 @@ class FakeMediaMappingLookup implements MediaMappingLookup {
   }
 
   @override
-  Future<List<MediaLinkCandidate>> searchCandidates(Service target, MediaLinkQuery query) async {
+  Future<List<MediaLinkCandidate>> searchCandidates(Service target, String title) async {
     searchCalls++;
     return searchResults;
   }
@@ -92,8 +93,8 @@ void main() {
     sl.registerSingleton<AnimeRepositoryShikimori>(shikimoriAnime);
     sl.registerSingleton<MangaRepositoryAnilist>(anilistManga);
     mappingLookup = FakeMediaMappingLookup();
-    sl.registerLazySingleton<MediaIdResolver>(
-      () => MediaIdResolver(cache: InMemoryMediaIdCache(), mappingLookup: mappingLookup),
+    sl.registerLazySingleton<MediaIdService>(
+      () => MediaIdService(cache: InMemoryMediaIdCache(), mappingLookup: mappingLookup),
     );
     animeFactory = AnimeRepositoryFactory();
     mangaFactory = MangaRepositoryFactory();

@@ -184,10 +184,7 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                                                 iconData: Icons.timelapse_rounded,
                                               ),
                                               UnyoBannerIcon(
-                                                text: TextUtils.extractYearFromStartDate(
-                                                  state.selectedAnime.startDate,
-                                                  state.loggedUser,
-                                                ),
+                                                text: TextUtils.extractYearFromStartDate(state.selectedAnime.startDate),
                                                 iconData: Icons.calendar_month_rounded,
                                               ),
                                               UnyoBannerIcon(

@@ -3,8 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // Internal dependencies
 import 'package:unyo/core/enums/service.dart';
-import 'package:unyo/domain/services/media_id_resolver.dart';
-import 'package:unyo/domain/services/media_link_proposal.dart';
+import 'package:unyo/core/services/media/media_link_candidate.dart';
+import 'package:unyo/core/services/media/media_link_proposal.dart';
 import 'package:unyo/presentation/widgets/styled/dark_unyo_button.dart';
 import 'package:unyo/presentation/widgets/styled/light_unyo_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
@@ -44,7 +44,6 @@ class _MediaLinkDialogState extends State<MediaLinkDialog> {
     return <String>[
       if (candidate.year != null) '${candidate.year}',
       if (candidate.format != null && candidate.format!.isNotEmpty) candidate.format!.toUpperCase(),
-      candidate.isAnime ? 'Anime' : 'Manga',
       '${_serviceLabel(candidate.service)} id ${candidate.nativeId}',
     ].join('  •  ');
   }

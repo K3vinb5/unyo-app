@@ -47,9 +47,9 @@ import 'package:unyo/core/factories/user_repository_factory.dart';
 import 'package:unyo/core/theme/color_image_service.dart';
 import 'package:unyo/core/theme/theme_service.dart';
 import 'package:unyo/data/repositories/anime_repository_anilist.dart';
-import 'package:unyo/data/repositories/anizip_id_lookup_repository.dart';
+import 'package:unyo/data/repositories/media_mapping_repository_anizip.dart';
 import 'package:unyo/data/repositories/media_id_cache_hive.dart';
-import 'package:unyo/data/repositories/shikimori_media_mapping_lookup.dart';
+import 'package:unyo/data/repositories/media_mapping_repository_shikimori.dart';
 import 'package:unyo/data/repositories/episode_repository_anizip.dart';
 import 'package:unyo/data/repositories/extension_repository_aniyomi.dart';
 import 'package:unyo/data/repositories/manga_repository_anilist.dart';
@@ -58,8 +58,8 @@ import 'package:unyo/domain/repositories/anime_repository.dart';
 import 'package:unyo/domain/repositories/episode_repository.dart';
 import 'package:unyo/domain/repositories/manga_repository.dart';
 import 'package:unyo/domain/repositories/user_repository.dart';
-import 'package:unyo/domain/services/media_id_cache.dart';
-import 'package:unyo/domain/services/media_id_resolver.dart';
+import 'package:unyo/domain/repositories/media_id_cache.dart';
+import 'package:unyo/core/services/media/media_id_service.dart';
 import 'package:unyo/application/cubits/home_cubit.dart';
 
 final sl = GetIt.instance;
@@ -127,11 +127,15 @@ void setupLocator() async{
   sl.registerLazySingleton<EpisodeRepositoryAnizip>(() => EpisodeRepositoryAnizip());
   // Multi-provider mapping (WP #61): Hive-backed MAL pivot cache + provider legs.
   sl.registerLazySingleton<MediaIdCache>(() => HiveMediaIdCache());
-  sl.registerLazySingleton<MediaIdResolver>(() => MediaIdResolver(
-    cache: sl<MediaIdCache>(),
-    aniZipLookup: AniZipIdLookupRepository(),
-    mappingLookup: ShikimoriMediaMappingLookup(),
-  ));
+  sl.registerLazySingleton<MediaMappingRepositoryAnizip>(() => MediaMappingRepositoryAnizip());
+  sl.registerLazySingleton<MediaMappingRepositoryShikimori>(() => MediaMappingRepositoryShikimori());
+  sl.registerLazySingleton<MediaIdService>(
+    () => MediaIdService(
+      cache: sl<MediaIdCache>(),
+      aniZipLookup: sl<MediaMappingRepositoryAnizip>(),
+      mappingLookup: sl<MediaMappingRepositoryShikimori>(),
+    ),
+  );
   sl.registerLazySingleton<EpisodeRepository>(() => EpisodeRepositoryFactory());
   // Cubits / Blocs
   sl.registerFactory<LoginCubit>(
@@ -218,6 +222,7 @@ void setupLocator() async{
       sl<ExtensionNotifier>(),
       sl<EpisodesNotifier>(),
       sl<ReloadNotifier>(),
+      sl<MediaIdService>(),
     ),
   );
   sl.registerFactory<MangaDetailsCubit>(

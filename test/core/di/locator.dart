@@ -28,8 +28,8 @@ import 'package:unyo/core/factories/user_repository_factory.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
 import 'package:unyo/domain/repositories/manga_repository.dart';
 import 'package:unyo/domain/repositories/user_repository.dart';
-import 'package:unyo/domain/services/media_id_cache.dart';
-import 'package:unyo/domain/services/media_id_resolver.dart';
+import 'package:unyo/domain/repositories/media_id_cache.dart';
+import 'package:unyo/core/services/media/media_id_service.dart';
 
 // DartRX Notifiers
 class MockUserNotifier extends Mock implements UserNotifier {}
@@ -108,7 +108,7 @@ Future<void> setupTestLocator() async{
   sl.registerLazySingleton<MangaRepository>(() => MangaRepositoryFactory());
   sl.registerLazySingleton<UserRepository>(() => UserRepositoryFactory());
   sl.registerLazySingleton<EpisodeRepositoryAnizip>(() => MockEpisodeRepositoryAnizip());
-  sl.registerLazySingleton<MediaIdResolver>(() => MediaIdResolver(cache: InMemoryMediaIdCache()));
+  sl.registerLazySingleton<MediaIdService>(() => MediaIdService(cache: InMemoryMediaIdCache()));
 
   // Cubits / Blocs - Register factories that create real cubits with mocked dependencies
   sl.registerFactory<AnimeAdvancedSearchCubit>(
