@@ -18,7 +18,15 @@ class UpdateAvailable extends UpdateCheckResult {
   final String latestVersion;
   final String releaseUrl;
 
-  const UpdateAvailable({required this.latestVersion, required this.releaseUrl});
+  /// The release `body` markdown, as published on GitHub. Empty when the
+  /// maintainer shipped a release without notes.
+  final String releaseNotes;
+
+  const UpdateAvailable({
+    required this.latestVersion,
+    required this.releaseUrl,
+    this.releaseNotes = '',
+  });
 }
 
 /// The check could not produce a verdict. Silent by design: it is only logged.
