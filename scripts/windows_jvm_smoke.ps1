@@ -79,7 +79,7 @@ if ($proc -eq [IntPtr]::Zero) {
 
 $spawn = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer(
     $proc, [SpawnJvmDelegate])
-$rc = $spawn([IntPtr]::Zero)
+$rc = $spawn.Invoke([IntPtr]::Zero)
 
 # 0 is JNI_OK (jni_constants.h); anything else is a JNI error code.
 if ($rc -ne 0) {
