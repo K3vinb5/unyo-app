@@ -321,4 +321,44 @@ void main() {
       expect(snackbars.any((effect) => effect.title == 'Something went wrong'), isFalse, reason: rendered.join('; '));
     });
   });
+
+  group('logTitleFor', () {
+    setUp(() {
+      // The outer tearDown closes the cubit, so give it one to close.
+      cubit = buildCubit();
+    });
+
+    test('prefers userPreferred over every other title field', () {
+      const TitleModel title = TitleModel(
+        romaji: 'Romaji Title',
+        english: 'English Title',
+        nativeTitle: 'Native Title',
+        userPreferred: 'Preferred Title',
+      );
+
+      expect(logTitleFor(title), 'Preferred Title');
+    });
+
+    test('falls back through english, romaji and nativeTitle when earlier fields are empty', () {
+      expect(
+        logTitleFor(const TitleModel(romaji: 'Romaji Title', english: 'English Title', nativeTitle: 'Native Title', userPreferred: '')),
+        'English Title',
+        reason: 'userPreferred empty -> english',
+      );
+      expect(
+        logTitleFor(const TitleModel(romaji: 'Romaji Title', english: '', nativeTitle: 'Native Title', userPreferred: '')),
+        'Romaji Title',
+        reason: 'userPreferred and english empty -> romaji',
+      );
+      expect(
+        logTitleFor(const TitleModel(romaji: '', english: '', nativeTitle: 'Native Title', userPreferred: '')),
+        'Native Title',
+        reason: 'only nativeTitle left',
+      );
+    });
+
+    test('returns an empty string when every title field is empty', () {
+      expect(logTitleFor(TitleModel.empty()), '');
+    });
+  });
 }
