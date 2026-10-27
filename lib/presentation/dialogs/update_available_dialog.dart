@@ -49,9 +49,9 @@ class UpdateAvailableDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final notes = release.body.trim();
-    final targetPlatform = platform ?? UpdatePlatformInfo.current;
-    final downloadUrl = ReleaseAssetSelector.urlFor(
+    final String notes = release.body.trim();
+    final UpdatePlatform targetPlatform = platform ?? UpdatePlatformInfo.current;
+    final String? downloadUrl = ReleaseAssetSelector.urlFor(
       release.assets,
       targetPlatform,
     );

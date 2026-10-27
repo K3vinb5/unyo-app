@@ -45,7 +45,7 @@ void main() {
     });
 
     test('returns null when the release has no asset for the platform', () {
-      final windowsOnly = [asset('Unyo-v0.9.0-windows-setup.exe')];
+      final List<GithubReleaseAssets> windowsOnly = [asset('Unyo-v0.9.0-windows-setup.exe')];
 
       expect(ReleaseAssetSelector.urlFor(windowsOnly, UpdatePlatform.macOS), isNull);
       expect(ReleaseAssetSelector.urlFor(windowsOnly, UpdatePlatform.linux), isNull);
@@ -67,7 +67,7 @@ void main() {
     });
 
     test('skips assets without a download url', () {
-      final incomplete = [
+      final List<GithubReleaseAssets> incomplete = [
         asset('Unyo-v0.9.0-linux.AppImage', '   '),
         asset('Unyo-v0.9.0-linux-x86_64.AppImage'),
       ];

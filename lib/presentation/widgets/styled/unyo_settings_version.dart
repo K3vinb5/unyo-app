@@ -16,9 +16,9 @@ class UnyoSettingsVersion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final updateCheckerService = sl<UpdateCheckerService>();
-    final currentVersion = updateCheckerService.lastCheckedVersion;
-    final lastResult = updateCheckerService.lastResult;
+    final UpdateCheckerService updateCheckerService = sl<UpdateCheckerService>();
+    final String? currentVersion = updateCheckerService.lastCheckedVersion;
+    final UpdateCheckResult? lastResult = updateCheckerService.lastResult;
     return Column(
       children: [
         _SettingsInfoRow(
@@ -62,7 +62,7 @@ class _SettingsInfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final showAction = actionLabel != null && onAction != null;
+    final bool showAction = actionLabel != null && onAction != null;
     return Container(
       color: Colors.transparent,
       width: double.infinity,

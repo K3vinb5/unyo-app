@@ -12,8 +12,8 @@ class AppVersionProvider {
   /// or `null` when the platform cannot report it.
   Future<String?> currentVersion() async {
     try {
-      final info = await PackageInfo.fromPlatform();
-      final version = info.version.trim();
+      final PackageInfo info = await PackageInfo.fromPlatform();
+      final String version = info.version.trim();
       if (version.isEmpty) return null;
       return version.startsWith('v') || version.startsWith('V') ? version.substring(1) : version;
     } catch (_) {

@@ -6,7 +6,7 @@ import 'package:unyo/core/services/update/version_comparator.dart';
 
 void main() {
   group('VersionComparator.compare', () {
-    final cases = <(String, String, int)>[
+    final List<(String, String, int)> cases = <(String, String, int)>[
       // (a, b, expected sign)
       ('1.0.0', '1.0.0', 0),
       ('v1.0.0', '1.0.0', 0),

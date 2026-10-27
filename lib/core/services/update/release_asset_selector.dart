@@ -42,8 +42,8 @@ class ReleaseAssetSelector {
     UpdatePlatform platform,
   ) {
     for (final asset in assets) {
-      final name = asset.name.trim().toLowerCase();
-      final url = asset.browserDownloadUrl.trim();
+      final String name = asset.name.trim().toLowerCase();
+      final String url = asset.browserDownloadUrl.trim();
       if (name.isEmpty || url.isEmpty) continue;
       if (_matchesPlatform(name, platform)) return url;
     }

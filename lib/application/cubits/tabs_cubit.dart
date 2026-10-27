@@ -85,14 +85,14 @@ class TabsCubit extends Cubit<TabsState>
     }
     _updateCheckStarted = true;
 
-    final currentVersion = await _versionProvider.currentVersion();
+    final String? currentVersion = await _versionProvider.currentVersion();
     if (isClosed) return;
     if (currentVersion == null) {
       _logger.w("Cannot check for updates: the current app version is unavailable");
       return;
     }
 
-    final result = await _updateCheckerService.checkForUpdate(currentVersion);
+    final UpdateCheckResult result = await _updateCheckerService.checkForUpdate(currentVersion);
     if (isClosed) return;
     switch (result) {
       case UpToDate():

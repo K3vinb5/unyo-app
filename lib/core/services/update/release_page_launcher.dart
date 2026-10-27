@@ -14,9 +14,9 @@ class ReleasePageLauncher {
   /// falling back to the generic releases page when the API payload has no
   /// usable URL.
   static Uri pageUri(String? releaseUrl) {
-    final candidate = releaseUrl?.trim();
+    final String? candidate = releaseUrl?.trim();
     if (candidate != null && candidate.isNotEmpty) {
-      final parsed = Uri.tryParse(candidate);
+      final Uri? parsed = Uri.tryParse(candidate);
       if (parsed != null && parsed.hasScheme) return parsed;
     }
     return Uri.parse(config.unyoReleasesFallbackUrl);
@@ -30,9 +30,9 @@ class ReleasePageLauncher {
   /// download button points at) in the system browser. Unlike the release page
   /// there is no fallback: an empty or malformed URL is simply not opened.
   static Future<bool> openAsset(String? downloadUrl) async {
-    final candidate = downloadUrl?.trim();
+    final String? candidate = downloadUrl?.trim();
     if (candidate == null || candidate.isEmpty) return false;
-    final parsed = Uri.tryParse(candidate);
+    final Uri? parsed = Uri.tryParse(candidate);
     if (parsed == null || !parsed.hasScheme) return false;
     return _openExternally(parsed);
   }

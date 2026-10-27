@@ -85,7 +85,7 @@ void main() {
 
     expect(find.text(UpdateAvailableDialog.title), findsOneWidget);
     expect(find.textContaining('Unyo v0.9.0'), findsOneWidget);
-    final markdown = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
+    final MarkdownBody markdown = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
     expect(markdown.data, contains('Release notes now open in a dialog.'));
     // The heading is rendered as rich text, not as the raw `##` markdown.
     expect(find.textContaining("## What's changed"), findsNothing);
@@ -102,7 +102,7 @@ void main() {
   });
 
   testWidgets('opens the release page and dismisses itself', (tester) async {
-    var opened = 0;
+    int opened = 0;
     await openDialog(
       tester,
       releaseNotes: '- something changed',
@@ -125,7 +125,7 @@ void main() {
     testWidgets(
       'downloads the ${platform.label} asset from the dedicated button',
       (tester) async {
-        final openedUrls = <String>[];
+        final List<String> openedUrls = <String>[];
         await openDialog(
           tester,
           onOpenReleasePage: () {},

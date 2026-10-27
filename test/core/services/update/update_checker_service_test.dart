@@ -25,7 +25,7 @@ const String samplePayloadPath =
     'tool/fjson-samples/github_releases_latest.json';
 
 void main() {
-  const endpoint = 'https://stub.local/releases/latest';
+  const String endpoint = 'https://stub.local/releases/latest';
 
   late MockHttpService httpService;
   late Map<String, dynamic> samplePayload;
@@ -82,10 +82,10 @@ void main() {
       () async {
         stubRelease(GithubReleaseEntity.fromJson(samplePayload));
 
-        final result = await service().checkForUpdate('0.8.0');
+        final UpdateCheckResult result = await service().checkForUpdate('0.8.0');
 
         expect(result, isA<UpdateAvailable>());
-        final available = result as UpdateAvailable;
+        final UpdateAvailable available = result as UpdateAvailable;
         expect(available.latestVersion, '0.9.0');
         // The verdict carries the parsed bean, not a copy of its fields.
         expect(
@@ -106,7 +106,7 @@ void main() {
       () async {
         stubRelease(GithubReleaseEntity.fromJson(samplePayload));
 
-        final result = await service().checkForUpdate('0.9.0');
+        final UpdateCheckResult result = await service().checkForUpdate('0.9.0');
 
         expect(result, isA<UpToDate>());
       },
@@ -115,7 +115,7 @@ void main() {
     test('returns upToDate for an older published release', () async {
       stubRelease(GithubReleaseEntity.fromJson(samplePayload));
 
-      final result = await service().checkForUpdate('1.0.0');
+      final UpdateCheckResult result = await service().checkForUpdate('1.0.0');
 
       expect(result, isA<UpToDate>());
     });
@@ -127,7 +127,7 @@ void main() {
 
         await service().checkForUpdate('0.8.0');
 
-        final headers =
+        final Map<String, String> headers =
             verify(
                   () => httpService.get<GithubReleaseEntity>(
                     endpoint,
@@ -146,7 +146,7 @@ void main() {
       'keeps the verdict and the checked version for the About rows',
       () async {
         stubRelease(GithubReleaseEntity.fromJson(samplePayload));
-        final updateCheckerService = service();
+        final UpdateCheckerService updateCheckerService = service();
 
         expect(updateCheckerService.lastResult, isNull);
         expect(updateCheckerService.lastCheckedVersion, isNull);
@@ -161,7 +161,7 @@ void main() {
     test('returns checkFailed for a 500 and does not throw', () async {
       stubFailure(HttpServerException(500, 'server error'));
 
-      final result = await service().checkForUpdate('0.8.0');
+      final UpdateCheckResult result = await service().checkForUpdate('0.8.0');
 
       expect(result, isA<UpdateCheckFailed>());
     });
@@ -169,7 +169,7 @@ void main() {
     test('returns checkFailed for a 404 (no releases yet)', () async {
       stubFailure(HttpServerException(404, 'Not Found'));
 
-      final result = await service().checkForUpdate('0.8.0');
+      final UpdateCheckResult result = await service().checkForUpdate('0.8.0');
 
       expect(result, isA<UpdateCheckFailed>());
     });
@@ -177,7 +177,7 @@ void main() {
     test('returns checkFailed for malformed JSON and does not throw', () async {
       stubFailure(const FormatException('<html>not json</html>'));
 
-      final result = await service().checkForUpdate('0.8.0');
+      final UpdateCheckResult result = await service().checkForUpdate('0.8.0');
 
       expect(result, isA<UpdateCheckFailed>());
     });
@@ -189,7 +189,7 @@ void main() {
         }),
       );
 
-      final result = await service().checkForUpdate('0.8.0');
+      final UpdateCheckResult result = await service().checkForUpdate('0.8.0');
 
       expect(result, isA<UpdateCheckFailed>());
     });
@@ -197,7 +197,7 @@ void main() {
     test('returns checkFailed on timeout and does not throw', () async {
       stubFailure(TimeoutException('timed out'));
 
-      final result = await service().checkForUpdate('0.8.0');
+      final UpdateCheckResult result = await service().checkForUpdate('0.8.0');
 
       expect(result, isA<UpdateCheckFailed>());
     });
@@ -205,7 +205,7 @@ void main() {
     test('returns checkFailed when the network is unreachable', () async {
       stubFailure(const SocketException('connection refused'));
 
-      final result = await service().checkForUpdate('0.8.0');
+      final UpdateCheckResult result = await service().checkForUpdate('0.8.0');
 
       expect(result, isA<UpdateCheckFailed>());
     });
@@ -213,7 +213,7 @@ void main() {
     test('returns checkFailed when the HTTP client throws', () async {
       stubFailure(http.ClientException('connection closed'));
 
-      final result = await service().checkForUpdate('0.8.0');
+      final UpdateCheckResult result = await service().checkForUpdate('0.8.0');
 
       expect(result, isA<UpdateCheckFailed>());
     });

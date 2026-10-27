@@ -98,13 +98,13 @@ void main() {
             latestVersion: '0.9.0',
           ),
         );
-        final cubit = createCubit();
+        final TabsCubit cubit = createCubit();
         addTearDown(cubit.close);
 
         await pumpEventQueue();
 
-        final effect = cubit.state.effects.single as ShowWidgetDialogEffect;
-        final dialog = effect.dialog as UpdateAvailableDialog;
+        final ShowWidgetDialogEffect effect = cubit.state.effects.single as ShowWidgetDialogEffect;
+        final UpdateAvailableDialog dialog = effect.dialog as UpdateAvailableDialog;
         expect(dialog.latestVersion, '0.9.0');
         expect(
           dialog.release.body,
@@ -125,18 +125,18 @@ void main() {
           ),
         );
 
-        final firstLaunch = createCubit();
+        final TabsCubit firstLaunch = createCubit();
         await pumpEventQueue();
-        final firstEffect =
+        final ShowWidgetDialogEffect firstEffect =
             firstLaunch.state.effects.single as ShowWidgetDialogEffect;
         expect(firstEffect.dialog, isA<UpdateAvailableDialog>());
         await firstLaunch.close();
 
         // Nothing acknowledged is persisted: the next launch nudges again.
-        final secondLaunch = createCubit();
+        final TabsCubit secondLaunch = createCubit();
         addTearDown(secondLaunch.close);
         await pumpEventQueue();
-        final secondEffect =
+        final ShowWidgetDialogEffect secondEffect =
             secondLaunch.state.effects.single as ShowWidgetDialogEffect;
         expect(secondEffect.dialog, isA<UpdateAvailableDialog>());
         verify(() => updateCheckerService.checkForUpdate('0.8.0')).called(2);
@@ -144,7 +144,7 @@ void main() {
     );
 
     test('shows nothing when the app is up to date', () async {
-      final cubit = createCubit();
+      final TabsCubit cubit = createCubit();
       addTearDown(cubit.close);
 
       await pumpEventQueue();
@@ -157,7 +157,7 @@ void main() {
         (_) async =>
             const UpdateCheckFailed('GitHub responded with status 500'),
       );
-      final cubit = createCubit();
+      final TabsCubit cubit = createCubit();
       addTearDown(cubit.close);
 
       await pumpEventQueue();
@@ -169,7 +169,7 @@ void main() {
       when(
         () => versionProvider.currentVersion(),
       ).thenAnswer((_) async => null);
-      final cubit = createCubit();
+      final TabsCubit cubit = createCubit();
       addTearDown(cubit.close);
 
       await pumpEventQueue();
@@ -179,7 +179,7 @@ void main() {
     });
 
     test('checks once per launch even when it is kicked again', () async {
-      final cubit = createCubit();
+      final TabsCubit cubit = createCubit();
       addTearDown(cubit.close);
 
       await pumpEventQueue();

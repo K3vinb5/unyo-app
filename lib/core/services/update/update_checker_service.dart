@@ -9,6 +9,7 @@ import 'package:logger/logger.dart';
 import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
+import 'package:unyo/core/services/api/http/api_response.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
 import 'package:unyo/core/services/update/update_check_result.dart';
@@ -57,14 +58,14 @@ class UpdateCheckerService {
       "Checking for updates at $endpoint (current version $currentVersion)",
     );
     _lastCheckedVersion = currentVersion;
-    final result = await _requestLatestRelease(currentVersion);
+    final UpdateCheckResult result = await _requestLatestRelease(currentVersion);
     _lastResult = result;
     return result;
   }
 
   Future<UpdateCheckResult> _requestLatestRelease(String currentVersion) async {
     try {
-      final response = await _httpService.get<GithubReleaseEntity>(
+      final ApiResponse<GithubReleaseEntity> response = await _httpService.get<GithubReleaseEntity>(
         endpoint,
         headers: _headers,
         ignoreCache: true,
@@ -111,12 +112,12 @@ class UpdateCheckerService {
     GithubReleaseEntity release,
     String currentVersion,
   ) {
-    final tagName = release.tagName.trim();
+    final String tagName = release.tagName.trim();
     if (tagName.isEmpty) {
       _logger.w("Update check payload has no tag_name");
       return const UpdateCheckFailed("Release payload has no tag_name");
     }
-    final latestVersion = _stripVersionPrefix(tagName);
+    final String latestVersion = _stripVersionPrefix(tagName);
     if (!VersionComparator.isNewer(latestVersion, currentVersion)) {
       _logger.d(
         "App is up to date (running $currentVersion, latest $latestVersion)",
