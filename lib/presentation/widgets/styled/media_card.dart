@@ -1,5 +1,5 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
+import 'package:unyo/presentation/widgets/skeleton/skeleton_metrics.dart';
 import 'package:unyo/presentation/widgets/styled/hover_animated_container.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 

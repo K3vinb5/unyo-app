@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:unyo/presentation/widgets/skeleton/skeleton_metrics.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/core/enums/media_type.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
@@ -62,7 +63,7 @@ class AnimeRecommendationCardList extends StatelessWidget {
           ),
           SizedBox(height: 10.h,),
           SizedBox(
-            height: 260,
+            height: CardRowMetrics.rowHeight,
             width: 1.sw - 140,
             child: ListView(
               scrollDirection: Axis.horizontal,

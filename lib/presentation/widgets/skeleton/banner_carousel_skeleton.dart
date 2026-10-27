@@ -69,9 +69,11 @@ class BannerCarouselSkeleton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
             indicatorCount,
+            // The real widget draws the active indicator 8x8 (6x6 inactive);
+            // reserve the larger box so the swap cannot shift the layout.
             (index) => const Padding(
               padding: EdgeInsets.symmetric(horizontal: 4),
-              child: SkeletonBlock(width: 6, height: 6, borderRadius: 3),
+              child: SkeletonBlock(width: 8, height: 8, borderRadius: 4),
             ),
           ),
         ),

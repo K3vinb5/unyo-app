@@ -1,9 +1,10 @@
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_block.dart';
 
 /// Mirrors `widgets/styled/unyo_extension_button.dart`
 /// ([UnyoExtensionButton]): 70-high row, 52px round icon, name + pill row and
-/// the trailing action button.
+/// the trailing action button. Screen-util units follow the real widget.
 class ExtensionRowSkeleton extends StatelessWidget {
   const ExtensionRowSkeleton({super.key, this.showActionButton = true});
 
@@ -15,19 +16,19 @@ class ExtensionRowSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+      padding: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 8.h),
       child: SizedBox(
         height: rowHeight,
         width: double.infinity,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Row(
+            Row(
               children: [
-                SizedBox(width: 20),
-                SkeletonBlock(width: 52, height: 52, borderRadius: 26),
-                SizedBox(width: 14),
-                Column(
+                SizedBox(width: 20.w),
+                const SkeletonBlock(width: 52, height: 52, borderRadius: 26),
+                SizedBox(width: 14.w),
+                const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

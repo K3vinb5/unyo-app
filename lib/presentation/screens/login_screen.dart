@@ -93,11 +93,13 @@ class _LoginViewState extends State<_LoginView> {
                     if (state.isLoading)
                       ...List.generate(
                         3,
-                        (index) => const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 25.0),
+                        // Mirrors UserAvatar: 160.h circle + name, inside the
+                        // 250.h avatar row of the real screen.
+                        (index) => Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 25.0.w),
                           child: ListTileSkeleton(
-                            height: 200,
-                            leadingSize: 160,
+                            height: 250.h,
+                            leadingSize: 160.h,
                             titleWidth: 120,
                             vertical: true,
                           ),
