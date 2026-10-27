@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 // Internal dependencies
 import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
-import 'package:unyo/core/services/update/release_asset.dart';
+import 'package:unyo/core/services/update/release_asset_selector.dart';
 
 GithubReleaseAssets asset(String name, [String? url]) => GithubReleaseAssets()
   ..name = name
@@ -22,24 +22,24 @@ final List<GithubReleaseAssets> releaseAssets = [
 ];
 
 void main() {
-  group('releaseAssetUrl', () {
+  group('ReleaseAssetSelector.urlFor', () {
     test('picks the Inno installer for Windows', () {
       expect(
-        releaseAssetUrl(releaseAssets, UpdatePlatform.windows),
+        ReleaseAssetSelector.urlFor(releaseAssets, UpdatePlatform.windows),
         endsWith('Unyo-v0.9.0-windows-setup.exe'),
       );
     });
 
     test('picks the dmg for macOS', () {
       expect(
-        releaseAssetUrl(releaseAssets, UpdatePlatform.macOS),
+        ReleaseAssetSelector.urlFor(releaseAssets, UpdatePlatform.macOS),
         endsWith('Unyo-v0.9.0-macos.dmg'),
       );
     });
 
     test('picks the AppImage for Linux', () {
       expect(
-        releaseAssetUrl(releaseAssets, UpdatePlatform.linux),
+        ReleaseAssetSelector.urlFor(releaseAssets, UpdatePlatform.linux),
         endsWith('Unyo-v0.9.0-linux.AppImage'),
       );
     });
@@ -47,9 +47,9 @@ void main() {
     test('returns null when the release has no asset for the platform', () {
       final windowsOnly = [asset('Unyo-v0.9.0-windows-setup.exe')];
 
-      expect(releaseAssetUrl(windowsOnly, UpdatePlatform.macOS), isNull);
-      expect(releaseAssetUrl(windowsOnly, UpdatePlatform.linux), isNull);
-      expect(releaseAssetUrl(const [], UpdatePlatform.windows), isNull);
+      expect(ReleaseAssetSelector.urlFor(windowsOnly, UpdatePlatform.macOS), isNull);
+      expect(ReleaseAssetSelector.urlFor(windowsOnly, UpdatePlatform.linux), isNull);
+      expect(ReleaseAssetSelector.urlFor(const [], UpdatePlatform.windows), isNull);
     });
 
     test('accepts the other Windows installer spellings', () {
@@ -59,7 +59,7 @@ void main() {
         'Unyo-0.9.0-windows-x64.exe',
       ]) {
         expect(
-          releaseAssetUrl([asset(name)], UpdatePlatform.windows),
+          ReleaseAssetSelector.urlFor([asset(name)], UpdatePlatform.windows),
           isNotNull,
           reason: name,
         );
@@ -73,7 +73,7 @@ void main() {
       ];
 
       expect(
-        releaseAssetUrl(incomplete, UpdatePlatform.linux),
+        ReleaseAssetSelector.urlFor(incomplete, UpdatePlatform.linux),
         endsWith('Unyo-v0.9.0-linux-x86_64.AppImage'),
       );
     });

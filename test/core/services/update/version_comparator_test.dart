@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:unyo/core/services/update/version_comparator.dart';
 
 void main() {
-  group('compareVersions', () {
+  group('VersionComparator.compare', () {
     final cases = <(String, String, int)>[
       // (a, b, expected sign)
       ('1.0.0', '1.0.0', 0),
@@ -34,38 +34,38 @@ void main() {
 
     for (final (a, b, expectedSign) in cases) {
       test('$a vs $b -> ${expectedSign < 0 ? 'older' : expectedSign > 0 ? 'newer' : 'equal'}', () {
-        expect(compareVersions(a, b).sign, expectedSign, reason: '$a compared to $b');
+        expect(VersionComparator.compare(a, b).sign, expectedSign, reason: '$a compared to $b');
       });
     }
   });
 
-  group('isVersionNewer', () {
+  group('VersionComparator.isNewer', () {
     test('treats a v-prefixed tag as equal to the plain version', () {
-      expect(isVersionNewer('v1.0.0', '1.0.0'), isFalse);
+      expect(VersionComparator.isNewer('v1.0.0', '1.0.0'), isFalse);
     });
 
     test('detects a newer minor', () {
-      expect(isVersionNewer('1.10.0', '1.9.0'), isTrue);
+      expect(VersionComparator.isNewer('1.10.0', '1.9.0'), isTrue);
     });
 
     test('detects a newer patch', () {
-      expect(isVersionNewer('1.0.1', '1.0.0'), isTrue);
+      expect(VersionComparator.isNewer('1.0.1', '1.0.0'), isTrue);
     });
 
     test('does not treat an older release as newer', () {
-      expect(isVersionNewer('1.0.0', '1.0.1'), isFalse);
+      expect(VersionComparator.isNewer('1.0.0', '1.0.1'), isFalse);
     });
 
     test('ignores build metadata', () {
-      expect(isVersionNewer('1.0.0+9', '1.0.0'), isFalse);
+      expect(VersionComparator.isNewer('1.0.0+9', '1.0.0'), isFalse);
     });
 
     test('treats a pre-release as older than its release', () {
-      expect(isVersionNewer('1.0.0-beta', '1.0.0'), isFalse);
+      expect(VersionComparator.isNewer('1.0.0-beta', '1.0.0'), isFalse);
     });
 
     test('treats the release as newer than its pre-release', () {
-      expect(isVersionNewer('1.0.0', '1.0.0-beta'), isTrue);
+      expect(VersionComparator.isNewer('1.0.0', '1.0.0-beta'), isTrue);
     });
   });
 }

@@ -4,7 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 // Internal dependencies
 import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
-import 'package:unyo/core/services/update/release_asset.dart';
+import 'package:unyo/core/services/update/release_asset_selector.dart';
 import 'package:unyo/core/services/update/release_page_launcher.dart';
 import 'package:unyo/presentation/widgets/styled/dark_unyo_button.dart';
 import 'package:unyo/presentation/widgets/text/text_body_large.dart';
@@ -20,37 +20,41 @@ import 'package:unyo/presentation/widgets/text/text_headline_medium.dart';
 class UpdateAvailableDialog extends StatelessWidget {
   static const String title = "There's a new release";
 
-  final String latestVersion;
-  final String releaseNotes;
-  final VoidCallback onOpenReleasePage;
+  /// The published release the verdict was drawn from. Notes, assets and the
+  /// release page URL are read straight off it.
+  final GithubReleaseEntity release;
 
-  /// Assets of the release, in publish order. The matching installer for
-  /// [platform] decides whether the download button is shown at all.
-  final List<GithubReleaseAssets> assets;
+  /// The release tag without its leading `v`, i.e. the version that was
+  /// compared against the running build.
+  final String latestVersion;
+
+  final VoidCallback onOpenReleasePage;
 
   /// The platform the download button offers. Null means "whatever is running
   /// now"; tests inject a value so every mapping is covered on one host.
   final UpdatePlatform? platform;
 
-  /// Opens a URL externally. Defaults to the shared release-page launcher so
+  /// Opens a URL externally. Defaults to the shared release-asset launcher so
   /// both actions go through `url_launcher`.
   final Future<bool> Function(String url) openUrl;
 
   const UpdateAvailableDialog({
     super.key,
+    required this.release,
     required this.latestVersion,
-    required this.releaseNotes,
     required this.onOpenReleasePage,
-    this.assets = const [],
     this.platform,
-    this.openUrl = openReleaseAsset,
+    this.openUrl = ReleasePageLauncher.openAsset,
   });
 
   @override
   Widget build(BuildContext context) {
-    final notes = releaseNotes.trim();
+    final notes = release.body.trim();
     final targetPlatform = platform ?? UpdatePlatformInfo.current;
-    final downloadUrl = releaseAssetUrl(assets, targetPlatform);
+    final downloadUrl = ReleaseAssetSelector.urlFor(
+      release.assets,
+      targetPlatform,
+    );
     return Dialog(
       backgroundColor: const Color.fromARGB(255, 30, 30, 30),
       child: ConstrainedBox(
@@ -96,7 +100,8 @@ class UpdateAvailableDialog extends StatelessWidget {
                           styleSheet: _styleSheet,
                           // Links inside release notes open in the system
                           // browser, like the explicit button below.
-                          onTapLink: (_, href, _) => openReleasePage(href),
+                          onTapLink: (_, href, _) =>
+                              ReleasePageLauncher.openPage(href),
                         ),
                 ),
               ),

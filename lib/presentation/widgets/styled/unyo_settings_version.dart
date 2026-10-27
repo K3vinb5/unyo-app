@@ -1,18 +1,58 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+// Internal dependencies
+import 'package:unyo/core/di/locator.dart';
+import 'package:unyo/core/services/update/release_page_launcher.dart';
+import 'package:unyo/core/services/update/update_check_result.dart';
+import 'package:unyo/core/services/update/update_checker_service.dart';
 import 'package:unyo/presentation/widgets/styled/dark_unyo_button.dart';
 
-/// Read-only settings row used by Settings → About: shows an icon, a title, a
-/// description and an optional call-to-action button.
-class UnyoSettingsVersionRow extends StatelessWidget {
+/// Settings -> About: the running version and, when the startup check found a
+/// newer release, a row linking to its GitHub page. Reads the verdict the
+/// update check already produced — it never triggers a check of its own.
+class UnyoSettingsVersion extends StatelessWidget {
+  const UnyoSettingsVersion({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final updateCheckerService = sl<UpdateCheckerService>();
+    final currentVersion = updateCheckerService.lastCheckedVersion;
+    final lastResult = updateCheckerService.lastResult;
+    return Column(
+      children: [
+        _SettingsInfoRow(
+          title: "Version",
+          description:
+              currentVersion == null
+                  ? "Version unavailable"
+                  : "Unyo v$currentVersion",
+        ),
+        if (lastResult is UpdateAvailable)
+          _SettingsInfoRow(
+            title: "Update available: v${lastResult.latestVersion}",
+            description: "A newer release is available to download from GitHub",
+            icon: Icons.system_update_rounded,
+            actionLabel: "Open releases page",
+            onAction: () =>
+                ReleasePageLauncher.openPage(lastResult.release.htmlUrl),
+          ),
+      ],
+    );
+  }
+}
+
+/// Read-only settings row: icon, title, description and an optional
+/// call-to-action button. Private because [UnyoSettingsVersion] is its only
+/// user; the settings options that other categories show are their own widgets.
+class _SettingsInfoRow extends StatelessWidget {
   final String title;
   final String description;
   final IconData icon;
   final String? actionLabel;
   final void Function()? onAction;
 
-  const UnyoSettingsVersionRow({
-    super.key,
+  const _SettingsInfoRow({
     required this.title,
     required this.description,
     this.icon = Icons.info_rounded,

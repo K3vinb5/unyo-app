@@ -11,7 +11,6 @@ import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
-import 'package:unyo/core/services/update/release_page_launcher.dart';
 import 'package:unyo/core/services/update/update_check_result.dart';
 import 'package:unyo/core/services/update/version_comparator.dart';
 
@@ -118,8 +117,7 @@ class UpdateCheckerService {
       return const UpdateCheckFailed("Release payload has no tag_name");
     }
     final latestVersion = _stripVersionPrefix(tagName);
-    final releaseUrl = releasePageUri(release.htmlUrl).toString();
-    if (!isVersionNewer(latestVersion, currentVersion)) {
+    if (!VersionComparator.isNewer(latestVersion, currentVersion)) {
       _logger.d(
         "App is up to date (running $currentVersion, latest $latestVersion)",
       );
@@ -128,12 +126,9 @@ class UpdateCheckerService {
     _logger.i(
       "Update available: running $currentVersion, latest $latestVersion",
     );
-    return UpdateAvailable(
-      latestVersion: latestVersion,
-      releaseUrl: releaseUrl,
-      releaseNotes: release.body.trim(),
-      assets: release.assets,
-    );
+    // The verdict carries the whole bean: the dialog and the About rows read
+    // the published fields from it, so there is nothing to map or copy here.
+    return UpdateAvailable(release: release, latestVersion: latestVersion);
   }
 
   String _stripVersionPrefix(String tagName) =>

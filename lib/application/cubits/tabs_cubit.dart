@@ -99,18 +99,13 @@ class TabsCubit extends Cubit<TabsState>
         _logger.d("App is up to date (running $currentVersion)");
       case UpdateCheckFailed(:final reason):
         _logger.w("Update check failed: $reason");
-      case UpdateAvailable(
-        :final latestVersion,
-        :final releaseNotes,
-        :final releaseUrl,
-        :final assets,
-      ):
+      case UpdateAvailable(:final release, :final latestVersion):
         showWidgetDialogEffect(
           dialog: UpdateAvailableDialog(
+            release: release,
             latestVersion: latestVersion,
-            releaseNotes: releaseNotes,
-            assets: assets,
-            onOpenReleasePage: () => openReleasePage(releaseUrl),
+            onOpenReleasePage: () =>
+                ReleasePageLauncher.openPage(release.htmlUrl),
           ),
         );
     }

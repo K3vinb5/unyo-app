@@ -1,6 +1,4 @@
 // Application configuration
-// The current version is read at runtime (package_info_plus) so it can never
-// drift from the version stamped into pubspec.yaml at release time.
 // Update check configuration
 const String unyoReleasesEndpoint = 'https://api.github.com/repos/K3vinb5/Unyo/releases/latest';
 const String unyoReleasesFallbackUrl = 'https://github.com/K3vinb5/Unyo/releases/latest';

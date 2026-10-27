@@ -10,20 +10,19 @@ import 'package:logger/logger.dart';
 import 'package:mocktail/mocktail.dart';
 
 // Internal dependencies
-import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
 import 'package:unyo/core/services/api/http/api_response.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
-import 'package:unyo/core/services/update/release_page_launcher.dart';
 import 'package:unyo/core/services/update/update_check_result.dart';
 import 'package:unyo/core/services/update/update_checker_service.dart';
 
 class MockHttpService extends Mock implements HttpService {}
 
-/// The payload the bean was generated from, committed next to it.
+/// The payload the bean was generated from, committed with its regeneration
+/// commands in `tool/fjson-samples/`.
 const String samplePayloadPath =
-    'lib/core/services/api/dto/github/releases_latest_sample.json';
+    'tool/fjson-samples/github_releases_latest.json';
 
 void main() {
   const endpoint = 'https://stub.local/releases/latest';
@@ -88,13 +87,15 @@ void main() {
         expect(result, isA<UpdateAvailable>());
         final available = result as UpdateAvailable;
         expect(available.latestVersion, '0.9.0');
+        // The verdict carries the parsed bean, not a copy of its fields.
         expect(
-          available.releaseUrl,
+          available.release.htmlUrl,
           'https://github.com/K3vinb5/Unyo/releases/tag/v0.9.0',
         );
-        expect(available.releaseNotes, startsWith("## What's changed"));
+        expect(available.release.tagName, 'v0.9.0');
+        expect(available.release.body, startsWith("## What's changed"));
         expect(
-          available.assets.map((a) => a.name),
+          available.release.assets.map((a) => a.name),
           contains('Unyo-v0.9.0-linux.AppImage'),
         );
       },
@@ -138,26 +139,6 @@ void main() {
                 as Map<String, String>;
         expect(headers['Accept'], 'application/vnd.github+json');
         expect(headers['User-Agent'], contains('Unyo'));
-      },
-    );
-
-    test(
-      'falls back to the generic releases page when html_url is unusable',
-      () async {
-        stubRelease(
-          GithubReleaseEntity.fromJson({
-            ...samplePayload,
-            'html_url': 'releases/tag/v0.9.0',
-          }),
-        );
-
-        final result = await service().checkForUpdate('0.8.0');
-
-        expect(result, isA<UpdateAvailable>());
-        expect(
-          (result as UpdateAvailable).releaseUrl,
-          config.unyoReleasesFallbackUrl,
-        );
       },
     );
 
@@ -236,28 +217,5 @@ void main() {
 
       expect(result, isA<UpdateCheckFailed>());
     });
-  });
-
-  group('releasePageUri', () {
-    test('uses the API release url when it is a valid absolute uri', () {
-      expect(
-        releasePageUri(
-          'https://github.com/K3vinb5/Unyo/releases/tag/v1.2.3',
-        ).toString(),
-        'https://github.com/K3vinb5/Unyo/releases/tag/v1.2.3',
-      );
-    });
-
-    test(
-      'falls back to the generic releases page for null, empty or relative values',
-      () {
-        expect(releasePageUri(null).toString(), config.unyoReleasesFallbackUrl);
-        expect(releasePageUri('').toString(), config.unyoReleasesFallbackUrl);
-        expect(
-          releasePageUri('releases/tag/v1.2.3').toString(),
-          config.unyoReleasesFallbackUrl,
-        );
-      },
-    );
   });
 }

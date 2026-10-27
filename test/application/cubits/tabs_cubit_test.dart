@@ -27,6 +27,16 @@ class MockUpdateCheckerService extends Mock implements UpdateCheckerService {}
 
 class MockAppVersionProvider extends Mock implements AppVersionProvider {}
 
+/// A newer published release, shaped the way the checker's bean arrives.
+GithubReleaseEntity newerRelease({
+  String body = '- something changed',
+  List<GithubReleaseAssets> assets = const [],
+}) => GithubReleaseEntity()
+  ..tagName = 'v0.9.0'
+  ..htmlUrl = 'https://github.com/K3vinb5/Unyo/releases/tag/v0.9.0'
+  ..body = body
+  ..assets = assets;
+
 void main() {
   late MockThemeService themeService;
   late MockUserNotifier loggedUserNotifier;
@@ -75,16 +85,17 @@ void main() {
       () async {
         when(() => updateCheckerService.checkForUpdate('0.8.0')).thenAnswer(
           (_) async => UpdateAvailable(
+            release: newerRelease(
+              body:
+                  "## What's changed\n\n- Release notes now open in a dialog.",
+              assets: [
+                GithubReleaseAssets()
+                  ..name = 'Unyo-v0.9.0-linux.AppImage'
+                  ..browserDownloadUrl =
+                      'https://github.com/K3vinb5/Unyo/releases/download/v0.9.0/Unyo-v0.9.0-linux.AppImage',
+              ],
+            ),
             latestVersion: '0.9.0',
-            releaseUrl: 'https://github.com/K3vinb5/Unyo/releases/tag/v0.9.0',
-            releaseNotes:
-                "## What's changed\n\n- Release notes now open in a dialog.",
-            assets: [
-              GithubReleaseAssets()
-                ..name = 'Unyo-v0.9.0-linux.AppImage'
-                ..browserDownloadUrl =
-                    'https://github.com/K3vinb5/Unyo/releases/download/v0.9.0/Unyo-v0.9.0-linux.AppImage',
-            ],
           ),
         );
         final cubit = createCubit();
@@ -96,10 +107,10 @@ void main() {
         final dialog = effect.dialog as UpdateAvailableDialog;
         expect(dialog.latestVersion, '0.9.0');
         expect(
-          dialog.releaseNotes,
+          dialog.release.body,
           contains('Release notes now open in a dialog.'),
         );
-        expect(dialog.assets.single.name, 'Unyo-v0.9.0-linux.AppImage');
+        expect(dialog.release.assets.single.name, 'Unyo-v0.9.0-linux.AppImage');
         expect(dialog.onOpenReleasePage, isNotNull);
       },
     );
@@ -108,10 +119,9 @@ void main() {
       'shows the dialog again on the next launch (dismissing only silences the run)',
       () async {
         when(() => updateCheckerService.checkForUpdate('0.8.0')).thenAnswer(
-          (_) async => const UpdateAvailable(
+          (_) async => UpdateAvailable(
+            release: newerRelease(),
             latestVersion: '0.9.0',
-            releaseUrl: 'https://github.com/K3vinb5/Unyo/releases/tag/v0.9.0',
-            releaseNotes: '- something changed',
           ),
         );
 

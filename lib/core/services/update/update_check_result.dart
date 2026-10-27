@@ -2,6 +2,9 @@ import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
 
 /// Outcome of a single in-app update check.
 ///
+/// Not a DTO: `api/dto/**` mirrors remote JSON, while these verdict states
+/// ([UpToDate], [UpdateCheckFailed]) exist only on our side.
+///
 /// Every failure path (offline, non-200, 404 when there are no releases yet,
 /// malformed JSON, timeout) collapses into [UpdateCheckFailed] so callers never
 /// have to catch: the startup kick-off must never throw.
@@ -14,26 +17,21 @@ class UpToDate extends UpdateCheckResult {
   const UpToDate();
 }
 
-/// A newer release exists. [releaseUrl] is the GitHub release page (or the
-/// generic `/releases/latest` page when the payload has no usable `html_url`).
+/// A newer release exists.
+///
+/// Carries the release payload the verdict was drawn from, so the dialog and the
+/// Settings -> About rows read the published fields (`body`, `assets`,
+/// `html_url`) straight off the bean. Nothing is copied field by field, so the
+/// two can never drift; the only derived value kept here is [latestVersion],
+/// the compared tag with its leading `v` stripped.
 class UpdateAvailable extends UpdateCheckResult {
+  final GithubReleaseEntity release;
+
+  /// The release tag without its leading `v`, i.e. the version string that was
+  /// compared against the running build.
   final String latestVersion;
-  final String releaseUrl;
 
-  /// The release `body` markdown, as published on GitHub. Empty when the
-  /// maintainer shipped a release without notes.
-  final String releaseNotes;
-
-  /// The release's published assets, used to offer the installer for the
-  /// running platform. Empty when the payload carried none.
-  final List<GithubReleaseAssets> assets;
-
-  const UpdateAvailable({
-    required this.latestVersion,
-    required this.releaseUrl,
-    this.releaseNotes = '',
-    this.assets = const [],
-  });
+  const UpdateAvailable({required this.release, required this.latestVersion});
 }
 
 /// The check could not produce a verdict. Silent by design: it is only logged.

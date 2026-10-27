@@ -12,15 +12,12 @@ import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/core/services/media/episode_service.dart';
 import 'package:unyo/core/services/media/media_service.dart';
-import 'package:unyo/core/services/update/release_page_launcher.dart';
-import 'package:unyo/core/services/update/update_check_result.dart';
-import 'package:unyo/core/services/update/update_checker_service.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_category.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_dialog.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_dropdown.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_slider.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_toggle.dart';
-import 'package:unyo/presentation/widgets/styled/unyo_settings_version_row.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_settings_version.dart';
 import 'package:unyo/presentation/widgets/text/text_body_large.dart';
 import 'package:unyo/presentation/widgets/text/text_headline_medium.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
@@ -31,10 +28,8 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (context) => sl<SettingsCubit>()),
-      ],
+    return BlocProvider(
+      create: (context) => sl<SettingsCubit>(),
       child: const _SettingsListener(),
     );
   }
@@ -356,9 +351,7 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                       icon: Icons.info_rounded,
                       alignment: "bottom",
                       childAlignment: "bottom",
-                      settingsOptions: [
-                        _AboutUpdateRows(),
-                      ],
+                      settingsOptions: [UnyoSettingsVersion()],
                     ),
                   ],
                 ),
@@ -367,36 +360,6 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
           ],
         );
       },
-    );
-  }
-}
-
-/// Settings -> About: the running version and, when the startup check found a
-/// newer release, a row linking to its GitHub page. Reads the verdict the
-/// update check already produced — it never triggers a check of its own.
-class _AboutUpdateRows extends StatelessWidget {
-  const _AboutUpdateRows();
-
-  @override
-  Widget build(BuildContext context) {
-    final updateCheckerService = sl<UpdateCheckerService>();
-    final currentVersion = updateCheckerService.lastCheckedVersion;
-    final lastResult = updateCheckerService.lastResult;
-    return Column(
-      children: [
-        UnyoSettingsVersionRow(
-          title: "Version",
-          description: currentVersion == null ? "Version unavailable" : "Unyo v$currentVersion",
-        ),
-        if (lastResult is UpdateAvailable)
-          UnyoSettingsVersionRow(
-            title: "Update available: v${lastResult.latestVersion}",
-            description: "A newer release is available to download from GitHub",
-            icon: Icons.system_update_rounded,
-            actionLabel: "Open releases page",
-            onAction: () => openReleasePage(lastResult.releaseUrl),
-          ),
-      ],
     );
   }
 }

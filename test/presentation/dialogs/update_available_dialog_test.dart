@@ -6,13 +6,24 @@ import 'package:material_ui/material_ui.dart';
 
 // Internal dependencies
 import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
-import 'package:unyo/core/services/update/release_asset.dart';
+import 'package:unyo/core/services/update/release_asset_selector.dart';
 import 'package:unyo/presentation/dialogs/update_available_dialog.dart';
 
 GithubReleaseAssets asset(String name) => GithubReleaseAssets()
   ..name = name
   ..browserDownloadUrl =
       'https://github.com/K3vinb5/Unyo/releases/download/v0.9.0/$name';
+
+/// The release the dialog renders: notes, assets and page URL all come from this
+/// one bean, exactly like the verdict carries it.
+GithubReleaseEntity release({
+  String notes = '- something changed',
+  List<GithubReleaseAssets> assets = const [],
+}) => GithubReleaseEntity()
+  ..tagName = 'v0.9.0'
+  ..htmlUrl = 'https://github.com/K3vinb5/Unyo/releases/tag/v0.9.0'
+  ..body = notes
+  ..assets = assets;
 
 final List<GithubReleaseAssets> releaseAssets = [
   asset('Unyo-v0.9.0-linux.zip'),
@@ -41,10 +52,12 @@ void main() {
                 onPressed: () => showDialog(
                   context: context,
                   builder: (_) => UpdateAvailableDialog(
+                    release: release(
+                      notes: releaseNotes,
+                      assets: assets ?? const [],
+                    ),
                     latestVersion: '0.9.0',
-                    releaseNotes: releaseNotes,
                     onOpenReleasePage: onOpenReleasePage,
-                    assets: assets ?? const [],
                     platform: platform,
                     openUrl: openUrl ?? (_) async => true,
                   ),
