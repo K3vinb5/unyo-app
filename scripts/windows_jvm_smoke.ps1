@@ -12,8 +12,16 @@
 #      directory of the DLL being loaded, so the delay-load stub would not
 #      find jvm.dll on its own);
 #   2. LoadLibrary dartjni.dll by absolute path;
-#   3. GetProcAddress "SpawnJvm" and call it with a NULL JavaVMInitArgs, which
-#      dartjni.c turns into default JNI_VERSION_1_6 args with classpath ".".
+#   3. GetProcAddress "SpawnJvm" to prove the export is reachable;
+#   4. boot a real VM from scripts/windows_jvm_smoke_boot.dart, a Dart host
+#      that calls SpawnJvm(NULL) exactly like unyo-lib's Jni.spawnIfNotExists
+#      (dartjni.c turns NULL into default JNI_VERSION_1_6 args).
+#
+# The VM boot must not run inside pwsh: pwsh.exe is a CoreCLR process, and
+# booting HotSpot across a managed->native transition fail-fasts the whole
+# process (exit 0xC0000409, STATUS_STACK_BUFFER_OVERRUN) before any JNI status
+# can come back. The shipped app boots the JVM from Dart, so the boot is
+# replayed from a Dart host.
 #
 # Exit 0 and "SMOKE OK" means the delay-load resolution worked and the VM
 # actually booted on this machine's loader.
@@ -71,20 +79,25 @@ if ($jniHandle -eq [IntPtr]::Zero) {
 }
 Write-Host "loaded: $jniDll"
 
-# 3. Resolve and call SpawnJvm with NULL init args.
+# 3. Resolve SpawnJvm: the export must be reachable through the delay-loaded
+#    wrapper. The call itself happens in the Dart host below.
 $proc = [Win32]::GetProcAddress($jniHandle, 'SpawnJvm')
 if ($proc -eq [IntPtr]::Zero) {
     Fail "GetProcAddress failed for SpawnJvm in $jniDll"
 }
+Write-Host "resolved: SpawnJvm export"
 
-$spawn = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer(
-    $proc, [SpawnJvmDelegate])
-$rc = $spawn.Invoke([IntPtr]::Zero)
-
-# 0 is JNI_OK (jni_constants.h); anything else is a JNI error code.
-if ($rc -ne 0) {
-    Fail "SpawnJvm returned $rc (expected 0 = JNI_OK)"
+# 4. Boot a real VM from a native Dart host (see the script header).
+$dart = Join-Path (Join-Path $env:FLUTTER_ROOT 'bin') 'dart.exe'
+if (-not (Test-Path -LiteralPath $dart -PathType Leaf)) {
+    Fail "missing $dart"
 }
-
-Write-Host "SMOKE OK: SpawnJvm returned JNI_OK"
+$boot = Join-Path $PSScriptRoot 'windows_jvm_smoke_boot.dart'
+if (-not (Test-Path -LiteralPath $boot -PathType Leaf)) {
+    Fail "missing $boot"
+}
+& $dart $boot (Resolve-Path -LiteralPath $jvmDll).Path (Resolve-Path -LiteralPath $jniDll).Path
+if ($LASTEXITCODE -ne 0) {
+    Fail "VM boot smoke failed (dart exit $LASTEXITCODE)"
+}
 exit 0

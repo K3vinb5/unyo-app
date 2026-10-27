@@ -50,20 +50,19 @@ void main() {
       // dartjni.c is plain C, so the export is cdecl.
       expect(ps1, contains('CallingConvention.Cdecl'));
 
-      // A NULL JavaVMInitArgs lets dartjni.c build the default args itself.
-      // A .NET delegate in a variable must be invoked with .Invoke(...): the
-      // call form $spawn(...) is a PowerShell parse error (the whole script
-      // fails to parse), so pin the working form and forbid the broken one.
-      expect(ps1, contains(r'$spawn.Invoke([IntPtr]::Zero)'));
-      expect(
-        RegExp(r'\$spawn\s*\(').allMatches(ps1),
-        isEmpty,
-        reason: r'$spawn(...) does not parse in PowerShell; use $spawn.Invoke(...)',
-      );
+      // The VM boot happens in a Dart host, not in pwsh: a managed->native
+      // SpawnJvm call fail-fasts the CoreCLR process (0xC0000409).
+      expect(ps1, contains('windows_jvm_smoke_boot.dart'));
+      expect(ps1, isNot(contains('GetDelegateForFunctionPointer')));
 
-      // Non-zero JNI codes fail the step, JNI_OK exits 0 loudly.
-      expect(ps1, contains(r'if ($rc -ne 0)'));
-      expect(ps1, contains('SMOKE OK: SpawnJvm returned JNI_OK'));
+      // The Dart host does the boot and the JNI status check.
+      final String boot = File(
+        'scripts/windows_jvm_smoke_boot.dart',
+      ).readAsStringSync();
+      expect(boot, contains("'SpawnJvm'"));
+      expect(boot, contains('DynamicLibrary.open'));
+      expect(boot, contains(r'if (rc != 0)'));
+      expect(boot, contains('SMOKE OK: SpawnJvm returned JNI_OK'));
     });
 
     // Join-Path needs both -Path and -ChildPath; a single argument is a
