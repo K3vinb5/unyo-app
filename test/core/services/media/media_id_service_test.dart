@@ -273,6 +273,8 @@ void main() {
       ('', 'empty'),
       ('null', 'null'),
       ('abc', 'non-numeric'),
+      ('0', 'zero'),
+      ('-5', 'negative'),
     ]) {
       test('a junk metadata native id ($label) is a miss, not a re-addressed metadata fetch', () async {
         await cache.put(IdMapping(
@@ -338,6 +340,65 @@ void main() {
       expect(relinked.proposal!.candidates.single.nativeId, '55555');
       expect(relinked.isUnresolved, isTrue, reason: 'nothing is linked before the user confirms');
     });
+
+    for (final (String junk, String label) in <(String, String)>[
+      ('0', 'zero'),
+      ('-5', 'negative'),
+      ('abc', 'non-numeric'),
+      ('', 'empty'),
+    ]) {
+      test('a poisoned link ($label) is cleaned on both rows and the next lookup searches titles', () async {
+        // Box state a pre-fix build could write: an unusable target row plus the
+        // source row's link to it. `_confirmedLink` used to rebuild the target
+        // row from that link, so the entry never reached the title search again.
+        await cache.put(IdMapping(
+          service: Service.shikimori,
+          nativeId: junk,
+          malId: 58514,
+          state: IdMappingState.confirmed,
+          source: IdMappingSource.titleSearch,
+        ));
+        await cache.put(IdMapping(
+          service: Service.anilist,
+          nativeId: '170942',
+          malId: 58514,
+          state: IdMappingState.confirmed,
+          source: IdMappingSource.titleSearch,
+          linkedService: Service.shikimori,
+          linkedNativeId: junk,
+        ));
+
+        final MediaDetailsSource first = await service.detailsSource(
+          anilistAnime(),
+          userWith(metadataService: Service.shikimori),
+        );
+
+        expect(first.service, Service.anilist, reason: 'unusable "$junk" must never address the metadata provider');
+        expect(first.anime.id, 170942);
+        expect(first.isUnresolved, isTrue);
+        expect(await cache.getByNativeId(Service.shikimori, junk), isNull);
+        expect(
+          (await cache.getByNativeId(Service.anilist, '170942'))!.linkedNativeId,
+          isNull,
+          reason: 'the stale source link must be cleared, or _confirmedLink resurrects the row',
+        );
+
+        lookup.searchResults = <MediaLinkCandidate>[candidate('55555')];
+        final MediaDetailsSource second = await service.detailsSource(
+          anilistAnime(),
+          userWith(metadataService: Service.shikimori),
+        );
+
+        expect(lookup.searchCalls, 1, reason: 'the entry must reach the title-search stage again');
+        expect(second.isUnresolved, isTrue, reason: 'nothing is linked before the user confirms');
+        expect(second.proposal!.candidates.single.nativeId, '55555');
+        expect(
+          await cache.getByNativeId(Service.shikimori, junk),
+          isNull,
+          reason: '_confirmedLink must not recreate the unusable row',
+        );
+      });
+    }
 
     test('a Shikimori record resolves to AniList through its own malId', () async {
       lookup.probeResult = candidate('170942', malId: 58514, service: Service.anilist);
@@ -455,6 +516,44 @@ void main() {
       expect(linked.isUnresolved, isFalse);
       expect((await cache.getByNativeId(Service.shikimori, '55555'))!.state, IdMappingState.confirmed);
     });
+
+    for (final (String junk, String label) in <(String, String)>[
+      ('0', 'zero'),
+      ('-5', 'negative'),
+      ('abc', 'non-numeric'),
+      ('', 'empty'),
+    ]) {
+      test('a confirmed candidate with an unusable id ($label) is never cached', () async {
+        lookup.searchResults = <MediaLinkCandidate>[candidate('55555')];
+        await service.detailsSource(anilistAnime(), userWith(metadataService: Service.shikimori));
+
+        await service.confirmLink(
+          source: Service.anilist,
+          nativeId: '170942',
+          candidate: candidate(junk),
+        );
+
+        expect(
+          await cache.getByNativeId(Service.shikimori, junk),
+          isNull,
+          reason: 'a confirmed "$junk" must never become a cached mapping',
+        );
+        expect(
+          (await cache.getByNativeId(Service.anilist, '170942'))?.linkedNativeId,
+          isNull,
+          reason: 'the source row must not be linked to an unusable target id',
+        );
+
+        final MediaDetailsSource after = await service.detailsSource(
+          anilistAnime(),
+          userWith(metadataService: Service.shikimori),
+        );
+
+        expect(after.service, Service.anilist, reason: 'no metadata fetch may be re-addressed with "$junk"');
+        expect(after.anime.id, 170942);
+        expect(after.isUnresolved, isTrue);
+      });
+    }
 
     test('declining leaves the entry unresolved and stops the dialog for the session', () async {
       lookup.searchResults = <MediaLinkCandidate>[candidate('55555')];

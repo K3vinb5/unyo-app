@@ -117,27 +117,30 @@ class MediaIdService {
     );
     final IdMapping? mapping = resolution.mapping;
     if (mapping != null && mapping.isResolved && mapping.service == metadataService) {
-      final int? targetNativeId = int.tryParse(mapping.nativeId);
+      final int? targetNativeId = _usableNativeId(mapping.nativeId);
       if (targetNativeId != null) {
         return MediaDetailsSource(
           anime: withAnimeNativeId(anime, targetNativeId),
           service: metadataService,
         );
       }
-      // A resolved row whose native id is not a number is a miss, not a licence
-      // to re-address the record with the source provider's id: asking
-      // [metadataService] for it would open an unrelated entry under a wrong
-      // title, and reusing the source id hides the relink action. Same rule as
-      // [userNativeIdFor] returning null — never guess an id.
+      // A resolved row whose native id is not a *positive* number is a miss, not
+      // a licence to re-address the record: `0`, a negative id and junk all
+      // address no entry — AniList 404s on them, Shikimori answers with default
+      // junk details — so the page would open an unrelated entry instead of
+      // falling back and offering the relink action. Reusing the source id
+      // hides that action too. Same rule as [userNativeIdFor] returning null —
+      // never guess an id.
       //
-      // The unusable row is forgotten as well: keeping it would shadow the chain
-      // forever, so the manual relink action would land on it again and never
-      // propose a verified entry.
+      // The unusable row is forgotten as well, **together with the source row's
+      // link to it**: `_confirmedLink` rebuilds the target row from
+      // `linkedNativeId`, so dropping the target alone would let the next lookup
+      // resurrect it and the entry could never reach the title-search stage.
       _logger.w(
-        "Cached ${mapping.service.name} row '${mapping.nativeId}' has no numeric native id, "
+        "Cached ${mapping.service.name} row '${mapping.nativeId}' has no usable native id, "
         "treating the ${provenance.name}:${anime.id} link as unresolved",
       );
-      await _cache.remove(mapping.service, mapping.nativeId);
+      await _forgetUnusableLink(provenance, '${anime.id}', mapping.service, mapping.nativeId);
     }
 
     // Unresolved, or waiting for a confirmation: the page keeps the record's own
@@ -185,15 +188,28 @@ class MediaIdService {
       return null;
     }
     _logger.i("Resolved ${provenance.name}:${anime.id} to ${userService.name}:${mapping.nativeId}");
-    return int.tryParse(mapping.nativeId);
+    return _usableNativeId(mapping.nativeId);
   }
 
   /// Caches the link the user confirmed in the dialog.
+  ///
+  /// A candidate whose native id is empty, non-numeric, `0` or negative
+  /// identifies no entry: caching it would poison the box forever (every later
+  /// open would re-address the metadata provider with that id and never reach
+  /// the title search again), so nothing is written and the entry stays
+  /// unresolved — the page can run the chain, and the dialog, again.
   Future<void> confirmLink({
     required Service source,
     required String nativeId,
     required MediaLinkCandidate candidate,
   }) async {
+    if (_usableNativeId(candidate.nativeId) == null) {
+      _logger.w(
+        "Refusing to cache confirmed ${candidate.service.name} candidate '${candidate.nativeId}' "
+        "for ${source.name}:$nativeId: no usable native id",
+      );
+      return;
+    }
     await _cache.put(IdMapping(
       service: candidate.service,
       nativeId: candidate.nativeId,
@@ -373,6 +389,32 @@ class MediaIdService {
     return linked;
   }
 
+  /// Forgets an unusable target row **and** the source row's link to it.
+  ///
+  /// [detailsSource] drops the target row so it cannot shadow the chain, but
+  /// `_confirmedLink` rebuilds that row from the source row's `linkedNativeId`.
+  /// Leaving the link in place would therefore let the very next lookup
+  /// resurrect the unusable row, and the entry could never reach the
+  /// title-search stage again.
+  Future<void> _forgetUnusableLink(
+    Service source,
+    String nativeId,
+    Service target,
+    String targetNativeId,
+  ) async {
+    final IdMapping? sourceRow = await _cache.getByNativeId(source, nativeId);
+    if (sourceRow != null && sourceRow.linkedService == target && sourceRow.linkedNativeId != null) {
+      await _cache.put(IdMapping(
+        service: sourceRow.service,
+        nativeId: sourceRow.nativeId,
+        malId: sourceRow.malId,
+        state: sourceRow.state,
+        source: sourceRow.source,
+      ));
+    }
+    await _cache.remove(target, targetNativeId);
+  }
+
   Future<List<MediaLinkCandidate>> _titleSearch(Service target, String title) async {
     final MediaMappingLookup? lookup = _mappingLookup;
     if (lookup == null) return const <MediaLinkCandidate>[];
@@ -383,13 +425,12 @@ class MediaIdService {
   Future<int?> _pivotFromAniZip(Service service, String nativeId) async {
     switch (service) {
       case Service.anilist:
-        final int? anilistId = int.tryParse(nativeId);
+        final int? anilistId = _usableNativeId(nativeId);
         if (anilistId == null) return null;
         return _aniZipLookup?.malIdForAnilistId(anilistId);
       case Service.mal:
         // A MAL record's native id *is* its MAL id; no cross-provider guess.
-        final int? nativeMalId = int.tryParse(nativeId);
-        return nativeMalId != null && nativeMalId > 0 ? nativeMalId : null;
+        return _usableNativeId(nativeId);
       case Service.kitsu:
       case Service.shikimori:
       case Service.simkl:
@@ -397,4 +438,16 @@ class MediaIdService {
         return null;
     }
   }
+}
+
+/// A provider native id is usable only when it parses to a **positive** integer.
+///
+/// `int.tryParse` happily accepts `0` and negative values, but neither
+/// identifies a record: sending one to a metadata provider yields a 404
+/// (AniList) or default junk details (Shikimori) instead of a clean miss.
+/// Empty and non-numeric ids fail the parse. Every place that turns a cached or
+/// proposed native id into a provider call or a stored row goes through here.
+int? _usableNativeId(String? nativeId) {
+  final int? parsed = nativeId == null ? null : int.tryParse(nativeId);
+  return parsed != null && parsed > 0 ? parsed : null;
 }
