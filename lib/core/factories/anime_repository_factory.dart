@@ -4,6 +4,7 @@ import 'package:logger/logger.dart';
 // Internal dependencies
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/service.dart';
+import 'package:unyo/core/services/media/media_provenance.dart';
 import 'package:unyo/data/repositories/anime_repository_anilist.dart';
 import 'package:unyo/data/repositories/anime_repository_shikimori.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
@@ -11,6 +12,9 @@ import 'package:unyo/domain/entities/media/anime_details.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
+import 'package:unyo/domain/services/id_mapping.dart';
+import 'package:unyo/domain/services/media_id_resolver.dart';
+import 'package:unyo/domain/services/media_link_exception.dart';
 
 /// Factory that resolves the correct [AnimeRepository] implementation.
 ///
@@ -26,6 +30,7 @@ class AnimeRepositoryFactory implements AnimeRepository {
   final AnimeRepositoryAnilist _animeRepositoryAnilist = sl<AnimeRepositoryAnilist>();
   final AnimeRepositoryShikimori _animeRepositoryShikimori = sl<AnimeRepositoryShikimori>();
   final Logger _logger = sl<Logger>();
+  final MediaIdResolver _mediaIdResolver = sl<MediaIdResolver>();
 
   @override
   Future<(bool, List<Anime>)> getRecentlyReleasedAnimes(
@@ -273,12 +278,15 @@ class AnimeRepositoryFactory implements AnimeRepository {
     Anime selectedAnime,
     User loggedUser,
   ) async {
+    // Writes only ever go to the user provider, and only to an id we could
+    // verify: a metadata-provider record carries a foreign native id.
+    final Anime userRecord = await _asUserProviderRecord(selectedAnime, loggedUser, operation: "update");
     switch (loggedUser.settings.userService) {
       case Service.anilist:
         _logger.i("Updating Media List Entry to $newMediaListEntry on Anilist");
         return _animeRepositoryAnilist.updateMediaListEntry(
           newMediaListEntry,
-          selectedAnime,
+          userRecord,
           loggedUser,
         );
       case Service.mal:
@@ -302,11 +310,16 @@ class AnimeRepositoryFactory implements AnimeRepository {
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
+    final Anime? userRecord = await _asUserProviderRecordOrNull(selectedAnime, loggedUser, operation: "read");
+    if (userRecord == null) {
+      // Reads may degrade to an empty entry; nothing is guessed.
+      return MediaListEntryModel.empty();
+    }
     switch (loggedUser.settings.userService) {
       case Service.anilist:
         _logger.i("Fetching User Media List Entry from AniList for ${selectedAnime.title.userPreferred}");
         return _animeRepositoryAnilist.getMediaListEntry(
-          selectedAnime,
+          userRecord,
           loggedUser,
           ignoreCache: ignoreCache,
         );
@@ -323,5 +336,51 @@ class AnimeRepositoryFactory implements AnimeRepository {
         _logger.i("Fetching User Media List Entry from Simkl for ${selectedAnime.title.userPreferred}");
         return MediaListEntryModel.empty();
     }
+  }
+
+  /// Re-addresses a record to the user provider's native id through the MAL
+  /// pivot. The identity path passes the record through untouched (zero lookups).
+  ///
+  /// Throws [MediaLinkUnresolvedException] instead of guessing when the chain
+  /// cannot verify a mapping — the caller must not write in that case.
+  Future<Anime> _asUserProviderRecord(Anime selectedAnime, User loggedUser, {required String operation}) async {
+    final Anime? userRecord = await _asUserProviderRecordOrNull(selectedAnime, loggedUser, operation: operation);
+    if (userRecord == null) {
+      throw MediaLinkUnresolvedException(
+        "No verified ${loggedUser.settings.userService.name} entry for "
+        "${selectedAnime.title.userPreferred} (${serviceOfAnime(selectedAnime).name}:${selectedAnime.id}); "
+        "skipping the list $operation instead of writing to a guessed id",
+      );
+    }
+    return userRecord;
+  }
+
+  /// Null when the record cannot be translated to the user provider.
+  Future<Anime?> _asUserProviderRecordOrNull(Anime selectedAnime, User loggedUser, {required String operation}) async {
+    final Service userService = loggedUser.settings.userService;
+    final Service provenance = serviceOfAnime(selectedAnime);
+    if (provenance == userService) return selectedAnime;
+
+    final MediaIdResolution resolution = await _mediaIdResolver.resolveTarget(
+      source: provenance,
+      nativeId: '${selectedAnime.id}',
+      target: userService,
+      query: mediaLinkQueryForAnime(selectedAnime),
+      knownMalId: selectedAnime.idMal,
+    );
+    final IdMapping? mapping = resolution.mapping;
+    final int? nativeId = mapping == null || !resolution.isResolved || mapping.service != userService
+        ? null
+        : int.tryParse(mapping.nativeId);
+    if (nativeId == null) {
+      _logger.w(
+        "Cannot resolve ${serviceOfAnime(selectedAnime).name}:${selectedAnime.id} to ${userService.name} for list $operation",
+      );
+      return null;
+    }
+    _logger.i(
+      "Resolved ${serviceOfAnime(selectedAnime).name}:${selectedAnime.id} to ${userService.name}:$nativeId for list $operation",
+    );
+    return withAnimeNativeId(selectedAnime, nativeId);
   }
 }

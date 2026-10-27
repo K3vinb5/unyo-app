@@ -23,6 +23,7 @@ import 'package:unyo/core/notification/extension_notifier.dart';
 import 'package:unyo/core/notification/media_list_entry_notifier.dart';
 import 'package:unyo/core/notification/media_list_notifier.dart';
 import 'package:unyo/core/notification/reload/reload_notifier.dart';
+import 'package:unyo/core/notification/reload/reload_type.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/core/notification/video_info_notifier.dart';
 import 'package:unyo/data/repositories/extension_repository_aniyomi.dart';
@@ -31,6 +32,7 @@ import 'package:unyo/domain/entities/extension/extension.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
 import 'package:unyo/domain/repositories/episode_repository.dart';
+import 'package:unyo/domain/services/media_link_exception.dart';
 import '../../core/di/locator.dart' show setupTestLocator;
 
 class MockBuildContext extends Mock implements BuildContext {}
@@ -319,6 +321,36 @@ void main() {
       expect(cubit.state.extensionAnimeResults, hasLength(2));
       expect(cubit.state.selectedAnimeResultIndex, 1);
       expect(snackbars.any((effect) => effect.title == 'Something went wrong'), isFalse, reason: rendered.join('; '));
+    });
+  });
+
+  group('AnimeDetailsCubit.updateMediaListEntry', () {
+    test('surfaces an unresolved mapping as a warning and writes nothing', () async {
+      when(
+        () => animeRepository.updateMediaListEntry(any(), any(), any()),
+      ).thenThrow(const MediaLinkUnresolvedException('no verified user-provider entry'));
+      cubit = buildCubit();
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.updateMediaListEntry(MockBuildContext());
+
+      final List<ShowSnackbarEffect> snackbars = snackbarsOf(cubit.state);
+      final List<String> rendered = snackbars.map((effect) => '${effect.title} / ${effect.message}').toList();
+      expect(
+        snackbars.any(
+          (effect) => effect.title == 'List not updated' && effect.contentType == ContentType.warning,
+        ),
+        isTrue,
+        reason: 'the user must learn the entry is unmatched, got: $rendered',
+      );
+      expect(
+        snackbars.any((effect) => effect.title == 'Something went wrong'),
+        isFalse,
+        reason: 'an unmatched entry is an expected state, not an app error, got: $rendered',
+      );
+      verify(() => animeRepository.updateMediaListEntry(any(), any(), any())).called(1);
+      verifyNever(() => reloadNotifier.emitReload(ReloadType.animeMediaListEntryUpdated));
+      verifyNever(() => reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated));
     });
   });
 }

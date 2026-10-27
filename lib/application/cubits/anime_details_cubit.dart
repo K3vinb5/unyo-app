@@ -48,6 +48,7 @@ import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/entities/media/video_info.dart';
 import 'package:unyo/domain/services/id_mapping.dart';
 import 'package:unyo/domain/services/media_id_resolver.dart';
+import 'package:unyo/domain/services/media_link_exception.dart';
 import 'package:unyo/domain/services/media_link_proposal.dart';
 import 'package:unyo/domain/utils/episode_index.dart';
 import 'package:unyo/presentation/dialogs/anime_details_media_entry_dialog.dart';
@@ -364,6 +365,16 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       if (desiredMediaListEntry.status != beforeUpdateMediaListEntry.status) {
         _reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated);
       }
+    } on MediaLinkUnresolvedException catch (e, stackTrace) {
+      // Writing to a guessed id would corrupt another entry: nothing was sent.
+      _logger.w("Skipped the list update, no verified user-provider entry: $e", stackTrace: stackTrace);
+      showSnackBarEffect(
+        "List not updated",
+        message: "This entry isn't matched to your ${TextUtils.capitalize(state.loggedUser.settings.userService.name)} account yet, so nothing was written.",
+        contentType: ContentType.warning,
+      );
+      // Keep the editor open: nothing was written, so closing it would imply a save.
+      return;
     } on HttpServerException catch (e, stackTrace) {
       handleError("Error updating Anime Entry:", responseBody: e.message, stackTrace: stackTrace);
     } catch (e, stackTrace) {
@@ -507,17 +518,24 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         loggedUser,
         service: detailsService,
       );
+      // List state always belongs to the user provider (WP #61 decision 3): a
+      // metadata-provider details payload must never seed the list editor, or a
+      // save would write that provider's (possibly empty) values.
+      final bool detailsOwnsListState = detailsService == loggedUser.settings.userService;
       emit(
         state.copyWith(
           characters: (animeDetails.$2.characters.isNotEmpty, animeDetails.$2.characters),
-          mediaListEntry: animeDetails.$2.mediaListEntry,
-          newMediaListEntry: animeDetails.$2.mediaListEntry,
+          mediaListEntry: detailsOwnsListState ? animeDetails.$2.mediaListEntry : state.mediaListEntry,
+          newMediaListEntry: detailsOwnsListState ? animeDetails.$2.mediaListEntry : state.newMediaListEntry,
           recommendations: (
             animeDetails.$2.recommendedAnimes.isNotEmpty,
             animeDetails.$2.recommendedAnimes,
           ),
         ),
       );
+      if (!detailsOwnsListState) {
+        await _getUserMediaListEntry(loggedUser, selectedAnime);
+      }
       if (animeDetails.$2.recommendedAnimes.isEmpty) {
         (bool, List<Anime>) trendingAnimes = await _animeRepository.getTrendingAnimes(
           1,

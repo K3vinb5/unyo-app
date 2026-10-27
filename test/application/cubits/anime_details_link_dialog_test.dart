@@ -65,10 +65,15 @@ class MockReloadNotifier extends Mock implements ReloadNotifier {}
 
 class FakeMediaMappingLookup implements MediaMappingLookup {
   List<MediaLinkCandidate> searchResults = <MediaLinkCandidate>[];
+  MediaLinkCandidate? probeResult;
   int searchCalls = 0;
+  int probeCalls = 0;
 
   @override
-  Future<MediaLinkCandidate?> lookupByMalId(Service target, int malId) async => null;
+  Future<MediaLinkCandidate?> lookupByMalId(Service target, int malId) async {
+    probeCalls++;
+    return probeResult;
+  }
 
   @override
   Future<List<MediaLinkCandidate>> searchCandidates(Service target, MediaLinkQuery query) async {
@@ -113,10 +118,10 @@ void main() {
   List<ShowWidgetDialogEffect> dialogsOf(AnimeDetailsState state) =>
       state.effects.whereType<ShowWidgetDialogEffect>().toList();
 
-  Future<void> openDetails() async {
+  Future<void> openDetails({Anime? anime}) async {
     userStreamController.add(testUser);
     await pumpEventQueue();
-    animeStreamController.add(testAnime);
+    animeStreamController.add(anime ?? testAnime);
     await pumpEventQueue();
   }
 
@@ -163,6 +168,8 @@ void main() {
         .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
     when(() => animeRepository.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
         .thenAnswer((_) async => (false, <Anime>[]));
+    when(() => animeRepository.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+        .thenAnswer((_) async => MediaListEntryModel.empty().copyWith(progress: 3, status: 'Current'));
     when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
         .thenAnswer((_) async => <String>[]);
     when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
@@ -308,6 +315,43 @@ void main() {
 
       expect(cubit.state.mediaLinkProposal, isNotNull);
       expect(dialogsOf(cubit.state), hasLength(2), reason: 'the manual action reopens the dialog');
+    });
+  });
+
+  group('list state ownership', () {
+    test('the list editor never adopts the metadata provider\'s entry', () async {
+      // An AniList record (idMal set) whose details come from Shikimori: the
+      // Shikimori payload carries Shikimori's own userRate, which is not the
+      // AniList account's list state.
+      mappingLookup.probeResult = const MediaLinkCandidate(
+        service: Service.shikimori,
+        nativeId: '55555',
+        malId: 58514,
+        title: 'Kusuriya no Hitorigoto',
+        year: 2023,
+        format: 'tv',
+      );
+      when(() => animeRepository.getAnimeDetails(any(), any(), service: any(named: 'service'))).thenAnswer(
+        (_) async => (
+          true,
+          AnimeDetailsModel.empty().copyWith(
+            mediaListEntry: MediaListEntryModel.empty().copyWith(progress: 99, status: 'Foreign'),
+          ),
+        ),
+      );
+
+      await openDetails(anime: testAnime.copyWith(idMal: 58514));
+
+      expect(cubit.state.mediaListEntry.progress, 3,
+          reason: 'the entry must come from the user provider, not the metadata payload');
+      expect(cubit.state.mediaListEntry.status, 'Current');
+      verify(
+        () => animeRepository.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')),
+      ).called(greaterThanOrEqualTo(1));
+      final List<Service?> services = verify(
+        () => animeRepository.getAnimeDetails(any(), any(), service: captureAny(named: 'service')),
+      ).captured.cast<Service?>();
+      expect(services, contains(Service.shikimori), reason: 'details themselves still come from the metadata provider');
     });
   });
 }

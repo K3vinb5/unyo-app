@@ -28,6 +28,7 @@ import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
 import 'package:unyo/core/services/video/video_service.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
+import 'package:unyo/domain/services/media_link_exception.dart';
 import 'package:unyo/data/repositories/extension_repository_aniyomi.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/episode_info.dart';
@@ -501,6 +502,16 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
       );
       emit(state.copyWith(mediaListEntry: savedMediaListEntry));
       _reloadNotifier.emitReload(ReloadType.videoMediaListEntryUpdated);
+    } on MediaLinkUnresolvedException catch (e, stackTrace) {
+      // No verified user-provider entry: the progress write was skipped, so do
+      // not claim success either.
+      _logger.w("Skipped marking the episode as watched: $e", stackTrace: stackTrace);
+      showSnackBarEffect(
+        "Progress not saved",
+        message: "This entry isn't matched to your account provider yet, so your progress wasn't written.",
+        contentType: ContentType.warning,
+      );
+      return;
     } on HttpServerException catch (e, stackTrace) {
       handleError("Error updating Anime Entry:", responseBody: e.message, stackTrace: stackTrace);
     } catch (e, stackTrace) {

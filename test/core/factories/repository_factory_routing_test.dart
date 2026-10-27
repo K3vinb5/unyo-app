@@ -8,6 +8,7 @@ import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/factories/anime_repository_factory.dart';
 import 'package:unyo/core/factories/manga_repository_factory.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
+import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
 import 'package:unyo/data/repositories/anime_repository_anilist.dart';
 import 'package:unyo/data/repositories/anime_repository_shikimori.dart';
 import 'package:unyo/data/repositories/manga_repository_anilist.dart';
@@ -15,10 +16,15 @@ import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/anime_details.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
+import 'package:unyo/domain/entities/media/airing_episode.dart';
 import 'package:unyo/domain/entities/media/manga_details.dart';
+import 'package:unyo/domain/entities/media/title.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/core/di/locator.dart' show sl;
+import 'package:unyo/domain/services/media_id_cache.dart';
+import 'package:unyo/domain/services/media_id_resolver.dart';
+import 'package:unyo/domain/services/media_link_exception.dart';
 
 class MockLogger extends Mock implements Logger {}
 
@@ -28,12 +34,33 @@ class MockAnimeRepositoryShikimori extends Mock implements AnimeRepositoryShikim
 
 class MockMangaRepositoryAnilist extends Mock implements MangaRepositoryAnilist {}
 
+/// Target-provider leg of the MAL-pivot chain, stubbed per test.
+class FakeMediaMappingLookup implements MediaMappingLookup {
+  MediaLinkCandidate? probeResult;
+  List<MediaLinkCandidate> searchResults = <MediaLinkCandidate>[];
+  int probeCalls = 0;
+  int searchCalls = 0;
+
+  @override
+  Future<MediaLinkCandidate?> lookupByMalId(Service target, int malId) async {
+    probeCalls++;
+    return probeResult;
+  }
+
+  @override
+  Future<List<MediaLinkCandidate>> searchCandidates(Service target, MediaLinkQuery query) async {
+    searchCalls++;
+    return searchResults;
+  }
+}
+
 void main() {
   late AnimeRepositoryFactory animeFactory;
   late MangaRepositoryFactory mangaFactory;
   late MockAnimeRepositoryAnilist anilistAnime;
   late MockAnimeRepositoryShikimori shikimoriAnime;
   late MockMangaRepositoryAnilist anilistManga;
+  late FakeMediaMappingLookup mappingLookup;
 
   AnilistUserModel userWith({Service userService = Service.anilist, Service metadataService = Service.anilist}) {
     return AnilistUserModel(
@@ -64,6 +91,10 @@ void main() {
     sl.registerSingleton<AnimeRepositoryAnilist>(anilistAnime);
     sl.registerSingleton<AnimeRepositoryShikimori>(shikimoriAnime);
     sl.registerSingleton<MangaRepositoryAnilist>(anilistManga);
+    mappingLookup = FakeMediaMappingLookup();
+    sl.registerLazySingleton<MediaIdResolver>(
+      () => MediaIdResolver(cache: InMemoryMediaIdCache(), mappingLookup: mappingLookup),
+    );
     animeFactory = AnimeRepositoryFactory();
     mangaFactory = MangaRepositoryFactory();
   });
@@ -150,6 +181,125 @@ void main() {
       expect(ok, isTrue);
       expect(mangas, hasLength(1));
       verify(() => anilistManga.getTrendingMangas(1, any(), ignoreCache: false)).called(1);
+    });
+  });
+
+  group('cross-provider list entry translation', () {
+    ShikimoriAnimeModel shikimoriRecord({int id = 65261, int idMal = 58514}) => ShikimoriAnimeModel(
+          id: id,
+          idMal: idMal,
+          title: const TitleModel(
+            romaji: 'Kusuriya no Hitorigoto',
+            english: 'The Apothecary Diaries',
+            nativeTitle: '',
+            userPreferred: 'Kusuriya no Hitorigoto',
+          ),
+          averageScore: 85,
+          bannerImage: '',
+          countryOfOrigin: 'JP',
+          coverImage: '',
+          description: '',
+          duration: 24,
+          endDate: '',
+          startDate: '21/10/2023',
+          episodes: 24,
+          genres: const <String>[],
+          format: 'tv',
+          isAdult: false,
+          popularity: 0,
+          meanScore: 85,
+          season: 'fall',
+          status: 'releasing',
+          isFavourite: false,
+          nextAiringEpisode: AiringEpisodeModel.empty(),
+        );
+
+    const MediaLinkCandidate anilistCandidate = MediaLinkCandidate(
+      service: Service.anilist,
+      nativeId: '170942',
+      malId: 58514,
+      title: 'Kusuriya no Hitorigoto',
+      year: 2023,
+      format: 'tv',
+    );
+
+    test('a metadata-provider record is re-addressed to the user provider before the write', () async {
+      mappingLookup.probeResult = anilistCandidate;
+      when(() => anilistAnime.updateMediaListEntry(any(), any(), any()))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+
+      await animeFactory.updateMediaListEntry(
+        MediaListEntryModel.empty(),
+        shikimoriRecord(),
+        userWith(metadataService: Service.shikimori),
+      );
+
+      final Anime written = verify(() => anilistAnime.updateMediaListEntry(any(), captureAny(), any())).captured.single as Anime;
+      expect(written.id, 170942,
+          reason: 'the AniList repository must receive the AniList id, never the Shikimori native id');
+      expect(written.idMal, 58514);
+      expect(mappingLookup.probeCalls, 1, reason: 'the MAL pivot is what translated the id');
+      verifyNever(() => shikimoriAnime.updateMediaListEntry(any(), any(), any()));
+    });
+
+    test('a metadata-provider record is re-addressed for entry reads too', () async {
+      mappingLookup.probeResult = anilistCandidate;
+      when(() => anilistAnime.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+
+      await animeFactory.getMediaListEntry(
+        shikimoriRecord(),
+        userWith(metadataService: Service.shikimori),
+      );
+
+      final Anime read = verify(
+        () => anilistAnime.getMediaListEntry(captureAny(), any(), ignoreCache: any(named: 'ignoreCache')),
+      ).captured.single as Anime;
+      expect(read.id, 170942);
+      verifyNever(() => shikimoriAnime.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')));
+    });
+
+    test('a record already owned by the user provider is passed through untouched', () async {
+      final Anime record = AnimeModel.empty().copyWith(id: 170942, idMal: 58514);
+      when(() => anilistAnime.updateMediaListEntry(any(), any(), any()))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+
+      await animeFactory.updateMediaListEntry(
+        MediaListEntryModel.empty(),
+        record,
+        userWith(metadataService: Service.shikimori),
+      );
+
+      final Anime written = verify(() => anilistAnime.updateMediaListEntry(any(), captureAny(), any())).captured.single as Anime;
+      expect(written, same(record), reason: 'the identity path must not re-address or copy the record');
+      expect(mappingLookup.probeCalls, 0);
+      expect(mappingLookup.searchCalls, 0);
+    });
+
+    test('an unverifiable record performs no write at all', () async {
+      await expectLater(
+        animeFactory.updateMediaListEntry(
+          MediaListEntryModel.empty(),
+          shikimoriRecord(idMal: 0),
+          userWith(metadataService: Service.shikimori),
+        ),
+        throwsA(isA<MediaLinkUnresolvedException>()),
+      );
+
+      verifyNever(() => anilistAnime.updateMediaListEntry(any(), any(), any()));
+      verifyNever(() => shikimoriAnime.updateMediaListEntry(any(), any(), any()));
+    });
+
+    test('an unverifiable record degrades an entry read to the empty entry', () async {
+      final MediaListEntry entry = await animeFactory.getMediaListEntry(
+        shikimoriRecord(idMal: 0),
+        userWith(metadataService: Service.shikimori),
+      );
+
+      expect(entry.status, MediaListEntryModel.empty().status);
+      expect(entry.progress, MediaListEntryModel.empty().progress);
+      verifyNever(() => anilistAnime.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')));
+      verifyNever(() => shikimoriAnime.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')));
     });
   });
 }

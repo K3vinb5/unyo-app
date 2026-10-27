@@ -1,4 +1,5 @@
 import 'package:unyo/core/enums/service.dart';
+import 'package:unyo/core/services/media/media_provenance.dart';
 import 'package:unyo/domain/entities/user/user.dart' show User;
 
 class TextUtils {
@@ -39,13 +40,11 @@ class TextUtils {
     switch (loggedUser.settings.metadataService) {
       case Service.anilist:
       case Service.shikimori:
-        final List<String> parts = startDate.split("/");
-        return parts.length > 2 ? parts[2] : "";
       case Service.mal:
       case Service.kitsu:
       case Service.simkl:
-        final List<String> parts = startDate.split("/");
-        return parts.length > 2 ? parts[2] : "";
+        final int? year = yearOfStartDate(startDate);
+        return year == null ? "" : "$year";
     }
   }
 
