@@ -225,7 +225,7 @@ void main() {
       animeStreamController = StreamController<Anime>.broadcast();
       addTearDown(animeStreamController.close);
       when(() => animeNotifier.animeStream).thenAnswer((_) => animeStreamController.stream);
-      when(() => animeRepository.getAnimeDetails(any(), any()))
+      when(() => animeRepository.getAnimeDetails(any(), any(), service: any(named: 'service')))
           .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
       when(() => animeRepository.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
           .thenAnswer((_) async => (false, <Anime>[]));

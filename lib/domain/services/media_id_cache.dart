@@ -20,6 +20,9 @@ abstract class MediaIdCache {
 
   /// Drops every `unresolved` row so the next session retries them.
   Future<void> purgeUnresolved();
+
+  /// Forgets one record so the chain runs again (manual "link this entry").
+  Future<void> remove(Service service, String nativeId);
 }
 
 /// Test/double implementation of [MediaIdCache]. Cheap, synchronous behind the
@@ -54,6 +57,14 @@ class InMemoryMediaIdCache implements MediaIdCache {
         _entries.values.where((mapping) => !mapping.isResolved).toList();
     for (final IdMapping mapping in unresolved) {
       _entries.remove(mediaIdNativeKey(mapping.service, mapping.nativeId));
+    }
+  }
+
+  @override
+  Future<void> remove(Service service, String nativeId) async {
+    final IdMapping? previous = _entries.remove(mediaIdNativeKey(service, nativeId));
+    if (previous != null && previous.hasPivot) {
+      _entries.remove(mediaIdPivotKey(previous.service, previous.malId!));
     }
   }
 

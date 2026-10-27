@@ -320,6 +320,10 @@ class MediaIdResolver {
   /// forgotten so the chain gets another chance.
   Future<void> purgeUnresolved() => _cache.purgeUnresolved();
 
+  /// Forget one record (used by the manual "link metadata entry" action) so the
+  /// chain — and, when it gets there, the dialog — runs again.
+  Future<void> forget(Service service, String nativeId) => _cache.remove(service, nativeId);
+
   Future<int?> _pivotFromAniZip(Service service, String nativeId) async {
     final AniZipIdLookup? lookup = _aniZipLookup;
     if (lookup == null) return null;

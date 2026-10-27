@@ -54,6 +54,20 @@ class HiveMediaIdCache implements MediaIdCache {
   }
 
   @override
+  Future<void> remove(Service service, String nativeId) async {
+    final Box<dynamic> box = await _openBox();
+    final String nativeKey = mediaIdNativeKey(service, nativeId);
+    final Object? rawPrevious = box.get(nativeKey);
+    if (rawPrevious is Map) {
+      final IdMapping previous = IdMapping.fromMap(rawPrevious);
+      if (previous.hasPivot) {
+        await box.delete(mediaIdPivotKey(previous.service, previous.malId!));
+      }
+    }
+    await box.delete(nativeKey);
+  }
+
+  @override
   Future<void> purgeUnresolved() async {
     final Box<dynamic> box = await _openBox();
     final List<dynamic> staleKeys = box

@@ -182,8 +182,8 @@ class AnimeRepositoryFactory implements AnimeRepository {
   }
 
   @override
-  Future<(bool, AnimeDetails)> getAnimeDetails(Anime selectedAnime, User loggedUser) async {
-    switch (loggedUser.settings.metadataService) {
+  Future<(bool, AnimeDetails)> getAnimeDetails(Anime selectedAnime, User loggedUser, {Service? service}) async {
+    switch (service ?? loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Anime Details from AniList for ${selectedAnime.title.userPreferred}");
         return _animeRepositoryAnilist.getAnimeDetails(selectedAnime, loggedUser);

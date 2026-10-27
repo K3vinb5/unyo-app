@@ -109,8 +109,8 @@ class MangaRepositoryFactory implements MangaRepository {
   }
 
   @override
-  Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser) async {
-    switch (loggedUser.settings.metadataService) {
+  Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser, {Service? service}) async {
+    switch (service ?? loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Manga Details from AniList for ${selectedManga.title.userPreferred}");
         return _mangaRepositoryAnilist.getMangaDetails(selectedManga, loggedUser);
