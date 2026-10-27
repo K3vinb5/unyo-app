@@ -12,15 +12,21 @@
 #      directory of the DLL being loaded, so the delay-load stub would not
 #      find jvm.dll on its own);
 #   2. LoadLibrary dartjni.dll by absolute path;
-#   3. GetProcAddress "SpawnJvm" and call it with a NULL JavaVMInitArgs, which
-#      dartjni.c turns into default JNI_VERSION_1_6 args with classpath ".";
-#   4. boot a real VM again from scripts/windows_jvm_smoke_boot.dart — a Dart
-#      host replaying the app's own path (Jni.spawnIfNotExists -> SpawnJvm on a
-#      spawned isolate, like unyo-lib's "Aniyomi-JNI-Isolate"). The delegate
-#      call proves the loader from any native host; the Dart host proves the
-#      shipped one.
+#   3. GetProcAddress "SpawnJvm" to prove the export is reachable through the
+#      delay-loaded wrapper;
+#   4. boot a real VM from scripts/windows_jvm_smoke_boot.dart — a Dart host
+#      replaying the app's own path (Jni.spawnIfNotExists -> SpawnJvm on a
+#      spawned isolate, like unyo-lib's "Aniyomi-JNI-Isolate").
 #
-# The spawn runs in a child pwsh process, because a JVM/VM fatal error or a
+# The boot must not run inside this script's process: pwsh.exe is a CoreCLR
+# process, and calling SpawnJvm through a managed->native delegate fail-fasts
+# it (0xC0000409) within ~300ms — even on a 64MB-stack thread — so no JNI
+# status ever returns (verified on windows-latest, 2026-10-27, hs_err absent).
+# A native Dart host boots the same VM fine. The loader checks above stay in
+# pwsh: they are plain LoadLibrary/GetProcAddress calls and behave the same in
+# any host.
+#
+# The checks run in a child pwsh process, because a JVM/VM fatal error or a
 # fail-fast (0xC0000409, abort / stack-cookie) kills the whole process and
 # would take the diagnostics with it. The parent survives to print the child's
 # exit code and any hs_err*.log the VM left behind.
@@ -92,31 +98,6 @@ public static class Win32 {
     [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Ansi)]
     public static extern IntPtr GetProcAddress(IntPtr hModule, string lpProcName);
 }
-
-// SpawnJvm is plain C compiled into a DLL, so it uses the cdecl convention.
-[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-public delegate int SpawnJvmDelegate(IntPtr initArgs);
-
-public static class SpawnRunner {
-    // The VM initializes on the calling thread and wants real stack headroom;
-    // a default ~1MB pipeline thread is marginal and shows up as a fail-fast
-    // (0xC0000409) instead of a clean JNI error. Run the call on a 64MB thread.
-    public static int Run(SpawnJvmDelegate spawn) {
-        int rc = int.MinValue;
-        Exception err = null;
-        var t = new System.Threading.Thread(() => {
-            try { rc = spawn.Invoke(IntPtr.Zero); }
-            catch (Exception e) { err = e; }
-        }, 64 * 1024 * 1024);
-        t.IsBackground = true;
-        t.Start();
-        t.Join();
-        if (err != null) {
-            throw new Exception("SpawnJvm delegate threw: " + err, err);
-        }
-        return rc;
-    }
-}
 '@
 
 # 1. Preload the bundled JVM by absolute path, as the app does.
@@ -134,28 +115,16 @@ if ($jniHandle -eq [IntPtr]::Zero) {
 }
 Write-Host "loaded: $jniDll"
 
-# 3. Resolve and call SpawnJvm with NULL init args.
+# 3. Resolve SpawnJvm: the export must be reachable through the delay-loaded
+#    wrapper. The call itself happens in the Dart host below.
 $proc = [Win32]::GetProcAddress($jniHandle, 'SpawnJvm')
 if ($proc -eq [IntPtr]::Zero) {
     Fail "GetProcAddress failed for SpawnJvm in $jniDll"
 }
+Write-Host "resolved: SpawnJvm export"
 
-$spawn = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer(
-    $proc, [SpawnJvmDelegate])
-# PowerShell has no $del(args) call syntax — that is a parse error ("Unexpected
-# token '('"). Delegates are invoked through their .Invoke() method.
-Write-Host 'calling SpawnJvm(NULL) on a 64MB-stack thread...'
-$rc = [SpawnRunner]::Run($spawn)
-Write-Host "SpawnJvm returned $rc"
-
-# 0 is JNI_OK (jni_constants.h); anything else is a JNI error code.
-if ($rc -ne 0) {
-    Fail "SpawnJvm returned $rc (expected 0 = JNI_OK)"
-}
-
-# 4. Boot again from a Dart host: this is the app's real path (unyo-lib's
-#    Jni.spawnIfNotExists -> SpawnJvm on a spawned isolate). The delegate call
-#    above proves the loader from any native host; this proves the shipped one.
+# 4. Boot a real VM from a Dart host: this is the app's real path (unyo-lib's
+#    Jni.spawnIfNotExists -> SpawnJvm on a spawned isolate).
 #    Windows SDKs shim bin\dart.bat; the real VM is in the Flutter tool cache.
 $dart = Join-Path $env:FLUTTER_ROOT 'bin\cache\dart-sdk\bin\dart.exe'
 if (-not (Test-Path -LiteralPath $dart -PathType Leaf)) {
@@ -170,5 +139,5 @@ if ($LASTEXITCODE -ne 0) {
     Fail "Dart-host VM boot smoke failed (dart exit $LASTEXITCODE)"
 }
 
-Write-Host "SMOKE OK: SpawnJvm returned JNI_OK"
+Write-Host "SMOKE OK: Dart-host VM boot returned JNI_OK"
 exit 0

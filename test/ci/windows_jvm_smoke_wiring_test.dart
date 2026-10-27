@@ -47,34 +47,24 @@ void main() {
       expect(ps1, contains('GetProcAddress'));
       expect(ps1, contains("'SpawnJvm'"));
 
-      // dartjni.c is plain C, so the export is cdecl.
-      expect(ps1, contains('CallingConvention.Cdecl'));
+      // A managed-host boot (delegate call from pwsh) fail-fasts the CLR
+      // (0xC0000409) and must not come back: the VM boot lives in a Dart host.
+      expect(ps1, isNot(contains('GetDelegateForFunctionPointer')));
+      expect(ps1, isNot(contains('SpawnRunner')));
 
-      // A NULL JavaVMInitArgs lets dartjni.c build the default args itself.
-      // PowerShell has no $del(args) call syntax (parse error: "Unexpected
-      // token '('"); delegates are invoked through their .Invoke() method.
-      expect(ps1, contains('spawn.Invoke(IntPtr.Zero)'));
-      expect(
-        RegExp(r'''\$spawn\s*\(''').allMatches(ps1).toList(),
-        isEmpty,
-        reason: r'$spawn(...) is a PowerShell parse error — use $spawn.Invoke(...)',
-      );
-
-      // Non-zero JNI codes fail the step, JNI_OK exits 0 loudly.
-      expect(ps1, contains(r'if ($rc -ne 0)'));
-      expect(ps1, contains('SMOKE OK: SpawnJvm returned JNI_OK'));
+      // The Dart host does the boot and the JNI status check.
+      expect(ps1, contains(r'if ($LASTEXITCODE -ne 0)'));
+      expect(ps1, contains('SMOKE OK: Dart-host VM boot returned JNI_OK'));
     });
 
-    test('spawn runs on a big-stack thread and survives fail-fast', () {
+    test('loader checks run in a child pwsh and survive fail-fast', () {
       final String ps1 = script.readAsStringSync();
-
-      // The VM initializes on the calling thread and wants stack headroom;
-      // a default ~1MB thread died as STATUS_STACK_BUFFER_OVERRUN (0xC0000409).
-      expect(ps1, contains('64 * 1024 * 1024'));
-      expect(ps1, contains('new System.Threading.Thread'));
 
       // A fail-fast kills the process, so the loader sequence runs in a child
       // pwsh and the parent decodes the exit code and dumps hs_err*.log.
+      // (A managed-host VM boot was tried here too: delegate calls fail-fast
+      // the CoreCLR process 0xC0000409 within ~300ms even on a 64MB-stack
+      // thread — the boot lives in the Dart host instead.)
       expect(ps1, contains(r'param([switch]$Child)'));
       expect(ps1, contains('-Child'));
       expect(ps1, contains('hs_err'));
