@@ -15,8 +15,15 @@
 #   3. GetProcAddress "SpawnJvm" and call it with a NULL JavaVMInitArgs, which
 #      dartjni.c turns into default JNI_VERSION_1_6 args with classpath ".".
 #
+# The spawn runs in a child pwsh process, because a JVM/VM fatal error or a
+# fail-fast (0xC0000409, abort / stack-cookie) kills the whole process and
+# would take the diagnostics with it. The parent survives to print the child's
+# exit code and any hs_err*.log the VM left behind.
+#
 # Exit 0 and "SMOKE OK" means the delay-load resolution worked and the VM
 # actually booted on this machine's loader.
+
+param([switch]$Child)
 
 $ErrorActionPreference = 'Stop'
 
@@ -31,6 +38,32 @@ $serverDir = Join-Path $jreDir 'lib\server'
 # jlink puts jvm.dll in bin\server, and that is where the app loads it from.
 $jvmDll = Join-Path $jreDir 'bin\server\jvm.dll'
 $jniDll = Join-Path $serverDir 'dartjni.dll'
+
+if (-not $Child) {
+    # Parent: run the loader sequence in a child so a fail-fast cannot erase
+    # the evidence, then report the exit code decoded.
+    Write-Host "smoke parent pid $PID -> child pwsh -File $PSCommandPath -Child"
+    $p = Start-Process pwsh -ArgumentList '-NoProfile', '-File', $PSCommandPath, '-Child' `
+        -NoNewWindow -Wait -PassThru
+    $code = $p.ExitCode
+    $unsigned = [uint32]$code
+    Write-Host ("child exit: {0} (0x{1:X8})" -f $code, $unsigned)
+
+    # A JVM fatal error writes hs_err_pid*.log to the CWD before aborting.
+    foreach ($log in Get-ChildItem -Path . -Filter 'hs_err*.log' -ErrorAction SilentlyContinue) {
+        Write-Host "==== $($log.FullName) ===="
+        Get-Content -Path $log.FullName | Select-Object -First 60
+    }
+
+    if ($code -ne 0) {
+        if ($unsigned -eq 0xC0000409) {
+            Fail ('child died with STATUS_STACK_BUFFER_OVERRUN (0xC0000409): fail-fast from ' +
+                'abort() or a stack-cookie check inside the VM boot or the SpawnJvm call')
+        }
+        Fail "child smoke process exited $code (0x$($unsigned.ToString('X8')))"
+    }
+    exit 0
+}
 
 foreach ($path in @($jvmDll, $jniDll)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
@@ -54,6 +87,27 @@ public static class Win32 {
 // SpawnJvm is plain C compiled into a DLL, so it uses the cdecl convention.
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 public delegate int SpawnJvmDelegate(IntPtr initArgs);
+
+public static class SpawnRunner {
+    // The VM initializes on the calling thread and wants real stack headroom;
+    // a default ~1MB pipeline thread is marginal and shows up as a fail-fast
+    // (0xC0000409) instead of a clean JNI error. Run the call on a 64MB thread.
+    public static int Run(SpawnJvmDelegate spawn) {
+        int rc = int.MinValue;
+        Exception err = null;
+        var t = new System.Threading.Thread(() => {
+            try { rc = spawn.Invoke(IntPtr.Zero); }
+            catch (Exception e) { err = e; }
+        }, 64 * 1024 * 1024);
+        t.IsBackground = true;
+        t.Start();
+        t.Join();
+        if (err != null) {
+            throw new Exception("SpawnJvm delegate threw: " + err, err);
+        }
+        return rc;
+    }
+}
 '@
 
 # 1. Preload the bundled JVM by absolute path, as the app does.
@@ -81,7 +135,9 @@ $spawn = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer
     $proc, [SpawnJvmDelegate])
 # PowerShell has no $del(args) call syntax — that is a parse error ("Unexpected
 # token '('"). Delegates are invoked through their .Invoke() method.
-$rc = $spawn.Invoke([IntPtr]::Zero)
+Write-Host 'calling SpawnJvm(NULL) on a 64MB-stack thread...'
+$rc = [SpawnRunner]::Run($spawn)
+Write-Host "SpawnJvm returned $rc"
 
 # 0 is JNI_OK (jni_constants.h); anything else is a JNI error code.
 if ($rc -ne 0) {
