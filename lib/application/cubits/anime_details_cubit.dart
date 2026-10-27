@@ -99,6 +99,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
           characters: (false, []),
           recommendations: (false, []),
           episodesInfo: [],
+          episodesLoaded: false,
           banners: [],
           alternateImage: '',
           installedExtensions: {},
@@ -723,11 +724,15 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
           anilistId: -1,
         );
       }
-      emit(state.copyWith(episodesInfo: episodesInfo));
+      emit(state.copyWith(episodesInfo: episodesInfo, episodesLoaded: true));
       _episodesInfoNotifier.updateSelectedEpisodeInfo(episodesInfo);
     } on HttpServerException catch (e, stackTrace) {
+      // Mark the list as settled so the episode rows fall back to their
+      // data-less rendering instead of shimmering forever.
+      emit(state.copyWith(episodesLoaded: true));
       handleError("Error fetching Episodes details:", responseBody: e.message, stackTrace: stackTrace);
     } catch (e, stackTrace) {
+      emit(state.copyWith(episodesLoaded: true));
       handleError("Error fetching Episodes Details: $e", stackTrace: stackTrace);
     }
   }

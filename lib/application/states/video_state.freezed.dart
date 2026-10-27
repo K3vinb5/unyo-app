@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$VideoState {
 
- User get loggedUser; VideoInfo get videoInfo; Anime get selectedAnime; List<EpisodeInfo> get episodesInfo; Extension get selectedExtension; List<JSEpisode> get extensionEpisodeResults; MediaListEntry get mediaListEntry; List<CastDevice> get availableCastDevices; AniskipTimesResults get openingSkipTimes; AniskipTimesResults get endingSkipTimes; bool get isLoading; List<AppEffect> get effects;
+ User get loggedUser; VideoInfo get videoInfo; Anime get selectedAnime; List<EpisodeInfo> get episodesInfo; bool get episodesLoaded; Extension get selectedExtension; List<JSEpisode> get extensionEpisodeResults; MediaListEntry get mediaListEntry; List<CastDevice> get availableCastDevices; AniskipTimesResults get openingSkipTimes; AniskipTimesResults get endingSkipTimes; bool get isLoading; List<AppEffect> get effects;
 /// Create a copy of VideoState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $VideoStateCopyWith<VideoState> get copyWith => _$VideoStateCopyWithImpl<VideoSt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VideoState&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&(identical(other.videoInfo, videoInfo) || other.videoInfo == videoInfo)&&(identical(other.selectedAnime, selectedAnime) || other.selectedAnime == selectedAnime)&&const DeepCollectionEquality().equals(other.episodesInfo, episodesInfo)&&(identical(other.selectedExtension, selectedExtension) || other.selectedExtension == selectedExtension)&&const DeepCollectionEquality().equals(other.extensionEpisodeResults, extensionEpisodeResults)&&(identical(other.mediaListEntry, mediaListEntry) || other.mediaListEntry == mediaListEntry)&&const DeepCollectionEquality().equals(other.availableCastDevices, availableCastDevices)&&(identical(other.openingSkipTimes, openingSkipTimes) || other.openingSkipTimes == openingSkipTimes)&&(identical(other.endingSkipTimes, endingSkipTimes) || other.endingSkipTimes == endingSkipTimes)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&const DeepCollectionEquality().equals(other.effects, effects));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is VideoState&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&(identical(other.videoInfo, videoInfo) || other.videoInfo == videoInfo)&&(identical(other.selectedAnime, selectedAnime) || other.selectedAnime == selectedAnime)&&const DeepCollectionEquality().equals(other.episodesInfo, episodesInfo)&&(identical(other.episodesLoaded, episodesLoaded) || other.episodesLoaded == episodesLoaded)&&(identical(other.selectedExtension, selectedExtension) || other.selectedExtension == selectedExtension)&&const DeepCollectionEquality().equals(other.extensionEpisodeResults, extensionEpisodeResults)&&(identical(other.mediaListEntry, mediaListEntry) || other.mediaListEntry == mediaListEntry)&&const DeepCollectionEquality().equals(other.availableCastDevices, availableCastDevices)&&(identical(other.openingSkipTimes, openingSkipTimes) || other.openingSkipTimes == openingSkipTimes)&&(identical(other.endingSkipTimes, endingSkipTimes) || other.endingSkipTimes == endingSkipTimes)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&const DeepCollectionEquality().equals(other.effects, effects));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,loggedUser,videoInfo,selectedAnime,const DeepCollectionEquality().hash(episodesInfo),selectedExtension,const DeepCollectionEquality().hash(extensionEpisodeResults),mediaListEntry,const DeepCollectionEquality().hash(availableCastDevices),openingSkipTimes,endingSkipTimes,isLoading,const DeepCollectionEquality().hash(effects));
+int get hashCode => Object.hash(runtimeType,loggedUser,videoInfo,selectedAnime,const DeepCollectionEquality().hash(episodesInfo),episodesLoaded,selectedExtension,const DeepCollectionEquality().hash(extensionEpisodeResults),mediaListEntry,const DeepCollectionEquality().hash(availableCastDevices),openingSkipTimes,endingSkipTimes,isLoading,const DeepCollectionEquality().hash(effects));
 
 @override
 String toString() {
-  return 'VideoState(loggedUser: $loggedUser, videoInfo: $videoInfo, selectedAnime: $selectedAnime, episodesInfo: $episodesInfo, selectedExtension: $selectedExtension, extensionEpisodeResults: $extensionEpisodeResults, mediaListEntry: $mediaListEntry, availableCastDevices: $availableCastDevices, openingSkipTimes: $openingSkipTimes, endingSkipTimes: $endingSkipTimes, isLoading: $isLoading, effects: $effects)';
+  return 'VideoState(loggedUser: $loggedUser, videoInfo: $videoInfo, selectedAnime: $selectedAnime, episodesInfo: $episodesInfo, episodesLoaded: $episodesLoaded, selectedExtension: $selectedExtension, extensionEpisodeResults: $extensionEpisodeResults, mediaListEntry: $mediaListEntry, availableCastDevices: $availableCastDevices, openingSkipTimes: $openingSkipTimes, endingSkipTimes: $endingSkipTimes, isLoading: $isLoading, effects: $effects)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $VideoStateCopyWith<$Res>  {
   factory $VideoStateCopyWith(VideoState value, $Res Function(VideoState) _then) = _$VideoStateCopyWithImpl;
 @useResult
 $Res call({
- User loggedUser, VideoInfo videoInfo, Anime selectedAnime, List<EpisodeInfo> episodesInfo, Extension selectedExtension, List<JSEpisode> extensionEpisodeResults, MediaListEntry mediaListEntry, List<CastDevice> availableCastDevices, AniskipTimesResults openingSkipTimes, AniskipTimesResults endingSkipTimes, bool isLoading, List<AppEffect> effects
+ User loggedUser, VideoInfo videoInfo, Anime selectedAnime, List<EpisodeInfo> episodesInfo, bool episodesLoaded, Extension selectedExtension, List<JSEpisode> extensionEpisodeResults, MediaListEntry mediaListEntry, List<CastDevice> availableCastDevices, AniskipTimesResults openingSkipTimes, AniskipTimesResults endingSkipTimes, bool isLoading, List<AppEffect> effects
 });
 
 
@@ -62,13 +62,14 @@ class _$VideoStateCopyWithImpl<$Res>
 
 /// Create a copy of VideoState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? loggedUser = null,Object? videoInfo = null,Object? selectedAnime = null,Object? episodesInfo = null,Object? selectedExtension = null,Object? extensionEpisodeResults = null,Object? mediaListEntry = null,Object? availableCastDevices = null,Object? openingSkipTimes = null,Object? endingSkipTimes = null,Object? isLoading = null,Object? effects = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? loggedUser = null,Object? videoInfo = null,Object? selectedAnime = null,Object? episodesInfo = null,Object? episodesLoaded = null,Object? selectedExtension = null,Object? extensionEpisodeResults = null,Object? mediaListEntry = null,Object? availableCastDevices = null,Object? openingSkipTimes = null,Object? endingSkipTimes = null,Object? isLoading = null,Object? effects = null,}) {
   return _then(_self.copyWith(
 loggedUser: null == loggedUser ? _self.loggedUser : loggedUser // ignore: cast_nullable_to_non_nullable
 as User,videoInfo: null == videoInfo ? _self.videoInfo : videoInfo // ignore: cast_nullable_to_non_nullable
 as VideoInfo,selectedAnime: null == selectedAnime ? _self.selectedAnime : selectedAnime // ignore: cast_nullable_to_non_nullable
 as Anime,episodesInfo: null == episodesInfo ? _self.episodesInfo : episodesInfo // ignore: cast_nullable_to_non_nullable
-as List<EpisodeInfo>,selectedExtension: null == selectedExtension ? _self.selectedExtension : selectedExtension // ignore: cast_nullable_to_non_nullable
+as List<EpisodeInfo>,episodesLoaded: null == episodesLoaded ? _self.episodesLoaded : episodesLoaded // ignore: cast_nullable_to_non_nullable
+as bool,selectedExtension: null == selectedExtension ? _self.selectedExtension : selectedExtension // ignore: cast_nullable_to_non_nullable
 as Extension,extensionEpisodeResults: null == extensionEpisodeResults ? _self.extensionEpisodeResults : extensionEpisodeResults // ignore: cast_nullable_to_non_nullable
 as List<JSEpisode>,mediaListEntry: null == mediaListEntry ? _self.mediaListEntry : mediaListEntry // ignore: cast_nullable_to_non_nullable
 as MediaListEntry,availableCastDevices: null == availableCastDevices ? _self.availableCastDevices : availableCastDevices // ignore: cast_nullable_to_non_nullable
@@ -161,10 +162,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( User loggedUser,  VideoInfo videoInfo,  Anime selectedAnime,  List<EpisodeInfo> episodesInfo,  Extension selectedExtension,  List<JSEpisode> extensionEpisodeResults,  MediaListEntry mediaListEntry,  List<CastDevice> availableCastDevices,  AniskipTimesResults openingSkipTimes,  AniskipTimesResults endingSkipTimes,  bool isLoading,  List<AppEffect> effects)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( User loggedUser,  VideoInfo videoInfo,  Anime selectedAnime,  List<EpisodeInfo> episodesInfo,  bool episodesLoaded,  Extension selectedExtension,  List<JSEpisode> extensionEpisodeResults,  MediaListEntry mediaListEntry,  List<CastDevice> availableCastDevices,  AniskipTimesResults openingSkipTimes,  AniskipTimesResults endingSkipTimes,  bool isLoading,  List<AppEffect> effects)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _VideoState() when $default != null:
-return $default(_that.loggedUser,_that.videoInfo,_that.selectedAnime,_that.episodesInfo,_that.selectedExtension,_that.extensionEpisodeResults,_that.mediaListEntry,_that.availableCastDevices,_that.openingSkipTimes,_that.endingSkipTimes,_that.isLoading,_that.effects);case _:
+return $default(_that.loggedUser,_that.videoInfo,_that.selectedAnime,_that.episodesInfo,_that.episodesLoaded,_that.selectedExtension,_that.extensionEpisodeResults,_that.mediaListEntry,_that.availableCastDevices,_that.openingSkipTimes,_that.endingSkipTimes,_that.isLoading,_that.effects);case _:
   return orElse();
 
 }
@@ -182,10 +183,10 @@ return $default(_that.loggedUser,_that.videoInfo,_that.selectedAnime,_that.episo
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( User loggedUser,  VideoInfo videoInfo,  Anime selectedAnime,  List<EpisodeInfo> episodesInfo,  Extension selectedExtension,  List<JSEpisode> extensionEpisodeResults,  MediaListEntry mediaListEntry,  List<CastDevice> availableCastDevices,  AniskipTimesResults openingSkipTimes,  AniskipTimesResults endingSkipTimes,  bool isLoading,  List<AppEffect> effects)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( User loggedUser,  VideoInfo videoInfo,  Anime selectedAnime,  List<EpisodeInfo> episodesInfo,  bool episodesLoaded,  Extension selectedExtension,  List<JSEpisode> extensionEpisodeResults,  MediaListEntry mediaListEntry,  List<CastDevice> availableCastDevices,  AniskipTimesResults openingSkipTimes,  AniskipTimesResults endingSkipTimes,  bool isLoading,  List<AppEffect> effects)  $default,) {final _that = this;
 switch (_that) {
 case _VideoState():
-return $default(_that.loggedUser,_that.videoInfo,_that.selectedAnime,_that.episodesInfo,_that.selectedExtension,_that.extensionEpisodeResults,_that.mediaListEntry,_that.availableCastDevices,_that.openingSkipTimes,_that.endingSkipTimes,_that.isLoading,_that.effects);case _:
+return $default(_that.loggedUser,_that.videoInfo,_that.selectedAnime,_that.episodesInfo,_that.episodesLoaded,_that.selectedExtension,_that.extensionEpisodeResults,_that.mediaListEntry,_that.availableCastDevices,_that.openingSkipTimes,_that.endingSkipTimes,_that.isLoading,_that.effects);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -202,10 +203,10 @@ return $default(_that.loggedUser,_that.videoInfo,_that.selectedAnime,_that.episo
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( User loggedUser,  VideoInfo videoInfo,  Anime selectedAnime,  List<EpisodeInfo> episodesInfo,  Extension selectedExtension,  List<JSEpisode> extensionEpisodeResults,  MediaListEntry mediaListEntry,  List<CastDevice> availableCastDevices,  AniskipTimesResults openingSkipTimes,  AniskipTimesResults endingSkipTimes,  bool isLoading,  List<AppEffect> effects)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( User loggedUser,  VideoInfo videoInfo,  Anime selectedAnime,  List<EpisodeInfo> episodesInfo,  bool episodesLoaded,  Extension selectedExtension,  List<JSEpisode> extensionEpisodeResults,  MediaListEntry mediaListEntry,  List<CastDevice> availableCastDevices,  AniskipTimesResults openingSkipTimes,  AniskipTimesResults endingSkipTimes,  bool isLoading,  List<AppEffect> effects)?  $default,) {final _that = this;
 switch (_that) {
 case _VideoState() when $default != null:
-return $default(_that.loggedUser,_that.videoInfo,_that.selectedAnime,_that.episodesInfo,_that.selectedExtension,_that.extensionEpisodeResults,_that.mediaListEntry,_that.availableCastDevices,_that.openingSkipTimes,_that.endingSkipTimes,_that.isLoading,_that.effects);case _:
+return $default(_that.loggedUser,_that.videoInfo,_that.selectedAnime,_that.episodesInfo,_that.episodesLoaded,_that.selectedExtension,_that.extensionEpisodeResults,_that.mediaListEntry,_that.availableCastDevices,_that.openingSkipTimes,_that.endingSkipTimes,_that.isLoading,_that.effects);case _:
   return null;
 
 }
@@ -217,7 +218,7 @@ return $default(_that.loggedUser,_that.videoInfo,_that.selectedAnime,_that.episo
 
 
 class _VideoState extends VideoState {
-  const _VideoState({required this.loggedUser, required this.videoInfo, required this.selectedAnime, required final  List<EpisodeInfo> episodesInfo, required this.selectedExtension, required final  List<JSEpisode> extensionEpisodeResults, required this.mediaListEntry, required final  List<CastDevice> availableCastDevices, required this.openingSkipTimes, required this.endingSkipTimes, required this.isLoading, final  List<AppEffect> effects = const <AppEffect>[]}): _episodesInfo = episodesInfo,_extensionEpisodeResults = extensionEpisodeResults,_availableCastDevices = availableCastDevices,_effects = effects,super._();
+  const _VideoState({required this.loggedUser, required this.videoInfo, required this.selectedAnime, required final  List<EpisodeInfo> episodesInfo, required this.episodesLoaded, required this.selectedExtension, required final  List<JSEpisode> extensionEpisodeResults, required this.mediaListEntry, required final  List<CastDevice> availableCastDevices, required this.openingSkipTimes, required this.endingSkipTimes, required this.isLoading, final  List<AppEffect> effects = const <AppEffect>[]}): _episodesInfo = episodesInfo,_extensionEpisodeResults = extensionEpisodeResults,_availableCastDevices = availableCastDevices,_effects = effects,super._();
   
 
 @override final  User loggedUser;
@@ -230,6 +231,7 @@ class _VideoState extends VideoState {
   return EqualUnmodifiableListView(_episodesInfo);
 }
 
+@override final  bool episodesLoaded;
 @override final  Extension selectedExtension;
  final  List<JSEpisode> _extensionEpisodeResults;
 @override List<JSEpisode> get extensionEpisodeResults {
@@ -267,16 +269,16 @@ _$VideoStateCopyWith<_VideoState> get copyWith => __$VideoStateCopyWithImpl<_Vid
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _VideoState&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&(identical(other.videoInfo, videoInfo) || other.videoInfo == videoInfo)&&(identical(other.selectedAnime, selectedAnime) || other.selectedAnime == selectedAnime)&&const DeepCollectionEquality().equals(other._episodesInfo, _episodesInfo)&&(identical(other.selectedExtension, selectedExtension) || other.selectedExtension == selectedExtension)&&const DeepCollectionEquality().equals(other._extensionEpisodeResults, _extensionEpisodeResults)&&(identical(other.mediaListEntry, mediaListEntry) || other.mediaListEntry == mediaListEntry)&&const DeepCollectionEquality().equals(other._availableCastDevices, _availableCastDevices)&&(identical(other.openingSkipTimes, openingSkipTimes) || other.openingSkipTimes == openingSkipTimes)&&(identical(other.endingSkipTimes, endingSkipTimes) || other.endingSkipTimes == endingSkipTimes)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&const DeepCollectionEquality().equals(other._effects, _effects));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _VideoState&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&(identical(other.videoInfo, videoInfo) || other.videoInfo == videoInfo)&&(identical(other.selectedAnime, selectedAnime) || other.selectedAnime == selectedAnime)&&const DeepCollectionEquality().equals(other._episodesInfo, _episodesInfo)&&(identical(other.episodesLoaded, episodesLoaded) || other.episodesLoaded == episodesLoaded)&&(identical(other.selectedExtension, selectedExtension) || other.selectedExtension == selectedExtension)&&const DeepCollectionEquality().equals(other._extensionEpisodeResults, _extensionEpisodeResults)&&(identical(other.mediaListEntry, mediaListEntry) || other.mediaListEntry == mediaListEntry)&&const DeepCollectionEquality().equals(other._availableCastDevices, _availableCastDevices)&&(identical(other.openingSkipTimes, openingSkipTimes) || other.openingSkipTimes == openingSkipTimes)&&(identical(other.endingSkipTimes, endingSkipTimes) || other.endingSkipTimes == endingSkipTimes)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&const DeepCollectionEquality().equals(other._effects, _effects));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,loggedUser,videoInfo,selectedAnime,const DeepCollectionEquality().hash(_episodesInfo),selectedExtension,const DeepCollectionEquality().hash(_extensionEpisodeResults),mediaListEntry,const DeepCollectionEquality().hash(_availableCastDevices),openingSkipTimes,endingSkipTimes,isLoading,const DeepCollectionEquality().hash(_effects));
+int get hashCode => Object.hash(runtimeType,loggedUser,videoInfo,selectedAnime,const DeepCollectionEquality().hash(_episodesInfo),episodesLoaded,selectedExtension,const DeepCollectionEquality().hash(_extensionEpisodeResults),mediaListEntry,const DeepCollectionEquality().hash(_availableCastDevices),openingSkipTimes,endingSkipTimes,isLoading,const DeepCollectionEquality().hash(_effects));
 
 @override
 String toString() {
-  return 'VideoState(loggedUser: $loggedUser, videoInfo: $videoInfo, selectedAnime: $selectedAnime, episodesInfo: $episodesInfo, selectedExtension: $selectedExtension, extensionEpisodeResults: $extensionEpisodeResults, mediaListEntry: $mediaListEntry, availableCastDevices: $availableCastDevices, openingSkipTimes: $openingSkipTimes, endingSkipTimes: $endingSkipTimes, isLoading: $isLoading, effects: $effects)';
+  return 'VideoState(loggedUser: $loggedUser, videoInfo: $videoInfo, selectedAnime: $selectedAnime, episodesInfo: $episodesInfo, episodesLoaded: $episodesLoaded, selectedExtension: $selectedExtension, extensionEpisodeResults: $extensionEpisodeResults, mediaListEntry: $mediaListEntry, availableCastDevices: $availableCastDevices, openingSkipTimes: $openingSkipTimes, endingSkipTimes: $endingSkipTimes, isLoading: $isLoading, effects: $effects)';
 }
 
 
@@ -287,7 +289,7 @@ abstract mixin class _$VideoStateCopyWith<$Res> implements $VideoStateCopyWith<$
   factory _$VideoStateCopyWith(_VideoState value, $Res Function(_VideoState) _then) = __$VideoStateCopyWithImpl;
 @override @useResult
 $Res call({
- User loggedUser, VideoInfo videoInfo, Anime selectedAnime, List<EpisodeInfo> episodesInfo, Extension selectedExtension, List<JSEpisode> extensionEpisodeResults, MediaListEntry mediaListEntry, List<CastDevice> availableCastDevices, AniskipTimesResults openingSkipTimes, AniskipTimesResults endingSkipTimes, bool isLoading, List<AppEffect> effects
+ User loggedUser, VideoInfo videoInfo, Anime selectedAnime, List<EpisodeInfo> episodesInfo, bool episodesLoaded, Extension selectedExtension, List<JSEpisode> extensionEpisodeResults, MediaListEntry mediaListEntry, List<CastDevice> availableCastDevices, AniskipTimesResults openingSkipTimes, AniskipTimesResults endingSkipTimes, bool isLoading, List<AppEffect> effects
 });
 
 
@@ -304,13 +306,14 @@ class __$VideoStateCopyWithImpl<$Res>
 
 /// Create a copy of VideoState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? loggedUser = null,Object? videoInfo = null,Object? selectedAnime = null,Object? episodesInfo = null,Object? selectedExtension = null,Object? extensionEpisodeResults = null,Object? mediaListEntry = null,Object? availableCastDevices = null,Object? openingSkipTimes = null,Object? endingSkipTimes = null,Object? isLoading = null,Object? effects = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? loggedUser = null,Object? videoInfo = null,Object? selectedAnime = null,Object? episodesInfo = null,Object? episodesLoaded = null,Object? selectedExtension = null,Object? extensionEpisodeResults = null,Object? mediaListEntry = null,Object? availableCastDevices = null,Object? openingSkipTimes = null,Object? endingSkipTimes = null,Object? isLoading = null,Object? effects = null,}) {
   return _then(_VideoState(
 loggedUser: null == loggedUser ? _self.loggedUser : loggedUser // ignore: cast_nullable_to_non_nullable
 as User,videoInfo: null == videoInfo ? _self.videoInfo : videoInfo // ignore: cast_nullable_to_non_nullable
 as VideoInfo,selectedAnime: null == selectedAnime ? _self.selectedAnime : selectedAnime // ignore: cast_nullable_to_non_nullable
 as Anime,episodesInfo: null == episodesInfo ? _self._episodesInfo : episodesInfo // ignore: cast_nullable_to_non_nullable
-as List<EpisodeInfo>,selectedExtension: null == selectedExtension ? _self.selectedExtension : selectedExtension // ignore: cast_nullable_to_non_nullable
+as List<EpisodeInfo>,episodesLoaded: null == episodesLoaded ? _self.episodesLoaded : episodesLoaded // ignore: cast_nullable_to_non_nullable
+as bool,selectedExtension: null == selectedExtension ? _self.selectedExtension : selectedExtension // ignore: cast_nullable_to_non_nullable
 as Extension,extensionEpisodeResults: null == extensionEpisodeResults ? _self._extensionEpisodeResults : extensionEpisodeResults // ignore: cast_nullable_to_non_nullable
 as List<JSEpisode>,mediaListEntry: null == mediaListEntry ? _self.mediaListEntry : mediaListEntry // ignore: cast_nullable_to_non_nullable
 as MediaListEntry,availableCastDevices: null == availableCastDevices ? _self._availableCastDevices : availableCastDevices // ignore: cast_nullable_to_non_nullable
