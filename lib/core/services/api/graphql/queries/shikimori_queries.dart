@@ -396,6 +396,30 @@ const String shikimoriMangaDetailsQuery =
   }
 } 
 ''';
+// Used to translate a record between providers: by native id (the `ids` probe
+// verifies the returned `malId`) or by title (`search`, a heuristic that the
+// user has to confirm).
+// {
+//   "ids": "65261" or undefined,
+//   "search": "Kusuriya no Hitorigoto" or undefined,
+//   "limit": 5,
+// }
+const String animeMappingQuery =
+'''
+query Animes(\$ids: String, \$search: String, \$limit: PositiveInt) {
+  animes(ids: \$ids, search: \$search, limit: \$limit) {
+    id
+    malId
+    name
+    russian
+    english
+    kind
+    airedOn {
+      year
+    }
+  }
+}
+''';
 // Genres list query
 const String shikimoriGenresListQuery =
 r'''
