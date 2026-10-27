@@ -25,10 +25,12 @@ function Fail([string]$Message) {
     exit 1
 }
 
-$serverDir = Join-Path 'build\windows\x64\runner\Release\jre\customjre\lib\server'
+# Both paths hang off the staged JRE so the layout stays in one place.
+$jreDir = 'build\windows\x64\runner\Release\jre\customjre'
+$serverDir = Join-Path $jreDir 'lib\server'
 # jlink puts jvm.dll in bin\server, and that is where the app loads it from.
-$jvmDll = (Join-Path 'build\windows\x64\runner\Release\jre\customjre\bin\server' 'jvm.dll')
-$jniDll = (Join-Path $serverDir 'dartjni.dll')
+$jvmDll = Join-Path $jreDir 'bin\server\jvm.dll'
+$jniDll = Join-Path $serverDir 'dartjni.dll'
 
 foreach ($path in @($jvmDll, $jniDll)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {

@@ -34,15 +34,14 @@ void main() {
     test('smoke script loads the bundled jvm.dll and calls SpawnJvm', () {
       final String ps1 = script.readAsStringSync();
 
+      // Both DLLs are derived from one staged-JRE base, so the layout lives in
+      // a single place.
+      expect(ps1, contains(r"$jreDir = 'build\windows\x64\runner\Release\jre\customjre'"));
+      expect(ps1, contains(r"$serverDir = Join-Path $jreDir 'lib\server'"));
       // dartjni.dll is /DELAYLOAD:jvm.dll, so jvm.dll has to be preloaded by
       // absolute path before the wrapper is loaded.
-      expect(
-        ps1,
-        contains(
-          r'jre\customjre\bin\server',
-        ),
-      );
-      expect(ps1, contains(r'jre\customjre\lib\server'));
+      expect(ps1, contains(r"$jvmDll = Join-Path $jreDir 'bin\server\jvm.dll'"));
+      expect(ps1, contains(r"$jniDll = Join-Path $serverDir 'dartjni.dll'"));
       expect(ps1, contains('dartjni.dll'));
       expect(ps1, contains('LoadLibraryW'));
       expect(ps1, contains('GetProcAddress'));
@@ -58,5 +57,25 @@ void main() {
       expect(ps1, contains(r'if ($rc -ne 0)'));
       expect(ps1, contains('SMOKE OK: SpawnJvm returned JNI_OK'));
     });
+
+    // Join-Path needs both -Path and -ChildPath; a single argument is a
+    // parameter-binding error, which under $ErrorActionPreference = 'Stop'
+    // kills the step before it can ever pass. There is no pwsh on this host,
+    // so pin it here.
+    for (final String oneArg in <String>[
+      r"""Join-Path\s+('[^']*'|"[^"]*"|\$\w+)\s*\)""",
+      r"""Join-Path\s+('[^']*'|"[^"]*"|\$\w+)\s*$""",
+    ]) {
+      test('smoke script has no one-argument Join-Path: $oneArg', () {
+        final String ps1 = script.readAsStringSync();
+        final RegExp pattern = RegExp(oneArg, multiLine: true);
+        final Iterable<RegExpMatch> bad = pattern.allMatches(ps1);
+        expect(
+          bad.map((RegExpMatch m) => m.group(0)).toList(),
+          isEmpty,
+          reason: 'every Join-Path call needs a base and a child path',
+        );
+      });
+    }
   });
 }
