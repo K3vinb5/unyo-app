@@ -88,7 +88,8 @@ if ($proc -eq [IntPtr]::Zero) {
 Write-Host "resolved: SpawnJvm export"
 
 # 4. Boot a real VM from a native Dart host (see the script header).
-$dart = Join-Path (Join-Path $env:FLUTTER_ROOT 'bin') 'dart.exe'
+# Windows Flutter SDKs shim bin\dart.bat; the real VM is in the tool cache.
+$dart = Join-Path $env:FLUTTER_ROOT 'bin\cache\dart-sdk\bin\dart.exe'
 if (-not (Test-Path -LiteralPath $dart -PathType Leaf)) {
     Fail "missing $dart"
 }

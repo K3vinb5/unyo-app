@@ -54,6 +54,8 @@ void main() {
       // SpawnJvm call fail-fasts the CoreCLR process (0xC0000409).
       expect(ps1, contains('windows_jvm_smoke_boot.dart'));
       expect(ps1, isNot(contains('GetDelegateForFunctionPointer')));
+      // Windows SDKs ship bin\dart.bat; the real VM is in the Flutter cache.
+      expect(ps1, contains(r"'bin\cache\dart-sdk\bin\dart.exe'"));
 
       // The Dart host does the boot and the JNI status check.
       final String boot = File(
