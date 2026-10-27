@@ -46,14 +46,18 @@ if (-not $Child) {
     $p = Start-Process pwsh -ArgumentList '-NoProfile', '-File', $PSCommandPath, '-Child' `
         -NoNewWindow -Wait -PassThru
     $code = $p.ExitCode
-    $unsigned = [uint32]$code
-    Write-Host ("child exit: {0} (0x{1:X8})" -f $code, $unsigned)
 
-    # A JVM fatal error writes hs_err_pid*.log to the CWD before aborting.
+    # Dump the VM's fatal-error log FIRST: a PowerShell conversion or format
+    # bug below must never be able to hide the evidence.
     foreach ($log in Get-ChildItem -Path . -Filter 'hs_err*.log' -ErrorAction SilentlyContinue) {
         Write-Host "==== $($log.FullName) ===="
         Get-Content -Path $log.FullName | Select-Object -First 60
     }
+
+    # [uint32]$code throws on negative NTSTATUS values (e.g. -1073740791);
+    # reinterpret the int32 bits instead.
+    $unsigned = [BitConverter]::ToUInt32([BitConverter]::GetBytes([int]$code), 0)
+    Write-Host ("child exit: {0} (0x{1:X8})" -f $code, $unsigned)
 
     if ($code -ne 0) {
         if ($unsigned -eq 0xC0000409) {
