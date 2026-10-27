@@ -30,9 +30,9 @@ import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
+import 'package:unyo/domain/repositories/user_repository.dart';
 import 'package:unyo/domain/repositories/episode_repository.dart';
 import 'package:unyo/data/repositories/extension_repository_aniyomi.dart';
-import 'package:unyo/data/repositories/repositories.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/anime_details.dart';
 import 'package:unyo/domain/entities/media/episode_info.dart';
@@ -53,7 +53,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   final AnimeRepository _animeRepository;
   final EpisodeRepository _episodeRepository;
   final ExtensionRepositoryAniyomi _extensionRepositoryAniyomi;
-  final UserRepositoryAnilist _userRepositoryAnilist;
+  final UserRepository _userRepository;
 
   // Notifiers / Subscriptions
   final UserNotifier _loggedUserNotifier;
@@ -83,7 +83,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     this._selectedMediaListNotifier,
     this._videoInfoNotifier,
     this._extensionRepositoryAniyomi,
-    this._userRepositoryAnilist,
+    this._userRepository,
     this._episodesInfoNotifier,
     this._mediaListEntryNotifier,
     this._selectedExtensionNotifier,
@@ -216,7 +216,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
             SettingsModel userSettings = anilistUserModel.settings as SettingsModel;
             Map<String, Extension> mediaExtensionsConfigUpdated = Map.from(userSettings.mediaExtensionConfigs);
             mediaExtensionsConfigUpdated.addAll({state.selectedAnime.id.toString(): selectedExtension});
-            await _userRepositoryAnilist.updateUserInfo(
+            await _userRepository.updateUserInfo(
               anilistUserModel.copyWith(
                 settings: userSettings.copyWith(mediaExtensionConfigs: mediaExtensionsConfigUpdated),
               ),

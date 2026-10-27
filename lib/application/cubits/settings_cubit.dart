@@ -23,6 +23,7 @@ import 'package:unyo/data/models/local/user/local_user_model.dart';
 import 'package:unyo/data/repositories/repositories.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
+import 'package:unyo/domain/repositories/user_repository.dart';
 import 'package:unyo/presentation/dialogs/extensions_dialog.dart';
 import 'package:unyo/presentation/widgets/styled/dark_unyo_button.dart';
 import 'package:unyo/presentation/widgets/styled/light_unyo_button.dart';
@@ -32,7 +33,7 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
   late Color _selectedColor;
 
   // Repositories
-  final UserRepositoryAnilist _userRepositoryAnilist;
+  final UserRepository _userRepository;
   final UserRepositoryLocal _userRepositoryLocal;
 
   // Notifiers
@@ -45,7 +46,7 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
   final ColorImageService _colorImageService;
 
   SettingsCubit(
-    this._userRepositoryAnilist,
+    this._userRepository,
     this._userRepositoryLocal,
     this._loggedUserNotifier,
     this._reloadNotifier,
@@ -79,13 +80,26 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
   Future<void> updateMediaMetadataService(String? newService) async {
     try {
       Settings updatedSettings = (state.loggedUser.settings as SettingsModel).copyWith(
-        service: MediaServiceFactory.getEnumMediaService(newService),
+        metadataService: MediaServiceFactory.getEnumMediaService(newService),
       );
       await _updateUserInfo(updatedSettings);
       _reloadNotifier.emitReload(ReloadType.newMetadataService);
     } catch (e, stackTrace) {
       logger.e("Error updating media metadata service $e", stackTrace: stackTrace);
       handleError("Error updating media metadata service", stackTrace: stackTrace);
+    }
+  }
+
+  Future<void> updateUserService(String? newService) async {
+    try {
+      Settings updatedSettings = (state.loggedUser.settings as SettingsModel).copyWith(
+        userService: MediaServiceFactory.getEnumMediaService(newService),
+      );
+      await _updateUserInfo(updatedSettings);
+      _reloadNotifier.emitReload(ReloadType.newUserService);
+    } catch (e, stackTrace) {
+      logger.e("Error updating user service $e", stackTrace: stackTrace);
+      handleError("Error updating user service", stackTrace: stackTrace);
     }
   }
 
@@ -351,7 +365,7 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
       switch (state.loggedUser) {
         case AnilistUserModel anilistUserModel:
           AnilistUserModel updatedAnilistUserModel = anilistUserModel.copyWith(settings: settings);
-          await _userRepositoryAnilist.updateUserInfo(updatedAnilistUserModel);
+          await _userRepository.updateUserInfo(updatedAnilistUserModel);
           break;
         case LocalUserModel localUserModel:
           LocalUserModel updatedLocalUserModel = localUserModel.copyWith(settings: settings);

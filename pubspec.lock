@@ -1351,7 +1351,7 @@ packages:
   unyo_lib:
     dependency: "direct main"
     description:
-      path: "../unyo-lib"
+      path: "../../../unyo-lib"
       relative: true
     source: path
     version: "0.0.1"

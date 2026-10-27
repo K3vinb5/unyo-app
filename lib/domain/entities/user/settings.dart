@@ -18,7 +18,17 @@ abstract class Settings {
   final String language;
   final String mediaTitleLanguage;
   final String episodeTitleLanguage;
+
+  /// Legacy single service knob. Only kept so pre-split Hive payloads stay
+  /// readable; nothing reads it outside of the [SettingsModel.fromJson]
+  /// migration. Use [userService] / [metadataService] instead.
   final Service service;
+
+  /// Provider that owns account identity, lists, progress and score.
+  final Service userService;
+
+  /// Provider that owns presentation details (synopsis, covers, genres, ...).
+  final Service metadataService;
   final EpisodeService episodeService;
   final List<String> aniyomiExtensionsRepositories;
   final List<String> tachiyomiExtensionsRepositories;
@@ -38,6 +48,8 @@ abstract class Settings {
 
   const Settings({
     required this.service,
+    required this.userService,
+    required this.metadataService,
     required this.episodeService,
     required this.language,
     required this.mediaTitleLanguage,
@@ -65,6 +77,8 @@ abstract class Settings {
 abstract class SettingsModel with _$SettingsModel implements Settings {
   const factory SettingsModel({
     @HiveField(0) @Default('en') String language,
+    /// Deprecated legacy knob (pre user/metadata split). Read only by the
+    /// [SettingsModel.fromJson] migration below.
     @HiveField(1) @Default(Service.anilist) Service service,
     @HiveField(2) @Default(EpisodeService.anizip) EpisodeService episodeService,
     @HiveField(3) @ExtensionConverter() @Default([]) List<Extension> installedAnimeExtensions,
@@ -83,12 +97,26 @@ abstract class SettingsModel with _$SettingsModel implements Settings {
     @HiveField(18) @Default(true) bool useWallpaperAsThemeColor,
     @HiveField(19) @Default([config.aniyomiExtensionsDefaultRepositoryUrl]) List<String> aniyomiExtensionsRepositories,
     @HiveField(20) @Default([config.tachiyomiExtensionsDefaultRepositoryUrl]) List<String> tachiyomiExtensionsRepositories,
+    @HiveField(21) @Default(Service.anilist) Service userService,
+    @HiveField(22) @Default(Service.anilist) Service metadataService,
   }) = _SettingsModel;
 
   factory SettingsModel.empty() =>
       const SettingsModel();
 
-  factory SettingsModel.fromJson(Map<String, dynamic> json) => _$SettingsModelFromJson(json);
+  /// Pre-split installs only carry [service]; that value was always the media
+  /// metadata provider, so it migrates into [metadataService] and
+  /// [userService] keeps its AniList default. Key presence — not the value —
+  /// decides whether this install was ever migrated.
+  factory SettingsModel.fromJson(Map<String, dynamic> json) =>
+      _$SettingsModelFromJson(_migrateLegacyService(json));
+
+  static Map<String, dynamic> _migrateLegacyService(Map<String, dynamic> json) {
+    if (json.containsKey('metadataService') || !json.containsKey('service') || json['service'] == null) {
+      return json;
+    }
+    return <String, dynamic>{...json, 'metadataService': json['service']};
+  }
 
   @override
   Map<String, dynamic> toJson() => _$SettingsModelToJson(this as _SettingsModel);

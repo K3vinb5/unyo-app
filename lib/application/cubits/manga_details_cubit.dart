@@ -21,7 +21,7 @@ import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
 import 'package:unyo/data/repositories/extension_repository_aniyomi.dart';
 import 'package:unyo/domain/repositories/manga_repository.dart';
-import 'package:unyo/data/repositories/repositories.dart';
+import 'package:unyo/domain/repositories/user_repository.dart';
 import 'package:unyo/domain/entities/extension/extension.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/media/manga_details.dart';
@@ -34,7 +34,7 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
   // Repositories
   final MangaRepository _mangaRepository;
   final ExtensionRepositoryAniyomi _extensionRepositoryAniyomi;
-  final UserRepositoryAnilist _userRepositoryAnilist;
+  final UserRepository _userRepository;
 
   // Notifiers / Subscriptions
   final MangaNotifier _selectedMangaNotifier;
@@ -55,7 +55,7 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
     this._selectedMangaAdvancedSearchGenresFilters,
     this._selectedMediaListNotifier,
     this._extensionRepositoryAniyomi,
-    this._userRepositoryAnilist,
+    this._userRepository,
   ) : super(
         MangaDetailsState(
           loggedUser: UserModel.empty(),
@@ -151,7 +151,7 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
             SettingsModel userSettings = anilistUserModel.settings as SettingsModel;
             Map<String, Extension> mediaExtensionsConfigUpdated = Map.from(userSettings.mediaExtensionConfigs);
             mediaExtensionsConfigUpdated.addAll({state.selectedManga.id.toString(): selectedExtension});
-            await _userRepositoryAnilist.updateUserInfo(
+            await _userRepository.updateUserInfo(
               anilistUserModel.copyWith(
                 settings: userSettings.copyWith(mediaExtensionConfigs: mediaExtensionsConfigUpdated),
               ),

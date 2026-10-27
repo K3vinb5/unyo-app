@@ -8,7 +8,7 @@ import 'package:unyo/application/cubits/settings_cubit.dart';
 import 'package:unyo/application/states/settings_state.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/episode_service.dart';
-import 'package:unyo/core/enums/service.dart';
+import 'package:unyo/core/enums/provider_capabilities.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/core/services/media/episode_service.dart';
 import 'package:unyo/core/services/media/media_service.dart';
@@ -161,14 +161,28 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                       childAlignment: "",
                       settingsOptions: [
                         UnyoSettingsSelectionDropdown(
-                          title: "Media Metadata Service",
-                          description: "Select the Media Metadata service to use",
+                          title: "Account & lists service",
+                          description: "Provider that owns your account, lists, progress and scores",
+                          icon: Icons.format_list_bulleted_rounded,
+                          label: "Select a service",
+                          defaultValue: TextUtils.capitalize(state.loggedUser.settings.userService.name),
+                          children:
+                              kUserProviders
+                                  .map(
+                                    (service) => TextUtils.capitalize(service.name),
+                                  )
+                                  .toList(),
+                          onPressed: context.read<SettingsCubit>().updateUserService,
+                        ),
+                        UnyoSettingsSelectionDropdown(
+                          title: "Media metadata service",
+                          description: "Provider that owns details: synopsis, covers, genres and scores",
                           icon: Icons.image_search_rounded,
                           label: "Select a service",
                           defaultValue:
-                              TextUtils.capitalize(state.loggedUser.settings.service.name),
+                              TextUtils.capitalize(state.loggedUser.settings.metadataService.name),
                           children:
-                              Service.values
+                              kMetadataProviders
                                   .map(
                                     (service) => TextUtils.capitalize(service.name),
                                   )
@@ -213,7 +227,7 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                               icon: Icons.text_fields_rounded,
                               label: "Select a language",
                               defaultValue: state.loggedUser.settings.mediaTitleLanguage,
-                              children: MediaServiceFactory.getMediaService(state.loggedUser.settings.service).titleLanguages,
+                              children: MediaServiceFactory.getMediaService(state.loggedUser.settings.metadataService).titleLanguages,
                               onPressed: context.read<SettingsCubit>().updateMediaTitleLanguage,
                             ),
                             UnyoSettingsSelectionDropdown(

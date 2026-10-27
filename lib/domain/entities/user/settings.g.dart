@@ -58,13 +58,17 @@ class SettingsModelAdapter extends TypeAdapter<SettingsModel> {
               'https://gitea.k3vinb5.dev/Backups/keiyoushi-extensions/raw/branch/repo/index.min.json',
             ]
           : (fields[20] as List).cast<String>(),
+      userService: fields[21] == null ? Service.anilist : fields[21] as Service,
+      metadataService: fields[22] == null
+          ? Service.anilist
+          : fields[22] as Service,
     );
   }
 
   @override
   void write(BinaryWriter writer, SettingsModel obj) {
     writer
-      ..writeByte(19)
+      ..writeByte(21)
       ..writeByte(0)
       ..write(obj.language)
       ..writeByte(1)
@@ -102,7 +106,11 @@ class SettingsModelAdapter extends TypeAdapter<SettingsModel> {
       ..writeByte(19)
       ..write(obj.aniyomiExtensionsRepositories)
       ..writeByte(20)
-      ..write(obj.tachiyomiExtensionsRepositories);
+      ..write(obj.tachiyomiExtensionsRepositories)
+      ..writeByte(21)
+      ..write(obj.userService)
+      ..writeByte(22)
+      ..write(obj.metadataService);
   }
 
   @override
@@ -177,6 +185,12 @@ _SettingsModel _$SettingsModelFromJson(
           ?.map((e) => e as String)
           .toList() ??
       const [config.tachiyomiExtensionsDefaultRepositoryUrl],
+  userService:
+      $enumDecodeNullable(_$ServiceEnumMap, json['userService']) ??
+      Service.anilist,
+  metadataService:
+      $enumDecodeNullable(_$ServiceEnumMap, json['metadataService']) ??
+      Service.anilist,
 );
 
 Map<String, dynamic> _$SettingsModelToJson(
@@ -207,6 +221,8 @@ Map<String, dynamic> _$SettingsModelToJson(
   'useWallpaperAsThemeColor': instance.useWallpaperAsThemeColor,
   'aniyomiExtensionsRepositories': instance.aniyomiExtensionsRepositories,
   'tachiyomiExtensionsRepositories': instance.tachiyomiExtensionsRepositories,
+  'userService': _$ServiceEnumMap[instance.userService]!,
+  'metadataService': _$ServiceEnumMap[instance.metadataService]!,
 };
 
 const _$ServiceEnumMap = {

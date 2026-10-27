@@ -31,18 +31,21 @@ class TextUtils {
     return text.trim();
   }
 
+  /// Year out of the metadata provider's `startDate` string. The year lives in
+  /// the same `d/m/yyyy` slot for every provider we render today, so this
+  /// follows the metadata provider and degrades to an empty string instead of
+  /// throwing for providers whose details are not implemented yet.
   static String extractYearFromStartDate(String startDate, User loggedUser) {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.metadataService) {
       case Service.anilist:
-        return startDate.split("/").length > 1 ? startDate.split("/")[2] : "";
-      case Service.mal:
-        throw UnimplementedError();
-      case Service.kitsu:
-        throw UnimplementedError();
       case Service.shikimori:
-        return startDate.split("/").length > 1 ? startDate.split("/")[2] : "";
+        final List<String> parts = startDate.split("/");
+        return parts.length > 2 ? parts[2] : "";
+      case Service.mal:
+      case Service.kitsu:
       case Service.simkl:
-        throw UnimplementedError();
+        final List<String> parts = startDate.split("/");
+        return parts.length > 2 ? parts[2] : "";
     }
   }
 

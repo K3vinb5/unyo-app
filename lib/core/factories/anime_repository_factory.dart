@@ -12,13 +12,16 @@ import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
 
-/// Factory that resolves the correct [AnimeRepository] implementation
-/// based on the user's selected metadata [Service].
+/// Factory that resolves the correct [AnimeRepository] implementation.
 ///
-/// Currently supports:
+/// Reads are routed by the metadata provider (`settings.metadataService`):
 /// - [Service.anilist] → delegates to [AnimeRepositoryAnilist]
 /// - [Service.shikimori] → delegates to [AnimeRepositoryShikimori]
 /// - All other services → returns safe empty defaults
+///
+/// List-entry reads/writes are routed by the user provider
+/// (`settings.userService`) — the metadata provider is presentation-only
+/// (WP #61 field ownership).
 class AnimeRepositoryFactory implements AnimeRepository {
   final AnimeRepositoryAnilist _animeRepositoryAnilist = sl<AnimeRepositoryAnilist>();
   final AnimeRepositoryShikimori _animeRepositoryShikimori = sl<AnimeRepositoryShikimori>();
@@ -30,7 +33,7 @@ class AnimeRepositoryFactory implements AnimeRepository {
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Anilist recently released anime");
         return _animeRepositoryAnilist.getRecentlyReleasedAnimes(
@@ -58,7 +61,7 @@ class AnimeRepositoryFactory implements AnimeRepository {
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Anilist trending anime");
         return _animeRepositoryAnilist.getTrendingAnimes(
@@ -86,7 +89,7 @@ class AnimeRepositoryFactory implements AnimeRepository {
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Anilist popular anime");
         return _animeRepositoryAnilist.getPopularAnimes(
@@ -114,7 +117,7 @@ class AnimeRepositoryFactory implements AnimeRepository {
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Anilist recently completed anime");
         return _animeRepositoryAnilist.getRecentlyCompletedAnimes(
@@ -142,7 +145,7 @@ class AnimeRepositoryFactory implements AnimeRepository {
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Anilist upcoming anime");
         return _animeRepositoryAnilist.getUpcomingAnimes(
@@ -166,7 +169,7 @@ class AnimeRepositoryFactory implements AnimeRepository {
 
   @override
   Future<Map<String, List<Anime>>> getCalendarReleases(int page, User loggedUser) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Anilist calendar releases");
         return _animeRepositoryAnilist.getCalendarReleases(page, loggedUser);
@@ -180,7 +183,7 @@ class AnimeRepositoryFactory implements AnimeRepository {
 
   @override
   Future<(bool, AnimeDetails)> getAnimeDetails(Anime selectedAnime, User loggedUser) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Anime Details from AniList for ${selectedAnime.title.userPreferred}");
         return _animeRepositoryAnilist.getAnimeDetails(selectedAnime, loggedUser);
@@ -216,7 +219,7 @@ class AnimeRepositoryFactory implements AnimeRepository {
     int page,
     User loggedUser,
   ) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         return _animeRepositoryAnilist.performAnimeAdvancedSearch(
           query,
@@ -239,7 +242,7 @@ class AnimeRepositoryFactory implements AnimeRepository {
 
   @override
   Future<List<String>> getMediaCoverImages(User loggedUser, {bool ignoreCache = false}) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Media Cover Images from AniList");
         return _animeRepositoryAnilist.getMediaCoverImages(
@@ -270,7 +273,7 @@ class AnimeRepositoryFactory implements AnimeRepository {
     Anime selectedAnime,
     User loggedUser,
   ) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.userService) {
       case Service.anilist:
         _logger.i("Updating Media List Entry to $newMediaListEntry on Anilist");
         return _animeRepositoryAnilist.updateMediaListEntry(
@@ -299,7 +302,7 @@ class AnimeRepositoryFactory implements AnimeRepository {
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.userService) {
       case Service.anilist:
         _logger.i("Fetching User Media List Entry from AniList for ${selectedAnime.title.userPreferred}");
         return _animeRepositoryAnilist.getMediaListEntry(

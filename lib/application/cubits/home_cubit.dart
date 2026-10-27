@@ -24,7 +24,7 @@ import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
-import 'package:unyo/data/repositories/repositories.dart';
+import 'package:unyo/domain/repositories/user_repository.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/list/media_list.dart';
@@ -32,7 +32,7 @@ import 'package:unyo/domain/entities/user/user.dart';
 
 class HomeCubit extends Cubit<HomeState> with EffectMixin<HomeState> {
   // Repositories
-  final UserRepositoryAnilist _userRepositoryAnilist;
+  final UserRepository _userRepository;
   final AnimeRepository _animeRepository;
   // Notifiers / Subscriptions
   final UserNotifier _loggedUserNotifier;
@@ -50,7 +50,7 @@ class HomeCubit extends Cubit<HomeState> with EffectMixin<HomeState> {
     this._selectedAnimeNotifier,
     this._selectedMangaNotifier,
     this._selectedMediaListNotifier,
-    this._userRepositoryAnilist,
+    this._userRepository,
     this._animeRepository,
     this._menuBarNotifier,
     this._reloadNotifier,
@@ -98,8 +98,8 @@ class HomeCubit extends Cubit<HomeState> with EffectMixin<HomeState> {
       }
     });
     _reloadSubscription = _reloadNotifier.reloadStream.listen((reloadType) async {
-      if (reloadType == ReloadType.newMetadataService) {
-        _logger.i("Reloading Home Screen data due to new metadata service");
+      if (reloadType == ReloadType.newMetadataService || reloadType == ReloadType.newUserService) {
+        _logger.i("Reloading Home Screen data due to new metadata/user service");
         await _getMediaCoverImages(state.loggedUser, ignoreCache: true);
       }
       if (reloadType == ReloadType.homeMediaListEntryUpdated) {
@@ -142,9 +142,9 @@ class HomeCubit extends Cubit<HomeState> with EffectMixin<HomeState> {
       switch (user) {
         case AnilistUserModel anilistUserModel:
           _logger.i("Fetching Anilist User lists");
-          List<Anime> watchingList = await _userRepositoryAnilist
+          List<Anime> watchingList = await _userRepository
               .getUserWatchingList(anilistUserModel, ignoreCache: ignoreCacheAnime);
-          List<Manga> readingList = await _userRepositoryAnilist
+          List<Manga> readingList = await _userRepository
               .getUserReadingList(anilistUserModel, ignoreCache: ignoreCacheManga);
           emit(
             state.copyWith(

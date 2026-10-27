@@ -90,8 +90,8 @@ class AnimeCubit extends Cubit<AnimeState> with EffectMixin<AnimeState> {
       }
     });
     _reloadSubscription = _reloadNotifier.reloadStream.listen((reloadType) async {
-      if (reloadType == ReloadType.newMetadataService) {
-        _logger.i("Reloading Anime Screen due to new metadata service");
+      if (reloadType == ReloadType.newMetadataService || reloadType == ReloadType.newUserService) {
+        _logger.i("Reloading Anime Screen due to new metadata/user service");
         if (!state.userLoaded) {
           _fetchRecentlyReleased(1, state.loggedUser, ignoreCache: true);
           _fetchTrending(1, state.loggedUser, ignoreCache: true);

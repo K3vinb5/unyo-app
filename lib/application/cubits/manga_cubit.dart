@@ -83,8 +83,8 @@ class MangaCubit extends Cubit<MangaState> with EffectMixin<MangaState> {
       }
     });
     _reloadSubscription = _reloadNotifier.reloadStream.listen((reloadType) async {
-      if (reloadType == ReloadType.newMetadataService) {
-        _logger.i("Reloading manga data due to new metadata service");
+      if (reloadType == ReloadType.newMetadataService || reloadType == ReloadType.newUserService) {
+        _logger.i("Reloading manga data due to new metadata/user service");
         _fetchTrending(1, state.loggedUser, ignoreCache: true);
         _fetchRecentlyCompleted(1, state.loggedUser, ignoreCache: true);
         _fetchPopular(1, state.loggedUser, ignoreCache: true);
