@@ -3,9 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:unyo/application/cubits/tabs_cubit.dart';
-import 'package:unyo/application/cubits/update_cubit.dart';
 import 'package:unyo/application/states/tabs_state.dart';
-import 'package:unyo/application/states/update_state.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/selected_menu_option.dart';
 import 'package:unyo/core/router/app_router.gr.dart';
@@ -26,60 +24,22 @@ class TabsScreen extends StatelessWidget {
   }
 }
 
-class _TabsListener extends StatefulWidget {
+class _TabsListener extends StatelessWidget {
   const _TabsListener();
 
   @override
-  State<_TabsListener> createState() => _TabsListenerState();
-}
-
-class _TabsListenerState extends State<_TabsListener> {
-  /// The one-shot update notice can land before this screen's listener is
-  /// attached (the check is kicked from `main`). Drain whatever the singleton
-  /// already carries once the first frame is up; [AppEffectHandler] dedupes by
-  /// effect instance, so a notice the listener already saw never shows twice.
-  void _drainPendingUpdateEffects() {
-    if (!mounted) return;
-    final cubit = sl<UpdateCubit>();
-    final effects = cubit.state.effects;
-    if (effects.isEmpty) return;
-    sl<AppEffectHandler>().handleEffects(context, effects, cubit.clearEffects);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _drainPendingUpdateEffects());
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return BlocProvider<UpdateCubit>.value(
-      value: sl<UpdateCubit>(),
-      child: BlocListener<UpdateCubit, UpdateState>(
-        // One-shot notice per launch: the cubit only ever adds this effect once.
-        listener: (context, state) {
-          if (state.effects.isNotEmpty) {
-            sl<AppEffectHandler>().handleEffects(
-              context,
-              state.effects,
-              context.read<UpdateCubit>().clearEffects,
-            );
-          }
-        },
-        child: BlocListener<TabsCubit, TabsState>(
-          listener: (context, state) {
-            if (state.effects.isNotEmpty) {
-              sl<AppEffectHandler>().handleEffects(
-                context,
-                state.effects,
-                context.read<TabsCubit>().clearEffects,
-              );
-            }
-          },
-          child: const _TabsView(),
-        ),
-      ),
+    return BlocListener<TabsCubit, TabsState>(
+      listener: (context, state) {
+        if (state.effects.isNotEmpty) {
+          sl<AppEffectHandler>().handleEffects(
+            context,
+            state.effects,
+            context.read<TabsCubit>().clearEffects,
+          );
+        }
+      },
+      child: const _TabsView(),
     );
   }
 }

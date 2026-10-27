@@ -20,7 +20,6 @@ import 'package:unyo/application/cubits/calendar_cubit.dart';
 import 'package:unyo/application/cubits/manga_cubit.dart';
 import 'package:unyo/application/cubits/media_list_cubit.dart';
 import 'package:unyo/application/cubits/tabs_cubit.dart';
-import 'package:unyo/application/cubits/update_cubit.dart';
 import 'package:unyo/application/cubits/login_cubit.dart';
 import 'package:unyo/core/log/logger.dart';
 import 'package:unyo/core/notification/anime_genres_notifier.dart';
@@ -83,7 +82,9 @@ void setupLocator() async{
   );
   sl.registerLazySingleton<AppEffectHandler>(() => AppEffectHandler());
   sl.registerLazySingleton<AppVersionProvider>(() => const AppVersionProvider());
-  sl.registerLazySingleton<UpdateCheckerService>(() => UpdateCheckerService());
+  sl.registerLazySingleton<UpdateCheckerService>(
+    () => UpdateCheckerService(httpService: sl<HttpService>()),
+  );
   sl.registerLazySingleton<ColorImageService>(() => ColorImageService());
   sl.registerSingleton<AniyomiBridge>(AniyomiBridge());
   sl.registerSingleton<TorrentService>(TorrentService());
@@ -147,7 +148,13 @@ void setupLocator() async{
     ),
   );
   sl.registerFactory<TabsCubit>(
-    () => TabsCubit(sl<ThemeService>(), sl<UserNotifier>(instanceName: config.loggedUserNotifier), sl<MenuBarNotifier>()),
+    () => TabsCubit(
+      sl<ThemeService>(),
+      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
+      sl<MenuBarNotifier>(),
+      sl<UpdateCheckerService>(),
+      sl<AppVersionProvider>(),
+    ),
   );
   sl.registerFactory<AnimeCubit>(
     () => AnimeCubit(
@@ -230,11 +237,6 @@ void setupLocator() async{
       sl<ThemeService>(),
       sl<ColorImageService>()
     ),
-  );
-  // Lazy singleton: the update check runs once per process launch and both the
-  // startup notice (tabs) and Settings → About read the same state.
-  sl.registerLazySingleton<UpdateCubit>(
-    () => UpdateCubit(sl<UpdateCheckerService>(), sl<AppVersionProvider>()),
   );
   sl.registerFactory<AnimeAdvancedSearchCubit>(
     () => AnimeAdvancedSearchCubit(

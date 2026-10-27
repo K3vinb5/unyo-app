@@ -10,8 +10,13 @@ import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/selected_menu_option.dart';
 import 'package:unyo/core/notification/menu_bar_notifier.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
+import 'package:unyo/core/services/update/app_version_provider.dart';
+import 'package:unyo/core/services/update/release_page_launcher.dart';
+import 'package:unyo/core/services/update/update_check_result.dart';
+import 'package:unyo/core/services/update/update_checker_service.dart';
 import 'package:unyo/core/theme/theme_service.dart';
 import 'package:unyo/domain/entities/user/user.dart';
+import 'package:unyo/presentation/dialogs/update_available_dialog.dart';
 import 'package:unyo/presentation/drawers/user_options_drawer.dart' show UserOptionsDrawer;
 
 class TabsCubit extends Cubit<TabsState>
@@ -19,14 +24,22 @@ class TabsCubit extends Cubit<TabsState>
   final ThemeService _themeService;
   final UserNotifier _loggedUserNotifier;
   final MenuBarNotifier _menuBarNotifier;
+  final UpdateCheckerService _updateCheckerService;
+  final AppVersionProvider _versionProvider;
   final Logger _logger = sl<Logger>();
   late StreamSubscription<User> _newLoggedUserSubscription;
   late StreamSubscription<bool> _showMenuBarSubscription;
 
+  /// Guards "once per app launch": the shell is built once per logged-in
+  /// session, so a repeat [checkForUpdate] is a no-op.
+  bool _updateCheckStarted = false;
+
   TabsCubit(
       this._themeService,
       this._loggedUserNotifier,
-      this._menuBarNotifier,) : super(
+      this._menuBarNotifier,
+      this._updateCheckerService,
+      this._versionProvider,) : super(
     TabsState(
       selectedMenuOption: SelectedMenuOption.home,
       showMenuBar: false,
@@ -56,6 +69,43 @@ class TabsCubit extends Cubit<TabsState>
     _showMenuBarSubscription = _menuBarNotifier.menuBarStream.listen((showMenuBar,) {
       emit(state.copyWith(showMenuBar: showMenuBar));
     });
+    // Best-effort: fired once from the shell's init, never awaited and never
+    // allowed to block or break startup.
+    unawaited(checkForUpdate());
+  }
+
+  /// Asks GitHub whether a newer release exists and, when it does, opens the
+  /// release-notes dialog. Every failure path is silent apart from a log line.
+  Future<void> checkForUpdate() async {
+    if (_updateCheckStarted) {
+      _logger.d("Update check already ran in this process launch, skipping");
+      return;
+    }
+    _updateCheckStarted = true;
+
+    final currentVersion = await _versionProvider.currentVersion();
+    if (isClosed) return;
+    if (currentVersion == null) {
+      _logger.w("Cannot check for updates: the current app version is unavailable");
+      return;
+    }
+
+    final result = await _updateCheckerService.checkForUpdate(currentVersion);
+    if (isClosed) return;
+    switch (result) {
+      case UpToDate():
+        _logger.d("App is up to date (running $currentVersion)");
+      case UpdateCheckFailed(:final reason):
+        _logger.w("Update check failed: $reason");
+      case UpdateAvailable(:final latestVersion, :final releaseNotes, :final releaseUrl):
+        showWidgetDialogEffect(
+          dialog: UpdateAvailableDialog(
+            latestVersion: latestVersion,
+            releaseNotes: releaseNotes,
+            onOpenReleasePage: () => openReleasePage(releaseUrl),
+          ),
+        );
+    }
   }
 
   @override
