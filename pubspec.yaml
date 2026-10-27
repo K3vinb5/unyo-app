@@ -40,7 +40,6 @@ dependencies:
   loading_animation_widget: ^1.3.0
   awesome_snackbar_content: ^0.1.8
   flutter_svg: ^2.2.3
-  flutter_markdown: ^0.7.7+1
 #  fl_chart: ^1.1.1
   dynamic_color: ^2.1.0
   material_color_utilities: ^0.13.0
@@ -82,6 +81,7 @@ dependencies:
   wakelock_plus: ^1.4.0
   material_ui: ^1.8.0
   package_info_plus: ^10.2.2
+  flutter_markdown_plus: ^1.0.12
 
 # Dev dependencies
 dev_dependencies:

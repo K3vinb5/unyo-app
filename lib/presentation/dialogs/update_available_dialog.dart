@@ -1,18 +1,22 @@
 // External dependencies
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:material_ui/material_ui.dart';
 
 // Internal dependencies
+import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
+import 'package:unyo/core/services/update/release_asset.dart';
 import 'package:unyo/core/services/update/release_page_launcher.dart';
 import 'package:unyo/presentation/widgets/styled/dark_unyo_button.dart';
 import 'package:unyo/presentation/widgets/text/text_body_large.dart';
 import 'package:unyo/presentation/widgets/text/text_headline_medium.dart';
 
 /// The one notice a newer GitHub release earns: what changed, rendered from the
-/// release `body` markdown, with a link to the release page.
+/// release `body` markdown, with a link to the release page and — when the
+/// release published an installer for this platform — a direct download.
 ///
-/// Shown once per process launch by the tabs shell; it never downloads or
-/// installs anything.
+/// Shown on every launch while a newer release exists; dismissing it only
+/// silences the current run. It never downloads or installs anything by itself:
+/// the download button hands the asset URL to the system browser.
 class UpdateAvailableDialog extends StatelessWidget {
   static const String title = "There's a new release";
 
@@ -20,16 +24,33 @@ class UpdateAvailableDialog extends StatelessWidget {
   final String releaseNotes;
   final VoidCallback onOpenReleasePage;
 
+  /// Assets of the release, in publish order. The matching installer for
+  /// [platform] decides whether the download button is shown at all.
+  final List<GithubReleaseAssets> assets;
+
+  /// The platform the download button offers. Null means "whatever is running
+  /// now"; tests inject a value so every mapping is covered on one host.
+  final UpdatePlatform? platform;
+
+  /// Opens a URL externally. Defaults to the shared release-page launcher so
+  /// both actions go through `url_launcher`.
+  final Future<bool> Function(String url) openUrl;
+
   const UpdateAvailableDialog({
     super.key,
     required this.latestVersion,
     required this.releaseNotes,
     required this.onOpenReleasePage,
+    this.assets = const [],
+    this.platform,
+    this.openUrl = openReleaseAsset,
   });
 
   @override
   Widget build(BuildContext context) {
     final notes = releaseNotes.trim();
+    final targetPlatform = platform ?? UpdatePlatformInfo.current;
+    final downloadUrl = releaseAssetUrl(assets, targetPlatform);
     return Dialog(
       backgroundColor: const Color.fromARGB(255, 30, 30, 30),
       child: ConstrainedBox(
@@ -97,6 +118,17 @@ class UpdateAvailableDialog extends StatelessWidget {
                       onOpenReleasePage();
                     },
                   ),
+                  if (downloadUrl != null) ...[
+                    const SizedBox(width: 12),
+                    DarkUnyoButton(
+                      text: "Download for ${targetPlatform.label}",
+                      minWidth: 200,
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        openUrl(downloadUrl);
+                      },
+                    ),
+                  ],
                 ],
               ),
             ],

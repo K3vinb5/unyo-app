@@ -9,6 +9,7 @@ import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/notification/menu_bar_notifier.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
+import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
 import 'package:unyo/core/services/update/app_version_provider.dart';
 import 'package:unyo/core/services/update/update_check_result.dart';
 import 'package:unyo/core/services/update/update_checker_service.dart';
@@ -73,11 +74,17 @@ void main() {
       'opens the release-notes dialog when a newer release exists',
       () async {
         when(() => updateCheckerService.checkForUpdate('0.8.0')).thenAnswer(
-          (_) async => const UpdateAvailable(
+          (_) async => UpdateAvailable(
             latestVersion: '0.9.0',
             releaseUrl: 'https://github.com/K3vinb5/Unyo/releases/tag/v0.9.0',
             releaseNotes:
                 "## What's changed\n\n- Release notes now open in a dialog.",
+            assets: [
+              GithubReleaseAssets()
+                ..name = 'Unyo-v0.9.0-linux.AppImage'
+                ..browserDownloadUrl =
+                    'https://github.com/K3vinb5/Unyo/releases/download/v0.9.0/Unyo-v0.9.0-linux.AppImage',
+            ],
           ),
         );
         final cubit = createCubit();
@@ -92,7 +99,37 @@ void main() {
           dialog.releaseNotes,
           contains('Release notes now open in a dialog.'),
         );
+        expect(dialog.assets.single.name, 'Unyo-v0.9.0-linux.AppImage');
         expect(dialog.onOpenReleasePage, isNotNull);
+      },
+    );
+
+    test(
+      'shows the dialog again on the next launch (dismissing only silences the run)',
+      () async {
+        when(() => updateCheckerService.checkForUpdate('0.8.0')).thenAnswer(
+          (_) async => const UpdateAvailable(
+            latestVersion: '0.9.0',
+            releaseUrl: 'https://github.com/K3vinb5/Unyo/releases/tag/v0.9.0',
+            releaseNotes: '- something changed',
+          ),
+        );
+
+        final firstLaunch = createCubit();
+        await pumpEventQueue();
+        final firstEffect =
+            firstLaunch.state.effects.single as ShowWidgetDialogEffect;
+        expect(firstEffect.dialog, isA<UpdateAvailableDialog>());
+        await firstLaunch.close();
+
+        // Nothing acknowledged is persisted: the next launch nudges again.
+        final secondLaunch = createCubit();
+        addTearDown(secondLaunch.close);
+        await pumpEventQueue();
+        final secondEffect =
+            secondLaunch.state.effects.single as ShowWidgetDialogEffect;
+        expect(secondEffect.dialog, isA<UpdateAvailableDialog>());
+        verify(() => updateCheckerService.checkForUpdate('0.8.0')).called(2);
       },
     );
 

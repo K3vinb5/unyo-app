@@ -30,8 +30,10 @@ class TabsCubit extends Cubit<TabsState>
   late StreamSubscription<User> _newLoggedUserSubscription;
   late StreamSubscription<bool> _showMenuBarSubscription;
 
-  /// Guards "once per app launch": the shell is built once per logged-in
-  /// session, so a repeat [checkForUpdate] is a no-op.
+  /// Guards "once per process launch": the shell is built once per logged-in
+  /// session, so a repeat [checkForUpdate] within the same launch is a no-op.
+  /// Nothing is persisted — the next launch asks again, which is the intended
+  /// nagging policy ("every start while outdated").
   bool _updateCheckStarted = false;
 
   TabsCubit(
@@ -97,11 +99,17 @@ class TabsCubit extends Cubit<TabsState>
         _logger.d("App is up to date (running $currentVersion)");
       case UpdateCheckFailed(:final reason):
         _logger.w("Update check failed: $reason");
-      case UpdateAvailable(:final latestVersion, :final releaseNotes, :final releaseUrl):
+      case UpdateAvailable(
+        :final latestVersion,
+        :final releaseNotes,
+        :final releaseUrl,
+        :final assets,
+      ):
         showWidgetDialogEffect(
           dialog: UpdateAvailableDialog(
             latestVersion: latestVersion,
             releaseNotes: releaseNotes,
+            assets: assets,
             onOpenReleasePage: () => openReleasePage(releaseUrl),
           ),
         );

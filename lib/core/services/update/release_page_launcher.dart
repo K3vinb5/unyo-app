@@ -18,9 +18,23 @@ Uri releasePageUri(String? releaseUrl) {
 
 /// Opens [releaseUrl] in the system browser. Never throws: the update notice is
 /// not allowed to break the app if no browser is available.
-Future<bool> openReleasePage(String? releaseUrl) async {
+Future<bool> openReleasePage(String? releaseUrl) =>
+    _openExternally(releasePageUri(releaseUrl));
+
+/// Opens a release asset download URL (the platform installer the dialog's
+/// download button points at) in the system browser. Unlike the release page
+/// there is no fallback: an empty or malformed URL is simply not opened.
+Future<bool> openReleaseAsset(String? downloadUrl) async {
+  final candidate = downloadUrl?.trim();
+  if (candidate == null || candidate.isEmpty) return false;
+  final parsed = Uri.tryParse(candidate);
+  if (parsed == null || !parsed.hasScheme) return false;
+  return _openExternally(parsed);
+}
+
+Future<bool> _openExternally(Uri uri) async {
   try {
-    return await launchUrl(releasePageUri(releaseUrl), mode: LaunchMode.externalApplication);
+    return await launchUrl(uri, mode: LaunchMode.externalApplication);
   } catch (_) {
     return false;
   }

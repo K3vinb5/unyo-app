@@ -132,6 +132,7 @@ class UpdateCheckerService {
       latestVersion: latestVersion,
       releaseUrl: releaseUrl,
       releaseNotes: release.body.trim(),
+      assets: release.assets,
     );
   }
 

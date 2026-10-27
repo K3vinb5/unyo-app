@@ -27,6 +27,11 @@ GithubReleaseEntity $GithubReleaseEntityFromJson(Map<String, dynamic> json) {
 	if (publishedAt != null) {
 		githubReleaseEntity.publishedAt = publishedAt;
 	}
+	final List<GithubReleaseAssets>? assets = (json['assets'] as List<dynamic>?)?.map(
+	(e) => jsonConvert.convert<GithubReleaseAssets>(e) as GithubReleaseAssets).toList();
+	if (assets != null) {
+		githubReleaseEntity.assets = assets;
+	}
 	return githubReleaseEntity;
 }
 
@@ -38,6 +43,7 @@ Map<String, dynamic> $GithubReleaseEntityToJson(GithubReleaseEntity entity) {
 	data['body'] = entity.body;
 	data['prerelease'] = entity.prerelease;
 	data['published_at'] = entity.publishedAt;
+	data['assets'] =  entity.assets.map((v) => v.toJson()).toList();
 	return data;
 }
 
@@ -49,6 +55,7 @@ extension GithubReleaseEntityExtension on GithubReleaseEntity {
 	String? body,
 	bool? prerelease,
 	String? publishedAt,
+	List<GithubReleaseAssets>? assets,
 	}) {
 		return GithubReleaseEntity()
 			..tagName = tagName ?? this.tagName
@@ -56,6 +63,39 @@ extension GithubReleaseEntityExtension on GithubReleaseEntity {
 			..htmlUrl = htmlUrl ?? this.htmlUrl
 			..body = body ?? this.body
 			..prerelease = prerelease ?? this.prerelease
-			..publishedAt = publishedAt ?? this.publishedAt;
+			..publishedAt = publishedAt ?? this.publishedAt
+			..assets = assets ?? this.assets;
+	}
+}
+
+
+GithubReleaseAssets $GithubReleaseAssetsFromJson(Map<String, dynamic> json) {
+	final GithubReleaseAssets githubReleaseAssets = GithubReleaseAssets();
+	final String? name = jsonConvert.convert<String>(json['name']);
+	if (name != null) {
+		githubReleaseAssets.name = name;
+	}
+	final String? browserDownloadUrl = jsonConvert.convert<String>(json['browser_download_url']);
+	if (browserDownloadUrl != null) {
+		githubReleaseAssets.browserDownloadUrl = browserDownloadUrl;
+	}
+	return githubReleaseAssets;
+}
+
+Map<String, dynamic> $GithubReleaseAssetsToJson(GithubReleaseAssets entity) {
+	final Map<String, dynamic> data = <String, dynamic>{};
+	data['name'] = entity.name;
+	data['browser_download_url'] = entity.browserDownloadUrl;
+	return data;
+}
+
+extension GithubReleaseAssetsExtension on GithubReleaseAssets {
+	GithubReleaseAssets copyWith({
+	String? name,
+	String? browserDownloadUrl,
+	}) {
+		return GithubReleaseAssets()
+			..name = name ?? this.name
+			..browserDownloadUrl = browserDownloadUrl ?? this.browserDownloadUrl;
 	}
 }

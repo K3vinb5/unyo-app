@@ -93,6 +93,10 @@ void main() {
           'https://github.com/K3vinb5/Unyo/releases/tag/v0.9.0',
         );
         expect(available.releaseNotes, startsWith("## What's changed"));
+        expect(
+          available.assets.map((a) => a.name),
+          contains('Unyo-v0.9.0-linux.AppImage'),
+        );
       },
     );
 

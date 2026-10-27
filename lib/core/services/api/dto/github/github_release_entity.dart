@@ -6,20 +6,39 @@ export 'package:unyo/generated/json/github_release_entity.g.dart';
 @JsonSerializable()
 class GithubReleaseEntity {
 	@JSONField(name: 'tag_name')
-	late String tagName;
-	late String name;
+	late String tagName = '';
+	late String name = '';
 	@JSONField(name: 'html_url')
-	late String htmlUrl;
-	late String body;
-	late bool prerelease;
+	late String htmlUrl = '';
+	late String body = '';
+	late bool prerelease = false;
 	@JSONField(name: 'published_at')
-	late String publishedAt;
+	late String publishedAt = '';
+	late List<GithubReleaseAssets> assets = [];
 
 	GithubReleaseEntity();
 
 	factory GithubReleaseEntity.fromJson(Map<String, dynamic> json) => $GithubReleaseEntityFromJson(json);
 
 	Map<String, dynamic> toJson() => $GithubReleaseEntityToJson(this);
+
+	@override
+	String toString() {
+		return jsonEncode(this);
+	}
+}
+
+@JsonSerializable()
+class GithubReleaseAssets {
+	late String name = '';
+	@JSONField(name: 'browser_download_url')
+	late String browserDownloadUrl = '';
+
+	GithubReleaseAssets();
+
+	factory GithubReleaseAssets.fromJson(Map<String, dynamic> json) => $GithubReleaseAssetsFromJson(json);
+
+	Map<String, dynamic> toJson() => $GithubReleaseAssetsToJson(this);
 
 	@override
 	String toString() {
