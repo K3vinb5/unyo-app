@@ -34,11 +34,22 @@ void main() {
       expect(settings.metadataService, Service.anilist);
     });
 
-    test('an explicit metadataService is never overwritten by the legacy key', () {
-      // A migrated install that later had its metadata provider reset to AniList
-      // still carries the stale legacy key; key presence wins over its value.
+    test('an AniList metadataService next to a non-AniList legacy service is pre-split data', () {
+      // Writes always mirror metadataService into the legacy service field, so
+      // this combination cannot come from a post-split build: read it as the
+      // pre-split choice (same rule the Hive adapter applies).
       final SettingsModel settings = SettingsModel.fromJson(<String, dynamic>{
         'service': 'shikimori',
+        'metadataService': 'anilist',
+      });
+
+      expect(settings.metadataService, Service.shikimori);
+    });
+
+    test('a genuine post-split AniList metadata choice is preserved', () {
+      final SettingsModel settings = SettingsModel.fromJson(<String, dynamic>{
+        'service': 'anilist',
+        'userService': 'anilist',
         'metadataService': 'anilist',
       });
 
@@ -51,6 +62,15 @@ void main() {
 
       expect(reloaded.metadataService, Service.shikimori);
       expect(reloaded.userService, Service.anilist);
+    });
+
+    test('the JSON writer keeps the legacy service field mirrored to metadataService', () {
+      final SettingsModel settings = SettingsModel.empty().copyWith(metadataService: Service.shikimori);
+
+      final Map<String, dynamic> json = const SettingsConverter().toJson(settings);
+
+      expect(json['service'], json['metadataService']);
+      expect(json['service'], 'shikimori');
     });
   });
 }

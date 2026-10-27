@@ -109,15 +109,36 @@ abstract class SettingsModel with _$SettingsModel implements Settings {
   /// [userService] keeps its AniList default. Key presence — not the value —
   /// decides whether this install was ever migrated.
   factory SettingsModel.fromJson(Map<String, dynamic> json) =>
-      _$SettingsModelFromJson(_migrateLegacyService(json));
+      reconcileLegacyService(_$SettingsModelFromJson(_migrateLegacyServiceKeys(json)));
 
-  static Map<String, dynamic> _migrateLegacyService(Map<String, dynamic> json) {
+  static Map<String, dynamic> _migrateLegacyServiceKeys(Map<String, dynamic> json) {
     if (json.containsKey('metadataService') || !json.containsKey('service') || json['service'] == null) {
       return json;
     }
     return <String, dynamic>{...json, 'metadataService': json['service']};
   }
 
+  /// Read-time rule shared by the JSON entry point and the Hive adapter:
+  /// pre-split rows stored the old `service` knob and no `metadataService`, so
+  /// they deserialise with the `anilist` default even though the user had
+  /// picked another provider. Every write mirrors [metadataService] into
+  /// [service], which makes this rule unambiguous: an `anilist`
+  /// [metadataService] next to a non-AniList [service] can only be pre-split
+  /// data.
+  static SettingsModel reconcileLegacyService(SettingsModel settings) {
+    if (settings.metadataService != Service.anilist) return settings;
+    if (settings.service == Service.anilist) return settings;
+    return settings.copyWith(metadataService: settings.service);
+  }
+
+  /// Keeps the legacy `service` field a mirror of [metadataService] on every
+  /// write, so [reconcileLegacyService] never has to guess between a genuine
+  /// post-split AniList choice and stale pre-split data.
+  static SettingsModel mirrorLegacyService(SettingsModel settings) =>
+      settings.service == settings.metadataService ? settings : settings.copyWith(service: settings.metadataService);
+
+  /// Freezed generates `toJson()` for this class, so the legacy mirror lives in
+  /// [SettingsConverter] — the only place settings are serialised.
   @override
   Map<String, dynamic> toJson() => _$SettingsModelToJson(this as _SettingsModel);
 }
@@ -129,5 +150,6 @@ class SettingsConverter implements JsonConverter<Settings, Map<String, dynamic>>
   Settings fromJson(Map<String, dynamic> json) => SettingsModel.fromJson(json);
 
   @override
-  Map<String, dynamic> toJson(Settings object) => (object as SettingsModel).toJson();
+  Map<String, dynamic> toJson(Settings object) =>
+      SettingsModel.mirrorLegacyService(object as SettingsModel).toJson();
 }
