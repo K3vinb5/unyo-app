@@ -1,5 +1,9 @@
 // Application configuration
-const String version = 'v1.0.0';
+// The current version is read at runtime (package_info_plus) so it can never
+// drift from the version stamped into pubspec.yaml at release time.
+// Update check configuration
+const String unyoReleasesEndpoint = 'https://api.github.com/repos/K3vinb5/Unyo/releases/latest';
+const String unyoReleasesFallbackUrl = 'https://github.com/K3vinb5/Unyo/releases/latest';
 // Locator configuration
 const String applicationSupportDirectory = "applicationSupportDirectory";
 const String loggedUserNotifier = 'loggedUserNotifier';

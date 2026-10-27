@@ -1,0 +1,29 @@
+/// Outcome of a single in-app update check.
+///
+/// Every failure path (offline, non-200, 404 when there are no releases yet,
+/// malformed JSON, timeout) collapses into [UpdateCheckFailed] so callers never
+/// have to catch: the startup kick-off must never throw.
+sealed class UpdateCheckResult {
+  const UpdateCheckResult();
+}
+
+/// The running build is the newest published release.
+class UpToDate extends UpdateCheckResult {
+  const UpToDate();
+}
+
+/// A newer release exists. [releaseUrl] is the GitHub release page (or the
+/// generic `/releases/latest` page when the payload has no usable `html_url`).
+class UpdateAvailable extends UpdateCheckResult {
+  final String latestVersion;
+  final String releaseUrl;
+
+  const UpdateAvailable({required this.latestVersion, required this.releaseUrl});
+}
+
+/// The check could not produce a verdict. Silent by design: it is only logged.
+class UpdateCheckFailed extends UpdateCheckResult {
+  final String reason;
+
+  const UpdateCheckFailed(this.reason);
+}
