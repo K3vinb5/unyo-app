@@ -80,6 +80,7 @@ dependencies:
       ref: master
   wakelock_plus: ^1.4.0
   material_ui: ^1.8.0
+  package_info_plus: ^10.2.2
 
 # Dev dependencies
 dev_dependencies:
