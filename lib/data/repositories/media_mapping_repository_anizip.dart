@@ -16,23 +16,45 @@ class MediaMappingRepositoryAnizip implements AniZipIdLookup {
 
   @override
   Future<int?> malIdForAnilistId(int anilistId) async {
-    _logger.i("Resolving the MAL pivot of AniList $anilistId through AniZip");
+    final AnizipIdMappingsMappings? mappings = await _mappings(
+      'anilist_id=$anilistId',
+      "AniList $anilistId",
+    );
+    final int malId = mappings?.malId ?? 0;
+    if (malId <= 0) return null;
+    return malId;
+  }
+
+  @override
+  Future<int?> anilistIdForMalId(int malId) async {
+    final AnizipIdMappingsMappings? mappings = await _mappings(
+      'mal_id=$malId',
+      "MAL $malId",
+    );
+    final int anilistId = mappings?.anilistId ?? 0;
+    if (anilistId <= 0) return null;
+    return anilistId;
+  }
+
+  /// One `/mappings` call; the payload carries both id directions, so the two
+  /// public methods differ only in the query field and the field they read.
+  Future<AnizipIdMappingsMappings?> _mappings(String query, String label) async {
+    _logger.i("Resolving the AniZip mapping of $label");
     try {
       ApiResponse<AnizipIdMappingsEntity> response = await _httpService.get<AnizipIdMappingsEntity>(
-        "${config.anizipBaseEndpoint}/mappings?anilist_id=$anilistId",
+        "${config.anizipBaseEndpoint}/mappings?$query",
         fromJson: AnizipIdMappingsEntity.fromJson,
       );
       if (response.statusCode > 299) {
-        _logger.e("AniZip mapping lookup failed for AniList $anilistId: status ${response.statusCode}");
+        _logger.e("AniZip mapping lookup failed for $label: status ${response.statusCode}");
         return null;
       }
-      final int malId = response.data.mappings.malId;
-      return malId > 0 ? malId : null;
+      return response.data.mappings;
     } catch (e) {
       // A transient AniZip failure (network, timeout, bad payload) must degrade
       // to a mapping miss, not abort the details flow: the caller's chain still
       // has the title search and the unresolved fallback to fall back on.
-      _logger.w("AniZip mapping lookup failed for AniList $anilistId: $e");
+      _logger.w("AniZip mapping lookup failed for $label: $e");
       return null;
     }
   }

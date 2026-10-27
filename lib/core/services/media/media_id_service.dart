@@ -35,10 +35,13 @@ class MediaDetailsSource {
   });
 }
 
-/// AniZip `/mappings` leg of the chain.
+/// AniZip `/mappings` leg of the chain: both directions of the MAL pivot.
 abstract class AniZipIdLookup {
   /// The MAL id AniZip lists for [anilistId], or null when it has no entry.
   Future<int?> malIdForAnilistId(int anilistId);
+
+  /// The AniList id AniZip lists for [malId], or null when it has no entry.
+  Future<int?> anilistIdForMalId(int malId);
 }
 
 /// Target-provider queries used by the mapping chain.
@@ -65,7 +68,9 @@ class _LinkResolution {
 ///
 /// Chain, in authority order:
 /// 1. the provider's own `malId`/`idMal` field — authoritative, auto-applied;
-/// 2. AniZip — authoritative, auto-applied;
+/// 2. AniZip — authoritative, auto-applied. Both directions of the pivot: it
+///    supplies the MAL pivot of an AniList record and the AniList record of a
+///    MAL pivot (the target-provider probe has no AniList id space);
 /// 3. target-provider title search — heuristic, needs a one-time user
 ///    confirmation before it is cached.
 ///
@@ -302,18 +307,11 @@ class MediaIdService {
   ) async {
     IdMapping? targetMapping = await _cache.getByMalId(target, pivot);
     if (targetMapping == null || !targetMapping.isResolved) {
-      final MediaLinkCandidate? probed = await _mappingLookup?.lookupByMalId(target, pivot);
-      if (probed == null) {
+      targetMapping = await _probeTarget(target, pivot) ?? await _aniZipTarget(target, pivot);
+      if (targetMapping == null) {
         _logger.w("No verified ${target.name} entry for MAL $pivot");
         return null;
       }
-      targetMapping = IdMapping(
-        service: target,
-        nativeId: probed.nativeId,
-        malId: pivot,
-        state: IdMappingState.authoritative,
-        source: IdMappingSource.providerField,
-      );
       await _cache.put(targetMapping);
     }
     await _cache.put(IdMapping(
@@ -324,6 +322,40 @@ class MediaIdService {
       source: targetMapping.source,
     ));
     return targetMapping;
+  }
+
+  /// The target provider's own record for [pivot]: a probe that verified the
+  /// record's own `malId` field. Provider field, so the strongest step.
+  Future<IdMapping?> _probeTarget(Service target, int pivot) async {
+    final MediaLinkCandidate? probed = await _mappingLookup?.lookupByMalId(target, pivot);
+    if (probed == null) return null;
+    return IdMapping(
+      service: target,
+      nativeId: probed.nativeId,
+      malId: pivot,
+      state: IdMappingState.authoritative,
+      source: IdMappingSource.providerField,
+    );
+  }
+
+  /// AniZip's own MAL→AniList direction.
+  ///
+  /// The probe above cannot name an AniList id: the only [MediaMappingLookup]
+  /// implementation speaks Shikimori. Without this leg a Shikimori record with a
+  /// known MAL id could only reach AniList through an already-cached or a
+  /// user-confirmed link, and the miss would be cached as unresolved — poisoning
+  /// every later list read and write for that record.
+  Future<IdMapping?> _aniZipTarget(Service target, int pivot) async {
+    if (target != Service.anilist) return null;
+    final int? anilistId = await _aniZipLookup?.anilistIdForMalId(pivot);
+    if (anilistId == null) return null;
+    return IdMapping(
+      service: target,
+      nativeId: '$anilistId',
+      malId: pivot,
+      state: IdMappingState.authoritative,
+      source: IdMappingSource.aniZip,
+    );
   }
 
   /// Rebuilds the target row of a link the user confirmed earlier.

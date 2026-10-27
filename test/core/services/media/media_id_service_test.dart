@@ -18,14 +18,24 @@ import 'package:unyo/domain/repositories/media_id_cache.dart';
 
 class FakeAniZipIdLookup implements AniZipIdLookup {
   int? response;
+  int? anilistResponse;
   int calls = 0;
+  int anilistCalls = 0;
   int? lastAnilistId;
+  int? lastMalId;
 
   @override
   Future<int?> malIdForAnilistId(int anilistId) async {
     calls++;
     lastAnilistId = anilistId;
     return response;
+  }
+
+  @override
+  Future<int?> anilistIdForMalId(int malId) async {
+    anilistCalls++;
+    lastMalId = malId;
+    return anilistResponse;
   }
 }
 
@@ -340,6 +350,68 @@ void main() {
       expect(source.service, Service.anilist);
       expect(source.anime.id, 170942);
       expect(aniZip.calls, 0, reason: 'Shikimori never has an AniZip id space');
+    });
+  });
+
+  group('AniZip MAL to AniList', () {
+    test('a Shikimori record with a known malId resolves to AniList through AniZip, without a dialog', () async {
+      aniZip.anilistResponse = 170942;
+
+      final MediaDetailsSource source = await service.detailsSource(
+        shikimoriAnime(),
+        userWith(metadataService: Service.anilist),
+      );
+
+      expect(aniZip.lastMalId, 58514);
+      expect(aniZip.calls, 0, reason: 'a Shikimori record has no AniZip id space of its own');
+      expect(lookup.probeCalls, 1, reason: 'the target-provider probe is still tried first');
+      expect(lookup.searchCalls, 0);
+      expect(source.service, Service.anilist);
+      expect(source.anime.id, 170942);
+      expect(source.isUnresolved, isFalse);
+      expect(source.proposal, isNull, reason: 'AniZip is authoritative: nothing to confirm');
+
+      final IdMapping target = (await cache.getByNativeId(Service.anilist, '170942'))!;
+      expect(target.malId, 58514);
+      expect(target.state, IdMappingState.authoritative);
+      expect(target.source, IdMappingSource.aniZip);
+      final IdMapping sourceRow = (await cache.getByNativeId(Service.shikimori, '65261'))!;
+      expect(sourceRow.malId, 58514);
+      expect(sourceRow.state, IdMappingState.authoritative);
+      expect(sourceRow.source, IdMappingSource.aniZip);
+    });
+
+    test('the AniZip link serves the list read and write path instead of an unresolved row', () async {
+      aniZip.anilistResponse = 170942;
+      final Anime record = shikimoriAnime();
+
+      await service.detailsSource(record, userWith(metadataService: Service.anilist));
+      final int? userNativeId = await service.userNativeIdFor(record, Service.anilist);
+
+      expect(userNativeId, 170942, reason: 'a null here is the list-write MediaLinkUnresolvedException');
+      expect(aniZip.anilistCalls, 1, reason: 'the cached link is reused, AniZip is not asked again');
+      expect(cache.entries.where((IdMapping mapping) => !mapping.isResolved), isEmpty);
+    });
+
+    test('AniZip without an AniList entry falls through to the title search unchanged', () async {
+      aniZip.anilistResponse = null;
+      lookup.searchResults = <MediaLinkCandidate>[candidate('170942', service: Service.anilist)];
+
+      final MediaDetailsSource source = await service.detailsSource(
+        shikimoriAnime(),
+        userWith(metadataService: Service.anilist),
+      );
+
+      expect(aniZip.lastMalId, 58514, reason: 'the AniZip leg was tried before giving up');
+      expect(lookup.searchCalls, 1, reason: 'the heuristic stage is still reached');
+      expect(source.proposal, isNotNull);
+      expect(source.isUnresolved, isTrue);
+      expect(source.service, Service.shikimori);
+      expect(
+        await cache.getByNativeId(Service.anilist, '170942'),
+        isNull,
+        reason: 'nothing is applied before the user confirms',
+      );
     });
   });
 
