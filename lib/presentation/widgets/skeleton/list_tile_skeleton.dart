@@ -15,6 +15,7 @@ class ListTileSkeleton extends StatelessWidget {
     this.subtitleWidth = 100,
     this.circleLeading = true,
     this.showTrailing = false,
+    this.vertical = false,
   });
 
   final double height;
@@ -24,8 +25,29 @@ class ListTileSkeleton extends StatelessWidget {
   final bool circleLeading;
   final bool showTrailing;
 
+  /// Stack the leading block above the text bars instead of beside them
+  /// (`widgets/styled/user_avatar.dart` on the login screen).
+  final bool vertical;
+
   @override
   Widget build(BuildContext context) {
+    if (vertical) {
+      return SizedBox(
+        height: height,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SkeletonBlock(
+              width: leadingSize,
+              height: leadingSize,
+              borderRadius: circleLeading ? leadingSize / 2 : 8,
+            ),
+            const SizedBox(height: 10),
+            SkeletonBlock(width: titleWidth, height: 16),
+          ],
+        ),
+      );
+    }
     return SizedBox(
       height: height,
       child: Row(

@@ -35,6 +35,7 @@ class MediaListCubit extends Cubit<MediaListState>
           userAnimeLists: {},
           userMangaLists: {},
           loggedUser: UserModel.empty(),
+          isLoading: true,
         ),
       ) {
     _init();
@@ -105,6 +106,10 @@ class MediaListCubit extends Cubit<MediaListState>
       }
     } catch (e, stackTrace) {
       handleError("Error fetching user info: $e", stackTrace: stackTrace);
+    } finally {
+      if (!isClosed) {
+        emit(state.copyWith(isLoading: false));
+      }
     }
   }
 }

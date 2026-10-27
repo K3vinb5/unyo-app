@@ -9,6 +9,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:unyo/application/cubits/login_cubit.dart';
 import 'package:unyo/application/states/login_state.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
+import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/styled.dart';
 import 'package:unyo/presentation/widgets/text/texts.dart';
 import 'package:unyo/core/di/locator.dart';
@@ -41,7 +42,7 @@ class _LoginListener extends StatelessWidget {
           );
         }
       },
-      child: const _LoginView(),
+      child: const SkeletonScope(child: _LoginView()),
     );
   }
 }
@@ -89,9 +90,23 @@ class _LoginViewState extends State<_LoginView> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.max,
                   children: [
-                    ...state.availableUsers.map(
-                          (user) => UserAvatar(user: user, onPressed: () => context.read<LoginCubit>().loginUser(user, context)),
-                    ),
+                    if (state.isLoading)
+                      ...List.generate(
+                        3,
+                        (index) => const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 25.0),
+                          child: ListTileSkeleton(
+                            height: 200,
+                            leadingSize: 160,
+                            titleWidth: 120,
+                            vertical: true,
+                          ),
+                        ),
+                      )
+                    else
+                      ...state.availableUsers.map(
+                            (user) => UserAvatar(user: user, onPressed: () => context.read<LoginCubit>().loginUser(user, context)),
+                      ),
                     AddUserAvatar(onPressed: () => context.read<LoginCubit>().initiateAccountCreation(context)),
                     // Display existing users
                   ],

@@ -35,6 +35,7 @@ class ExtensionsCubit extends Cubit<ExtensionsState> with EffectMixin<Extensions
           availableAnimeExtensions: [],
           availableMangaExtensions: [],
           userLoaded: false,
+          extensionsLoaded: false,
         ),
       ) {
     _init();
@@ -58,15 +59,26 @@ class ExtensionsCubit extends Cubit<ExtensionsState> with EffectMixin<Extensions
     _loggedUserSubscription = _loggedUserNotifier.userStream.listen((loggedUser) {
       emit(state.copyWith(loggedUser: loggedUser));
       if (!state.userLoaded) {
-        _fetchAvailableAnimeExtensions(loggedUser);
-        _fetchAvailableMangaExtensions(loggedUser);
-        _fetchInstaledAnimeExtensions(loggedUser);
-        _fetchInstaledMangaExtensions(loggedUser);
-        _fetchAnimeExtensionUpdates(loggedUser);
-        _fetchMangaExtensionUpdates(loggedUser);
-        emit(state.copyWith(userLoaded: true));
+        _loadExtensions(loggedUser);
       }
     });
+  }
+
+  /// Fetches every extension list, then flips [ExtensionsState.extensionsLoaded]
+  /// so the screen swaps its skeletons for the real rows. Each `_fetch*` keeps
+  /// its own error handling, so a failing endpoint still settles the flag.
+  Future<void> _loadExtensions(User loggedUser) async {
+    emit(state.copyWith(userLoaded: true));
+    await Future.wait([
+      _fetchAvailableAnimeExtensions(loggedUser),
+      _fetchAvailableMangaExtensions(loggedUser),
+      _fetchInstaledAnimeExtensions(loggedUser),
+      _fetchInstaledMangaExtensions(loggedUser),
+      _fetchAnimeExtensionUpdates(loggedUser),
+      _fetchMangaExtensionUpdates(loggedUser),
+    ]);
+    if (isClosed) return;
+    emit(state.copyWith(extensionsLoaded: true));
   }
 
   Future<void> downloadExtension(Extension extension) async {

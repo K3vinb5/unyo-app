@@ -11,6 +11,7 @@ abstract class CalendarState with _$CalendarState implements HasEffects{
   const factory CalendarState({
     required Map<String, List<Anime>> animeCalendarReleases,
     required User loggedUser,
+    required bool isLoading,
     @Default(<AppEffect>[]) List<AppEffect> effects,
   }) = _CalendarState;
 

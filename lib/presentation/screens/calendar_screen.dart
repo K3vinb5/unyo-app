@@ -11,6 +11,7 @@ import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/media_type.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/domain/entities/list/media_list.dart';
+import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/media_card.dart';
 import 'package:unyo/presentation/widgets/text/texts.dart';
 
@@ -46,7 +47,7 @@ class _CalendarListener extends StatelessWidget {
           );
         }
       },
-      child: const _CalendarView(),
+      child: const SkeletonScope(child: _CalendarView()),
     );
   }
 }
@@ -163,7 +164,9 @@ class _CalendarViewState extends State<_CalendarView>
                   right: 15.0.w,
                   top: 15.0.h,
                 ),
-                child: TabBarView(
+                child: state.isLoading
+                    ? const MediaGridSkeleton()
+                    : TabBarView(
                   controller: tabController,
                   children: [
                     ...state.animeCalendarReleases
@@ -171,13 +174,7 @@ class _CalendarViewState extends State<_CalendarView>
                         .map((entry) {
                       return GridView.builder(
                         scrollDirection: Axis.vertical,
-                        gridDelegate:
-                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 165,
-                            mainAxisExtent: 260,
-                            crossAxisSpacing: 5,
-                            mainAxisSpacing: 15
-                        ),
+                        gridDelegate: mediaGridDelegate,
                         itemCount:
                         entry.value.length,
                         itemBuilder:

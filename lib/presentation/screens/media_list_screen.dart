@@ -10,6 +10,7 @@ import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/list/media_list.dart';
+import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/media_card.dart';
 import 'package:unyo/presentation/widgets/text/texts.dart';
 
@@ -38,7 +39,7 @@ class _MediaListListener extends StatelessWidget {
           sl<AppEffectHandler>().handleEffects(context, state.effects, context.read<MediaListCubit>().clearEffects);
         }
       },
-      child: _MediaListView(type: type),
+      child: SkeletonScope(child: _MediaListView(type: type)),
     );
   }
 }
@@ -133,7 +134,9 @@ class _MediaListViewState extends State<_MediaListView> with TickerProviderState
               height: 1.sh - 135,
               child: Padding(
                 padding: EdgeInsets.only(left: 15.0.w, right: 15.0.w, top: 15.0.h),
-                child: TabBarView(
+                child: state.isLoading
+                    ? const MediaGridSkeleton()
+                    : TabBarView(
                   controller: tabController,
                   children: [
                     ...(widget.type == MediaType.anime ? state.userAnimeLists : state.userMangaLists).entries.map((entry) {
@@ -141,12 +144,7 @@ class _MediaListViewState extends State<_MediaListView> with TickerProviderState
                       List<Manga>? mangaList = widget.type == MediaType.manga ? entry.value as List<Manga> : null;
                       return GridView.builder(
                         scrollDirection: Axis.vertical,
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 165,
-                          mainAxisExtent: 260,
-                          crossAxisSpacing: 5,
-                          mainAxisSpacing: 15,
-                        ),
+                        gridDelegate: mediaGridDelegate,
                         itemCount: animeList != null ? animeList.length : mangaList!.length,
                         itemBuilder:
                             (context, index) => SizedBox(

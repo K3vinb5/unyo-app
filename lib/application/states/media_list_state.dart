@@ -13,6 +13,7 @@ abstract class MediaListState with _$MediaListState implements HasEffects{
     required Map<String, List<Anime>> userAnimeLists,
     required Map<String, List<Manga>> userMangaLists,
     required User loggedUser,
+    required bool isLoading,
     @Default(<AppEffect>[]) List<AppEffect> effects,
   }) = _MediaListState;
 
