@@ -20,6 +20,7 @@ import 'package:unyo/application/cubits/calendar_cubit.dart';
 import 'package:unyo/application/cubits/manga_cubit.dart';
 import 'package:unyo/application/cubits/media_list_cubit.dart';
 import 'package:unyo/application/cubits/tabs_cubit.dart';
+import 'package:unyo/application/cubits/update_cubit.dart';
 import 'package:unyo/application/cubits/login_cubit.dart';
 import 'package:unyo/core/log/logger.dart';
 import 'package:unyo/core/notification/anime_genres_notifier.dart';
@@ -40,6 +41,8 @@ import 'package:unyo/core/services/api/http/http_service.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/core/services/settings/settings_service.dart';
 import 'package:unyo/core/services/torrent/torrent_service.dart';
+import 'package:unyo/core/services/update/app_version_provider.dart';
+import 'package:unyo/core/services/update/update_checker_service.dart';
 import 'package:unyo/core/factories/anime_repository_factory.dart';
 import 'package:unyo/core/factories/episode_repository_factory.dart';
 import 'package:unyo/core/factories/manga_repository_factory.dart';
@@ -79,6 +82,8 @@ void setupLocator() async{
     instanceName: config.shikimoriGraphQlService,
   );
   sl.registerLazySingleton<AppEffectHandler>(() => AppEffectHandler());
+  sl.registerLazySingleton<AppVersionProvider>(() => const AppVersionProvider());
+  sl.registerLazySingleton<UpdateCheckerService>(() => UpdateCheckerService());
   sl.registerLazySingleton<ColorImageService>(() => ColorImageService());
   sl.registerSingleton<AniyomiBridge>(AniyomiBridge());
   sl.registerSingleton<TorrentService>(TorrentService());
@@ -225,6 +230,11 @@ void setupLocator() async{
       sl<ThemeService>(),
       sl<ColorImageService>()
     ),
+  );
+  // Lazy singleton: the update check runs once per process launch and both the
+  // startup notice (tabs) and Settings → About read the same state.
+  sl.registerLazySingleton<UpdateCubit>(
+    () => UpdateCubit(sl<UpdateCheckerService>(), sl<AppVersionProvider>()),
   );
   sl.registerFactory<AnimeAdvancedSearchCubit>(
     () => AnimeAdvancedSearchCubit(

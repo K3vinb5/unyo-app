@@ -5,18 +5,22 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // Internal dependencies
 import 'package:unyo/application/cubits/settings_cubit.dart';
+import 'package:unyo/application/cubits/update_cubit.dart';
 import 'package:unyo/application/states/settings_state.dart';
+import 'package:unyo/application/states/update_state.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/episode_service.dart';
 import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/core/services/media/episode_service.dart';
 import 'package:unyo/core/services/media/media_service.dart';
+import 'package:unyo/core/services/update/release_page_launcher.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_category.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_dialog.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_dropdown.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_slider.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_toggle.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_settings_version_row.dart';
 import 'package:unyo/presentation/widgets/text/text_body_large.dart';
 import 'package:unyo/presentation/widgets/text/text_headline_medium.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
@@ -27,7 +31,14 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(create: (context) => sl<SettingsCubit>(), child: const _SettingsListener());
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => sl<SettingsCubit>()),
+        // App-wide singleton: the check runs once per launch from main.
+        BlocProvider<UpdateCubit>.value(value: sl<UpdateCubit>()),
+      ],
+      child: const _SettingsListener(),
+    );
   }
 }
 
@@ -341,13 +352,37 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                       ],
                     ),
                     // Probably have a custom widget here with my information and a link to my social media and ko-fi
-                    const UnyoSettingsCategory(
+                    UnyoSettingsCategory(
                       title: "About",
                       description: "About the app",
                       icon: Icons.info_rounded,
                       alignment: "bottom",
                       childAlignment: "bottom",
-                      settingsOptions: [],
+                      settingsOptions: [
+                        BlocBuilder<UpdateCubit, UpdateState>(
+                          builder: (context, updateState) {
+                            final currentVersion = updateState.currentVersion;
+                            return Column(
+                              children: [
+                                UnyoSettingsVersionRow(
+                                  title: "Version",
+                                  description: currentVersion == null
+                                      ? "Version unavailable"
+                                      : "Unyo v$currentVersion",
+                                ),
+                                if (updateState.isUpdateAvailable)
+                                  UnyoSettingsVersionRow(
+                                    title: "Update available: v${updateState.latestVersion}",
+                                    description: "A newer release is available to download from GitHub",
+                                    icon: Icons.system_update_rounded,
+                                    actionLabel: "Open releases page",
+                                    onAction: () => openReleasePage(updateState.releaseUrl),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),

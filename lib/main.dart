@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:unyo/application/cubits/update_cubit.dart';
 import 'package:unyo/data/adapters/type_adapters/color_adapter.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:hive_ce/hive.dart';
@@ -31,6 +33,9 @@ void main() async {
     ..registerAdapters();
   // Inject the remaining dependencies that rely on Hive and are not Lazy
   setupLocatorAfterHiveInit();
+  // Fire-and-forget update check: once per process launch, never blocks runApp.
+  // Every failure path inside the cubit is silent (logged only).
+  unawaited(sl<UpdateCubit>().checkForUpdate());
   // Setup Window Manager options
   WindowOptions windowOptions = const WindowOptions(
     minimumSize: Size(1200, 675),
