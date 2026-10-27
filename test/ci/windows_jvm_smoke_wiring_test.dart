@@ -51,11 +51,34 @@ void main() {
       expect(ps1, contains('CallingConvention.Cdecl'));
 
       // A NULL JavaVMInitArgs lets dartjni.c build the default args itself.
-      expect(ps1, contains(r'$spawn([IntPtr]::Zero)'));
+      // PowerShell has no $del(args) call syntax (parse error: "Unexpected
+      // token '('"); delegates are invoked through their .Invoke() method.
+      expect(ps1, contains('spawn.Invoke(IntPtr.Zero)'));
+      expect(
+        RegExp(r'''\$spawn\s*\(''').allMatches(ps1).toList(),
+        isEmpty,
+        reason: r'$spawn(...) is a PowerShell parse error — use $spawn.Invoke(...)',
+      );
 
       // Non-zero JNI codes fail the step, JNI_OK exits 0 loudly.
       expect(ps1, contains(r'if ($rc -ne 0)'));
       expect(ps1, contains('SMOKE OK: SpawnJvm returned JNI_OK'));
+    });
+
+    test('spawn runs on a big-stack thread and survives fail-fast', () {
+      final String ps1 = script.readAsStringSync();
+
+      // The VM initializes on the calling thread and wants stack headroom;
+      // a default ~1MB thread died as STATUS_STACK_BUFFER_OVERRUN (0xC0000409).
+      expect(ps1, contains('64 * 1024 * 1024'));
+      expect(ps1, contains('new System.Threading.Thread'));
+
+      // A fail-fast kills the process, so the loader sequence runs in a child
+      // pwsh and the parent decodes the exit code and dumps hs_err*.log.
+      expect(ps1, contains(r'param([switch]$Child)'));
+      expect(ps1, contains('-Child'));
+      expect(ps1, contains('hs_err'));
+      expect(ps1, contains('0xC0000409'));
     });
 
     // Join-Path needs both -Path and -ChildPath; a single argument is a
