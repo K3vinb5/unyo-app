@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:material_ui/material_ui.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -13,6 +14,7 @@ import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/router/app_router.dart';
 import 'package:unyo/core/theme/theme_service.dart';
 import 'package:unyo/hive_registrar.g.dart';
+import 'package:unyo/domain/services/media_id_resolver.dart';
 
 final _appRouter = AppRouter();
 
@@ -31,6 +33,9 @@ void main() async {
     ..registerAdapters();
   // Inject the remaining dependencies that rely on Hive and are not Lazy
   setupLocatorAfterHiveInit();
+  // Unresolved MAL mappings are remembered for one session only; drop last
+  // session's misses so the resolution chain retries them.
+  unawaited(sl<MediaIdResolver>().purgeUnresolved());
   // Setup Window Manager options
   WindowOptions windowOptions = const WindowOptions(
     minimumSize: Size(1200, 675),
