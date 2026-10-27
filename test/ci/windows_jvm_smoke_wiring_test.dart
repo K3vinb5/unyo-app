@@ -50,21 +50,53 @@ void main() {
       // dartjni.c is plain C, so the export is cdecl.
       expect(ps1, contains('CallingConvention.Cdecl'));
 
-      // The VM boot happens in a Dart host, not in pwsh: a managed->native
-      // SpawnJvm call fail-fasts the CoreCLR process (0xC0000409).
-      expect(ps1, contains('windows_jvm_smoke_boot.dart'));
-      expect(ps1, isNot(contains('GetDelegateForFunctionPointer')));
-      // Windows SDKs ship bin\dart.bat; the real VM is in the Flutter cache.
-      expect(ps1, contains(r"'bin\cache\dart-sdk\bin\dart.exe'"));
+      // A NULL JavaVMInitArgs lets dartjni.c build the default args itself.
+      // PowerShell has no $del(args) call syntax (parse error: "Unexpected
+      // token '('"); delegates are invoked through their .Invoke() method.
+      expect(ps1, contains('spawn.Invoke(IntPtr.Zero)'));
+      expect(
+        RegExp(r'''\$spawn\s*\(''').allMatches(ps1).toList(),
+        isEmpty,
+        reason: r'$spawn(...) is a PowerShell parse error — use $spawn.Invoke(...)',
+      );
 
-      // The Dart host does the boot and the JNI status check.
+      // Non-zero JNI codes fail the step, JNI_OK exits 0 loudly.
+      expect(ps1, contains(r'if ($rc -ne 0)'));
+      expect(ps1, contains('SMOKE OK: SpawnJvm returned JNI_OK'));
+    });
+
+    test('spawn runs on a big-stack thread and survives fail-fast', () {
+      final String ps1 = script.readAsStringSync();
+
+      // The VM initializes on the calling thread and wants stack headroom;
+      // a default ~1MB thread died as STATUS_STACK_BUFFER_OVERRUN (0xC0000409).
+      expect(ps1, contains('64 * 1024 * 1024'));
+      expect(ps1, contains('new System.Threading.Thread'));
+
+      // A fail-fast kills the process, so the loader sequence runs in a child
+      // pwsh and the parent decodes the exit code and dumps hs_err*.log.
+      expect(ps1, contains(r'param([switch]$Child)'));
+      expect(ps1, contains('-Child'));
+      expect(ps1, contains('hs_err'));
+      expect(ps1, contains('0xC0000409'));
+    });
+
+    test('a Dart host also boots the VM on the app\'s isolate path', () {
+      final String ps1 = script.readAsStringSync();
       final String boot = File(
         'scripts/windows_jvm_smoke_boot.dart',
       ).readAsStringSync();
-      expect(boot, contains("'SpawnJvm'"));
+
+      expect(ps1, contains('windows_jvm_smoke_boot.dart'));
+      // Windows SDKs ship bin\dart.bat; the real VM is in the Flutter cache.
+      expect(ps1, contains(r"'bin\cache\dart-sdk\bin\dart.exe'"));
+
+      // unyo-lib boots the JVM inside a spawned isolate; the smoke must too.
+      expect(boot, contains('Isolate.spawn'));
       expect(boot, contains('DynamicLibrary.open'));
-      expect(boot, contains(r'if (rc != 0)'));
-      expect(boot, contains('SMOKE OK: SpawnJvm returned JNI_OK'));
+      expect(boot, contains("'SpawnJvm'"));
+      expect(boot, contains('rc == 0'));
+      expect(boot, contains('SMOKE OK: Dart-host'));
     });
 
     // Join-Path needs both -Path and -ChildPath; a single argument is a
