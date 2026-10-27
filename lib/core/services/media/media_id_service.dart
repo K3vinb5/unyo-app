@@ -112,10 +112,27 @@ class MediaIdService {
     );
     final IdMapping? mapping = resolution.mapping;
     if (mapping != null && mapping.isResolved && mapping.service == metadataService) {
-      return MediaDetailsSource(
-        anime: withAnimeNativeId(anime, int.tryParse(mapping.nativeId) ?? anime.id),
-        service: metadataService,
+      final int? targetNativeId = int.tryParse(mapping.nativeId);
+      if (targetNativeId != null) {
+        return MediaDetailsSource(
+          anime: withAnimeNativeId(anime, targetNativeId),
+          service: metadataService,
+        );
+      }
+      // A resolved row whose native id is not a number is a miss, not a licence
+      // to re-address the record with the source provider's id: asking
+      // [metadataService] for it would open an unrelated entry under a wrong
+      // title, and reusing the source id hides the relink action. Same rule as
+      // [userNativeIdFor] returning null — never guess an id.
+      //
+      // The unusable row is forgotten as well: keeping it would shadow the chain
+      // forever, so the manual relink action would land on it again and never
+      // propose a verified entry.
+      _logger.w(
+        "Cached ${mapping.service.name} row '${mapping.nativeId}' has no numeric native id, "
+        "treating the ${provenance.name}:${anime.id} link as unresolved",
       );
+      await _cache.remove(mapping.service, mapping.nativeId);
     }
 
     // Unresolved, or waiting for a confirmation: the page keeps the record's own

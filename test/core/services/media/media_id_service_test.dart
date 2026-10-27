@@ -259,6 +259,76 @@ void main() {
       expect(row.malId, isNull, reason: 'the native id key must exist even with no MAL pivot');
     });
 
+    for (final (String junk, String label) in <(String, String)>[
+      ('', 'empty'),
+      ('null', 'null'),
+      ('abc', 'non-numeric'),
+    ]) {
+      test('a junk metadata native id ($label) is a miss, not a re-addressed metadata fetch', () async {
+        await cache.put(IdMapping(
+          service: Service.shikimori,
+          nativeId: junk,
+          malId: 58514,
+          state: IdMappingState.authoritative,
+          source: IdMappingSource.aniZip,
+        ));
+
+        final MediaDetailsSource source = await service.detailsSource(
+          anilistAnime(),
+          userWith(metadataService: Service.shikimori),
+        );
+
+        expect(
+          source.service,
+          Service.anilist,
+          reason: 'junk "$junk" must never address the metadata provider',
+        );
+        expect(
+          source.anime.id,
+          170942,
+          reason: 'the source id must not be recycled as a metadata id',
+        );
+        expect(
+          source.isUnresolved,
+          isTrue,
+          reason: 'junk "$junk" is a miss: user-provider details plus the relink action',
+        );
+        expect(
+          await cache.getByNativeId(Service.shikimori, junk),
+          isNull,
+          reason: 'the unusable row must not shadow the chain forever',
+        );
+      });
+    }
+
+    test('after a junk row the manual relink still proposes a verified entry', () async {
+      await cache.put(const IdMapping(
+        service: Service.shikimori,
+        nativeId: 'abc',
+        malId: 58514,
+        state: IdMappingState.authoritative,
+        source: IdMappingSource.aniZip,
+      ));
+      final MediaDetailsSource broken = await service.detailsSource(
+        anilistAnime(),
+        userWith(metadataService: Service.shikimori),
+      );
+      expect(broken.isUnresolved, isTrue);
+
+      // What the page's "Link metadata entry…" action does: forget the link,
+      // then run the chain again.
+      await service.resetLink(source: Service.anilist, nativeId: '170942', target: Service.shikimori);
+      lookup.searchResults = <MediaLinkCandidate>[candidate('55555')];
+      final MediaDetailsSource relinked = await service.detailsSource(
+        anilistAnime(),
+        userWith(metadataService: Service.shikimori),
+      );
+
+      expect(relinked.proposal, isNotNull, reason: 'the relink action must still offer entries');
+      expect(relinked.proposal!.candidates.single.nativeId, '55555');
+      expect(relinked.isUnresolved, isTrue, reason: 'nothing is linked before the user confirms');
+    });
+
     test('a Shikimori record resolves to AniList through its own malId', () async {
       lookup.probeResult = candidate('170942', malId: 58514, service: Service.anilist);
 
