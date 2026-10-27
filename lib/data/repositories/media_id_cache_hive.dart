@@ -25,42 +25,42 @@ class HiveMediaIdCache implements MediaIdCache {
 
   @override
   Future<IdMapping?> getByNativeId(Service service, String nativeId) async {
-    final Object? raw = (await _openBox()).get(mediaIdNativeKey(service, nativeId));
+    final Object? raw = (await _openBox()).get(MediaIdCache.nativeKey(service, nativeId));
     return raw is Map ? IdMapping.fromMap(raw) : null;
   }
 
   @override
   Future<IdMapping?> getByMalId(Service service, int malId) async {
-    final Object? raw = (await _openBox()).get(mediaIdPivotKey(service, malId));
+    final Object? raw = (await _openBox()).get(MediaIdCache.pivotKey(service, malId));
     return raw is Map ? IdMapping.fromMap(raw) : null;
   }
 
   @override
   Future<void> put(IdMapping mapping) async {
     final Box<dynamic> box = await _openBox();
-    final String nativeKey = mediaIdNativeKey(mapping.service, mapping.nativeId);
+    final String nativeKey = MediaIdCache.nativeKey(mapping.service, mapping.nativeId);
     final Object? rawPrevious = box.get(nativeKey);
     if (rawPrevious is Map) {
       final IdMapping previous = IdMapping.fromMap(rawPrevious);
       if (previous.hasPivot) {
-        await box.delete(mediaIdPivotKey(previous.service, previous.malId!));
+        await box.delete(MediaIdCache.pivotKey(previous.service, previous.malId!));
       }
     }
     await box.put(nativeKey, mapping.toMap());
     if (mapping.hasPivot) {
-      await box.put(mediaIdPivotKey(mapping.service, mapping.malId!), mapping.toMap());
+      await box.put(MediaIdCache.pivotKey(mapping.service, mapping.malId!), mapping.toMap());
     }
   }
 
   @override
   Future<void> remove(Service service, String nativeId) async {
     final Box<dynamic> box = await _openBox();
-    final String nativeKey = mediaIdNativeKey(service, nativeId);
+    final String nativeKey = MediaIdCache.nativeKey(service, nativeId);
     final Object? rawPrevious = box.get(nativeKey);
     if (rawPrevious is Map) {
       final IdMapping previous = IdMapping.fromMap(rawPrevious);
       if (previous.hasPivot) {
-        await box.delete(mediaIdPivotKey(previous.service, previous.malId!));
+        await box.delete(MediaIdCache.pivotKey(previous.service, previous.malId!));
       }
     }
     await box.delete(nativeKey);

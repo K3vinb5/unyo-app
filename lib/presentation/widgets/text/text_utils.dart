@@ -1,4 +1,3 @@
-import 'package:unyo/core/services/media/media_provenance.dart';
 
 class TextUtils {
   static String parseHtmlToPlainText(String html) {
@@ -34,7 +33,8 @@ class TextUtils {
   /// render stores the year in that slot; anything else degrades to an empty
   /// string instead of throwing.
   static String extractYearFromStartDate(String startDate) {
-    final int? year = yearOfStartDate(startDate);
+    final List<String> parts = startDate.split("/");
+    final int? year = parts.length < 3 ? null : int.tryParse(parts[2]);
     return year == null ? "" : "$year";
   }
 

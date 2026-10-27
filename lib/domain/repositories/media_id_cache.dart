@@ -138,17 +138,17 @@ class IdMapping {
       'IdMapping(${service.name}:$nativeId -> mal:$malId, ${state.name}/${source.name})';
 }
 
-/// Primary cache key: the provider-native identity of a record.
-String mediaIdNativeKey(Service service, String nativeId) => '${service.name}:$nativeId';
-
-/// Secondary cache key: the MAL pivot, always scoped to one provider.
-String mediaIdPivotKey(Service service, int malId) => '${service.name}#mal:$malId';
-
 /// Persistence port for [IdMapping] rows.
 ///
 /// Two indexes over the same rows: `(service, nativeId)` (primary, always
 /// present) and `(service, malId)` (secondary, only when a pivot exists).
 abstract class MediaIdCache {
+  /// Primary cache key: the provider-native identity of a record.
+  static String nativeKey(Service service, String nativeId) => '${service.name}:$nativeId';
+
+  /// Secondary cache key: the MAL pivot, always scoped to one provider.
+  static String pivotKey(Service service, int malId) => '${service.name}#mal:$malId';
+
   Future<IdMapping?> getByNativeId(Service service, String nativeId);
 
   Future<IdMapping?> getByMalId(Service service, int malId);
@@ -169,22 +169,22 @@ class InMemoryMediaIdCache implements MediaIdCache {
 
   @override
   Future<IdMapping?> getByNativeId(Service service, String nativeId) async =>
-      _entries[mediaIdNativeKey(service, nativeId)];
+      _entries[MediaIdCache.nativeKey(service, nativeId)];
 
   @override
   Future<IdMapping?> getByMalId(Service service, int malId) async =>
-      _entries[mediaIdPivotKey(service, malId)];
+      _entries[MediaIdCache.pivotKey(service, malId)];
 
   @override
   Future<void> put(IdMapping mapping) async {
-    final String nativeKey = mediaIdNativeKey(mapping.service, mapping.nativeId);
+    final String nativeKey = MediaIdCache.nativeKey(mapping.service, mapping.nativeId);
     final IdMapping? previous = _entries[nativeKey];
     if (previous != null && previous.hasPivot) {
-      _entries.remove(mediaIdPivotKey(previous.service, previous.malId!));
+      _entries.remove(MediaIdCache.pivotKey(previous.service, previous.malId!));
     }
     _entries[nativeKey] = mapping;
     if (mapping.hasPivot) {
-      _entries[mediaIdPivotKey(mapping.service, mapping.malId!)] = mapping;
+      _entries[MediaIdCache.pivotKey(mapping.service, mapping.malId!)] = mapping;
     }
   }
 
@@ -193,15 +193,15 @@ class InMemoryMediaIdCache implements MediaIdCache {
     final List<IdMapping> unresolved =
         _entries.values.where((mapping) => !mapping.isResolved).toList();
     for (final IdMapping mapping in unresolved) {
-      _entries.remove(mediaIdNativeKey(mapping.service, mapping.nativeId));
+      _entries.remove(MediaIdCache.nativeKey(mapping.service, mapping.nativeId));
     }
   }
 
   @override
   Future<void> remove(Service service, String nativeId) async {
-    final IdMapping? previous = _entries.remove(mediaIdNativeKey(service, nativeId));
+    final IdMapping? previous = _entries.remove(MediaIdCache.nativeKey(service, nativeId));
     if (previous != null && previous.hasPivot) {
-      _entries.remove(mediaIdPivotKey(previous.service, previous.malId!));
+      _entries.remove(MediaIdCache.pivotKey(previous.service, previous.malId!));
     }
   }
 

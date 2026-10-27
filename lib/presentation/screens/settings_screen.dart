@@ -8,7 +8,7 @@ import 'package:unyo/application/cubits/settings_cubit.dart';
 import 'package:unyo/application/states/settings_state.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/episode_service.dart';
-import 'package:unyo/core/enums/provider_capabilities.dart';
+import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/core/services/media/episode_service.dart';
 import 'package:unyo/core/services/media/media_service.dart';
@@ -168,7 +168,7 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                           defaultValue:
                               TextUtils.capitalize(state.loggedUser.settings.metadataService.name),
                           children:
-                              kMetadataProviders
+                              ProviderCapabilities.metadataProviders
                                   .map(
                                     (service) => TextUtils.capitalize(service.name),
                                   )

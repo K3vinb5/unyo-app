@@ -13,9 +13,9 @@ import 'package:unyo/domain/repositories/user_repository.dart';
 /// Factory that resolves the correct [UserRepository] implementation based on
 /// the user's selected account provider (`settings.userService`).
 ///
-/// v1 only registers [Service.anilist] (see `kUserProviders`); every other
-/// value throws a [StateError] because the UI cannot produce it. WP #64 adds
-/// Shikimori here.
+/// v1 only registers [Service.anilist] (see [ProviderCapabilities.userProviders]);
+/// every other value throws a [StateError] because the UI cannot produce it.
+/// WP #64 adds Shikimori here.
 class UserRepositoryFactory implements UserRepository {
   final UserRepositoryAnilist _userRepositoryAnilist = sl<UserRepositoryAnilist>();
   final Logger _logger = sl<Logger>();

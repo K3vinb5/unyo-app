@@ -574,7 +574,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   /// the remembered miss and run the resolution chain (and its dialog) again.
   Future<void> requestMediaLink() async {
     final Anime selectedAnime = state.selectedAnime;
-    final Service provenance = serviceOfAnime(selectedAnime);
+    final Service provenance = MediaProvenance.ofAnime(selectedAnime);
     final Service metadataService = state.loggedUser.settings.metadataService;
     if (metadataService == provenance) return;
     await _mediaIdService.resetLink(
@@ -786,9 +786,9 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   Future<void> _getAlternativeImage(User loggedUser, Anime selectedAnime) async {
     try {
       _logger.i("Fetching Alternative Image for ${state.selectedAnime.title.userPreferred}");
-      final AniZipLookupIds? ids = aniZipIdsForAnime(selectedAnime);
+      final AniZipLookupIds? ids = AniZipLookupIds.forAnime(selectedAnime);
       if (ids == null) {
-        _logger.w("No AniZip-addressable id for ${state.selectedAnime.title.userPreferred} (${serviceOfAnime(selectedAnime).name} record, no MAL id)");
+        _logger.w("No AniZip-addressable id for ${state.selectedAnime.title.userPreferred} (${MediaProvenance.ofAnime(selectedAnime).name} record, no MAL id)");
         return;
       }
       final String alternateImage = await _episodeRepository.getAlternativeImage(
@@ -806,9 +806,9 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   Future<void> _getEpisodesDetails(User loggedUser, Anime selectedAnime) async {
     try {
       _logger.i("Fetching Episodes Details for ${state.selectedAnime.title.userPreferred}");
-      final AniZipLookupIds? ids = aniZipIdsForAnime(selectedAnime);
+      final AniZipLookupIds? ids = AniZipLookupIds.forAnime(selectedAnime);
       if (ids == null) {
-        _logger.w("No AniZip-addressable id for ${state.selectedAnime.title.userPreferred} (${serviceOfAnime(selectedAnime).name} record, no MAL id)");
+        _logger.w("No AniZip-addressable id for ${state.selectedAnime.title.userPreferred} (${MediaProvenance.ofAnime(selectedAnime).name} record, no MAL id)");
         return;
       }
       final List<EpisodeInfo> episodesInfo = await _episodeRepository.getEpisodeInfo(

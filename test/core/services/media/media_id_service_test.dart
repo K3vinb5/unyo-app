@@ -648,7 +648,7 @@ void main() {
   group('proposal keys', () {
     test('the prompt key is per entry and per provider pair', () {
       expect(
-        mediaLinkEntryKey(source: Service.anilist, nativeId: '170942', target: Service.shikimori),
+        MediaLinkProposal.entryKeyFor(source: Service.anilist, nativeId: '170942', target: Service.shikimori),
         'anilist:170942->shikimori',
       );
     });

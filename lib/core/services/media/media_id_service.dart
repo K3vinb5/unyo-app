@@ -105,14 +105,14 @@ class MediaIdService {
   Future<MediaDetailsSource> detailsSource(Anime anime, User loggedUser) async {
     await _purgeLastSessionMisses();
     final Service metadataService = loggedUser.settings.metadataService;
-    final Service provenance = serviceOfAnime(anime);
+    final Service provenance = MediaProvenance.ofAnime(anime);
     if (provenance == metadataService) return MediaDetailsSource(anime: anime, service: provenance);
 
     final _LinkResolution resolution = await _resolveTarget(
       source: provenance,
       nativeId: '${anime.id}',
       target: metadataService,
-      title: animeSearchTitle(anime),
+      title: MediaFields.searchTitle(anime),
       knownMalId: anime.idMal,
     );
     final IdMapping? mapping = resolution.mapping;
@@ -120,7 +120,7 @@ class MediaIdService {
       final int? targetNativeId = _usableNativeId(mapping.nativeId);
       if (targetNativeId != null) {
         return MediaDetailsSource(
-          anime: withAnimeNativeId(anime, targetNativeId),
+          anime: MediaFields.withNativeId(anime, targetNativeId),
           service: metadataService,
         );
       }
@@ -172,14 +172,14 @@ class MediaIdService {
   /// a guessed id would corrupt an unrelated entry.
   Future<int?> userNativeIdFor(Anime anime, Service userService) async {
     await _purgeLastSessionMisses();
-    final Service provenance = serviceOfAnime(anime);
+    final Service provenance = MediaProvenance.ofAnime(anime);
     if (provenance == userService) return anime.id;
 
     final _LinkResolution resolution = await _resolveTarget(
       source: provenance,
       nativeId: '${anime.id}',
       target: userService,
-      title: animeSearchTitle(anime),
+      title: MediaFields.searchTitle(anime),
       knownMalId: anime.idMal,
     );
     final IdMapping? mapping = resolution.mapping;
@@ -246,7 +246,7 @@ class MediaIdService {
     required Service target,
   }) async {
     await _cache.remove(source, nativeId);
-    _promptedLinks.remove(mediaLinkEntryKey(source: source, nativeId: nativeId, target: target));
+    _promptedLinks.remove(MediaLinkProposal.entryKeyFor(source: source, nativeId: nativeId, target: target));
   }
 
   Future<void> _purgeLastSessionMisses() => _lastSessionPurge ??= _cache.purgeUnresolved();
@@ -438,16 +438,16 @@ class MediaIdService {
         return null;
     }
   }
-}
 
-/// A provider native id is usable only when it parses to a **positive** integer.
-///
-/// `int.tryParse` happily accepts `0` and negative values, but neither
-/// identifies a record: sending one to a metadata provider yields a 404
-/// (AniList) or default junk details (Shikimori) instead of a clean miss.
-/// Empty and non-numeric ids fail the parse. Every place that turns a cached or
-/// proposed native id into a provider call or a stored row goes through here.
-int? _usableNativeId(String? nativeId) {
-  final int? parsed = nativeId == null ? null : int.tryParse(nativeId);
-  return parsed != null && parsed > 0 ? parsed : null;
+  /// A provider native id is usable only when it parses to a **positive** integer.
+  ///
+  /// `int.tryParse` happily accepts `0` and negative values, but neither
+  /// identifies a record: sending one to a metadata provider yields a 404
+  /// (AniList) or default junk details (Shikimori) instead of a clean miss.
+  /// Empty and non-numeric ids fail the parse. Every place that turns a cached or
+  /// proposed native id into a provider call or a stored row goes through here.
+  static int? _usableNativeId(String? nativeId) {
+    final int? parsed = nativeId == null ? null : int.tryParse(nativeId);
+    return parsed != null && parsed > 0 ? parsed : null;
+  }
 }

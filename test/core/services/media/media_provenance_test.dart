@@ -23,24 +23,24 @@ void main() {
 
   group('serviceOfAnime', () {
     test('the plain domain model is AniList-sourced', () {
-      expect(serviceOfAnime(anilistAnime()), Service.anilist);
+      expect(MediaProvenance.ofAnime(anilistAnime()), Service.anilist);
     });
 
     test('a Shikimori record keeps its own provenance regardless of settings', () {
-      expect(serviceOfAnime(shikimoriAnime()), Service.shikimori);
+      expect(MediaProvenance.ofAnime(shikimoriAnime()), Service.shikimori);
     });
   });
 
   group('aniZipIdsForAnime', () {
     test('prefers the MAL pivot whenever the record publishes one', () {
-      final AniZipLookupIds? ids = aniZipIdsForAnime(shikimoriAnime(idMal: 58514));
+      final AniZipLookupIds? ids = AniZipLookupIds.forAnime(shikimoriAnime(idMal: 58514));
 
       expect(ids!.malId, 58514);
       expect(ids.anilistId, -1);
     });
 
     test('sends the AniList id only for AniList-sourced records without a MAL id', () {
-      final AniZipLookupIds? ids = aniZipIdsForAnime(anilistAnime(id: 170942, idMal: 0));
+      final AniZipLookupIds? ids = AniZipLookupIds.forAnime(anilistAnime(id: 170942, idMal: 0));
 
       expect(ids!.malId, -1);
       expect(ids.anilistId, 170942);
@@ -48,7 +48,7 @@ void main() {
 
     test('never sends a Shikimori native id as an AniList id', () {
       expect(
-        aniZipIdsForAnime(shikimoriAnime(id: 65261, idMal: 0)),
+        AniZipLookupIds.forAnime(shikimoriAnime(id: 65261, idMal: 0)),
         isNull,
         reason: 'a record with no pivot and non-AniList provenance is not AniZip-addressable',
       );

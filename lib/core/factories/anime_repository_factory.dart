@@ -347,7 +347,7 @@ class AnimeRepositoryFactory implements AnimeRepository {
     if (userRecord == null) {
       throw MediaLinkUnresolvedException(
         "No verified ${loggedUser.settings.userService.name} entry for "
-        "${selectedAnime.title.userPreferred} (${serviceOfAnime(selectedAnime).name}:${selectedAnime.id}); "
+        "${selectedAnime.title.userPreferred} (${MediaProvenance.ofAnime(selectedAnime).name}:${selectedAnime.id}); "
         "skipping the list $operation instead of writing to a guessed id",
       );
     }
@@ -358,15 +358,15 @@ class AnimeRepositoryFactory implements AnimeRepository {
   Future<Anime?> _asUserProviderRecordOrNull(Anime selectedAnime, User loggedUser, {required String operation}) async {
     // Identity path: the record already is the user provider's own, so it is
     // passed through untouched (never copied, never re-addressed).
-    if (serviceOfAnime(selectedAnime) == loggedUser.settings.userService) return selectedAnime;
+    if (MediaProvenance.ofAnime(selectedAnime) == loggedUser.settings.userService) return selectedAnime;
     final int? nativeId = await _mediaIdService.userNativeIdFor(selectedAnime, loggedUser.settings.userService);
     if (nativeId == null) {
       _logger.w(
-        "Cannot resolve ${serviceOfAnime(selectedAnime).name}:${selectedAnime.id} to "
+        "Cannot resolve ${MediaProvenance.ofAnime(selectedAnime).name}:${selectedAnime.id} to "
         "${loggedUser.settings.userService.name} for list $operation",
       );
       return null;
     }
-    return withAnimeNativeId(selectedAnime, nativeId);
+    return MediaFields.withNativeId(selectedAnime, nativeId);
   }
 }
