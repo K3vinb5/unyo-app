@@ -51,7 +51,14 @@ void main() {
       expect(ps1, contains('CallingConvention.Cdecl'));
 
       // A NULL JavaVMInitArgs lets dartjni.c build the default args itself.
-      expect(ps1, contains(r'$spawn([IntPtr]::Zero)'));
+      // PowerShell has no $del(args) call syntax (parse error: "Unexpected
+      // token '('"); delegates are invoked through .Invoke().
+      expect(ps1, contains(r'$spawn.Invoke([IntPtr]::Zero)'));
+      expect(
+        RegExp(r'''\$spawn\s*\(''').allMatches(ps1).toList(),
+        isEmpty,
+        reason: r'$spawn(...) is a PowerShell parse error — use $spawn.Invoke(...)',
+      );
 
       // Non-zero JNI codes fail the step, JNI_OK exits 0 loudly.
       expect(ps1, contains(r'if ($rc -ne 0)'));

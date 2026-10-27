@@ -79,7 +79,9 @@ if ($proc -eq [IntPtr]::Zero) {
 
 $spawn = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer(
     $proc, [SpawnJvmDelegate])
-$rc = $spawn([IntPtr]::Zero)
+# PowerShell has no $del(args) call syntax — that is a parse error ("Unexpected
+# token '('"). Delegates are invoked through their .Invoke() method.
+$rc = $spawn.Invoke([IntPtr]::Zero)
 
 # 0 is JNI_OK (jni_constants.h); anything else is a JNI error code.
 if ($rc -ne 0) {
