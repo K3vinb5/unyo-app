@@ -169,6 +169,19 @@ abstract class ShikimoriAnimeModel with _$ShikimoriAnimeModel implements Anime {
   }
 }
 
+/// Whether a Shikimori `related` entry carries a real anime payload.
+///
+/// `related { anime { ... } }` returns `anime: null` for every non-anime
+/// relation (manga, novel, …) and the DTOs eagerly default-construct their
+/// children, so such an entry arrives as an [AnimeDetailsQueryAnimesRelatedAnime]
+/// whose `id` is `''`. Mapping it would produce a phantom
+/// `Anime(id: 0, idMal: 0, title: '')` card. `'0'` is the same kind of legacy
+/// empty sentinel the `malId` parser guards against.
+bool isRealRelatedAnime(AnimeDetailsQueryAnimesRelatedAnime anime) {
+  final id = anime.id.trim();
+  return id.isNotEmpty && id != '0';
+}
+
 String _formatKind(String kind) {
   switch (kind) {
     case 'tv':
