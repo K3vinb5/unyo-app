@@ -438,10 +438,8 @@ jobs:
           cp "$release/jre/customjre/bin/server/jvm.dll" "$server/jvm.dll"
 
       # Loud check rather than a silent skip: the Windows JRE bundle is
-      # assembled here and must at least be complete before we ship it. NOTE:
-      # the JVM is located by the delay-loaded jvm.dll at runtime, which is not
-      # verified by this workflow (no Windows JRE exists upstream to compare
-      # against) — see the PR description.
+      # assembled here and must at least be complete before we ship it. The
+      # runtime smoke below goes further and proves the bundle actually works.
       - name: Verify Windows JRE bundle
         shell: bash
         run: |
@@ -460,8 +458,19 @@ jobs:
             echo "::error::jlink output looks incomplete (bin/java.dll missing)"
             missing=1
           fi
-          echo "::warning::Windows JRE runtime loading (delay-loaded jvm.dll) is not verified by this workflow"
           exit $missing
+
+      # Real runtime smoke, replacing the old "not verified" warning. The
+      # presence checks above cannot tell whether the bundle boots: dartjni.dll
+      # links jvm.dll with /DELAYLOAD, so a broken or unreachable jvm.dll only
+      # fails at call time, inside the shipped app. The script preloads the
+      # bundled jvm.dll by absolute path (as AniyomiBridge does), LoadLibrary's
+      # dartjni.dll, resolves SpawnJvm and boots a real VM with default args —
+      # proving delay-load resolution and VM startup on the actual
+      # windows-latest loader.
+      - name: Smoke test Windows JVM (delay-loaded jvm.dll + VM boot)
+        shell: pwsh
+        run: ./scripts/windows_jvm_smoke.ps1
 
       - name: Package zip
         shell: pwsh
