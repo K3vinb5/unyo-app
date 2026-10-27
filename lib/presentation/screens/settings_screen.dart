@@ -161,20 +161,6 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                       childAlignment: "",
                       settingsOptions: [
                         UnyoSettingsSelectionDropdown(
-                          title: "Account & lists service",
-                          description: "Provider that owns your account, lists, progress and scores",
-                          icon: Icons.format_list_bulleted_rounded,
-                          label: "Select a service",
-                          defaultValue: TextUtils.capitalize(state.loggedUser.settings.userService.name),
-                          children:
-                              kUserProviders
-                                  .map(
-                                    (service) => TextUtils.capitalize(service.name),
-                                  )
-                                  .toList(),
-                          onPressed: context.read<SettingsCubit>().updateUserService,
-                        ),
-                        UnyoSettingsSelectionDropdown(
                           title: "Media metadata service",
                           description: "Provider that owns details: synopsis, covers, genres and scores",
                           icon: Icons.image_search_rounded,

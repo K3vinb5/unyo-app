@@ -90,19 +90,6 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
     }
   }
 
-  Future<void> updateUserService(String? newService) async {
-    try {
-      Settings updatedSettings = (state.loggedUser.settings as SettingsModel).copyWith(
-        userService: MediaServiceFactory.getEnumMediaService(newService),
-      );
-      await _updateUserInfo(updatedSettings);
-      _reloadNotifier.emitReload(ReloadType.newUserService);
-    } catch (e, stackTrace) {
-      logger.e("Error updating user service $e", stackTrace: stackTrace);
-      handleError("Error updating user service", stackTrace: stackTrace);
-    }
-  }
-
   Future<void> updateEpisodeMetadataService(String? newService) async {
     try {
       Settings updatedSettings = (state.loggedUser.settings as SettingsModel).copyWith(

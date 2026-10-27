@@ -98,8 +98,8 @@ class HomeCubit extends Cubit<HomeState> with EffectMixin<HomeState> {
       }
     });
     _reloadSubscription = _reloadNotifier.reloadStream.listen((reloadType) async {
-      if (reloadType == ReloadType.newMetadataService || reloadType == ReloadType.newUserService) {
-        _logger.i("Reloading Home Screen data due to new metadata/user service");
+      if (reloadType == ReloadType.newMetadataService) {
+        _logger.i("Reloading Home Screen data due to new metadata service");
         await _getMediaCoverImages(state.loggedUser, ignoreCache: true);
       }
       if (reloadType == ReloadType.homeMediaListEntryUpdated) {
