@@ -11,7 +11,7 @@ Logger getLogger() {
   String newLogPrettyName =
       "${DateTime.now().toIso8601String().replaceAll(':', '-').replaceAll('.', '-')}.log";
   File newLogFile = File('${supportDirectory.path}/logs/$newLogPrettyName');
-  newLogFile.create(recursive: true);
+  newLogFile.createSync(recursive: true);
   List<FileSystemEntity> logFiles = supportDirectory.listSync().where((file) => file.path.endsWith('.log')).toList();
   if (logFiles.length > 20) {
     logFiles.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
