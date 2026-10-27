@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/hover_animated_container.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
@@ -27,8 +28,8 @@ class MediaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 152.5,
-      height: 256,
+      width: MediaCardMetrics.width,
+      height: MediaCardMetrics.height,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         mainAxisSize: MainAxisSize.max,
@@ -43,13 +44,15 @@ class MediaCard extends StatelessWidget {
                 Hero(
                   tag: tag,
                   child: HoverAnimatedContainer(
-                    width: 140.0 /*.w.clamp(144.08, 181.7)*/,
-                    hoverWidth: 152.5 /*.w.clamp(156.49, 199.1)*/,
-                    height: 200.5 /*.h.clamp(200.44, 260.6)*/,
+                    width: MediaCardMetrics.coverWidth,
+                    hoverWidth: MediaCardMetrics.width,
+                    height: MediaCardMetrics.coverHeight,
                     hoverHeight: 213.0 /*.h.clamp(206.03, 268.44)*/,
                     hoverCursor: SystemMouseCursors.click,
                     hoverDecoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(
+                        MediaCardMetrics.coverRadius,
+                      ),
                       border: Border.all(color: Colors.white, width: 2.6),
                       image: DecorationImage(
                         image: NetworkImage(coverImage),
@@ -57,7 +60,9 @@ class MediaCard extends StatelessWidget {
                       ),
                     ),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(
+                        MediaCardMetrics.coverRadius,
+                      ),
                       image: DecorationImage(
                         image: NetworkImage(coverImage),
                         fit: BoxFit.fill,
@@ -148,8 +153,8 @@ class MediaCard extends StatelessWidget {
             ),
           ),
           SizedBox(
-            width: 140.0 /*.w.clamp(144.08, 181.7)*/,
-            height: 24,
+            width: MediaCardMetrics.coverWidth,
+            height: MediaCardMetrics.titleRowHeight,
             child: Center(
               child: Tooltip(
                 message: title,
@@ -167,8 +172,8 @@ class MediaCard extends StatelessWidget {
             ),
           ),
           SizedBox(
-            width: 140.0 /*.w.clamp(144.08, 181.7)*/,
-            height: 18,
+            width: MediaCardMetrics.coverWidth,
+            height: MediaCardMetrics.metaRowHeight,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Row(
