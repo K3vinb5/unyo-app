@@ -62,7 +62,7 @@ class FakeMediaMappingLookup implements MediaMappingLookup {
   }
 }
 
-final sl = GetIt.instance;
+final GetIt sl = GetIt.instance;
 
 void main() {
   late InMemoryMediaIdCache cache;
