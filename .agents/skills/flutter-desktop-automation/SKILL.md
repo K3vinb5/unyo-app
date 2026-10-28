@@ -90,17 +90,42 @@ direct-call script instead (below).
 
 ### 3. Helper scripts
 
-Copy `scripts/` next to your workspace and `chmod +x` them:
+Run them **in place from the skill's `scripts/` directory** (absolute path) — do
+NOT copy them into `/tmp` or leave standing copies around (see "Where files
+live"). All of them are idempotent and location-independent.
 
 - `vm-call.sh <ext.method> '<params-json>'` — call any VM-service extension
   (`ext.flutter.driver` or your custom ones) with correct nested-finder
-  serialization. Needs the VM-service WS URI (see next section).
+  serialization. Needs the VM-service WS URI (see next section), passed as
+  `UNYO_VM_WS=ws://...`.
 - `kwin-shot.py <window-handle> <out.png>` — focus-free window capture.
 - `app-shot.sh <window-title-regex> <out.png>` — resolves the handle via
-  `kdotool search --name` and captures.
+  `kdotool search --name` and captures (e.g. `'^Unyo$'`).
+- `burst.sh <window-title-regex> <output-prefix> <count>` — rapid-fire
+  `<count>` captures (~170ms apart) to catch transient loading/skeleton
+  states right after a navigation tap.
+- `ts-tail.py <file> <out>` — tail a log, prefix each arriving line with a
+  wall-clock stamp; use it to date UI shots against fetch/log lines.
 
 Requires: `websocat`, `kdotool`, `python3` + `python3-dbus`, ImageMagick 7
 (`magick`; if only IM6 `convert` exists, adjust the script).
+
+## Where files live (RAM vs disk)
+
+`/tmp` is tmpfs on this machine — everything in it burns RAM and vanishes on
+reboot. Treat it as scratch-only:
+
+- **Proof/evidence** (screenshots, logs, DIAGNOSIS, drive scripts for a specific
+  run): the workspace's `research/<wp>-<slug>-proof/` directory, laid out per
+  `unyo-docs/conventions/research-layout.md`. Durable, indexed, never GC'd.
+- **Per-run scratch** (bursts, raw frames you will triage): `~/.cache/unyo-drive/<run>/`
+  or straight into the research dir if they are keepers.
+- **`/tmp`**: only one-shot files that die with the command. Never leave standing
+  helper scripts or evidence there — when a machine reboots the next session
+  loses them silently and re-derives everything.
+
+**Always clean up at the end of a drive**: kill the app instance, stop tails and
+watchers, move keepers into the research dir, delete the scratch dir.
 
 ## Getting the VM-service websocket URI
 
@@ -218,6 +243,22 @@ gesture arena needs the full added/hover/down/up sequence).
   flutter_driver finders (verified experimentally), but if finders hang on one
   specific screen, suspect screen-specific causes and fall back to the custom
   extension's `tapAt`.
+- The app does not auto-login: cold start lands on the "Who's Watching?" profile
+  picker — tap the avatar before any logged-in flow.
+- `flutter build linux --profile` driver bundles get NO JRE link (the CMake
+  symlink is debug-only) — copy/symlink the custom JRE into
+  `build/linux/x64/<mode>/bundle/` or the Aniyomi JVM fails at startup.
+- `flutter_driver` scroll commands time out in profile runs — shrink the window
+  (e.g. 1280×1200) and capture without scrolling instead.
+- KWin `CaptureWindow` can freeze its buffer (observed ~8.5 min stale frames
+  while the UI thread stayed alive) — if screenshots no longer match app
+  state, restart the app; never cite a stale buffer as evidence.
+- Performance numbers only from `--profile` runs. Show the frame-timing overlay
+  with a transient `bool.fromEnvironment('PERF_OVERLAY')` toggle in the app
+  entry — and revert it before any commit.
+- Loading/skeleton states settle fast: navigate, then `burst.sh` immediately
+  (frames ~170ms apart) and pair with `ts-tail.py` so each shot can be dated
+  against the fetch/log lines.
 
 ## Workflow for "capture every screen"
 
