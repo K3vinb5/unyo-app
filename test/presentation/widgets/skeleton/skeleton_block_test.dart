@@ -71,4 +71,14 @@ void main() {
             as BoxDecoration;
     expect(decoration.borderRadius, BorderRadius.circular(12));
   });
+
+  testWidgets('SkeletonBlock without a width fills the space it is given', (
+    tester,
+  ) async {
+    await pumpSkeletonHarness(tester, const SkeletonBlock(height: 20));
+
+    // A childless DecoratedBox would otherwise collapse to zero width, which
+    // is how the carousel banner and the episode dividers disappeared.
+    expect(tester.getSize(find.byType(SkeletonBlock)), const Size(1200, 20));
+  });
 }

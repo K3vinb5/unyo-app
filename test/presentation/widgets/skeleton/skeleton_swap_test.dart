@@ -7,6 +7,7 @@ import 'package:unyo/presentation/widgets/styled/media_card.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_banner_carousel.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_extension_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_media_banner.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 import 'package:unyo/presentation/widgets/styled/user_avatar.dart';
 
 import 'support/fake_image_http.dart';
@@ -205,6 +206,33 @@ void main() {
         tester.getSize(find.byKey(tileKey)),
         loadingSize,
         reason: 'the avatar column must keep the skeleton tile box',
+      );
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  testWidgets('a media card always keeps a poster-sized image slot', (
+    tester,
+  ) async {
+    await withFakeImages(() async {
+      await pumpSkeletonHarness(tester, mediaCard());
+
+      // The grid/list regression: the cover area must be a poster-sized slot
+      // whether or not the image has resolved.
+      final Finder slot = find.descendant(
+        of: find.byType(MediaCard),
+        matching: find.byType(UnyoNetworkImage),
+      );
+      expect(
+        tester.getSize(slot),
+        const Size(MediaCardMetrics.coverWidth, MediaCardMetrics.coverHeight),
+      );
+
+      await pumpSkeletonHarness(tester, const MediaCardSkeleton());
+      expect(
+        tester.getSize(find.byType(SkeletonBlock).first),
+        const Size(MediaCardMetrics.coverWidth, MediaCardMetrics.coverHeight),
+        reason: 'the placeholder reserves the same poster box as the card',
       );
       expect(tester.takeException(), isNull);
     });

@@ -18,6 +18,20 @@ abstract final class MediaCardMetrics {
   /// `widgets/styled/media_card.dart` - title and meta rows under the cover.
   static const double titleRowHeight = 24;
   static const double metaRowHeight = 18;
+
+  /// `widgets/styled/media_card.dart` - the score badge overlay in the
+  /// bottom-right corner of the cover (`6 + text + 15px star`, 50-radius corner).
+  static const double badgeWidth = 46;
+  static const double badgeHeight = 18;
+  static const double badgeRadius = 9;
+
+  /// `widgets/styled/media_card.dart` - the single text line painted inside
+  /// [titleRowHeight] and [metaRowHeight]; a pill the size of the whole row
+  /// reads as a block, not as a line of text.
+  static const double titlePillWidth = 110;
+  static const double titlePillHeight = 14;
+  static const double metaPillWidth = 96;
+  static const double metaPillHeight = 12;
 }
 
 /// Geometry shared between the horizontal card rows and their skeletons.
@@ -28,6 +42,14 @@ abstract final class CardRowMetrics {
 
   /// Gap between the row title and the cards.
   static const double headerGap = 10;
+
+  /// Height of the header row: the real one ends in two [MediaListArrows]
+  /// `IconButton`s, which are 40 high in Material 3.
+  static const double headerHeight = 40;
+
+  /// [MediaListArrows] - `Icon(Icons.arrow_left, size: 24)` inside its button.
+  static const double arrowSize = 24;
+  static const double arrowGap = 16;
 }
 
 /// Geometry shared between the grid screens and [MediaGridSkeleton].

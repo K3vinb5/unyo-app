@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 
 class UnyoEpisodeButton extends StatefulWidget {
   final String secondaryTitle;
@@ -71,7 +72,7 @@ class _UnyoEpisodeButtonState extends State<UnyoEpisodeButton> {
                               opacity: 0.8,
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
-                                child: Image.network(widget.episodeImageUrl, fit: BoxFit.cover,),
+                                child: UnyoNetworkImage(url: widget.episodeImageUrl, fit: BoxFit.cover),
                               ),
                             ),
                           ),

@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 
 class ImageCard extends StatelessWidget {
   final String coverImage;
@@ -25,14 +26,10 @@ class ImageCard extends StatelessWidget {
           height: 200.5,
           child: Hero(
             tag: tag,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                image: DecorationImage(
-                  image: NetworkImage(coverImage),
-                  fit: BoxFit.fill,
-                ),
-              ),
+            child: UnyoNetworkImage(
+              url: coverImage,
+              fit: BoxFit.fill,
+              borderRadius: 20,
             ),
           ),
         ),

@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_metrics.dart';
 import 'package:unyo/presentation/widgets/styled/hover_animated_container.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 
 class MediaCard extends StatelessWidget {
   final String title;
@@ -54,22 +55,21 @@ class MediaCard extends StatelessWidget {
                         MediaCardMetrics.coverRadius,
                       ),
                       border: Border.all(color: Colors.white, width: 2.6),
-                      image: DecorationImage(
-                        image: NetworkImage(coverImage),
-                        fit: BoxFit.fill,
-                      ),
                     ),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(
                         MediaCardMetrics.coverRadius,
                       ),
-                      image: DecorationImage(
-                        image: NetworkImage(coverImage),
-                        fit: BoxFit.fill,
-                      ),
                     ),
                     child: Stack(
                       children: [
+                        Positioned.fill(
+                          child: UnyoNetworkImage(
+                            url: coverImage,
+                            fit: BoxFit.fill,
+                            borderRadius: MediaCardMetrics.coverRadius,
+                          ),
+                        ),
                         score != 0
                             ? Align(
                               alignment: Alignment.bottomRight,

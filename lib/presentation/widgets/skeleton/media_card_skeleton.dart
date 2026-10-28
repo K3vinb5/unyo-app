@@ -2,8 +2,9 @@ import 'package:material_ui/material_ui.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_block.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_metrics.dart';
 
-/// Mirrors `widgets/styled/media_card.dart` ([MediaCard]): cover, title row and
-/// meta row, sized with the constants the real card uses.
+/// Mirrors `widgets/styled/media_card.dart` ([MediaCard]): cover, the score
+/// badge on its bottom-right corner, title row and meta row, sized with the
+/// constants the real card uses.
 class MediaCardSkeleton extends StatelessWidget {
   const MediaCardSkeleton({
     super.key,
@@ -24,20 +25,42 @@ class MediaCardSkeleton extends StatelessWidget {
         mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SkeletonBlock(
-            width: MediaCardMetrics.coverWidth,
-            height: MediaCardMetrics.coverHeight,
-            borderRadius: MediaCardMetrics.coverRadius,
+          Stack(
+            alignment: Alignment.bottomRight,
+            children: [
+              SkeletonBlock(
+                width: MediaCardMetrics.coverWidth,
+                height: MediaCardMetrics.coverHeight,
+                borderRadius: MediaCardMetrics.coverRadius,
+              ),
+              SkeletonBlock(
+                width: MediaCardMetrics.badgeWidth,
+                height: MediaCardMetrics.badgeHeight,
+                borderRadius: MediaCardMetrics.badgeRadius,
+              ),
+            ],
           ),
-          SkeletonBlock(
+          SizedBox(
             width: MediaCardMetrics.coverWidth,
             height: MediaCardMetrics.titleRowHeight,
-            borderRadius: 6,
+            child: Center(
+              child: SkeletonBlock(
+                width: MediaCardMetrics.titlePillWidth,
+                height: MediaCardMetrics.titlePillHeight,
+                borderRadius: 6,
+              ),
+            ),
           ),
-          SkeletonBlock(
+          SizedBox(
             width: MediaCardMetrics.coverWidth,
             height: MediaCardMetrics.metaRowHeight,
-            borderRadius: 4,
+            child: Center(
+              child: SkeletonBlock(
+                width: MediaCardMetrics.metaPillWidth,
+                height: MediaCardMetrics.metaPillHeight,
+                borderRadius: 4,
+              ),
+            ),
           ),
         ],
       ),
@@ -45,21 +68,55 @@ class MediaCardSkeleton extends StatelessWidget {
   }
 }
 
+/// The two `‹ ›` chevrons that close every card row header
+/// (`widgets/styled/media_list_arrows.dart`).
+class _RowHeaderArrows extends StatelessWidget {
+  const _RowHeaderArrows();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SkeletonBlock(
+          width: CardRowMetrics.arrowSize,
+          height: CardRowMetrics.arrowSize,
+          borderRadius: 6,
+        ),
+        SizedBox(width: CardRowMetrics.arrowGap),
+        SkeletonBlock(
+          width: CardRowMetrics.arrowSize,
+          height: CardRowMetrics.arrowSize,
+          borderRadius: 6,
+        ),
+      ],
+    );
+  }
+}
+
 /// Mirrors `widgets/styled/anime_card_list.dart` / `manga_card_list.dart`:
-/// a section header plus a horizontal row of cards.
+/// a section header (title + entry count inline at the left, the row arrows at
+/// the right) plus a horizontal strip of cards.
 ///
 /// Used for every `(loaded, list)` section tuple on the browse and details
 /// screens, and for the character row (same header + 260-high strip).
 class CardRowSkeleton extends StatelessWidget {
   const CardRowSkeleton({
     super.key,
-    this.cardCount = 6,
+    this.cardCount = 8,
     this.showHeader = true,
+    this.showArrows = true,
     this.rowHeight = CardRowMetrics.rowHeight,
   });
 
+  /// The loaded strip fits eight 152.5-wide cards on a desktop window, so the
+  /// placeholder does too - six wide cards used to drift away from it.
   final int cardCount;
   final bool showHeader;
+
+  /// The real header only paints its arrows once the list is wider than the
+  /// viewport; callers mirroring an always-scrollable row keep them.
+  final bool showArrows;
   final double rowHeight;
 
   @override
@@ -68,12 +125,19 @@ class CardRowSkeleton extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (showHeader) ...[
-          const Row(
-            children: [
-              SkeletonBlock(width: 220, height: 22),
-              SizedBox(width: 10),
-              SkeletonBlock(width: 60, height: 13),
-            ],
+          SizedBox(
+            height: CardRowMetrics.headerHeight,
+            width: double.infinity,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const SkeletonBlock(width: 220, height: 22),
+                const SizedBox(width: 10),
+                const SkeletonBlock(width: 60, height: 13),
+                const Spacer(),
+                if (showArrows) const _RowHeaderArrows(),
+              ],
+            ),
           ),
           const SizedBox(height: CardRowMetrics.headerGap),
         ],
@@ -84,11 +148,10 @@ class CardRowSkeleton extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: cardCount,
-            itemBuilder:
-                (context, index) => const Padding(
-                  padding: EdgeInsets.only(right: 8),
-                  child: MediaCardSkeleton(),
-                ),
+            // No gap between the cards: the real strip butts them together and
+            // lets each card's own 152.5 width provide the 12.5 gutter.
+            itemBuilder: (BuildContext context, int index) =>
+                const MediaCardSkeleton(),
           ),
         ),
       ],
@@ -102,7 +165,7 @@ class CardRowSkeleton extends StatelessWidget {
 /// Both screens use [mediaGridDelegate] as well, so the placeholder and the
 /// real grid can never disagree about cell size.
 class MediaGridSkeleton extends StatelessWidget {
-  const MediaGridSkeleton({super.key, this.itemCount = 12});
+  const MediaGridSkeleton({super.key, this.itemCount = 16});
 
   final int itemCount;
 
@@ -113,11 +176,8 @@ class MediaGridSkeleton extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: mediaGridDelegate,
       itemCount: itemCount,
-      itemBuilder:
-          (context, index) => const SizedBox(
-            width: 165,
-            child: MediaCardSkeleton(),
-          ),
+      itemBuilder: (BuildContext context, int index) =>
+          const SizedBox(width: 165, child: MediaCardSkeleton()),
     );
   }
 }

@@ -7,6 +7,7 @@ import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/list/media_list.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
 import 'package:unyo/presentation/widgets/text/texts.dart';
 
@@ -230,7 +231,10 @@ class _UnyoBannerCarouselState extends State<UnyoBannerCarousel> {
               fit: StackFit.expand,
               children: [
                 // The image
-                Image.network(_bannerImageAt(index), fit: BoxFit.cover),
+                UnyoNetworkImage(
+                  url: _bannerImageAt(index),
+                  fit: BoxFit.cover,
+                ),
 
                 // Dark overlay
                 Container(

@@ -7,11 +7,13 @@
 library;
 
 export 'banner_carousel_skeleton.dart';
+export 'date_tab_row_skeleton.dart';
 export 'detail_header_skeleton.dart';
 export 'episode_row_skeleton.dart';
 export 'extension_row_skeleton.dart';
 export 'list_tile_skeleton.dart';
 export 'media_card_skeleton.dart';
+export 'menu_bar_skeleton.dart';
 export 'skeleton_block.dart';
 export 'skeleton_metrics.dart';
 export 'skeleton_scope.dart';

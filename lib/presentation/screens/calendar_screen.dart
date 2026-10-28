@@ -128,7 +128,9 @@ class _CalendarViewState extends State<_CalendarView>
             SizedBox(
               width: double.infinity,
               height: 50,
-              child: SizedBox(
+              child: state.isLoading
+                  ? const DateTabRowSkeleton()
+                  : SizedBox(
                 child: TabBar(
                   labelColor: Colors.white,
                   dividerColor: ColorScheme.of(

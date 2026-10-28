@@ -8,6 +8,7 @@ import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/presentation/widgets/styled/hover_animated_container.dart';
 import 'package:unyo/presentation/widgets/text/text_headline_large.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 
 class AddUserAvatar extends StatelessWidget {
   final void Function() onPressed;
@@ -37,10 +38,14 @@ class AddUserAvatar extends StatelessWidget {
             child: UnyoInkWell(
               borderRadius: BorderRadius.circular(140.r),
               onTap: onPressed,
-              child: CircleAvatar(
-                radius: 90.h,
-                backgroundColor: Colors.transparent,
-                backgroundImage: const NetworkImage(config.plusImageUrl),
+              child: SizedBox(
+                width: 180.h,
+                height: 180.h,
+                child: UnyoNetworkImage(
+                  url: config.plusImageUrl,
+                  fit: BoxFit.cover,
+                  borderRadius: 90.h,
+                ),
               ),
             ),
           ),

@@ -46,10 +46,14 @@ class UnyoMenuBar extends StatelessWidget {
                        child: UnyoInkWell(
                          borderRadius: BorderRadius.circular(35),
                          onTap: onIconTap,
-                         child: CircleAvatar(
-                           radius: 27,
-                           backgroundColor: Colors.transparent,
-                           backgroundImage: NetworkImage(avatarImage),
+                         child: SizedBox(
+                           width: 54,
+                           height: 54,
+                           child: UnyoNetworkImage(
+                             url: avatarImage,
+                             fit: BoxFit.cover,
+                             borderRadius: 27,
+                           ),
                          ),
                        ),
                      ),

@@ -19,10 +19,15 @@ class EpisodeRowSkeleton extends StatelessWidget {
   /// holding a 16:9 thumbnail.
   static const double thumbnailWidth = 105;
 
+  /// `unyo_episode_button.dart` - `AspectRatio(aspectRatio: 16 / 9)`: the thumb
+  /// is landscape, never the square-ish block the placeholder used to be.
+  static const double thumbnailAspectRatio = 16 / 9;
+
   final bool showDivider;
 
   @override
   Widget build(BuildContext context) {
+    final double thumbWidth = thumbnailWidth.w.clamp(105, 200);
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
@@ -47,8 +52,8 @@ class EpisodeRowSkeleton extends StatelessWidget {
                 Row(
                   children: [
                     SkeletonBlock(
-                      width: thumbnailWidth.w.clamp(105, 200),
-                      height: (thumbnailWidth.w.clamp(105, 200)) * 9 / 16,
+                      width: thumbWidth,
+                      height: thumbWidth / thumbnailAspectRatio,
                       borderRadius: 10,
                     ),
                     SizedBox(width: 20.w),

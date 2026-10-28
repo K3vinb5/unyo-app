@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:material_ui/material_ui.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 
 class UnyoAnimatedImageBanner extends StatefulWidget {
   final String imageUrl;
@@ -80,7 +81,7 @@ class _UnyoAnimatedImageBannerState extends State<UnyoAnimatedImageBanner> with 
               2.0 * lerpedOffset.dx - 1.0,
               2.0 * lerpedOffset.dy - 1.0,
             ),
-            child: Image.network(widget.imageUrl, fit: BoxFit.cover),
+            child: UnyoNetworkImage(url: widget.imageUrl, fit: BoxFit.cover),
           ),
         );
       },

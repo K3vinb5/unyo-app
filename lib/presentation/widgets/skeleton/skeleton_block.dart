@@ -16,6 +16,11 @@ class SkeletonBlock extends StatelessWidget {
   });
 
   /// Width of the block; `null` fills the available width.
+  ///
+  /// A childless [DecoratedBox] collapses to the smallest allowed size, so the
+  /// null case has to ask for `double.infinity` explicitly - otherwise every
+  /// full-width block (the carousel banner, the description lines, the episode
+  /// dividers) paints nothing at all.
   final double? width;
   final double height;
   final double borderRadius;
@@ -31,7 +36,7 @@ class SkeletonBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Widget block = SizedBox(
-      width: width,
+      width: width ?? double.infinity,
       height: height,
       child: DecoratedBox(
         decoration: BoxDecoration(
@@ -57,13 +62,12 @@ class SkeletonBlock extends StatelessWidget {
         final double progress = animation.value;
         return ShaderMask(
           blendMode: BlendMode.srcATop,
-          shaderCallback:
-              (Rect bounds) => LinearGradient(
-                begin: Alignment(-2.5 + 3.0 * progress, -0.4),
-                end: Alignment(-1.5 + 3.0 * progress, 0.4),
-                colors: <Color>[base, highlight, base],
-                stops: const <double>[0.35, 0.5, 0.65],
-              ).createShader(bounds),
+          shaderCallback: (Rect bounds) => LinearGradient(
+            begin: Alignment(-2.5 + 3.0 * progress, -0.4),
+            end: Alignment(-1.5 + 3.0 * progress, 0.4),
+            colors: <Color>[base, highlight, base],
+            stops: const <double>[0.35, 0.5, 0.65],
+          ).createShader(bounds),
           child: child,
         );
       },

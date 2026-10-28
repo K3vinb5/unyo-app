@@ -8,6 +8,7 @@ import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/selected_menu_option.dart';
 import 'package:unyo/core/router/app_router.gr.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
+import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_menu_bar.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_menu_icon.dart';
 
@@ -138,7 +139,7 @@ class _TabsView extends StatelessWidget {
                         ),
                       ],
                     )
-                    : const SizedBox.shrink(),
+                    : const SkeletonScope(child: MenuBarSkeleton()),
                 Expanded(child: child),
               ],
             );
