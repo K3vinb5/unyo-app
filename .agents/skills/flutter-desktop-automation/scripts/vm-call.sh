@@ -6,9 +6,10 @@
 #   vm-call.sh ext.flutter.driver '{"command":"tap","finderType":"ByValueKey","keyValueString":"menu-home","keyValueType":"String","timeout":"8000"}'
 #   vm-call.sh ext.myapp.tapAt '{"x":"500","y":"300"}'
 #
-# SET THIS before first use: the app's VM-service websocket URI, found in
-# `flutter run` output ("A Dart VM Service on Linux is available at ...", use
-# the ws:// form) or in Dart MCP get_app_logs as app.debugPort -> wsUri.
+# SET the app's VM-service websocket URI via:  export UNYO_VM_WS=ws://...
+# (found in `flutter run` output — "A Dart VM Service on Linux is available at ..." —
+# use the ws:// form, or in Dart MCP get_app_logs as app.debugPort -> wsUri).
+# If UNYO_VM_WS is unset, falls back to the literal below (edit it per app).
 WS="${UNYO_VM_WS:-ws://127.0.0.1:44503/-iojy6NZl20=/ws}"
 
 ISOLATE=$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"getVM"}' | websocat -n1 "$WS" | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['isolates'][0]['id'])")
