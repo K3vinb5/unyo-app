@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:auto_route/auto_route.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:collection/collection.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Title;
 import 'package:fuzzywuzzy/fuzzywuzzy.dart';
 import 'package:unyo_lib/jmodels/jsanime.dart';
 import 'package:unyo_lib/jmodels/jsepisode.dart';
@@ -36,6 +36,7 @@ import 'package:unyo/data/repositories/repositories.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/anime_details.dart';
 import 'package:unyo/domain/entities/media/episode_info.dart';
+import 'package:unyo/domain/entities/media/title.dart';
 import 'package:unyo/domain/entities/extension/extension.dart';
 import 'package:unyo/domain/entities/extension/video.dart' as ext;
 import 'package:unyo/domain/entities/list/media_list.dart';
@@ -47,6 +48,16 @@ import 'package:unyo/domain/utils/episode_index.dart';
 import 'package:unyo/presentation/dialogs/anime_details_media_entry_dialog.dart';
 import 'package:unyo/presentation/drawers/anime_server_selection_drawer.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_date_picker.dart';
+
+/// Picks the first non-empty title field for log lines, so a fetch never logs
+/// an empty title just because the preferred one is missing (Shikimori entries
+/// without an English title map to an empty [Title.userPreferred]).
+String logTitleFor(Title title) {
+  if (title.userPreferred.isNotEmpty) return title.userPreferred;
+  if (title.english.isNotEmpty) return title.english;
+  if (title.romaji.isNotEmpty) return title.romaji;
+  return title.nativeTitle;
+}
 
 class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeDetailsState> {
   // Repositories
@@ -439,7 +450,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   Future<void> _getUserMediaListEntry(User loggedUser, Anime selectedAnime, {bool ignoreCache = false}) async {
    try {
-      _logger.i("Fetching User Media List Entry for ${state.selectedAnime.title.userPreferred}");
+      _logger.i("Fetching User Media List Entry for ${logTitleFor(selectedAnime.title)}");
       MediaListEntry mediaListEntry = await _animeRepository.getMediaListEntry(
         selectedAnime,
         loggedUser,
@@ -456,7 +467,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   Future<void> _getAnimeDetails(User loggedUser, Anime selectedAnime) async {
     try {
-      _logger.i("Fetching Anime Details for ${state.selectedAnime.title.userPreferred}");
+      _logger.i("Fetching Anime Details for ${logTitleFor(selectedAnime.title)}");
       (bool, AnimeDetails) animeDetails = await _animeRepository.getAnimeDetails(
         selectedAnime,
         loggedUser,
@@ -687,7 +698,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   Future<void> _getAlternativeImage(User loggedUser, Anime selectedAnime) async {
     try {
-      _logger.i("Fetching Alternative Image for ${state.selectedAnime.title.userPreferred}");
+      _logger.i("Fetching Alternative Image for ${logTitleFor(selectedAnime.title)}");
       late String alternateImage;
       if (loggedUser.settings.service == Service.anilist) {
         alternateImage = await _episodeRepository.getAlternativeImage(
@@ -710,7 +721,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   Future<void> _getEpisodesDetails(User loggedUser, Anime selectedAnime) async {
     try {
-      _logger.i("Fetching Episodes Details for ${state.selectedAnime.title.userPreferred}");
+      _logger.i("Fetching Episodes Details for ${logTitleFor(selectedAnime.title)}");
       late List<EpisodeInfo> episodesInfo;
       if (loggedUser.settings.service == Service.anilist) {
         episodesInfo = await _episodeRepository.getEpisodeInfo(
@@ -734,7 +745,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   Future<void> _getAnimeBanners(User loggedUser) async {
     try {
-      _logger.i("Fetching Anime Banners for ${state.selectedAnime.title.userPreferred}");
+      _logger.i("Fetching Anime Banners");
       List<String> banners = await _animeRepository.getMediaCoverImages(loggedUser);
       emit(state.copyWith(banners: banners));
     } on HttpServerException catch (e, stackTrace) {
