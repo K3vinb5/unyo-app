@@ -16,9 +16,11 @@ import 'package:unyo/core/services/api/dto/anilist/save_media_list_entry_entity.
 import 'package:unyo/core/services/api/dto/anilist/viewer_graphql_entity.dart';
 import 'package:unyo/core/services/api/dto/aniskip/aniskip_times_entity.dart';
 import 'package:unyo/core/services/api/dto/anizip/anizip_episode_info_entity.dart';
+import 'package:unyo/core/services/api/dto/anizip/anizip_id_mappings_entity.dart';
 import 'package:unyo/core/services/api/dto/extensions/aniyomi_repo_json_entity.dart';
 import 'package:unyo/core/services/api/dto/extensions/tachiyomi_repo_json_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_details_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/anime_mapping_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_popular_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_recently_released_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_trending_query_entity.dart';
@@ -408,6 +410,12 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		if(<AnizipEpisodeInfoTitle>[] is M){
 			return data.map<AnizipEpisodeInfoTitle>((Map<String, dynamic> e) => AnizipEpisodeInfoTitle.fromJson(e)).toList() as M;
 		}
+		if(<AnizipIdMappingsEntity>[] is M){
+			return data.map<AnizipIdMappingsEntity>((Map<String, dynamic> e) => AnizipIdMappingsEntity.fromJson(e)).toList() as M;
+		}
+		if(<AnizipIdMappingsMappings>[] is M){
+			return data.map<AnizipIdMappingsMappings>((Map<String, dynamic> e) => AnizipIdMappingsMappings.fromJson(e)).toList() as M;
+		}
 		if(<AniyomiRepoJsonEntity>[] is M){
 			return data.map<AniyomiRepoJsonEntity>((Map<String, dynamic> e) => AniyomiRepoJsonEntity.fromJson(e)).toList() as M;
 		}
@@ -455,6 +463,15 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		}
 		if(<AnimeDetailsQueryAnimesRelatedAnimeGenres>[] is M){
 			return data.map<AnimeDetailsQueryAnimesRelatedAnimeGenres>((Map<String, dynamic> e) => AnimeDetailsQueryAnimesRelatedAnimeGenres.fromJson(e)).toList() as M;
+		}
+		if(<AnimeMappingQueryEntity>[] is M){
+			return data.map<AnimeMappingQueryEntity>((Map<String, dynamic> e) => AnimeMappingQueryEntity.fromJson(e)).toList() as M;
+		}
+		if(<AnimeMappingQueryAnimes>[] is M){
+			return data.map<AnimeMappingQueryAnimes>((Map<String, dynamic> e) => AnimeMappingQueryAnimes.fromJson(e)).toList() as M;
+		}
+		if(<AnimeMappingQueryAnimesAiredOn>[] is M){
+			return data.map<AnimeMappingQueryAnimesAiredOn>((Map<String, dynamic> e) => AnimeMappingQueryAnimesAiredOn.fromJson(e)).toList() as M;
 		}
 		if(<AnimePopularQueryEntity>[] is M){
 			return data.map<AnimePopularQueryEntity>((Map<String, dynamic> e) => AnimePopularQueryEntity.fromJson(e)).toList() as M;
@@ -617,6 +634,8 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		(AniskipTimesResultsInterval).toString(): AniskipTimesResultsInterval.fromJson,
 		(AnizipEpisodeInfoEntity).toString(): AnizipEpisodeInfoEntity.fromJson,
 		(AnizipEpisodeInfoTitle).toString(): AnizipEpisodeInfoTitle.fromJson,
+		(AnizipIdMappingsEntity).toString(): AnizipIdMappingsEntity.fromJson,
+		(AnizipIdMappingsMappings).toString(): AnizipIdMappingsMappings.fromJson,
 		(AniyomiRepoJsonEntity).toString(): AniyomiRepoJsonEntity.fromJson,
 		(AniyomiRepoJsonSources).toString(): AniyomiRepoJsonSources.fromJson,
 		(TachiyomiRepoJsonEntity).toString(): TachiyomiRepoJsonEntity.fromJson,
@@ -633,6 +652,9 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		(AnimeDetailsQueryAnimesRelatedAnimeAiredOn).toString(): AnimeDetailsQueryAnimesRelatedAnimeAiredOn.fromJson,
 		(AnimeDetailsQueryAnimesRelatedAnimeReleasedOn).toString(): AnimeDetailsQueryAnimesRelatedAnimeReleasedOn.fromJson,
 		(AnimeDetailsQueryAnimesRelatedAnimeGenres).toString(): AnimeDetailsQueryAnimesRelatedAnimeGenres.fromJson,
+		(AnimeMappingQueryEntity).toString(): AnimeMappingQueryEntity.fromJson,
+		(AnimeMappingQueryAnimes).toString(): AnimeMappingQueryAnimes.fromJson,
+		(AnimeMappingQueryAnimesAiredOn).toString(): AnimeMappingQueryAnimesAiredOn.fromJson,
 		(AnimePopularQueryEntity).toString(): AnimePopularQueryEntity.fromJson,
 		(AnimePopularQueryAnimes).toString(): AnimePopularQueryAnimes.fromJson,
 		(AnimePopularQueryAnimesPoster).toString(): AnimePopularQueryAnimesPoster.fromJson,

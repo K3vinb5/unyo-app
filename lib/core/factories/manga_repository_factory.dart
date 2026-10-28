@@ -11,7 +11,7 @@ import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/repositories/manga_repository.dart';
 
 /// Factory that resolves the correct [MangaRepository] implementation
-/// based on the user's selected metadata [Service].
+/// based on the metadata provider (`settings.metadataService`).
 ///
 /// Currently supports:
 /// - [Service.anilist] → delegates to [MangaRepositoryAnilist]
@@ -26,7 +26,7 @@ class MangaRepositoryFactory implements MangaRepository {
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Anilist trending manga");
         return _mangaRepositoryAnilist.getTrendingMangas(
@@ -48,7 +48,7 @@ class MangaRepositoryFactory implements MangaRepository {
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Anilist popular manga");
         return _mangaRepositoryAnilist.getPopularMangas(
@@ -70,7 +70,7 @@ class MangaRepositoryFactory implements MangaRepository {
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Anilist recently completed manga");
         return _mangaRepositoryAnilist.getRecentlyCompletedMangas(
@@ -92,7 +92,7 @@ class MangaRepositoryFactory implements MangaRepository {
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Anilist upcoming manga");
         return _mangaRepositoryAnilist.getUpcomingMangas(
@@ -109,8 +109,8 @@ class MangaRepositoryFactory implements MangaRepository {
   }
 
   @override
-  Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser) async {
-    switch (loggedUser.settings.service) {
+  Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser, {Service? service}) async {
+    switch (service ?? loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Manga Details from AniList for ${selectedManga.title.userPreferred}");
         return _mangaRepositoryAnilist.getMangaDetails(selectedManga, loggedUser);
@@ -145,7 +145,7 @@ class MangaRepositoryFactory implements MangaRepository {
     int page,
     User loggedUser,
   ) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         return _mangaRepositoryAnilist.performMangaAdvancedSearch(
           query,
@@ -167,7 +167,7 @@ class MangaRepositoryFactory implements MangaRepository {
 
   @override
   Future<List<String>> getMediaCoverImages(User loggedUser, {bool ignoreCache = false}) async {
-    switch (loggedUser.settings.service) {
+    switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Manga Banners from AniList for ...");
         return _mangaRepositoryAnilist.getMediaCoverImages(

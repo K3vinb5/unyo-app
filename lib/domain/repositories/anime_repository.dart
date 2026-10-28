@@ -1,3 +1,4 @@
+import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/anime_details.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
@@ -10,7 +11,10 @@ abstract class AnimeRepository {
   Future<(bool, List<Anime>)> getRecentlyCompletedAnimes(int page, User loggedUser, {bool ignoreCache = false});
   Future<(bool, List<Anime>)> getUpcomingAnimes(int page, User loggedUser, {bool ignoreCache = false});
   Future<Map<String, List<Anime>>> getCalendarReleases(int page, User loggedUser);
-  Future<(bool, AnimeDetails)> getAnimeDetails(Anime selectedAnime, User loggedUser);
+  /// [service] overrides the configured metadata provider. It exists for the
+  /// unresolved-mapping fallback (WP #61 rule 5), where details must come from
+  /// the record's own provider instead of the metadata provider.
+  Future<(bool, AnimeDetails)> getAnimeDetails(Anime selectedAnime, User loggedUser, {Service? service});
   Future<Map<String, (bool, List<String>)>> getUserAnimeAdvancedSearchFilters();
   Future<List<Anime>> performAnimeAdvancedSearch(
     String query,

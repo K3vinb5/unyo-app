@@ -1,4 +1,5 @@
 // External dependencies
+import 'package:unyo/core/enums/service.dart';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
@@ -21,7 +22,7 @@ class MangaRepositoryShikimori with RepositoryMixin implements MangaRepository {
   final Logger _logger = sl<Logger>();
 
   @override
-  Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser) {
+  Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser, {Service? service}) {
     // TODO: implement getMangaDetails
     throw UnimplementedError();
   }

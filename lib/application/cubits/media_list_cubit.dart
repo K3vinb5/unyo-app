@@ -13,23 +13,23 @@ import 'package:unyo/core/notification/media_list_notifier.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
-import 'package:unyo/data/repositories/user_repository_anilist.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/list/media_list.dart';
 import 'package:unyo/domain/entities/user/user.dart';
+import 'package:unyo/domain/repositories/user_repository.dart';
 
 class MediaListCubit extends Cubit<MediaListState>
     with EffectMixin<MediaListState> {
   final Logger _logger = sl<Logger>();
-  final UserRepositoryAnilist _userRepositoryAnilist;
+  final UserRepository _userRepository;
   final UserNotifier _loggedUserNotifier;
   final AnimeNotifier _selectedAnimeNotifier;
   final MangaNotifier _selectedMangaNotifier;
   final MediaListNotifier _selectedMediaListNotifier;
   late StreamSubscription<User> _loggedUserSubscription;
 
-  MediaListCubit(this._loggedUserNotifier, this._userRepositoryAnilist, this._selectedAnimeNotifier, this._selectedMangaNotifier, this._selectedMediaListNotifier)
+  MediaListCubit(this._loggedUserNotifier, this._userRepository, this._selectedAnimeNotifier, this._selectedMangaNotifier, this._selectedMediaListNotifier)
     : super(
         MediaListState(
           userAnimeLists: {},
@@ -92,9 +92,9 @@ class MediaListCubit extends Cubit<MediaListState>
       switch (user) {
         case AnilistUserModel anilistUserModel:
           _logger.i("Fetching Anilist User lists");
-          Map<String, List<Anime>> userAnimeLists = await _userRepositoryAnilist
+          Map<String, List<Anime>> userAnimeLists = await _userRepository
               .getUserAnimeLists(user);
-          Map<String, List<Manga>> userMangaLists = await _userRepositoryAnilist
+          Map<String, List<Manga>> userMangaLists = await _userRepository
               .getUserMangaLists(user);
           emit(
             state.copyWith(

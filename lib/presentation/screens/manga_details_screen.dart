@@ -171,10 +171,7 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               UnyoBannerIcon(
-                                                text: TextUtils.extractYearFromStartDate(
-                                                  state.selectedManga.startDate,
-                                                  state.loggedUser,
-                                                ),
+                                                text: TextUtils.extractYearFromStartDate(state.selectedManga.startDate),
                                                 iconData: Icons.calendar_month_rounded,
                                               ),
                                               UnyoBannerIcon(

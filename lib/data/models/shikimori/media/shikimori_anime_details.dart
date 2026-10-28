@@ -39,6 +39,7 @@ abstract class ShikimoriAnimeDetailsModel with _$ShikimoriAnimeDetailsModel impl
     return ShikimoriAnimeDetailsModel(
       mediaListEntry: MediaListEntryModel.fromAnimeDetailsQueryAnimesUserRate(animeDetails.userRate),
       recommendedAnimes: animeDetails.related
+          .where((relatedAnime) => isRealRelatedAnime(relatedAnime.anime))
           .map((relatedAnime) => ShikimoriAnimeModel.fromRelatedEntry(relatedAnime.anime))
           .toList(),
       characters: animeDetails.characterRoles

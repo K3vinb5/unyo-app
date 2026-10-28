@@ -1,3 +1,4 @@
+import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/media/manga_details.dart';
 import 'package:unyo/domain/entities/user/user.dart';
@@ -7,7 +8,9 @@ abstract class MangaRepository {
   Future<(bool, List<Manga>)> getPopularMangas(int page, User loggedUser, {bool ignoreCache = false});
   Future<(bool, List<Manga>)> getRecentlyCompletedMangas(int page, User loggedUser, {bool ignoreCache = false});
   Future<(bool, List<Manga>)> getUpcomingMangas(int page, User loggedUser, {bool ignoreCache = false});
-  Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser);
+  /// [service] overrides the configured metadata provider. See
+  /// `AnimeRepository.getAnimeDetails`.
+  Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser, {Service? service});
   Future<Map<String, (bool, List<String>)>> getUserMangaAdvancedSearchFilters();
   Future<List<Manga>> performMangaAdvancedSearch(
     String query,

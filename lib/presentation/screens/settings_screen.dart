@@ -161,14 +161,14 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                       childAlignment: "",
                       settingsOptions: [
                         UnyoSettingsSelectionDropdown(
-                          title: "Media Metadata Service",
-                          description: "Select the Media Metadata service to use",
+                          title: "Media metadata service",
+                          description: "Provider that owns details: synopsis, covers, genres and scores",
                           icon: Icons.image_search_rounded,
                           label: "Select a service",
                           defaultValue:
-                              TextUtils.capitalize(state.loggedUser.settings.service.name),
+                              TextUtils.capitalize(state.loggedUser.settings.metadataService.name),
                           children:
-                              Service.values
+                              ProviderCapabilities.metadataProviders
                                   .map(
                                     (service) => TextUtils.capitalize(service.name),
                                   )
@@ -213,7 +213,7 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                               icon: Icons.text_fields_rounded,
                               label: "Select a language",
                               defaultValue: state.loggedUser.settings.mediaTitleLanguage,
-                              children: MediaServiceFactory.getMediaService(state.loggedUser.settings.service).titleLanguages,
+                              children: MediaServiceFactory.getMediaService(state.loggedUser.settings.metadataService).titleLanguages,
                               onPressed: context.read<SettingsCubit>().updateMediaTitleLanguage,
                             ),
                             UnyoSettingsSelectionDropdown(

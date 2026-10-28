@@ -81,7 +81,7 @@ class _UserOptionsDrawerState extends State<UserOptionsDrawer> {
                           Padding(
                             padding: const EdgeInsets.only(right: 12.0),
                             child: Text(
-                              TextUtils.capitalize(widget.loggedUser.settings.service.name),
+                              TextUtils.capitalize(widget.loggedUser.settings.userService.name),
                               style: const TextStyle(color: Colors.grey, fontSize: 14),
                             ),
                           ),

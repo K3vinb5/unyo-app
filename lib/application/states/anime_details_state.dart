@@ -39,6 +39,10 @@ abstract class AnimeDetailsState with _$AnimeDetailsState implements HasEffects{
     required int selectedAnimeResultIndex,
     required List<JSEpisode> extensionEpisodeResults,
     required List<ext.Video> extensionVideoResults,
+    /// True when the opened record could not be matched to the metadata
+    /// provider, so the page shows user-provider details and offers the manual
+    /// relink action.
+    @Default(false) bool mediaLinkUnresolved,
     @Default(<AppEffect>[]) List<AppEffect> effects,
   }) = _AnimeDetailsState;
 

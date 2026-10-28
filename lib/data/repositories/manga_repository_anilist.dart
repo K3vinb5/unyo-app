@@ -1,4 +1,5 @@
 // External dependencies
+import 'package:unyo/core/enums/service.dart';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
@@ -273,7 +274,7 @@ class MangaRepositoryAnilist with RepositoryMixin implements MangaRepository {
   }
 
   @override
-  Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser) async {
+  Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser, {Service? service}) async {
     Map<String, String>? graphQlHeaders = loggedUser is AnilistUserModel ? {
       "Authorization": "Bearer ${(loggedUser).accessToken}",
     }: null;
