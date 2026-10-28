@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:auto_route/auto_route.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:collection/collection.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Title;
 import 'package:fuzzywuzzy/fuzzywuzzy.dart';
 import 'package:unyo_lib/jmodels/jsanime.dart';
 import 'package:unyo_lib/jmodels/jsepisode.dart';
@@ -37,6 +37,7 @@ import 'package:unyo/data/repositories/extension_repository_aniyomi.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/anime_details.dart';
 import 'package:unyo/domain/entities/media/episode_info.dart';
+import 'package:unyo/domain/entities/media/title.dart';
 import 'package:unyo/domain/entities/extension/extension.dart';
 import 'package:unyo/domain/entities/extension/video.dart' as ext;
 import 'package:unyo/domain/entities/list/media_list.dart';
@@ -54,6 +55,16 @@ import 'package:unyo/presentation/drawers/anime_server_selection_drawer.dart';
 import 'package:unyo/presentation/widgets/media_link_dialog.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_date_picker.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
+
+/// Picks the first non-empty title field for log lines, so a fetch never logs
+/// an empty title just because the preferred one is missing (Shikimori entries
+/// without an English title map to an empty [Title.userPreferred]).
+String logTitleFor(Title title) {
+  if (title.userPreferred.isNotEmpty) return title.userPreferred;
+  if (title.english.isNotEmpty) return title.english;
+  if (title.romaji.isNotEmpty) return title.romaji;
+  return title.nativeTitle;
+}
 
 class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeDetailsState> {
   // Repositories
@@ -463,7 +474,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   Future<void> _getUserMediaListEntry(User loggedUser, Anime selectedAnime, {bool ignoreCache = false}) async {
    try {
-      _logger.i("Fetching User Media List Entry for ${state.selectedAnime.title.userPreferred}");
+      _logger.i("Fetching User Media List Entry for ${logTitleFor(selectedAnime.title)}");
       MediaListEntry mediaListEntry = await _animeRepository.getMediaListEntry(
         selectedAnime,
         loggedUser,
@@ -482,7 +493,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       final MediaDetailsSource source = await _mediaIdService.detailsSource(selectedAnime, loggedUser);
       if (source.proposal != null) _openMediaLinkDialog(source.proposal!);
       _logger.i(
-        "Fetching Anime Details for ${state.selectedAnime.title.userPreferred} from ${source.service.name}",
+        "Fetching Anime Details for ${logTitleFor(selectedAnime.title)} from ${source.service.name}",
       );
       (bool, AnimeDetails) animeDetails = await _animeRepository.getAnimeDetails(
         source.anime,
@@ -785,10 +796,10 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   Future<void> _getAlternativeImage(User loggedUser, Anime selectedAnime) async {
     try {
-      _logger.i("Fetching Alternative Image for ${state.selectedAnime.title.userPreferred}");
+      _logger.i("Fetching Alternative Image for ${logTitleFor(selectedAnime.title)}");
       final AniZipLookupIds? ids = AniZipLookupIds.forAnime(selectedAnime);
       if (ids == null) {
-        _logger.w("No AniZip-addressable id for ${state.selectedAnime.title.userPreferred} (${MediaProvenance.ofAnime(selectedAnime).name} record, no MAL id)");
+        _logger.w("No AniZip-addressable id for ${logTitleFor(selectedAnime.title)} (${MediaProvenance.ofAnime(selectedAnime).name} record, no MAL id)");
         return;
       }
       final String alternateImage = await _episodeRepository.getAlternativeImage(
@@ -805,10 +816,10 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   Future<void> _getEpisodesDetails(User loggedUser, Anime selectedAnime) async {
     try {
-      _logger.i("Fetching Episodes Details for ${state.selectedAnime.title.userPreferred}");
+      _logger.i("Fetching Episodes Details for ${logTitleFor(selectedAnime.title)}");
       final AniZipLookupIds? ids = AniZipLookupIds.forAnime(selectedAnime);
       if (ids == null) {
-        _logger.w("No AniZip-addressable id for ${state.selectedAnime.title.userPreferred} (${MediaProvenance.ofAnime(selectedAnime).name} record, no MAL id)");
+        _logger.w("No AniZip-addressable id for ${logTitleFor(selectedAnime.title)} (${MediaProvenance.ofAnime(selectedAnime).name} record, no MAL id)");
         return;
       }
       final List<EpisodeInfo> episodesInfo = await _episodeRepository.getEpisodeInfo(
@@ -826,7 +837,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   Future<void> _getAnimeBanners(User loggedUser) async {
     try {
-      _logger.i("Fetching Anime Banners for ${state.selectedAnime.title.userPreferred}");
+      _logger.i("Fetching Anime Banners");
       List<String> banners = await _animeRepository.getMediaCoverImages(loggedUser);
       emit(state.copyWith(banners: banners));
     } on HttpServerException catch (e, stackTrace) {
