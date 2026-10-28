@@ -13,6 +13,8 @@ import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/router/app_router.dart';
 import 'package:unyo/core/theme/theme_service.dart';
 import 'package:unyo/hive_registrar.g.dart';
+import 'package:unyo/data/adapters/type_adapters/settings_model_migration_adapter.dart';
+import 'package:unyo/domain/entities/user/settings.dart';
 
 final _appRouter = AppRouter();
 
@@ -28,7 +30,11 @@ void main() async {
   Hive
     ..init(sl<Directory>(instanceName: config.applicationSupportDirectory).path)
     ..registerAdapter(ColorAdapter())
-    ..registerAdapters();
+    ..registerAdapters()
+    // The generated settings adapter cannot reconcile pre-split rows on read
+    // nor mirror the legacy `service` field on write. Box data is binary, so
+    // this adapter — not SettingsModel.fromJson — is what migrates real installs.
+    ..registerAdapter<SettingsModel>(SettingsModelMigrationAdapter(), override: true);
   // Inject the remaining dependencies that rely on Hive and are not Lazy
   setupLocatorAfterHiveInit();
   // Setup Window Manager options

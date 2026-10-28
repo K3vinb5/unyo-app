@@ -1,4 +1,5 @@
 // External dependencies
+import 'package:unyo/core/enums/service.dart';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
@@ -30,7 +31,7 @@ class AnimeRepositoryShikimori with RepositoryMixin implements AnimeRepository {
   final Logger _logger = sl<Logger>();
 
   @override
-  Future<(bool, AnimeDetails)> getAnimeDetails(Anime selectedAnime, User loggedUser) async {
+  Future<(bool, AnimeDetails)> getAnimeDetails(Anime selectedAnime, User loggedUser, {Service? service}) async {
     // TODO uncomment when ShikimoriUserModel exists
     // Map<String, String>? graphQlHeaders = loggedUser is ShikimoriUserModel
     //     ? {"Authorization": "Bearer ${(loggedUser).accessToken}"}

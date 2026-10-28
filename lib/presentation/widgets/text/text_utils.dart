@@ -1,5 +1,3 @@
-import 'package:unyo/core/enums/service.dart';
-import 'package:unyo/domain/entities/user/user.dart' show User;
 
 class TextUtils {
   static String parseHtmlToPlainText(String html) {
@@ -31,19 +29,13 @@ class TextUtils {
     return text.trim();
   }
 
-  static String extractYearFromStartDate(String startDate, User loggedUser) {
-    switch (loggedUser.settings.service) {
-      case Service.anilist:
-        return startDate.split("/").length > 1 ? startDate.split("/")[2] : "";
-      case Service.mal:
-        throw UnimplementedError();
-      case Service.kitsu:
-        throw UnimplementedError();
-      case Service.shikimori:
-        return startDate.split("/").length > 1 ? startDate.split("/")[2] : "";
-      case Service.simkl:
-        throw UnimplementedError();
-    }
+  /// Year out of a provider `startDate` string (`d/m/yyyy`). Every provider we
+  /// render stores the year in that slot; anything else degrades to an empty
+  /// string instead of throwing.
+  static String extractYearFromStartDate(String startDate) {
+    final List<String> parts = startDate.split("/");
+    final int? year = parts.length < 3 ? null : int.tryParse(parts[2]);
+    return year == null ? "" : "$year";
   }
 
   static List<String> formatISO8601DateTime(String isoDateTime) {

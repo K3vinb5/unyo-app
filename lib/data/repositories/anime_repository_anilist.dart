@@ -1,4 +1,5 @@
 // External dependencies
+import 'package:unyo/core/enums/service.dart';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
@@ -220,7 +221,7 @@ class AnimeRepositoryAnilist with RepositoryMixin implements AnimeRepository {
   }
 
   @override
-  Future<(bool, AnimeDetails)> getAnimeDetails(Anime selectedAnime, User loggedUser) async {
+  Future<(bool, AnimeDetails)> getAnimeDetails(Anime selectedAnime, User loggedUser, {Service? service}) async {
     Map<String, String>? graphQlHeaders =
         loggedUser is AnilistUserModel ? {"Authorization": "Bearer ${(loggedUser).accessToken}"} : null;
     ApiGraphQLResponse<MediaDetailsGraphqlEntity> animeDetailsData = await _anilistGraphQLService

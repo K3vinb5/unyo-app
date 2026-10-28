@@ -20,12 +20,12 @@ class UserRepositoryLocal implements UserRepository {
   }
 
   @override
-  Future<List<Anime>> getUserWatchingList(User user) {
+  Future<List<Anime>> getUserWatchingList(User user, {bool ignoreCache = false}) {
     throw UnimplementedError();
   }
 
   @override
-  Future<List<Manga>> getUserReadingList(User user) {
+  Future<List<Manga>> getUserReadingList(User user, {bool ignoreCache = false}) {
     throw UnimplementedError();
   }
 

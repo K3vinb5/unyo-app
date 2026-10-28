@@ -18,7 +18,17 @@ abstract class Settings {
   final String language;
   final String mediaTitleLanguage;
   final String episodeTitleLanguage;
+
+  /// Legacy single service knob. Only kept so pre-split Hive payloads stay
+  /// readable; nothing reads it outside of the [SettingsModel.fromJson]
+  /// migration. Use [userService] / [metadataService] instead.
   final Service service;
+
+  /// Provider that owns account identity, lists, progress and score.
+  final Service userService;
+
+  /// Provider that owns presentation details (synopsis, covers, genres, ...).
+  final Service metadataService;
   final EpisodeService episodeService;
   final List<String> aniyomiExtensionsRepositories;
   final List<String> tachiyomiExtensionsRepositories;
@@ -38,6 +48,8 @@ abstract class Settings {
 
   const Settings({
     required this.service,
+    required this.userService,
+    required this.metadataService,
     required this.episodeService,
     required this.language,
     required this.mediaTitleLanguage,
@@ -65,6 +77,8 @@ abstract class Settings {
 abstract class SettingsModel with _$SettingsModel implements Settings {
   const factory SettingsModel({
     @HiveField(0) @Default('en') String language,
+    /// Deprecated legacy knob (pre user/metadata split). Read only by the
+    /// [SettingsModel.fromJson] migration below.
     @HiveField(1) @Default(Service.anilist) Service service,
     @HiveField(2) @Default(EpisodeService.anizip) EpisodeService episodeService,
     @HiveField(3) @ExtensionConverter() @Default([]) List<Extension> installedAnimeExtensions,
@@ -83,13 +97,48 @@ abstract class SettingsModel with _$SettingsModel implements Settings {
     @HiveField(18) @Default(true) bool useWallpaperAsThemeColor,
     @HiveField(19) @Default([config.aniyomiExtensionsDefaultRepositoryUrl]) List<String> aniyomiExtensionsRepositories,
     @HiveField(20) @Default([config.tachiyomiExtensionsDefaultRepositoryUrl]) List<String> tachiyomiExtensionsRepositories,
+    @HiveField(21) @Default(Service.anilist) Service userService,
+    @HiveField(22) @Default(Service.anilist) Service metadataService,
   }) = _SettingsModel;
 
   factory SettingsModel.empty() =>
       const SettingsModel();
 
-  factory SettingsModel.fromJson(Map<String, dynamic> json) => _$SettingsModelFromJson(json);
+  /// Pre-split installs only carry [service]; that value was always the media
+  /// metadata provider, so it migrates into [metadataService] and
+  /// [userService] keeps its AniList default. Key presence — not the value —
+  /// decides whether this install was ever migrated.
+  factory SettingsModel.fromJson(Map<String, dynamic> json) =>
+      reconcileLegacyService(_$SettingsModelFromJson(_migrateLegacyServiceKeys(json)));
 
+  static Map<String, dynamic> _migrateLegacyServiceKeys(Map<String, dynamic> json) {
+    if (json.containsKey('metadataService') || !json.containsKey('service') || json['service'] == null) {
+      return json;
+    }
+    return <String, dynamic>{...json, 'metadataService': json['service']};
+  }
+
+  /// Read-time rule shared by the JSON entry point and the Hive adapter:
+  /// pre-split rows stored the old `service` knob and no `metadataService`, so
+  /// they deserialise with the `anilist` default even though the user had
+  /// picked another provider. Every write mirrors [metadataService] into
+  /// [service], which makes this rule unambiguous: an `anilist`
+  /// [metadataService] next to a non-AniList [service] can only be pre-split
+  /// data.
+  static SettingsModel reconcileLegacyService(SettingsModel settings) {
+    if (settings.metadataService != Service.anilist) return settings;
+    if (settings.service == Service.anilist) return settings;
+    return settings.copyWith(metadataService: settings.service);
+  }
+
+  /// Keeps the legacy `service` field a mirror of [metadataService] on every
+  /// write, so [reconcileLegacyService] never has to guess between a genuine
+  /// post-split AniList choice and stale pre-split data.
+  static SettingsModel mirrorLegacyService(SettingsModel settings) =>
+      settings.service == settings.metadataService ? settings : settings.copyWith(service: settings.metadataService);
+
+  /// Freezed generates `toJson()` for this class, so the legacy mirror lives in
+  /// [SettingsConverter] — the only place settings are serialised.
   @override
   Map<String, dynamic> toJson() => _$SettingsModelToJson(this as _SettingsModel);
 }
@@ -101,5 +150,6 @@ class SettingsConverter implements JsonConverter<Settings, Map<String, dynamic>>
   Settings fromJson(Map<String, dynamic> json) => SettingsModel.fromJson(json);
 
   @override
-  Map<String, dynamic> toJson(Settings object) => (object as SettingsModel).toJson();
+  Map<String, dynamic> toJson(Settings object) =>
+      SettingsModel.mirrorLegacyService(object as SettingsModel).toJson();
 }

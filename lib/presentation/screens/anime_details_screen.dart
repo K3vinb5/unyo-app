@@ -184,16 +184,28 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                                                 iconData: Icons.timelapse_rounded,
                                               ),
                                               UnyoBannerIcon(
-                                                text: TextUtils.extractYearFromStartDate(
-                                                  state.selectedAnime.startDate,
-                                                  state.loggedUser,
-                                                ),
+                                                text: TextUtils.extractYearFromStartDate(state.selectedAnime.startDate),
                                                 iconData: Icons.calendar_month_rounded,
                                               ),
                                               UnyoBannerIcon(
                                                 text: state.selectedAnime.averageScore.toString(),
                                                 iconData: Icons.star,
                                               ),
+                                              if (state.mediaLinkUnresolved)
+                                                UnyoInkWell(
+                                                  onTap: context.read<AnimeDetailsCubit>().requestMediaLink,
+                                                  child: Container(
+                                                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.grey.withValues(alpha: 0.3),
+                                                      borderRadius: BorderRadius.circular(8.0),
+                                                    ),
+                                                    child: const Text(
+                                                      "Link metadata entry…",
+                                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                                    ),
+                                                  ),
+                                                ),
                                             ],
                                           ),
                                           // TODO: extract to a widget

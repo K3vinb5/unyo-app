@@ -27,12 +27,13 @@ import 'package:unyo/core/notification/reload/reload_type.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/core/notification/video_info_notifier.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
+import 'package:unyo/core/services/media/media_provenance.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
+import 'package:unyo/domain/repositories/user_repository.dart';
 import 'package:unyo/domain/repositories/episode_repository.dart';
 import 'package:unyo/data/repositories/extension_repository_aniyomi.dart';
-import 'package:unyo/data/repositories/repositories.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/anime_details.dart';
 import 'package:unyo/domain/entities/media/episode_info.dart';
@@ -44,10 +45,16 @@ import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/entities/media/video_info.dart';
+import 'package:unyo/core/services/media/media_id_service.dart';
+import 'package:unyo/core/services/media/media_link_candidate.dart';
+import 'package:unyo/core/services/media/media_link_exception.dart';
+import 'package:unyo/core/services/media/media_link_proposal.dart';
 import 'package:unyo/domain/utils/episode_index.dart';
 import 'package:unyo/presentation/dialogs/anime_details_media_entry_dialog.dart';
 import 'package:unyo/presentation/drawers/anime_server_selection_drawer.dart';
+import 'package:unyo/presentation/widgets/media_link_dialog.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_date_picker.dart';
+import 'package:unyo/presentation/widgets/text/text_utils.dart';
 
 /// Picks the first non-empty title field for log lines, so a fetch never logs
 /// an empty title just because the preferred one is missing (Shikimori entries
@@ -64,7 +71,13 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   final AnimeRepository _animeRepository;
   final EpisodeRepository _episodeRepository;
   final ExtensionRepositoryAniyomi _extensionRepositoryAniyomi;
-  final UserRepositoryAnilist _userRepositoryAnilist;
+  final UserRepository _userRepository;
+
+  // Services
+  final MediaIdService _mediaIdService;
+
+  /// Question the link dialog is currently asking, if any.
+  MediaLinkProposal? _mediaLinkProposal;
 
   // Notifiers / Subscriptions
   final UserNotifier _loggedUserNotifier;
@@ -94,12 +107,13 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     this._selectedMediaListNotifier,
     this._videoInfoNotifier,
     this._extensionRepositoryAniyomi,
-    this._userRepositoryAnilist,
+    this._userRepository,
     this._episodesInfoNotifier,
     this._mediaListEntryNotifier,
     this._selectedExtensionNotifier,
     this._selectedEpisodesNotifier,
     this._reloadNotifier,
+    this._mediaIdService,
   ) : super(
         AnimeDetailsState(
           loggedUser: UserModel.empty(),
@@ -227,7 +241,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
             SettingsModel userSettings = anilistUserModel.settings as SettingsModel;
             Map<String, Extension> mediaExtensionsConfigUpdated = Map.from(userSettings.mediaExtensionConfigs);
             mediaExtensionsConfigUpdated.addAll({state.selectedAnime.id.toString(): selectedExtension});
-            await _userRepositoryAnilist.updateUserInfo(
+            await _userRepository.updateUserInfo(
               anilistUserModel.copyWith(
                 settings: userSettings.copyWith(mediaExtensionConfigs: mediaExtensionsConfigUpdated),
               ),
@@ -349,6 +363,16 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       if (desiredMediaListEntry.status != beforeUpdateMediaListEntry.status) {
         _reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated);
       }
+    } on MediaLinkUnresolvedException catch (e, stackTrace) {
+      // Writing to a guessed id would corrupt another entry: nothing was sent.
+      _logger.w("Skipped the list update, no verified user-provider entry: $e", stackTrace: stackTrace);
+      showSnackBarEffect(
+        "List not updated",
+        message: "This entry isn't matched to your ${TextUtils.capitalize(state.loggedUser.settings.userService.name)} account yet, so nothing was written.",
+        contentType: ContentType.warning,
+      );
+      // Keep the editor open: nothing was written, so closing it would imply a save.
+      return;
     } on HttpServerException catch (e, stackTrace) {
       handleError("Error updating Anime Entry:", responseBody: e.message, stackTrace: stackTrace);
     } catch (e, stackTrace) {
@@ -456,8 +480,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         loggedUser,
         ignoreCache: ignoreCache,
       );
-      emit(state.copyWith(mediaListEntry: mediaListEntry, newMediaListEntry: mediaListEntry));
-      _mediaListEntryNotifier.updateSelectedMediaListEntry(mediaListEntry);
+      _emitMediaListEntry(mediaListEntry);
     } on HttpServerException catch (e, stackTrace) {
       handleError("Error fetching User Media List entry:", responseBody: e.message, stackTrace: stackTrace);
     } catch (e, stackTrace) {
@@ -467,22 +490,34 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   Future<void> _getAnimeDetails(User loggedUser, Anime selectedAnime) async {
     try {
-      _logger.i("Fetching Anime Details for ${logTitleFor(selectedAnime.title)}");
+      final MediaDetailsSource source = await _mediaIdService.detailsSource(selectedAnime, loggedUser);
+      if (source.proposal != null) _openMediaLinkDialog(source.proposal!);
+      _logger.i(
+        "Fetching Anime Details for ${logTitleFor(selectedAnime.title)} from ${source.service.name}",
+      );
       (bool, AnimeDetails) animeDetails = await _animeRepository.getAnimeDetails(
-        selectedAnime,
+        source.anime,
         loggedUser,
+        service: source.service,
       );
       emit(
         state.copyWith(
           characters: (animeDetails.$2.characters.isNotEmpty, animeDetails.$2.characters),
-          mediaListEntry: animeDetails.$2.mediaListEntry,
-          newMediaListEntry: animeDetails.$2.mediaListEntry,
           recommendations: (
             animeDetails.$2.recommendedAnimes.isNotEmpty,
             animeDetails.$2.recommendedAnimes,
           ),
+          mediaLinkUnresolved: source.isUnresolved,
         ),
       );
+      // List state always belongs to the user provider (WP #61 decision 3): a
+      // metadata-provider payload must never seed the list editor, or a save
+      // would write that provider's (possibly empty) values.
+      if (source.service == loggedUser.settings.userService) {
+        _emitMediaListEntry(animeDetails.$2.mediaListEntry);
+      } else {
+        await _getUserMediaListEntry(loggedUser, selectedAnime);
+      }
       if (animeDetails.$2.recommendedAnimes.isEmpty) {
         (bool, List<Anime>) trendingAnimes = await _animeRepository.getTrendingAnimes(
           1,
@@ -496,6 +531,69 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     } catch (e, stackTrace) {
       handleError("Error fetching Anime Details: $e", stackTrace: stackTrace);
     }
+  }
+
+  void _emitMediaListEntry(MediaListEntry mediaListEntry) {
+    emit(state.copyWith(mediaListEntry: mediaListEntry, newMediaListEntry: mediaListEntry));
+    _mediaListEntryNotifier.updateSelectedMediaListEntry(mediaListEntry);
+  }
+
+  void _openMediaLinkDialog(MediaLinkProposal proposal) {
+    _mediaLinkProposal = proposal;
+    showWidgetDialogEffect(
+      dialog: MediaLinkDialog(
+        proposal: proposal,
+        onLink: confirmMediaLink,
+        onNoneOfThese: declineMediaLink,
+        onDismiss: dismissMediaLink,
+      ),
+    );
+  }
+
+  /// "Link" in the confirmation dialog: cache the user's choice and re-render
+  /// the details page from the freshly linked metadata entry.
+  Future<void> confirmMediaLink(MediaLinkCandidate candidate) async {
+    final MediaLinkProposal? proposal = _mediaLinkProposal;
+    if (proposal == null) return;
+    _mediaLinkProposal = null;
+    await _mediaIdService.confirmLink(
+      source: proposal.sourceService,
+      nativeId: proposal.sourceNativeId,
+      candidate: candidate,
+    );
+    await _getAnimeDetails(state.loggedUser, state.selectedAnime);
+  }
+
+  /// "None of these": the entry stays unresolved, nothing is linked.
+  Future<void> declineMediaLink() async {
+    final MediaLinkProposal? proposal = _mediaLinkProposal;
+    if (proposal == null) return;
+    _mediaLinkProposal = null;
+    await _mediaIdService.declineLink(
+      source: proposal.sourceService,
+      nativeId: proposal.sourceNativeId,
+    );
+  }
+
+  /// Dialog dismissed without choosing: quietly keep the user-provider
+  /// fallback, no mapping is cached.
+  void dismissMediaLink() {
+    _mediaLinkProposal = null;
+  }
+
+  /// Manual "Link metadata entry…" action on an unresolved details page: drop
+  /// the remembered miss and run the resolution chain (and its dialog) again.
+  Future<void> requestMediaLink() async {
+    final Anime selectedAnime = state.selectedAnime;
+    final Service provenance = MediaProvenance.ofAnime(selectedAnime);
+    final Service metadataService = state.loggedUser.settings.metadataService;
+    if (metadataService == provenance) return;
+    await _mediaIdService.resetLink(
+      source: provenance,
+      nativeId: '${selectedAnime.id}',
+      target: metadataService,
+    );
+    await _getAnimeDetails(state.loggedUser, selectedAnime);
   }
 
   Future<void> _loadInstalledExtensions() async {
@@ -699,18 +797,15 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   Future<void> _getAlternativeImage(User loggedUser, Anime selectedAnime) async {
     try {
       _logger.i("Fetching Alternative Image for ${logTitleFor(selectedAnime.title)}");
-      late String alternateImage;
-      if (loggedUser.settings.service == Service.anilist) {
-        alternateImage = await _episodeRepository.getAlternativeImage(
-          malId: -1,
-          anilistId: selectedAnime.id,
-        );
-      } else {
-        alternateImage = await _episodeRepository.getAlternativeImage(
-          malId: selectedAnime.idMal,
-          anilistId: -1,
-        );
+      final AniZipLookupIds? ids = AniZipLookupIds.forAnime(selectedAnime);
+      if (ids == null) {
+        _logger.w("No AniZip-addressable id for ${logTitleFor(selectedAnime.title)} (${MediaProvenance.ofAnime(selectedAnime).name} record, no MAL id)");
+        return;
       }
+      final String alternateImage = await _episodeRepository.getAlternativeImage(
+        malId: ids.malId,
+        anilistId: ids.anilistId,
+      );
       emit(state.copyWith(alternateImage: alternateImage));
     } on HttpServerException catch (e, stackTrace) {
       handleError("Error fetching Alternative Image:", responseBody: e.message, stackTrace: stackTrace);
@@ -722,18 +817,15 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   Future<void> _getEpisodesDetails(User loggedUser, Anime selectedAnime) async {
     try {
       _logger.i("Fetching Episodes Details for ${logTitleFor(selectedAnime.title)}");
-      late List<EpisodeInfo> episodesInfo;
-      if (loggedUser.settings.service == Service.anilist) {
-        episodesInfo = await _episodeRepository.getEpisodeInfo(
-          malId: -1,
-          anilistId: selectedAnime.id,
-        );
-      } else {
-        episodesInfo = await _episodeRepository.getEpisodeInfo(
-          malId: selectedAnime.idMal,
-          anilistId: -1,
-        );
+      final AniZipLookupIds? ids = AniZipLookupIds.forAnime(selectedAnime);
+      if (ids == null) {
+        _logger.w("No AniZip-addressable id for ${logTitleFor(selectedAnime.title)} (${MediaProvenance.ofAnime(selectedAnime).name} record, no MAL id)");
+        return;
       }
+      final List<EpisodeInfo> episodesInfo = await _episodeRepository.getEpisodeInfo(
+        malId: ids.malId,
+        anilistId: ids.anilistId,
+      );
       emit(state.copyWith(episodesInfo: episodesInfo));
       _episodesInfoNotifier.updateSelectedEpisodeInfo(episodesInfo);
     } on HttpServerException catch (e, stackTrace) {
