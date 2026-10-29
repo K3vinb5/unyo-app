@@ -12,6 +12,7 @@ import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
 import 'package:unyo/data/repositories/anime_repository_anilist.dart';
 import 'package:unyo/data/repositories/anime_repository_shikimori.dart';
 import 'package:unyo/data/repositories/manga_repository_anilist.dart';
+import 'package:unyo/data/repositories/manga_repository_shikimori.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/anime_details.dart';
@@ -34,6 +35,8 @@ class MockAnimeRepositoryAnilist extends Mock implements AnimeRepositoryAnilist 
 class MockAnimeRepositoryShikimori extends Mock implements AnimeRepositoryShikimori {}
 
 class MockMangaRepositoryAnilist extends Mock implements MangaRepositoryAnilist {}
+
+class MockMangaRepositoryShikimori extends Mock implements MangaRepositoryShikimori {}
 
 /// Target-provider leg of the MAL-pivot chain, stubbed per test.
 class FakeMediaMappingLookup implements MediaMappingLookup {
@@ -61,6 +64,7 @@ void main() {
   late MockAnimeRepositoryAnilist anilistAnime;
   late MockAnimeRepositoryShikimori shikimoriAnime;
   late MockMangaRepositoryAnilist anilistManga;
+  late MockMangaRepositoryShikimori shikimoriManga;
   late FakeMediaMappingLookup mappingLookup;
 
   AnilistUserModel userWith({Service userService = Service.anilist, Service metadataService = Service.anilist}) {
@@ -89,9 +93,11 @@ void main() {
     anilistAnime = MockAnimeRepositoryAnilist();
     shikimoriAnime = MockAnimeRepositoryShikimori();
     anilistManga = MockMangaRepositoryAnilist();
+    shikimoriManga = MockMangaRepositoryShikimori();
     sl.registerSingleton<AnimeRepositoryAnilist>(anilistAnime);
     sl.registerSingleton<AnimeRepositoryShikimori>(shikimoriAnime);
     sl.registerSingleton<MangaRepositoryAnilist>(anilistManga);
+    sl.registerSingleton<MangaRepositoryShikimori>(shikimoriManga);
     mappingLookup = FakeMediaMappingLookup();
     sl.registerLazySingleton<MediaIdService>(
       () => MediaIdService(cache: InMemoryMediaIdCache(), mappingLookup: mappingLookup),
@@ -161,16 +167,40 @@ void main() {
 
   group('MangaRepositoryFactory routing', () {
     test('details reads follow the metadata provider', () async {
-      // Shikimori manga details are still a known stub; the factory must not
-      // silently fall back to AniList for them.
+      when(() => shikimoriManga.getMangaDetails(any(), any()))
+          .thenAnswer((_) async => (true, MangaDetailsModel.empty()));
+
       final (bool ok, MangaDetails details) = await mangaFactory.getMangaDetails(
         MangaModel.empty(),
         userWith(metadataService: Service.shikimori),
       );
 
-      expect(ok, isFalse);
+      expect(ok, isTrue);
       expect(details, isNotNull);
+      verify(() => shikimoriManga.getMangaDetails(any(), any())).called(1);
       verifyNever(() => anilistManga.getMangaDetails(any(), any()));
+    });
+
+    test('browse reads and covers reach the Shikimori repository', () async {
+      when(() => shikimoriManga.getPopularMangas(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (true, <Manga>[MangaModel.empty()]));
+      when(() => shikimoriManga.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => <String>['cover']);
+
+      final (bool ok, List<Manga> mangas) = await mangaFactory.getPopularMangas(
+        1,
+        userWith(metadataService: Service.shikimori),
+      );
+      final List<String> covers = await mangaFactory.getMediaCoverImages(
+        userWith(metadataService: Service.shikimori),
+      );
+
+      expect(ok, isTrue);
+      expect(mangas, hasLength(1));
+      expect(covers, <String>['cover']);
+      verify(() => shikimoriManga.getPopularMangas(1, any(), ignoreCache: false)).called(1);
+      verify(() => shikimoriManga.getMediaCoverImages(any(), ignoreCache: false)).called(1);
+      verifyNever(() => anilistManga.getPopularMangas(any(), any(), ignoreCache: any(named: 'ignoreCache')));
     });
 
     test('trending reads follow the metadata provider', () async {

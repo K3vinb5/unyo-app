@@ -8,7 +8,7 @@ import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/services/media/media_id_service.dart';
 import 'package:unyo/core/services/media/media_link_candidate.dart';
 import 'package:unyo/core/services/media/media_link_proposal.dart';
-import 'package:unyo/core/services/api/dto/shikimori/anime_popular_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/anime_list_query_entity.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/title.dart';
@@ -86,8 +86,8 @@ void main() {
   /// A real Shikimori record, built from a schema-true `animes` payload (see
   /// test/data/models/shikimori_anime_model_test.dart for the captured shape).
   Anime shikimoriAnime({String id = '65261', String? malId = '58514'}) {
-    return ShikimoriAnimeModel.fromAnimesPopularQuery(
-      AnimePopularQueryAnimes.fromJson(<String, dynamic>{
+    return ShikimoriAnimeModel.fromListEntry(
+      AnimeListQueryAnimes.fromJson(<String, dynamic>{
         'id': id,
         'malId': malId,
         'name': title,

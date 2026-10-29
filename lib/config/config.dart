@@ -22,6 +22,13 @@ const String shikimoriClientId = 'sIjHVKp4D3gusN53hob4tDnmvFYgySDiLpWJNTsfVcA';
 const String shikimoriClientSecret = '6y39AFgZ8Ww6cESH_BzyZqYjZRSCrTy9meoY1nm2Cj0';
 const String shikimoriGraphQlService = 'shikimoriGraphQlService';
 const String shikimoriGraphQLEndpoint = 'https://shikimori.io/api/graphql';
+// Shikimori bans IPs that call its API without a meaningful User-Agent
+// (shikimori.io/api/doc, "Restrictions"/"Requirements"), so every request —
+// GraphQL today, REST once the calendar/user_rates work lands — carries this
+// one header map instead of one literal per call site.
+const Map<String, String> shikimoriRequestHeaders = <String, String>{
+  'User-Agent': 'unyo (https://gitea.k3vinb5.dev/Unyo/unyo-app)',
+};
 // Anizip API configuration
 const String anizipBaseEndpoint = 'https://api.ani.zip';
 // Aniski API configuration

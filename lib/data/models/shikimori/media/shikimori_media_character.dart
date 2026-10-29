@@ -1,8 +1,8 @@
 // External dependencies
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:unyo/core/services/api/dto/shikimori/anime_details_query_entity.dart';
 
 // Internal dependencies
+import 'package:unyo/data/models/shikimori/media/shikimori_media_mapper.dart';
 import 'package:unyo/domain/entities/media/media_character.dart';
 
 part 'shikimori_media_character.freezed.dart';
@@ -41,15 +41,22 @@ abstract class ShikimoriMediaCharacterModel
   Map<String, dynamic> toJson() =>
       _$ShikimoriMediaCharacterModelToJson(this as _ShikimoriMediaCharacterModel);
 
-  factory ShikimoriMediaCharacterModel.fromRolesCharacter(AnimeDetailsQueryAnimesCharacterRolesCharacter character) {
+  /// Shikimori's `Character` type carries only `id`, `name`, `poster` and
+  /// `russian` — no gender, age, birthday or biography — so the placeholder
+  /// values stay and only the identity fields are mapped.
+  factory ShikimoriMediaCharacterModel.fromRole({
+    required String id,
+    required String name,
+    required String image,
+  }) {
     return ShikimoriMediaCharacterModel(
-        id: int.parse(character.id),
-        image: character.poster.originalUrl,
-        name: character.name,
-        gender: 'Unknown',
-        description: 'No description available',
-        dateOfBirth: 'Unknown',
-        age: -1
+      id: ShikimoriMediaMapper.parseId(id),
+      image: image,
+      name: name,
+      gender: 'Unknown',
+      description: 'No description available',
+      dateOfBirth: 'Unknown',
+      age: -1,
     );
   }
 }

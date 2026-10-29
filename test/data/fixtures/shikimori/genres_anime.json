@@ -1,0 +1,24 @@
+{
+  "data": {
+    "genres": [
+      {
+        "id": "27",
+        "name": "Shounen",
+        "russian": "Сёнен",
+        "kind": "demographic"
+      },
+      {
+        "id": "25",
+        "name": "Shoujo",
+        "russian": "Сёдзё",
+        "kind": "demographic"
+      },
+      {
+        "id": "42",
+        "name": "Seinen",
+        "russian": "Сэйнэн",
+        "kind": "demographic"
+      }
+    ]
+  }
+}
