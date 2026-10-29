@@ -17,6 +17,7 @@ import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_dialog.
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_dropdown.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_slider.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_toggle.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_settings_version.dart';
 import 'package:unyo/presentation/widgets/text/text_body_large.dart';
 import 'package:unyo/presentation/widgets/text/text_headline_medium.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
@@ -27,7 +28,10 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(create: (context) => sl<SettingsCubit>(), child: const _SettingsListener());
+    return BlocProvider(
+      create: (context) => sl<SettingsCubit>(),
+      child: const _SettingsListener(),
+    );
   }
 }
 
@@ -347,7 +351,7 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                       icon: Icons.info_rounded,
                       alignment: "bottom",
                       childAlignment: "bottom",
-                      settingsOptions: [],
+                      settingsOptions: [UnyoSettingsVersion()],
                     ),
                   ],
                 ),

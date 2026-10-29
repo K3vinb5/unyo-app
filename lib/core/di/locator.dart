@@ -40,6 +40,8 @@ import 'package:unyo/core/services/api/http/http_service.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/core/services/settings/settings_service.dart';
 import 'package:unyo/core/services/torrent/torrent_service.dart';
+import 'package:unyo/core/services/update/app_version_provider.dart';
+import 'package:unyo/core/services/update/update_checker_service.dart';
 import 'package:unyo/core/factories/anime_repository_factory.dart';
 import 'package:unyo/core/factories/episode_repository_factory.dart';
 import 'package:unyo/core/factories/manga_repository_factory.dart';
@@ -86,6 +88,10 @@ void setupLocator() async{
     instanceName: config.shikimoriGraphQlService,
   );
   sl.registerLazySingleton<AppEffectHandler>(() => AppEffectHandler());
+  sl.registerLazySingleton<AppVersionProvider>(() => const AppVersionProvider());
+  sl.registerLazySingleton<UpdateCheckerService>(
+    () => UpdateCheckerService(httpService: sl<HttpService>()),
+  );
   sl.registerLazySingleton<ColorImageService>(() => ColorImageService());
   sl.registerSingleton<AniyomiBridge>(AniyomiBridge());
   sl.registerSingleton<TorrentService>(TorrentService());
@@ -161,7 +167,13 @@ void setupLocator() async{
     ),
   );
   sl.registerFactory<TabsCubit>(
-    () => TabsCubit(sl<ThemeService>(), sl<UserNotifier>(instanceName: config.loggedUserNotifier), sl<MenuBarNotifier>()),
+    () => TabsCubit(
+      sl<ThemeService>(),
+      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
+      sl<MenuBarNotifier>(),
+      sl<UpdateCheckerService>(),
+      sl<AppVersionProvider>(),
+    ),
   );
   sl.registerFactory<AnimeCubit>(
     () => AnimeCubit(

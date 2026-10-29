@@ -1,5 +1,7 @@
 // Application configuration
-const String version = 'v1.0.0';
+// Update check configuration
+const String unyoReleasesEndpoint = 'https://api.github.com/repos/K3vinb5/Unyo/releases/latest';
+const String unyoReleasesFallbackUrl = 'https://github.com/K3vinb5/Unyo/releases/latest';
 // Locator configuration
 const String applicationSupportDirectory = "applicationSupportDirectory";
 const String loggedUserNotifier = 'loggedUserNotifier';

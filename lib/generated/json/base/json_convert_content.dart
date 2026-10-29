@@ -19,6 +19,7 @@ import 'package:unyo/core/services/api/dto/anizip/anizip_episode_info_entity.dar
 import 'package:unyo/core/services/api/dto/anizip/anizip_id_mappings_entity.dart';
 import 'package:unyo/core/services/api/dto/extensions/aniyomi_repo_json_entity.dart';
 import 'package:unyo/core/services/api/dto/extensions/tachiyomi_repo_json_entity.dart';
+import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_details_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_mapping_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_popular_query_entity.dart';
@@ -428,6 +429,12 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		if(<TachiyomiRepoJsonSources>[] is M){
 			return data.map<TachiyomiRepoJsonSources>((Map<String, dynamic> e) => TachiyomiRepoJsonSources.fromJson(e)).toList() as M;
 		}
+		if(<GithubReleaseEntity>[] is M){
+			return data.map<GithubReleaseEntity>((Map<String, dynamic> e) => GithubReleaseEntity.fromJson(e)).toList() as M;
+		}
+		if(<GithubReleaseAssets>[] is M){
+			return data.map<GithubReleaseAssets>((Map<String, dynamic> e) => GithubReleaseAssets.fromJson(e)).toList() as M;
+		}
 		if(<AnimeDetailsQueryEntity>[] is M){
 			return data.map<AnimeDetailsQueryEntity>((Map<String, dynamic> e) => AnimeDetailsQueryEntity.fromJson(e)).toList() as M;
 		}
@@ -640,6 +647,8 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		(AniyomiRepoJsonSources).toString(): AniyomiRepoJsonSources.fromJson,
 		(TachiyomiRepoJsonEntity).toString(): TachiyomiRepoJsonEntity.fromJson,
 		(TachiyomiRepoJsonSources).toString(): TachiyomiRepoJsonSources.fromJson,
+		(GithubReleaseEntity).toString(): GithubReleaseEntity.fromJson,
+		(GithubReleaseAssets).toString(): GithubReleaseAssets.fromJson,
 		(AnimeDetailsQueryEntity).toString(): AnimeDetailsQueryEntity.fromJson,
 		(AnimeDetailsQueryAnimes).toString(): AnimeDetailsQueryAnimes.fromJson,
 		(AnimeDetailsQueryAnimesUserRate).toString(): AnimeDetailsQueryAnimesUserRate.fromJson,
