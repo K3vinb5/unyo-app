@@ -35,10 +35,15 @@ class FakeGraphQlHttpService implements HttpService {
   final Map<String, Map<String, dynamic>> payloadsByQueryMarker;
 
   String? lastEndpoint;
+  String? lastMethod;
   Map<String, String>? lastHeaders;
   Map<String, dynamic>? lastBody;
   String? lastGetEndpoint;
   int calls = 0;
+
+  /// Body answered by the write verbs ([patch], [put], [delete]). The GraphQL
+  /// repository tests never write; the REST list-entry tests use it.
+  Map<String, dynamic> writePayload = <String, dynamic>{};
 
   @override
   http.Client get client => throw UnimplementedError('the fake only answers get() and post()');
@@ -51,6 +56,57 @@ class FakeGraphQlHttpService implements HttpService {
 
   @override
   Duration get cacheTtl => const Duration(minutes: 20);
+
+  @override
+  Future<ApiResponse<T>> patch<T>(
+    String endpoint, {
+    Map<String, String>? headers,
+    Object? body,
+    required T Function(Map<String, dynamic>) fromJson,
+  }) async {
+    return _write<T>('PATCH', endpoint, headers: headers, body: body, fromJson: fromJson);
+  }
+
+  @override
+  Future<ApiResponse<T>> put<T>(
+    String endpoint, {
+    Map<String, String>? headers,
+    Object? body,
+    required T Function(Map<String, dynamic>) fromJson,
+  }) async {
+    return _write<T>('PUT', endpoint, headers: headers, body: body, fromJson: fromJson);
+  }
+
+  @override
+  Future<ApiResponse<T>> delete<T>(
+    String endpoint, {
+    Map<String, String>? headers,
+    required T Function(Map<String, dynamic>) fromJson,
+  }) async {
+    return _write<T>('DELETE', endpoint, headers: headers, fromJson: fromJson);
+  }
+
+  ApiResponse<T> _write<T>(
+    String method,
+    String endpoint, {
+    Map<String, String>? headers,
+    Object? body,
+    required T Function(Map<String, dynamic>) fromJson,
+  }) {
+    calls++;
+    lastMethod = method;
+    lastEndpoint = endpoint;
+    lastHeaders = headers;
+    lastBody = body is Map<dynamic, dynamic>
+        ? jsonDecode(jsonEncode(body)) as Map<String, dynamic>
+        : null;
+    return ApiResponse<T>(
+      data: fromJson(writePayload),
+      bodyBytes: Uint8List(0),
+      statusCode: 200,
+      headers: const <String, String>{},
+    );
+  }
 
   @override
   Future<ApiResponse<T>> get<T>(

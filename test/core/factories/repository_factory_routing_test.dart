@@ -7,8 +7,12 @@ import 'package:mocktail/mocktail.dart';
 import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/factories/anime_repository_factory.dart';
 import 'package:unyo/core/factories/manga_repository_factory.dart';
+import 'package:unyo/core/factories/user_repository_factory.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
+import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
+import 'package:unyo/data/repositories/user_repository_anilist.dart';
+import 'package:unyo/data/repositories/user_repository_shikimori.dart';
 import 'package:unyo/data/repositories/anime_repository_anilist.dart';
 import 'package:unyo/data/repositories/anime_repository_shikimori.dart';
 import 'package:unyo/data/repositories/manga_repository_anilist.dart';
@@ -38,6 +42,10 @@ class MockMangaRepositoryAnilist extends Mock implements MangaRepositoryAnilist 
 
 class MockMangaRepositoryShikimori extends Mock implements MangaRepositoryShikimori {}
 
+class MockUserRepositoryShikimori extends Mock implements UserRepositoryShikimori {}
+
+class MockUserRepositoryAnilist extends Mock implements UserRepositoryAnilist {}
+
 /// Target-provider leg of the MAL-pivot chain, stubbed per test.
 class FakeMediaMappingLookup implements MediaMappingLookup {
   MediaLinkCandidate? probeResult;
@@ -61,10 +69,13 @@ class FakeMediaMappingLookup implements MediaMappingLookup {
 void main() {
   late AnimeRepositoryFactory animeFactory;
   late MangaRepositoryFactory mangaFactory;
+  late UserRepositoryFactory userFactory;
   late MockAnimeRepositoryAnilist anilistAnime;
   late MockAnimeRepositoryShikimori shikimoriAnime;
   late MockMangaRepositoryAnilist anilistManga;
   late MockMangaRepositoryShikimori shikimoriManga;
+  late MockUserRepositoryShikimori shikimoriUser;
+  late MockUserRepositoryAnilist anilistUser;
   late FakeMediaMappingLookup mappingLookup;
 
   AnilistUserModel userWith({Service userService = Service.anilist, Service metadataService = Service.anilist}) {
@@ -98,12 +109,17 @@ void main() {
     sl.registerSingleton<AnimeRepositoryShikimori>(shikimoriAnime);
     sl.registerSingleton<MangaRepositoryAnilist>(anilistManga);
     sl.registerSingleton<MangaRepositoryShikimori>(shikimoriManga);
+    shikimoriUser = MockUserRepositoryShikimori();
+    anilistUser = MockUserRepositoryAnilist();
+    sl.registerSingleton<UserRepositoryShikimori>(shikimoriUser);
+    sl.registerSingleton<UserRepositoryAnilist>(anilistUser);
     mappingLookup = FakeMediaMappingLookup();
     sl.registerLazySingleton<MediaIdService>(
       () => MediaIdService(cache: InMemoryMediaIdCache(), mappingLookup: mappingLookup),
     );
     animeFactory = AnimeRepositoryFactory();
     mangaFactory = MangaRepositoryFactory();
+    userFactory = UserRepositoryFactory();
   });
 
   group('AnimeRepositoryFactory routing', () {
@@ -212,6 +228,111 @@ void main() {
       expect(ok, isTrue);
       expect(mangas, hasLength(1));
       verify(() => anilistManga.getTrendingMangas(1, any(), ignoreCache: false)).called(1);
+    });
+  });
+
+  group('Shikimori as the user provider', () {
+    ShikimoriUserModel shikimoriAccount({Service metadataService = Service.anilist}) {
+      return ShikimoriUserModel(
+        id: '23456789',
+        name: 'shikimori-tester',
+        settings: SettingsModel.empty().copyWith(
+          userService: Service.shikimori,
+          metadataService: metadataService,
+        ),
+        avatarImage: '',
+        bannerImage: '',
+        accessToken: 'stored-access',
+        refreshToken: 'stored-refresh',
+        accessTokenExpiresAt: '2099-01-01T00:00:00.000',
+        profileUrl: '',
+      );
+    }
+
+    ShikimoriAnimeModel shikimoriRecord() => ShikimoriAnimeModel(
+          id: 16001,
+          idMal: 16001,
+          title: const TitleModel(
+            romaji: 'Kokoro Connect',
+            english: 'Kokoro Connect',
+            nativeTitle: '',
+            userPreferred: 'Kokoro Connect',
+          ),
+          averageScore: 75,
+          bannerImage: '',
+          countryOfOrigin: 'JP',
+          coverImage: '',
+          description: '',
+          duration: 24,
+          endDate: '',
+          startDate: '',
+          episodes: 13,
+          genres: const <String>[],
+          format: 'tv',
+          isAdult: false,
+          popularity: 0,
+          meanScore: 75,
+          season: 'summer',
+          status: 'FINISHED',
+          isFavourite: false,
+          nextAiringEpisode: AiringEpisodeModel.empty(),
+        );
+
+    test('list entry writes reach the Shikimori repository instead of an empty stub', () async {
+      when(() => shikimoriAnime.updateMediaListEntry(any(), any(), any()))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+
+      await animeFactory.updateMediaListEntry(
+        MediaListEntryModel.empty(),
+        shikimoriRecord(),
+        shikimoriAccount(),
+      );
+
+      verify(() => shikimoriAnime.updateMediaListEntry(any(), any(), any())).called(1);
+      verifyNever(() => anilistAnime.updateMediaListEntry(any(), any(), any()));
+    });
+
+    test('list entry reads reach the Shikimori repository too', () async {
+      when(() => shikimoriAnime.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+
+      final MediaListEntry entry = await animeFactory.getMediaListEntry(shikimoriRecord(), shikimoriAccount());
+
+      expect(entry.status, MediaListEntryModel.empty().status);
+      verify(() => shikimoriAnime.getMediaListEntry(any(), any(), ignoreCache: false)).called(1);
+      verifyNever(() => anilistAnime.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')));
+    });
+
+    test('account reads follow settings.userService', () async {
+      when(() => shikimoriUser.getUserWatchingList(any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => <Anime>[AnimeModel.empty()]);
+      when(() => shikimoriUser.getUserAnimeLists(any()))
+          .thenAnswer((_) async => <String, List<Anime>>{'Watching': <Anime>[AnimeModel.empty()]});
+      when(() => shikimoriUser.getUserMangaLists(any()))
+          .thenAnswer((_) async => <String, List<Manga>>{'Reading': <Manga>[MangaModel.empty()]});
+
+      final List<Anime> watching = await userFactory.getUserWatchingList(shikimoriAccount());
+      final Map<String, List<Anime>> animeLists = await userFactory.getUserAnimeLists(shikimoriAccount());
+      final Map<String, List<Manga>> mangaLists = await userFactory.getUserMangaLists(shikimoriAccount());
+
+      expect(watching, hasLength(1));
+      expect(animeLists.keys, <String>['Watching']);
+      expect(mangaLists.keys, <String>['Reading']);
+      verify(() => shikimoriUser.getUserWatchingList(any(), ignoreCache: false)).called(1);
+      verify(() => shikimoriUser.getUserAnimeLists(any())).called(1);
+      verify(() => shikimoriUser.getUserMangaLists(any())).called(1);
+      verifyNever(() => anilistUser.getUserWatchingList(any(), ignoreCache: any(named: 'ignoreCache')));
+      verifyNever(() => anilistUser.getUserAnimeLists(any()));
+    });
+
+    test('an AniList account still routes to the AniList repository', () async {
+      when(() => anilistUser.getUserMangaLists(any()))
+          .thenAnswer((_) async => <String, List<Manga>>{});
+
+      await userFactory.getUserMangaLists(userWith());
+
+      verify(() => anilistUser.getUserMangaLists(any())).called(1);
+      verifyNever(() => shikimoriUser.getUserMangaLists(any()));
     });
   });
 
