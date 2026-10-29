@@ -240,6 +240,8 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
                                     ? UnyoCharacterList(
                                   characters: state.characters.$2,
                                   controller: charactersListController,
+                                  onCharacterPressed:
+                                      context.read<MangaDetailsCubit>().openCharacterDialog,
                                 )
                                     : const CardRowSkeleton(),
                                 SizedBox(height: 20.h),

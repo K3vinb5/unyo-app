@@ -25,10 +25,12 @@ import 'package:unyo/domain/repositories/user_repository.dart';
 import 'package:unyo/domain/entities/extension/extension.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/media/manga_details.dart';
+import 'package:unyo/domain/entities/media/media_character.dart';
 import 'package:unyo/domain/entities/list/media_list.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
+import 'package:unyo/presentation/dialogs/character_dialog.dart';
 
 class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaDetailsState> {
   // Repositories
@@ -272,6 +274,11 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
     } catch (e, stackTrace) {
       handleError("Error fetching Manga Banners: $e", stackTrace: stackTrace);
     }
+  }
+
+  /// Opens the read-only character dialog from the already-loaded list.
+  void openCharacterDialog(MediaCharacter character) {
+    showWidgetDialogEffect(dialog: CharacterDialog(character: character));
   }
 
   /// Handles a tap on a chapter button in the manga details page.

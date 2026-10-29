@@ -293,6 +293,8 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                                     ? UnyoCharacterList(
                                       characters: state.characters.$2,
                                       controller: charactersListController,
+                                      onCharacterPressed:
+                                          context.read<AnimeDetailsCubit>().openCharacterDialog,
                                     )
                                     : const CardRowSkeleton(),
                                 SizedBox(height: 20.h),

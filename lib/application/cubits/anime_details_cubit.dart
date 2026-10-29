@@ -50,7 +50,9 @@ import 'package:unyo/core/services/media/media_link_candidate.dart';
 import 'package:unyo/core/services/media/media_link_exception.dart';
 import 'package:unyo/core/services/media/media_link_proposal.dart';
 import 'package:unyo/domain/utils/episode_index.dart';
+import 'package:unyo/domain/entities/media/media_character.dart';
 import 'package:unyo/presentation/dialogs/anime_details_media_entry_dialog.dart';
+import 'package:unyo/presentation/dialogs/character_dialog.dart';
 import 'package:unyo/presentation/drawers/anime_server_selection_drawer.dart';
 import 'package:unyo/presentation/widgets/media_link_dialog.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_date_picker.dart';
@@ -266,6 +268,10 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   void openAnimeDetailsMediaEntryDialog(BuildContext context) {
     showWidgetDialogEffect(dialog: AnimeDetailsMediaEntryDialog(cubit: this));
+  }
+
+  void openCharacterDialog(MediaCharacter character) {
+    showWidgetDialogEffect(dialog: CharacterDialog(character: character));
   }
 
   Future<void> openAnimeServerSelectionDrawer(BuildContext context, int episodeIndex) async {

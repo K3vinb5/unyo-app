@@ -9,8 +9,14 @@ import 'package:unyo/presentation/widgets/styled/unyo_character.dart';
 class UnyoCharacterList extends StatelessWidget {
   final List<MediaCharacter> characters;
   final ScrollController controller;
+  final void Function(MediaCharacter character)? onCharacterPressed;
 
-  const UnyoCharacterList({super.key, required this.characters, required this.controller});
+  const UnyoCharacterList({
+    super.key,
+    required this.characters,
+    required this.controller,
+    this.onCharacterPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +66,9 @@ class UnyoCharacterList extends StatelessWidget {
                 ...characters.map(
                   (character) => UnyoCharacter(
                     tag: "${character.id}",
-                    onPressed: null,
+                    onPressed: onCharacterPressed == null
+                        ? null
+                        : () => onCharacterPressed!(character),
                     image: character.image,
                     name: character.name,
                   ),
