@@ -170,17 +170,12 @@ void main() {
   });
 
   group('MangaDetailsCubit extension prompt on open', () {
-    test('prompts once on open when extensions are installed but none is selected', () async {
+    test('stays quiet on open when extensions are installed but none is selected', () async {
       await Future<void>.delayed(Duration.zero);
 
       final List<ShowSnackbarEffect> snackbars = cubit.state.effects.whereType<ShowSnackbarEffect>().toList();
-      expect(
-        snackbars.any(
-          (effect) =>
-              effect.title == 'No Extension Selected' && effect.message == 'Select an extension to fetch chapters.',
-        ),
-        isTrue,
-      );
+      expect(cubit.state.installedExtensions, contains(testExtension));
+      expect(snackbars, isEmpty);
     });
   });
 }

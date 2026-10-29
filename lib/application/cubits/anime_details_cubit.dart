@@ -865,30 +865,11 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         await selectAnimeExtension(savedExtension.name);
         return;
       }
-      if (isClosed) return;
-      _showNoExtensionSelectedPrompt();
+      // Nothing to restore: opening the page does not nag, the warning fires
+      // when the user taps an episode without a selected extension.
+      _logger.d("No saved extension found for anime ${selectedAnime.id}; leaving the pick to the user.");
     } catch (e, stackTrace) {
       handleError("Error setting selected extension: $e", stackTrace: stackTrace);
     }
-  }
-
-  /// Proactive prompt when the details page opens without a usable extension.
-  void _showNoExtensionSelectedPrompt() {
-    if (isClosed) return;
-    if (state.installedExtensions.isEmpty) {
-      _logger.w("No installed extensions available to fetch episodes.");
-      showSnackBarEffect(
-        "No Installed Extensions",
-        message: "Install some extensions to watch some content",
-        contentType: ContentType.warning,
-      );
-      return;
-    }
-    _logger.w("No extension selected to fetch episodes.");
-    showSnackBarEffect(
-      "No Extension Selected",
-      message: "Select an extension to fetch episodes.",
-      contentType: ContentType.warning,
-    );
   }
 }

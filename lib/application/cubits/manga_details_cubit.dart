@@ -311,30 +311,11 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
         await selectMangaExtension(savedExtension.name);
         return;
       }
-      if (isClosed) return;
-      _showNoExtensionSelectedPrompt();
+      // Nothing to restore: opening the page does not nag, the warning fires
+      // when the user taps a chapter without a selected extension.
+      _logger.d("No saved extension found for manga ${selectedManga.id}; leaving the pick to the user.");
     } catch (e, stackTrace) {
       handleError("Error setting selected extension: $e", stackTrace: stackTrace);
     }
-  }
-
-  /// Proactive prompt when the details page opens without a usable extension.
-  void _showNoExtensionSelectedPrompt() {
-    if (isClosed) return;
-    if (state.installedExtensions.isEmpty) {
-      _logger.w("No installed extensions available to fetch manga info.");
-      showSnackBarEffect(
-        "No Installed Extensions",
-        message: "Install some extensions to watch some content",
-        contentType: ContentType.warning,
-      );
-      return;
-    }
-    _logger.w("No extension selected to fetch chapters.");
-    showSnackBarEffect(
-      "No Extension Selected",
-      message: "Select an extension to fetch chapters.",
-      contentType: ContentType.warning,
-    );
   }
 }
