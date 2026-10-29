@@ -93,7 +93,7 @@ class _UserOptionsDrawerState extends State<UserOptionsDrawer> {
                   UserOptionDrawerSelection(
                       text: "View Profile",
                       icon: Icons.person_rounded,
-                      onPressed: () {}
+                      onPressed: widget.cubit.openUserProfileDialog
                   ),
                   SizedBox(height: 10.h),
                   UserOptionDrawerSelection(
