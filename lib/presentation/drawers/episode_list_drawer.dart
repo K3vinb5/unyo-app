@@ -1,5 +1,4 @@
 // External dependencies
-import 'dart:math';
 import 'dart:ui';
 
 import 'package:material_ui/material_ui.dart';
@@ -8,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // Internal dependencies
 import 'package:unyo/application/cubits/video_cubit.dart';
+import 'package:unyo/application/states/episode_count.dart';
 import 'package:unyo/application/states/video_state.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_episode_button.dart';
@@ -18,7 +18,11 @@ class EpisodeListDrawer extends StatelessWidget {
   const EpisodeListDrawer({super.key, required this.cubit});
 
   List<Widget> _getEpisodeButtonsWidgets(BuildContext context, VideoState state) {
-    int numEpisodes = max(state.selectedAnime.episodes, state.episodesInfo.length);
+    final int numEpisodes = EpisodeCount.resolve(
+      extensionResults: state.extensionEpisodeResults.length,
+      episodesInfo: state.episodesInfo.length,
+      metadataTotal: state.selectedAnime.episodes,
+    );
     if (numEpisodes == 0) {
       return [
         Row(

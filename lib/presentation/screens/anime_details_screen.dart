@@ -1,5 +1,4 @@
 // External package dependencies
-import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,6 +8,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 // Internal package dependencies
 import 'package:unyo/application/cubits/anime_details_cubit.dart';
 import 'package:unyo/application/states/anime_details_state.dart';
+import 'package:unyo/application/states/episode_count.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
@@ -72,7 +72,11 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
   }
 
   List<Widget> _getEpisodeButtonsWidgets(AnimeDetailsState state) {
-    int numEpisodes = max(state.selectedAnime.episodes, state.episodesInfo.length);
+    final int numEpisodes = EpisodeCount.resolve(
+      extensionResults: state.extensionEpisodeResults.length,
+      episodesInfo: state.episodesInfo.length,
+      metadataTotal: state.selectedAnime.episodes,
+    );
     if (numEpisodes == 0) {
       return [
         Row(

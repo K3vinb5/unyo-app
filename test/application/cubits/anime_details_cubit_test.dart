@@ -10,6 +10,7 @@ import 'package:unyo_lib/jmodels/jsanime.dart';
 import 'package:unyo/application/cubits/anime_details_cubit.dart';
 import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/application/states/anime_details_state.dart';
+import 'package:unyo/domain/entities/media/airing_episode.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/anime_details.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
@@ -26,6 +27,7 @@ import 'package:unyo/core/notification/reload/reload_notifier.dart';
 import 'package:unyo/core/notification/reload/reload_type.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/core/notification/video_info_notifier.dart';
+import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
 import 'package:unyo/data/repositories/extension_repository_aniyomi.dart';
 import 'package:unyo/data/repositories/user_repository_anilist.dart';
 import 'package:unyo/domain/entities/extension/extension.dart';
@@ -355,6 +357,77 @@ void main() {
       verify(() => animeRepository.updateMediaListEntry(any(), any(), any())).called(1);
       verifyNever(() => reloadNotifier.emitReload(ReloadType.animeMediaListEntryUpdated));
       verifyNever(() => reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated));
+    });
+  });
+
+  group('AnimeDetailsCubit.episodesLoaded', () {
+    test('settles the episode gate for a Shikimori record with no MAL id and no episode total', () async {
+      final StreamController<Anime> animeStreamController = StreamController<Anime>.broadcast();
+      addTearDown(animeStreamController.close);
+      when(() => animeNotifier.animeStream).thenAnswer((_) => animeStreamController.stream);
+      when(() => animeRepository.getAnimeDetails(any(), any(), service: any(named: 'service')))
+          .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
+      when(() => animeRepository.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (false, <Anime>[]));
+      when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => <String>[]);
+      when(() => animeRepository.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+      when(() => mediaListEntryNotifier.updateSelectedMediaListEntry(any())).thenReturn(null);
+      when(() => extensionRepository.getInstalledAnimeExtensions(any())).thenAnswer((_) async => <Extension>{});
+
+      // A Shikimori record whose source published no MAL id and no episode
+      // total: AniZip cannot address it, so the episode metadata fetch bails.
+      final ShikimoriAnimeModel shikimoriAnime = ShikimoriAnimeModel(
+        id: 90,
+        idMal: 0,
+        title: const TitleModel(romaji: 'No Total', english: 'No Total', nativeTitle: '', userPreferred: 'No Total'),
+        averageScore: 0,
+        bannerImage: '',
+        countryOfOrigin: 'JP',
+        coverImage: '',
+        description: '',
+        duration: 24,
+        endDate: '',
+        startDate: '',
+        episodes: 0,
+        genres: const <String>[],
+        format: 'TV',
+        isAdult: false,
+        popularity: 0,
+        meanScore: 0,
+        season: '',
+        status: 'RELEASING',
+        isFavourite: false,
+        nextAiringEpisode: AiringEpisodeModel.empty(),
+      );
+
+      cubit = buildCubit();
+      await pumpEventQueue();
+      animeStreamController.add(shikimoriAnime);
+      await pumpEventQueue();
+
+      expect(cubit.state.selectedAnime.episodes, 0);
+      expect(
+        cubit.state.episodesLoaded,
+        isTrue,
+        reason: 'the no-id path must settle the gate instead of shimmering forever',
+      );
+      final List<ShowSnackbarEffect> snackbars = snackbarsOf(cubit.state);
+      final List<String> rendered = snackbars.map((ShowSnackbarEffect effect) => '${effect.title} / ${effect.message}').toList();
+      expect(
+        snackbars.any((ShowSnackbarEffect effect) => effect.title == 'Something went wrong'),
+        isFalse,
+        reason: 'an unaddressable record is an expected state, not an error, got: $rendered',
+      );
+      expect(
+        snackbars.any((ShowSnackbarEffect effect) => effect.message.contains('Episodes')),
+        isFalse,
+        reason: 'the episode metadata fetch must be skipped, not failed, got: $rendered',
+      );
+      verifyNever(
+        () => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')),
+      );
     });
   });
 

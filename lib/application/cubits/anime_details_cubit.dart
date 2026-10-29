@@ -821,6 +821,9 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       final AniZipLookupIds? ids = AniZipLookupIds.forAnime(selectedAnime);
       if (ids == null) {
         _logger.w("No AniZip-addressable id for ${logTitleFor(selectedAnime.title)} (${MediaProvenance.ofAnime(selectedAnime).name} record, no MAL id)");
+        // Nothing to look up: settle the gate so the episode rows render the
+        // data we already have instead of shimmering forever.
+        emit(state.copyWith(episodesLoaded: true));
         return;
       }
       final List<EpisodeInfo> episodesInfo = await _episodeRepository.getEpisodeInfo(
