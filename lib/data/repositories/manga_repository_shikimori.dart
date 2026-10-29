@@ -15,9 +15,12 @@ import 'package:unyo/core/services/api/graphql/graphql_response.dart';
 import 'package:unyo/core/services/api/graphql/graphql_service.dart';
 import 'package:unyo/core/services/api/graphql/queries/shikimori_queries.dart' as shikimori_queries;
 import 'package:unyo/core/services/api/graphql/queries/shikimori_search_parameters.dart';
+import 'package:unyo/core/services/api/shikimori/shikimori_user_rate_service.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_manga_details.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_manga_model.dart';
+import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/repository_mixin.dart';
+import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/media/manga_details.dart';
 import 'package:unyo/domain/entities/user/user.dart';
@@ -36,6 +39,9 @@ class MangaRepositoryShikimori with RepositoryMixin implements MangaRepository {
   final GraphQLService _shikimoriGraphQLService = sl<GraphQLService>(
     instanceName: config.shikimoriGraphQlService,
   );
+  /// Resolved on first use: the metadata tests build this repository without a
+  /// REST list-entry service registered, and no metadata read touches it.
+  ShikimoriUserRateService get _userRateService => sl<ShikimoriUserRateService>();
   final Logger _logger = sl<Logger>();
 
   /// Genre **name** (lower-cased) → genre id for `genres(entryType: Manga)`.
@@ -264,6 +270,51 @@ class MangaRepositoryShikimori with RepositoryMixin implements MangaRepository {
         .map((MangaListQueryMangas entry) => ShikimoriMangaModel.fromListEntry(entry))
         .toList();
     return (true, mangas);
+  }
+
+  /// WP #64 subpart (c): the manga rate mirrors the anime one through REST v2
+  /// `user_rates`; manga progress lives in `chapters` (and `volumes` in
+  /// `volumes`), which the rate service maps.
+  ///
+  /// Deliberately **not** on [MangaRepository]: the interface has no list-entry
+  /// API yet (manga entries are not editable in the v1 UI), so this stays a
+  /// concrete capability the factory does not route to.
+  Future<MediaListEntry> updateMediaListEntry(
+    MediaListEntry newMediaListEntry,
+    Manga selectedManga,
+    User loggedUser,
+  ) async {
+    _logger.i("Updating Media List Entry to $newMediaListEntry on Shikimori");
+    final ShikimoriUserModel? account = _shikimoriAccount(loggedUser);
+    if (account == null) return MediaListEntryModel.empty();
+    return _userRateService.updateEntry(
+      user: account,
+      targetId: selectedManga.id,
+      target: ShikimoriUserRateTarget.manga,
+      entry: newMediaListEntry,
+    );
+  }
+
+  Future<MediaListEntry> getMediaListEntry(
+    Manga selectedManga,
+    User loggedUser, {
+    bool ignoreCache = false,
+  }) async {
+    _logger.i("Fetching User Media List Entry from Shikimori for ${selectedManga.title.userPreferred}");
+    final ShikimoriUserModel? account = _shikimoriAccount(loggedUser);
+    if (account == null) return MediaListEntryModel.empty();
+    return _userRateService.getEntry(
+      user: account,
+      targetId: selectedManga.id,
+      target: ShikimoriUserRateTarget.manga,
+    );
+  }
+
+  /// Mirror of the anime repository guard: no token, no call.
+  ShikimoriUserModel? _shikimoriAccount(User loggedUser) {
+    if (loggedUser is ShikimoriUserModel) return loggedUser;
+    _logger.w("Logged user ${loggedUser.name} is not a Shikimori account, skipping the list call");
+    return null;
   }
 }
 

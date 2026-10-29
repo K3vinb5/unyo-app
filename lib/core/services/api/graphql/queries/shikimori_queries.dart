@@ -423,3 +423,146 @@ const String shikimoriGenresListQuery =
     }
   }
 ''';
+
+/// Who the stored OAuth token belongs to (WP #64 subpart (c)).
+///
+/// `users(login:)` does not exist on this schema (WP #64 §8) and
+/// `currentUser` answers `null` without a token
+/// (`raws/api/gql-currentuser-unauth.json`), so this is the only viewer query.
+const String shikimoriViewerQuery =
+    r'''
+  query CurrentUser {
+    currentUser {
+      id
+      nickname
+      avatarUrl
+      url
+      lastOnlineAt
+    }
+  }
+''';
+
+/// One page of the viewer's **anime** rates (`userRates`), 50 per page.
+///
+/// * one document per target type: selecting the `anime` **and** `manga` node of
+///   a rate exceeds the query-cost budget (227 > 190,
+///   `raws/api/gql-user-rates-probes.txt` §5);
+/// * the nested node is exactly the carousel shape, so every card maps through
+///   `ShikimoriAnimeModel.fromListEntry`;
+/// * `status` is a `UserRateStatusEnum` (`planned|watching|rewatching|completed|on_hold|dropped`)
+///   and `rewatching` is a status, not a flag.
+const String shikimoriAnimeUserRatesQuery =
+    r'''
+  query AnimeUserRates($userId: ID, $targetType: UserRateTargetTypeEnum, $status: UserRateStatusEnum, $page: PositiveInt, $limit: PositiveInt) {
+    userRates(userId: $userId, targetType: $targetType, status: $status, page: $page, limit: $limit) {
+      id
+      status
+      score
+      episodes
+      rewatches
+      volumes
+      chapters
+      createdAt
+      updatedAt
+      anime {
+        id
+        malId
+        name
+        english
+        japanese
+        russian
+        poster {
+          originalUrl
+          mainAlt2xUrl
+        }
+        description
+        duration
+        airedOn {
+          date
+          day
+          month
+          year
+        }
+        releasedOn {
+          date
+          day
+          month
+          year
+        }
+        episodes
+        episodesAired
+        nextEpisodeAt
+        genres {
+          id
+          name
+          kind
+          russian
+        }
+        kind
+        isCensored
+        score
+        season
+        status
+      }
+    }
+  }
+''';
+
+/// Manga mirror of [shikimoriAnimeUserRatesQuery] (one document per target type).
+const String shikimoriMangaUserRatesQuery =
+    r'''
+  query MangaUserRates($userId: ID, $targetType: UserRateTargetTypeEnum, $status: UserRateStatusEnum, $page: PositiveInt, $limit: PositiveInt) {
+    userRates(userId: $userId, targetType: $targetType, status: $status, page: $page, limit: $limit) {
+      id
+      status
+      score
+      episodes
+      rewatches
+      volumes
+      chapters
+      createdAt
+      updatedAt
+      manga {
+        id
+        malId
+        name
+        english
+        japanese
+        russian
+        poster {
+          originalUrl
+          mainAlt2xUrl
+        }
+        description
+        airedOn {
+          date
+          day
+          month
+          year
+        }
+        releasedOn {
+          date
+          day
+          month
+          year
+        }
+        volumes
+        chapters
+        genres {
+          id
+          name
+          kind
+          russian
+        }
+        kind
+        isCensored
+        score
+        status
+        publishers {
+          id
+          name
+        }
+      }
+    }
+  }
+''';

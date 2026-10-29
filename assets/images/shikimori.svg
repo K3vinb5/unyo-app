@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <!-- Placeholder mark for the Shikimori account card: a rounded badge with the
+       provider initial. Replace with the official logo asset when one lands. -->
+  <rect x="6" y="6" width="108" height="108" rx="30" fill="#21232b"/>
+  <circle cx="60" cy="60" r="42" fill="none" stroke="#3f7ff5" stroke-width="6"/>
+  <text x="60" y="78" text-anchor="middle" font-family="Verdana, DejaVu Sans, sans-serif"
+        font-size="52" font-weight="700" fill="#3f7ff5">S</text>
+</svg>

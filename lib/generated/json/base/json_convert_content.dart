@@ -27,6 +27,12 @@ import 'package:unyo/core/services/api/dto/shikimori/manga_details_query_entity.
 import 'package:unyo/core/services/api/dto/shikimori/manga_list_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/shikimori_calendar_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/shikimori_genres_list_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_token_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_user_rate_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_user_rate_list_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_user_rates_anime_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_user_rates_manga_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_viewer_query_entity.dart';
 
 JsonConvert jsonConvert = JsonConvert();
 typedef JsonConvertFunction<T> = T Function(Map<String, dynamic> json);
@@ -602,6 +608,33 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		if(<ShikimoriGenresListQueryGenres>[] is M){
 			return data.map<ShikimoriGenresListQueryGenres>((Map<String, dynamic> e) => ShikimoriGenresListQueryGenres.fromJson(e)).toList() as M;
 		}
+		if(<ShikimoriTokenEntity>[] is M){
+			return data.map<ShikimoriTokenEntity>((Map<String, dynamic> e) => ShikimoriTokenEntity.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriUserRateEntity>[] is M){
+			return data.map<ShikimoriUserRateEntity>((Map<String, dynamic> e) => ShikimoriUserRateEntity.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriUserRateListEntity>[] is M){
+			return data.map<ShikimoriUserRateListEntity>((Map<String, dynamic> e) => ShikimoriUserRateListEntity.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriUserRatesAnimeQueryEntity>[] is M){
+			return data.map<ShikimoriUserRatesAnimeQueryEntity>((Map<String, dynamic> e) => ShikimoriUserRatesAnimeQueryEntity.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriUserRatesAnimeQueryUserRates>[] is M){
+			return data.map<ShikimoriUserRatesAnimeQueryUserRates>((Map<String, dynamic> e) => ShikimoriUserRatesAnimeQueryUserRates.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriUserRatesMangaQueryEntity>[] is M){
+			return data.map<ShikimoriUserRatesMangaQueryEntity>((Map<String, dynamic> e) => ShikimoriUserRatesMangaQueryEntity.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriUserRatesMangaQueryUserRates>[] is M){
+			return data.map<ShikimoriUserRatesMangaQueryUserRates>((Map<String, dynamic> e) => ShikimoriUserRatesMangaQueryUserRates.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriViewerQueryEntity>[] is M){
+			return data.map<ShikimoriViewerQueryEntity>((Map<String, dynamic> e) => ShikimoriViewerQueryEntity.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriViewerQueryEntityCurrentUser>[] is M){
+			return data.map<ShikimoriViewerQueryEntityCurrentUser>((Map<String, dynamic> e) => ShikimoriViewerQueryEntityCurrentUser.fromJson(e)).toList() as M;
+		}
 
 		debugPrint("$M not found");
 
@@ -772,6 +805,15 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		(ShikimoriCalendarQueryListAnimeImage).toString(): ShikimoriCalendarQueryListAnimeImage.fromJson,
 		(ShikimoriGenresListQueryEntity).toString(): ShikimoriGenresListQueryEntity.fromJson,
 		(ShikimoriGenresListQueryGenres).toString(): ShikimoriGenresListQueryGenres.fromJson,
+		(ShikimoriTokenEntity).toString(): ShikimoriTokenEntity.fromJson,
+		(ShikimoriUserRateEntity).toString(): ShikimoriUserRateEntity.fromJson,
+		(ShikimoriUserRateListEntity).toString(): ShikimoriUserRateListEntity.fromJson,
+		(ShikimoriUserRatesAnimeQueryEntity).toString(): ShikimoriUserRatesAnimeQueryEntity.fromJson,
+		(ShikimoriUserRatesAnimeQueryUserRates).toString(): ShikimoriUserRatesAnimeQueryUserRates.fromJson,
+		(ShikimoriUserRatesMangaQueryEntity).toString(): ShikimoriUserRatesMangaQueryEntity.fromJson,
+		(ShikimoriUserRatesMangaQueryUserRates).toString(): ShikimoriUserRatesMangaQueryUserRates.fromJson,
+		(ShikimoriViewerQueryEntity).toString(): ShikimoriViewerQueryEntity.fromJson,
+		(ShikimoriViewerQueryEntityCurrentUser).toString(): ShikimoriViewerQueryEntityCurrentUser.fromJson,
 	};
 bool containsKey(String type) {
 return convertFuncMap.containsKey(type);

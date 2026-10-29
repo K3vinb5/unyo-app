@@ -316,7 +316,11 @@ class AnimeRepositoryFactory implements AnimeRepository {
         return MediaListEntryModel.empty();
       case Service.shikimori:
         _logger.i("Updating Media List Entry to $newMediaListEntry on Shikimori");
-        return MediaListEntryModel.empty();
+        return _animeRepositoryShikimori.updateMediaListEntry(
+          newMediaListEntry,
+          userRecord,
+          loggedUser,
+        );
       case Service.kitsu:
         _logger.i("Updating Media List Entry to $newMediaListEntry on Kitsu");
         return MediaListEntryModel.empty();
@@ -350,7 +354,11 @@ class AnimeRepositoryFactory implements AnimeRepository {
         return MediaListEntryModel.empty();
       case Service.shikimori:
         _logger.i("Fetching User Media List Entry from Shikimori for ${selectedAnime.title.userPreferred}");
-        return MediaListEntryModel.empty();
+        return _animeRepositoryShikimori.getMediaListEntry(
+          userRecord,
+          loggedUser,
+          ignoreCache: ignoreCache,
+        );
       case Service.kitsu:
         _logger.i("Fetching User Media List Entry from Kitsu for ${selectedAnime.title.userPreferred}");
         return MediaListEntryModel.empty();

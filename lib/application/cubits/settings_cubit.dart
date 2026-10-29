@@ -20,6 +20,7 @@ import 'package:unyo/core/theme/color_image_service.dart';
 import 'package:unyo/core/theme/theme_service.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
+import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/repositories.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
@@ -214,6 +215,10 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
           wallpaperColors = await _colorImageService.getColorsFromPalleteGenerator(
             NetworkImage(anilistUserModel.bannerImage),
           );
+        case ShikimoriUserModel _:
+          // `currentUser` carries no banner, so there is no wallpaper to sample;
+          // the primary colour stays the account colour (same as a local user).
+          _logger.d("Getting shikimori user's theme");
         case LocalUserModel localUserModel:
           _logger.d("Getting local user's theme");
       }
@@ -353,6 +358,10 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
         case AnilistUserModel anilistUserModel:
           AnilistUserModel updatedAnilistUserModel = anilistUserModel.copyWith(settings: settings);
           await _userRepository.updateUserInfo(updatedAnilistUserModel);
+          break;
+        case ShikimoriUserModel shikimoriUserModel:
+          ShikimoriUserModel updatedShikimoriUserModel = shikimoriUserModel.copyWith(settings: settings);
+          await _userRepository.updateUserInfo(updatedShikimoriUserModel);
           break;
         case LocalUserModel localUserModel:
           LocalUserModel updatedLocalUserModel = localUserModel.copyWith(settings: settings);

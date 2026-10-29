@@ -19,8 +19,10 @@ import 'package:unyo/core/services/api/graphql/queries/shikimori_queries.dart' a
 import 'package:unyo/core/services/api/graphql/queries/shikimori_search_parameters.dart';
 import 'package:unyo/core/services/api/http/api_response.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
+import 'package:unyo/core/services/api/shikimori/shikimori_user_rate_service.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_anime_details.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
+import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/repository_mixin.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
@@ -32,8 +34,9 @@ import 'package:unyo/domain/repositories/anime_repository.dart';
 ///
 /// GraphQL (`https://shikimori.io/api/graphql`) for every list, the advanced
 /// search and the details; REST (`GET /api/calendar`) for the calendar, because
-/// the schema has no calendar root field (WP #64 §5). List-entry writes/reads
-/// are subpart (c) and stay honest stubs here.
+/// the schema has no calendar root field (WP #64 §5). List-entry reads/writes
+/// are REST v2 `/api/v2/user_rates` through [ShikimoriUserRateService]
+/// (subpart (c)): the GraphQL `Mutation` root is a stub.
 class AnimeRepositoryShikimori with RepositoryMixin implements AnimeRepository {
   /// Shikimori caps `limit` at 50.
   static const int pageSize = 50;
@@ -42,6 +45,9 @@ class AnimeRepositoryShikimori with RepositoryMixin implements AnimeRepository {
     instanceName: config.shikimoriGraphQlService,
   );
   final HttpService _httpService = sl<HttpService>();
+  /// Resolved on first use: the metadata tests build this repository without a
+  /// REST list-entry service registered, and no metadata read touches it.
+  ShikimoriUserRateService get _userRateService => sl<ShikimoriUserRateService>();
   final Logger _logger = sl<Logger>();
 
   /// `graphql` genre **names** (lower-cased) → genre ids, filled by
@@ -350,8 +356,10 @@ class AnimeRepositoryShikimori with RepositoryMixin implements AnimeRepository {
         .toList();
   }
 
-  /// WP #64 subpart (c): writes go to REST v2 `/api/v2/user_rates` once the
-  /// Shikimori OAuth token exists.
+  /// WP #64 subpart (c): writes go to REST v2 `/api/v2/user_rates`
+  /// (create / update / increment / delete), because the GraphQL `Mutation`
+  /// root is a stub. A record that is not a `ShikimoriAnimeModel` cannot have a
+  /// Shikimori native id and is never written (WP #63 "never guess an identity").
   @override
   Future<MediaListEntry> updateMediaListEntry(
     MediaListEntry newMediaListEntry,
@@ -359,11 +367,20 @@ class AnimeRepositoryShikimori with RepositoryMixin implements AnimeRepository {
     User loggedUser,
   ) async {
     _logger.i("Updating Media List Entry to $newMediaListEntry on Shikimori");
-    return MediaListEntryModel.empty();
+    final ShikimoriUserModel? account = _shikimoriAccount(loggedUser);
+    if (account == null) return MediaListEntryModel.empty();
+    return _userRateService.updateEntry(
+      user: account,
+      targetId: selectedAnime.id,
+      target: ShikimoriUserRateTarget.anime,
+      entry: newMediaListEntry,
+    );
   }
 
-  /// WP #64 subpart (c). The details query already carries the viewer's own
-  /// `userRate`; without an OAuth token it is `null`.
+  /// WP #64 subpart (c). The reader is REST v2, not the details document: the
+  /// details `userRate` is `null` whenever the details call goes out without a
+  /// Bearer token, which would report "not on any list" for an entry the user
+  /// does have.
   @override
   Future<MediaListEntry> getMediaListEntry(
     Anime selectedAnime,
@@ -371,7 +388,21 @@ class AnimeRepositoryShikimori with RepositoryMixin implements AnimeRepository {
     bool ignoreCache = false,
   }) async {
     _logger.i("Fetching User Media List Entry from Shikimori for ${selectedAnime.title.userPreferred}");
-    return MediaListEntryModel.empty();
+    final ShikimoriUserModel? account = _shikimoriAccount(loggedUser);
+    if (account == null) return MediaListEntryModel.empty();
+    return _userRateService.getEntry(
+      user: account,
+      targetId: selectedAnime.id,
+      target: ShikimoriUserRateTarget.anime,
+    );
+  }
+
+  /// The logged user, when it is a Shikimori account. A non-Shikimori user has
+  /// no token to send, so the caller degrades instead of writing anonymously.
+  ShikimoriUserModel? _shikimoriAccount(User loggedUser) {
+    if (loggedUser is ShikimoriUserModel) return loggedUser;
+    _logger.w("Logged user ${loggedUser.name} is not a Shikimori account, skipping the list call");
+    return null;
   }
 
   /// One page of `animes(...)` with only the filters the carousel asked for.
