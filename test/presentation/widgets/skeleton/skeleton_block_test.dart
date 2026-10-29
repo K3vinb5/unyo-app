@@ -81,4 +81,30 @@ void main() {
     // is how the carousel banner and the episode dividers disappeared.
     expect(tester.getSize(find.byType(SkeletonBlock)), const Size(1200, 20));
   });
+
+  testWidgets('SkeletonBlock shape overrides the uniform borderRadius', (
+    tester,
+  ) async {
+    const BorderRadius leaf = BorderRadius.only(
+      bottomRight: Radius.circular(50),
+      topLeft: Radius.circular(50),
+    );
+    await pumpSkeletonHarness(
+      tester,
+      const Center(
+        child: SkeletonBlock(
+          width: 46,
+          height: 18,
+          borderRadius: 9,
+          shape: leaf,
+        ),
+      ),
+    );
+
+    final BoxDecoration decoration =
+        blockDecoration(tester, find.byType(SkeletonBlock)).decoration
+            as BoxDecoration;
+    expect(decoration.borderRadius, leaf);
+    expect(decoration.borderRadius, isNot(BorderRadius.circular(9)));
+  });
 }

@@ -25,20 +25,26 @@ class MediaCardSkeleton extends StatelessWidget {
         mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              SkeletonBlock(
-                width: MediaCardMetrics.coverWidth,
-                height: MediaCardMetrics.coverHeight,
-                borderRadius: MediaCardMetrics.coverRadius,
-              ),
-              SkeletonBlock(
-                width: MediaCardMetrics.badgeWidth,
-                height: MediaCardMetrics.badgeHeight,
-                borderRadius: MediaCardMetrics.badgeRadius,
-              ),
-            ],
+          // Clipped to the cover radius: nothing in the placeholder may paint
+          // outside the loaded cover's silhouette (the score badge used to
+          // poke past its rounded corner).
+          ClipRRect(
+            borderRadius: MediaCardMetrics.coverBorderRadius,
+            child: Stack(
+              alignment: Alignment.bottomRight,
+              children: [
+                SkeletonBlock(
+                  width: MediaCardMetrics.coverWidth,
+                  height: MediaCardMetrics.coverHeight,
+                  borderRadius: MediaCardMetrics.coverRadius,
+                ),
+                SkeletonBlock(
+                  width: MediaCardMetrics.badgeWidth,
+                  height: MediaCardMetrics.badgeHeight,
+                  shape: MediaCardMetrics.badgeBorderRadius,
+                ),
+              ],
+            ),
           ),
           SizedBox(
             width: MediaCardMetrics.coverWidth,
