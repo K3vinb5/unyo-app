@@ -25,6 +25,7 @@ abstract class AnimeDetailsState with _$AnimeDetailsState implements HasEffects{
     required (bool, List<MediaCharacter>) characters,
     required (bool, List<Anime>) recommendations,
     required List<EpisodeInfo> episodesInfo,
+    required bool episodesLoaded,
     required List<String> banners,
     required String alternateImage,
     required Set<Extension> installedExtensions,

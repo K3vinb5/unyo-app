@@ -8,7 +8,7 @@ import 'package:unyo/application/cubits/anime_cubit.dart';
 import 'package:unyo/application/states/anime_state.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
-import 'package:unyo/presentation/views/loading_view.dart';
+import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/anime_card_list.dart';
 import 'package:unyo/presentation/widgets/styled/media_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_banner_carousel.dart';
@@ -41,9 +41,9 @@ class _AnimeListener extends StatelessWidget {
           );
         }
       },
-      child: BlocBuilder<AnimeCubit, AnimeState>(
-        builder: (context, state) => state.isLoading ? const LoadingView() : const _AnimeView(),
-      )
+      // The real layout renders immediately; unfinished sections show
+      // skeletons instead of swapping the whole screen for a spinner.
+      child: const SkeletonScope(child: _AnimeView()),
     );
   }
 }
@@ -83,10 +83,12 @@ class _AnimeViewState extends State<_AnimeView> {
             mainAxisSize: MainAxisSize.max,
             children: [
               SizedBox(height: 20.0.h),
-              UnyoBannerCarousel(
-                animeList: state.banners,
-                onTapAnime: context.read<AnimeCubit>().navigateToAnimeDetails,
-              ),
+              state.banners.isEmpty
+                  ? const BannerCarouselSkeleton()
+                  : UnyoBannerCarousel(
+                    animeList: state.banners,
+                    onTapAnime: context.read<AnimeCubit>().navigateToAnimeDetails,
+                  ),
               const SizedBox(height: 40,),
               SizedBox(
                 height: 90,
@@ -110,45 +112,55 @@ class _AnimeViewState extends State<_AnimeView> {
                 ),
               ),
               const SizedBox(height: 40,),
-              state.recentlyReleased.$1 ? AnimeCardList(
-                listTitle: "Recently Released",
-                animeList: state.recentlyReleased.$2,
-                controller: recentlyReleasedController,
-                onPressed: context.read<AnimeCubit>().navigateToAnimeDetails,
-                loadMore: false,
-              ) : const SizedBox.shrink(),
+              state.recentlyReleased.$1
+                  ? AnimeCardList(
+                    listTitle: "Recently Released",
+                    animeList: state.recentlyReleased.$2,
+                    controller: recentlyReleasedController,
+                    onPressed: context.read<AnimeCubit>().navigateToAnimeDetails,
+                    loadMore: false,
+                  )
+                  : const CardRowSkeleton(),
               const SizedBox(height: 30),
-              state.trending.$1 ? AnimeCardList(
-                listTitle: "Trending Animes",
-                animeList: state.trending.$2,
-                controller: trendingController,
-                onPressed: context.read<AnimeCubit>().navigateToAnimeDetails,
-                loadMore: false,
-              ) : const SizedBox.shrink(),
+              state.trending.$1
+                  ? AnimeCardList(
+                    listTitle: "Trending Animes",
+                    animeList: state.trending.$2,
+                    controller: trendingController,
+                    onPressed: context.read<AnimeCubit>().navigateToAnimeDetails,
+                    loadMore: false,
+                  )
+                  : const CardRowSkeleton(),
               const SizedBox(height: 30),
-              state.recentlyCompleted.$1 ? AnimeCardList(
-                listTitle: "Recently Completed Animes",
-                animeList: state.recentlyCompleted.$2,
-                controller: recentlyCompletedController,
-                onPressed: context.read<AnimeCubit>().navigateToAnimeDetails,
-                loadMore: false,
-              ) : const SizedBox.shrink(),
+              state.recentlyCompleted.$1
+                  ? AnimeCardList(
+                    listTitle: "Recently Completed Animes",
+                    animeList: state.recentlyCompleted.$2,
+                    controller: recentlyCompletedController,
+                    onPressed: context.read<AnimeCubit>().navigateToAnimeDetails,
+                    loadMore: false,
+                  )
+                  : const CardRowSkeleton(),
               const SizedBox(height: 30),
-              state.popular.$1 ? AnimeCardList(
-                listTitle: "Popular Animes",
-                animeList: state.popular.$2,
-                controller: popularController,
-                onPressed: context.read<AnimeCubit>().navigateToAnimeDetails,
-                loadMore: false,
-              ) : const SizedBox.shrink(),
+              state.popular.$1
+                  ? AnimeCardList(
+                    listTitle: "Popular Animes",
+                    animeList: state.popular.$2,
+                    controller: popularController,
+                    onPressed: context.read<AnimeCubit>().navigateToAnimeDetails,
+                    loadMore: false,
+                  )
+                  : const CardRowSkeleton(),
               const SizedBox(height: 30),
-              state.upcoming.$1 ? AnimeCardList(
-                listTitle: "Upcoming Animes",
-                animeList: state.upcoming.$2,
-                controller: upcomingController,
-                onPressed: context.read<AnimeCubit>().navigateToAnimeDetails,
-                loadMore: false,
-              ) : const SizedBox.shrink(),
+              state.upcoming.$1
+                  ? AnimeCardList(
+                    listTitle: "Upcoming Animes",
+                    animeList: state.upcoming.$2,
+                    controller: upcomingController,
+                    onPressed: context.read<AnimeCubit>().navigateToAnimeDetails,
+                    loadMore: false,
+                  )
+                  : const CardRowSkeleton(),
             ],
           ),
         );

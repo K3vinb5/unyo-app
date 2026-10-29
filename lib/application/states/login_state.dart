@@ -14,6 +14,7 @@ abstract class LoginState with _$LoginState implements HasEffects{
   const factory LoginState({
     required List<User> availableUsers,
     required LoginCardType selectedLoginCard,
+    required bool isLoading,
     @Default(<AppEffect>[]) List<AppEffect> effects,
   }) = _LoginState;
 

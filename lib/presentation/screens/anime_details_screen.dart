@@ -11,6 +11,7 @@ import 'package:unyo/application/cubits/anime_details_cubit.dart';
 import 'package:unyo/application/states/anime_details_state.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
+import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/anime_recommendations_card_list.dart';
 import 'package:unyo/presentation/widgets/styled/styled.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_dropdown.dart';
@@ -120,7 +121,8 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
   Widget build(BuildContext context) {
     return BlocBuilder<AnimeDetailsCubit, AnimeDetailsState>(
       builder: (context, state) {
-        return Container(
+        return SkeletonScope(
+          child: Container(
           decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.3)),
           child: Column(
             mainAxisSize: MainAxisSize.max,
@@ -150,7 +152,9 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                           Expanded(
                             child: ListView(
                               children: [
-                                UnyoMediaBanner(
+                                state.selectedAnime.id == 0
+                                    ? const DetailHeaderSkeleton()
+                                    : UnyoMediaBanner(
                                   imageUrl:
                                       state.selectedAnime.bannerImage != ""
                                           ? state.selectedAnime.bannerImage
@@ -290,7 +294,7 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                                       characters: state.characters.$2,
                                       controller: charactersListController,
                                     )
-                                    : const SizedBox.shrink(),
+                                    : const CardRowSkeleton(),
                                 SizedBox(height: 20.h),
                                 state.recommendations.$1
                                     ? AnimeRecommendationCardList(
@@ -300,7 +304,7 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                                       controller: recommendedAnimesController,
                                       loadMore: false,
                                     )
-                                    : const SizedBox.shrink(),
+                                    : const CardRowSkeleton(),
                               ],
                             ),
                           ),
@@ -338,7 +342,19 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                             ),
                           ),
                           SizedBox(height: 15.h),
-                          Expanded(child: ListView(children: [..._getEpisodeButtonsWidgets(state)])),
+                          Expanded(
+                            child: ListView(
+                              children: [
+                                if (!state.episodesLoaded)
+                                  ...List.generate(
+                                    state.selectedAnime.episodes.clamp(1, 6),
+                                    (index) => EpisodeRowSkeleton(showDivider: index != 0),
+                                  )
+                                else
+                                  ..._getEpisodeButtonsWidgets(state),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -346,6 +362,7 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                 ],
               ),
             ],
+          ),
           ),
         );
       },

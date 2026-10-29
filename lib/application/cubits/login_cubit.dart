@@ -49,6 +49,7 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
         const LoginState(
           availableUsers: [],
           selectedLoginCard: LoginCardType.anilist,
+          isLoading: true,
         ),
       ) {
     _init();
@@ -140,11 +141,18 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
 
   Future<void> fetchAllUsers() async {
     _logger.i("Fetching all logged in users");
-    List<User> usersAvailableLocal =
-        (await _userRepositoryLocal.fetchAllLoggedInUsers()).cast<User>();
-    List<User> usersAvailableAnilist =
-        (await _userRepositoryAnilist.fetchAllLoggedInUsers()).cast<User>();
-    _updateAvailableUsers(usersAvailableAnilist + usersAvailableLocal);
+    try {
+      List<User> usersAvailableLocal =
+          (await _userRepositoryLocal.fetchAllLoggedInUsers()).cast<User>();
+      List<User> usersAvailableAnilist =
+          (await _userRepositoryAnilist.fetchAllLoggedInUsers()).cast<User>();
+      _updateAvailableUsers(usersAvailableAnilist + usersAvailableLocal);
+    } finally {
+      // Settles the avatar skeletons even when a repository fails.
+      if (!isClosed && state.isLoading) {
+        emit(state.copyWith(isLoading: false));
+      }
+    }
   }
 
   void setUsersTheme(User user) async {

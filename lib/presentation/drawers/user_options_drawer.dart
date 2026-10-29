@@ -7,6 +7,7 @@ import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/domain/entities/user/user.dart' show User;
+import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 import 'package:unyo/presentation/widgets/styled/user_option_drawer_selection.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
 
@@ -54,10 +55,14 @@ class _UserOptionsDrawerState extends State<UserOptionsDrawer> {
                     mainAxisAlignment: MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      CircleAvatar(
-                        radius: 27,
-                        backgroundColor: Colors.transparent,
-                        backgroundImage: NetworkImage(widget.loggedUser.avatarImage),
+                      SizedBox(
+                        width: 54,
+                        height: 54,
+                        child: UnyoNetworkImage(
+                          url: widget.loggedUser.avatarImage,
+                          fit: BoxFit.cover,
+                          borderRadius: 27,
+                        ),
                       ),
                       SizedBox(width: 10.w),
                       Column(

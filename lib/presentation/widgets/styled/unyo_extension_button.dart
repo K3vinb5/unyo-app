@@ -2,6 +2,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_pill.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
@@ -48,7 +49,7 @@ class UnyoExtensionButton extends StatelessWidget {
             Row(
               children: [
                 SizedBox(width: 20.w),
-                ClipOval(child: Image.network(iconUrl, fit: BoxFit.fill, width: 52, height: 52)),
+                ClipOval(child: UnyoNetworkImage(url: iconUrl, fit: BoxFit.fill, width: 52, height: 52)),
                 SizedBox(width: 14.w),
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,

@@ -10,6 +10,7 @@ import 'package:unyo/application/cubits/manga_details_cubit.dart';
 import 'package:unyo/application/states/manga_details_state.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
+import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/manga_recommendations_card_list.dart';
 import 'package:unyo/presentation/widgets/styled/styled.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_dropdown.dart';
@@ -107,7 +108,8 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
   Widget build(BuildContext context) {
     return BlocBuilder<MangaDetailsCubit, MangaDetailsState>(
       builder: (context, state) {
-        return Container(
+        return SkeletonScope(
+          child: Container(
           decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.3)),
           child: Column(
             mainAxisSize: MainAxisSize.max,
@@ -137,7 +139,9 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
                           Expanded(
                             child: ListView(
                               children: [
-                                UnyoMediaBanner(
+                                state.selectedManga.id == 0
+                                    ? const DetailHeaderSkeleton()
+                                    : UnyoMediaBanner(
                                   imageUrl:
                                   state.selectedManga.bannerImage != ""
                                       ? state.selectedManga.bannerImage
@@ -237,7 +241,7 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
                                   characters: state.characters.$2,
                                   controller: charactersListController,
                                 )
-                                    : const SizedBox.shrink(),
+                                    : const CardRowSkeleton(),
                                 SizedBox(height: 20.h),
                                 state.recommendations.$1
                                     ? MangaRecommendationCardList(
@@ -247,7 +251,7 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
                                   controller: recommendedMangasController,
                                   loadMore: false,
                                 )
-                                    : const SizedBox.shrink(),
+                                    : const CardRowSkeleton(),
                               ],
                             ),
                           ),
@@ -294,6 +298,7 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
                 ],
               ),
             ],
+          ),
           ),
         );
       },

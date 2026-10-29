@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:unyo/presentation/widgets/styled/hover_animated_container.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 
 class UnyoCharacter extends StatelessWidget {
   final String tag;
@@ -37,19 +38,21 @@ class UnyoCharacter extends StatelessWidget {
                     hoverDecoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: Colors.white, width: 2.6),
-                      image: DecorationImage(
-                        image: NetworkImage(image),
-                        fit: BoxFit.fill,
-                      ),
                     ),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(20),
-                      image: DecorationImage(
-                        image: NetworkImage(image),
-                        fit: BoxFit.fill,
-                      ),
                     ),
-                    child: const SizedBox.shrink(),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: UnyoNetworkImage(
+                            url: image,
+                            fit: BoxFit.fill,
+                            borderRadius: 20,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CalendarState {
 
- Map<String, List<Anime>> get animeCalendarReleases; User get loggedUser; List<AppEffect> get effects;
+ Map<String, List<Anime>> get animeCalendarReleases; User get loggedUser; bool get isLoading; List<AppEffect> get effects;
 /// Create a copy of CalendarState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $CalendarStateCopyWith<CalendarState> get copyWith => _$CalendarStateCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CalendarState&&const DeepCollectionEquality().equals(other.animeCalendarReleases, animeCalendarReleases)&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&const DeepCollectionEquality().equals(other.effects, effects));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CalendarState&&const DeepCollectionEquality().equals(other.animeCalendarReleases, animeCalendarReleases)&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&const DeepCollectionEquality().equals(other.effects, effects));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(animeCalendarReleases),loggedUser,const DeepCollectionEquality().hash(effects));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(animeCalendarReleases),loggedUser,isLoading,const DeepCollectionEquality().hash(effects));
 
 @override
 String toString() {
-  return 'CalendarState(animeCalendarReleases: $animeCalendarReleases, loggedUser: $loggedUser, effects: $effects)';
+  return 'CalendarState(animeCalendarReleases: $animeCalendarReleases, loggedUser: $loggedUser, isLoading: $isLoading, effects: $effects)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $CalendarStateCopyWith<$Res>  {
   factory $CalendarStateCopyWith(CalendarState value, $Res Function(CalendarState) _then) = _$CalendarStateCopyWithImpl;
 @useResult
 $Res call({
- Map<String, List<Anime>> animeCalendarReleases, User loggedUser, List<AppEffect> effects
+ Map<String, List<Anime>> animeCalendarReleases, User loggedUser, bool isLoading, List<AppEffect> effects
 });
 
 
@@ -62,11 +62,12 @@ class _$CalendarStateCopyWithImpl<$Res>
 
 /// Create a copy of CalendarState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? animeCalendarReleases = null,Object? loggedUser = null,Object? effects = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? animeCalendarReleases = null,Object? loggedUser = null,Object? isLoading = null,Object? effects = null,}) {
   return _then(_self.copyWith(
 animeCalendarReleases: null == animeCalendarReleases ? _self.animeCalendarReleases : animeCalendarReleases // ignore: cast_nullable_to_non_nullable
 as Map<String, List<Anime>>,loggedUser: null == loggedUser ? _self.loggedUser : loggedUser // ignore: cast_nullable_to_non_nullable
-as User,effects: null == effects ? _self.effects : effects // ignore: cast_nullable_to_non_nullable
+as User,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
+as bool,effects: null == effects ? _self.effects : effects // ignore: cast_nullable_to_non_nullable
 as List<AppEffect>,
   ));
 }
@@ -152,10 +153,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Map<String, List<Anime>> animeCalendarReleases,  User loggedUser,  List<AppEffect> effects)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Map<String, List<Anime>> animeCalendarReleases,  User loggedUser,  bool isLoading,  List<AppEffect> effects)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CalendarState() when $default != null:
-return $default(_that.animeCalendarReleases,_that.loggedUser,_that.effects);case _:
+return $default(_that.animeCalendarReleases,_that.loggedUser,_that.isLoading,_that.effects);case _:
   return orElse();
 
 }
@@ -173,10 +174,10 @@ return $default(_that.animeCalendarReleases,_that.loggedUser,_that.effects);case
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Map<String, List<Anime>> animeCalendarReleases,  User loggedUser,  List<AppEffect> effects)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Map<String, List<Anime>> animeCalendarReleases,  User loggedUser,  bool isLoading,  List<AppEffect> effects)  $default,) {final _that = this;
 switch (_that) {
 case _CalendarState():
-return $default(_that.animeCalendarReleases,_that.loggedUser,_that.effects);case _:
+return $default(_that.animeCalendarReleases,_that.loggedUser,_that.isLoading,_that.effects);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -193,10 +194,10 @@ return $default(_that.animeCalendarReleases,_that.loggedUser,_that.effects);case
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Map<String, List<Anime>> animeCalendarReleases,  User loggedUser,  List<AppEffect> effects)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Map<String, List<Anime>> animeCalendarReleases,  User loggedUser,  bool isLoading,  List<AppEffect> effects)?  $default,) {final _that = this;
 switch (_that) {
 case _CalendarState() when $default != null:
-return $default(_that.animeCalendarReleases,_that.loggedUser,_that.effects);case _:
+return $default(_that.animeCalendarReleases,_that.loggedUser,_that.isLoading,_that.effects);case _:
   return null;
 
 }
@@ -208,7 +209,7 @@ return $default(_that.animeCalendarReleases,_that.loggedUser,_that.effects);case
 
 
 class _CalendarState extends CalendarState {
-  const _CalendarState({required final  Map<String, List<Anime>> animeCalendarReleases, required this.loggedUser, final  List<AppEffect> effects = const <AppEffect>[]}): _animeCalendarReleases = animeCalendarReleases,_effects = effects,super._();
+  const _CalendarState({required final  Map<String, List<Anime>> animeCalendarReleases, required this.loggedUser, required this.isLoading, final  List<AppEffect> effects = const <AppEffect>[]}): _animeCalendarReleases = animeCalendarReleases,_effects = effects,super._();
   
 
  final  Map<String, List<Anime>> _animeCalendarReleases;
@@ -219,6 +220,7 @@ class _CalendarState extends CalendarState {
 }
 
 @override final  User loggedUser;
+@override final  bool isLoading;
  final  List<AppEffect> _effects;
 @override@JsonKey() List<AppEffect> get effects {
   if (_effects is EqualUnmodifiableListView) return _effects;
@@ -237,16 +239,16 @@ _$CalendarStateCopyWith<_CalendarState> get copyWith => __$CalendarStateCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CalendarState&&const DeepCollectionEquality().equals(other._animeCalendarReleases, _animeCalendarReleases)&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&const DeepCollectionEquality().equals(other._effects, _effects));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CalendarState&&const DeepCollectionEquality().equals(other._animeCalendarReleases, _animeCalendarReleases)&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&const DeepCollectionEquality().equals(other._effects, _effects));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_animeCalendarReleases),loggedUser,const DeepCollectionEquality().hash(_effects));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_animeCalendarReleases),loggedUser,isLoading,const DeepCollectionEquality().hash(_effects));
 
 @override
 String toString() {
-  return 'CalendarState(animeCalendarReleases: $animeCalendarReleases, loggedUser: $loggedUser, effects: $effects)';
+  return 'CalendarState(animeCalendarReleases: $animeCalendarReleases, loggedUser: $loggedUser, isLoading: $isLoading, effects: $effects)';
 }
 
 
@@ -257,7 +259,7 @@ abstract mixin class _$CalendarStateCopyWith<$Res> implements $CalendarStateCopy
   factory _$CalendarStateCopyWith(_CalendarState value, $Res Function(_CalendarState) _then) = __$CalendarStateCopyWithImpl;
 @override @useResult
 $Res call({
- Map<String, List<Anime>> animeCalendarReleases, User loggedUser, List<AppEffect> effects
+ Map<String, List<Anime>> animeCalendarReleases, User loggedUser, bool isLoading, List<AppEffect> effects
 });
 
 
@@ -274,11 +276,12 @@ class __$CalendarStateCopyWithImpl<$Res>
 
 /// Create a copy of CalendarState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? animeCalendarReleases = null,Object? loggedUser = null,Object? effects = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? animeCalendarReleases = null,Object? loggedUser = null,Object? isLoading = null,Object? effects = null,}) {
   return _then(_CalendarState(
 animeCalendarReleases: null == animeCalendarReleases ? _self._animeCalendarReleases : animeCalendarReleases // ignore: cast_nullable_to_non_nullable
 as Map<String, List<Anime>>,loggedUser: null == loggedUser ? _self.loggedUser : loggedUser // ignore: cast_nullable_to_non_nullable
-as User,effects: null == effects ? _self._effects : effects // ignore: cast_nullable_to_non_nullable
+as User,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
+as bool,effects: null == effects ? _self._effects : effects // ignore: cast_nullable_to_non_nullable
 as List<AppEffect>,
   ));
 }

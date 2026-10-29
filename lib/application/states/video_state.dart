@@ -20,6 +20,7 @@ abstract class VideoState with _$VideoState implements HasEffects{
     required VideoInfo videoInfo,
     required Anime selectedAnime,
     required List<EpisodeInfo> episodesInfo,
+    required bool episodesLoaded,
     required Extension selectedExtension,
     required List<JSEpisode> extensionEpisodeResults,
     required MediaListEntry mediaListEntry,

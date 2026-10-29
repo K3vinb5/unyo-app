@@ -9,7 +9,7 @@ import 'package:unyo/application/cubits/manga_cubit.dart';
 import 'package:unyo/application/states/manga_state.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
-import 'package:unyo/presentation/views/loading_view.dart';
+import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/manga_card_list.dart';
 import 'package:unyo/presentation/widgets/styled/media_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_banner_carousel.dart';
@@ -42,10 +42,9 @@ class _MangaListener extends StatelessWidget {
           );
         }
       },
-      child: BlocBuilder<MangaCubit, MangaState>(
-        builder:
-            (context, state) => state.isLoading ? const LoadingView() : const _MangaView(),
-      ),
+      // The real layout renders immediately; unfinished sections show
+      // skeletons instead of swapping the whole screen for a spinner.
+      child: const SkeletonScope(child: _MangaView()),
     );
   }
 }
@@ -82,10 +81,12 @@ class _MangaViewState extends State<_MangaView> {
             mainAxisSize: MainAxisSize.max,
             children: [
               SizedBox(height: 20.0.h),
-              UnyoBannerCarousel(
-                mangaList: state.banners,
-                onTapManga: context.read<MangaCubit>().navigateToMangaDetails,
-              ),
+              state.banners.isEmpty
+                  ? const BannerCarouselSkeleton()
+                  : UnyoBannerCarousel(
+                    mangaList: state.banners,
+                    onTapManga: context.read<MangaCubit>().navigateToMangaDetails,
+                  ),
               const SizedBox(height: 40),
               SizedBox(
                 height: 90,
@@ -125,7 +126,7 @@ class _MangaViewState extends State<_MangaView> {
                     onPressed: context.read<MangaCubit>().navigateToMangaDetails,
                     loadMore: false,
                   )
-                  : const SizedBox.shrink(),
+                  : const CardRowSkeleton(),
               const SizedBox(height: 30),
               state.recentlyCompleted.$1
                   ? MangaCardList(
@@ -135,7 +136,7 @@ class _MangaViewState extends State<_MangaView> {
                     onPressed: context.read<MangaCubit>().navigateToMangaDetails,
                     loadMore: false,
                   )
-                  : const SizedBox.shrink(),
+                  : const CardRowSkeleton(),
               const SizedBox(height: 30),
               state.popular.$1
                   ? MangaCardList(
@@ -145,7 +146,7 @@ class _MangaViewState extends State<_MangaView> {
                     onPressed: context.read<MangaCubit>().navigateToMangaDetails,
                     loadMore: false,
                   )
-                  : const SizedBox.shrink(),
+                  : const CardRowSkeleton(),
               const SizedBox(height: 30),
               state.upcoming.$1
                   ? MangaCardList(
@@ -155,7 +156,7 @@ class _MangaViewState extends State<_MangaView> {
                     onPressed: context.read<MangaCubit>().navigateToMangaDetails,
                     loadMore: false,
                   )
-                  : const SizedBox.shrink(),
+                  : const CardRowSkeleton(),
             ],
           ),
         );

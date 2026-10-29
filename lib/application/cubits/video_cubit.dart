@@ -93,6 +93,7 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
           selectedExtension: ExtensionModel.empty(),
           extensionEpisodeResults: [],
           episodesInfo: [],
+          episodesLoaded: false,
           mediaListEntry: MediaListEntryModel.empty(),
           availableCastDevices: [],
           openingSkipTimes: AniskipTimesResults(),
@@ -144,7 +145,7 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
       emit(state.copyWith(selectedAnime: selectedAnime));
     });
     _episodeInfoSubscription = _episodesInfoNotifier.episodeInfoStream.listen((episodesInfo) {
-      emit(state.copyWith(episodesInfo: episodesInfo));
+      emit(state.copyWith(episodesInfo: episodesInfo, episodesLoaded: true));
     });
     _mediaListEntrySubscription = _mediaListEntryNotifier.mediaListEntryStream.listen((mediaListEntry) {
       emit(state.copyWith(mediaListEntry: mediaListEntry));

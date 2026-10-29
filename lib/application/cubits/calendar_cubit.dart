@@ -28,7 +28,7 @@ class CalendarCubit extends Cubit<CalendarState> with EffectMixin<CalendarState>
   late StreamSubscription<User> _loggedUserSubscription;
 
   CalendarCubit(this._animeRepository, this._loggedUserNotifier, this._selectedAnimeNotifier, this._selectedMediaListNotifier)
-    : super(CalendarState(animeCalendarReleases: {}, loggedUser: UserModel.empty())) {
+    : super(CalendarState(animeCalendarReleases: {}, loggedUser: UserModel.empty(), isLoading: true)) {
     _init();
   }
 
@@ -79,6 +79,10 @@ class CalendarCubit extends Cubit<CalendarState> with EffectMixin<CalendarState>
       );
     } catch (e, stackTrace) {
       handleError("Error fetching user info: $e", stackTrace: stackTrace);
+    } finally {
+      if (!isClosed) {
+        emit(state.copyWith(isLoading: false));
+      }
     }
   }
 }

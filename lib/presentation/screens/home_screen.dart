@@ -9,7 +9,7 @@ import 'package:unyo/application/cubits/home_cubit.dart';
 import 'package:unyo/application/states/home_state.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
-import 'package:unyo/presentation/views/loading_view.dart';
+import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/styled.dart';
 import 'package:unyo/presentation/widgets/text/texts.dart';
 
@@ -41,10 +41,9 @@ class _HomeListener extends StatelessWidget {
           );
         }
       },
-      child: BlocBuilder<HomeCubit, HomeState>(
-        builder:
-            (context, state) => state.isLoading ? const LoadingView() : const _HomeView(),
-      ),
+      // The real layout renders immediately; the card rows show skeletons
+      // while the user's lists are being fetched.
+      child: const SkeletonScope(child: _HomeView()),
     );
   }
 }
@@ -137,21 +136,25 @@ class _HomeViewState extends State<_HomeView> {
                   ),
                 ),
                 const SizedBox(height: 40),
-                AnimeCardList(
-                  listTitle: "Continue Watching",
-                  animeList: state.continueWatching,
-                  controller: continueWatchingController,
-                  onPressed: context.read<HomeCubit>().navigateToAnimeDetails,
-                  loadMore: false,
-                ),
+                state.isLoading
+                    ? const CardRowSkeleton()
+                    : AnimeCardList(
+                      listTitle: "Continue Watching",
+                      animeList: state.continueWatching,
+                      controller: continueWatchingController,
+                      onPressed: context.read<HomeCubit>().navigateToAnimeDetails,
+                      loadMore: false,
+                    ),
                 const SizedBox(height: 30),
-                MangaCardList(
-                  listTitle: "Continue Reading",
-                  mangaList: state.continueReading,
-                  controller: continueReadingController,
-                  loadMore: false,
-                  onPressed: context.read<HomeCubit>().navigateToMangaDetails,
-                ),
+                state.isLoading
+                    ? const CardRowSkeleton()
+                    : MangaCardList(
+                      listTitle: "Continue Reading",
+                      mangaList: state.continueReading,
+                      controller: continueReadingController,
+                      loadMore: false,
+                      onPressed: context.read<HomeCubit>().navigateToMangaDetails,
+                    ),
               ],
             ),
           ),

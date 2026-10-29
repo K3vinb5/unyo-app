@@ -9,6 +9,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 // Internal dependencies
 import 'package:unyo/application/cubits/video_cubit.dart';
 import 'package:unyo/application/states/video_state.dart';
+import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_episode_button.dart';
 
 class EpisodeListDrawer extends StatelessWidget {
@@ -69,7 +70,8 @@ class EpisodeListDrawer extends StatelessWidget {
     return BlocProvider.value(
       value: cubit,
       child: BlocBuilder<VideoCubit, VideoState>(
-        builder: (context, state) => Align(
+        builder: (context, state) => SkeletonScope(
+          child: Align(
           alignment: Alignment.centerRight,
           child: Material(
             color: Colors.transparent,
@@ -103,7 +105,19 @@ class EpisodeListDrawer extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: 20.h),
-                    Expanded(child: ListView(children: _getEpisodeButtonsWidgets(context, state))),
+                    Expanded(
+                      child: ListView(
+                        children: [
+                          if (!state.episodesLoaded)
+                            ...List.generate(
+                              state.selectedAnime.episodes.clamp(1, 8),
+                              (index) => EpisodeRowSkeleton(showDivider: index != 0),
+                            )
+                          else
+                            ..._getEpisodeButtonsWidgets(context, state),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -111,6 +125,7 @@ class EpisodeListDrawer extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }

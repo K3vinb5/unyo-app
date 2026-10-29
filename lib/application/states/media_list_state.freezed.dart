@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$MediaListState {
 
- Map<String, List<Anime>> get userAnimeLists; Map<String, List<Manga>> get userMangaLists; User get loggedUser; List<AppEffect> get effects;
+ Map<String, List<Anime>> get userAnimeLists; Map<String, List<Manga>> get userMangaLists; User get loggedUser; bool get isLoading; List<AppEffect> get effects;
 /// Create a copy of MediaListState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $MediaListStateCopyWith<MediaListState> get copyWith => _$MediaListStateCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MediaListState&&const DeepCollectionEquality().equals(other.userAnimeLists, userAnimeLists)&&const DeepCollectionEquality().equals(other.userMangaLists, userMangaLists)&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&const DeepCollectionEquality().equals(other.effects, effects));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MediaListState&&const DeepCollectionEquality().equals(other.userAnimeLists, userAnimeLists)&&const DeepCollectionEquality().equals(other.userMangaLists, userMangaLists)&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&const DeepCollectionEquality().equals(other.effects, effects));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(userAnimeLists),const DeepCollectionEquality().hash(userMangaLists),loggedUser,const DeepCollectionEquality().hash(effects));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(userAnimeLists),const DeepCollectionEquality().hash(userMangaLists),loggedUser,isLoading,const DeepCollectionEquality().hash(effects));
 
 @override
 String toString() {
-  return 'MediaListState(userAnimeLists: $userAnimeLists, userMangaLists: $userMangaLists, loggedUser: $loggedUser, effects: $effects)';
+  return 'MediaListState(userAnimeLists: $userAnimeLists, userMangaLists: $userMangaLists, loggedUser: $loggedUser, isLoading: $isLoading, effects: $effects)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $MediaListStateCopyWith<$Res>  {
   factory $MediaListStateCopyWith(MediaListState value, $Res Function(MediaListState) _then) = _$MediaListStateCopyWithImpl;
 @useResult
 $Res call({
- Map<String, List<Anime>> userAnimeLists, Map<String, List<Manga>> userMangaLists, User loggedUser, List<AppEffect> effects
+ Map<String, List<Anime>> userAnimeLists, Map<String, List<Manga>> userMangaLists, User loggedUser, bool isLoading, List<AppEffect> effects
 });
 
 
@@ -62,12 +62,13 @@ class _$MediaListStateCopyWithImpl<$Res>
 
 /// Create a copy of MediaListState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? userAnimeLists = null,Object? userMangaLists = null,Object? loggedUser = null,Object? effects = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? userAnimeLists = null,Object? userMangaLists = null,Object? loggedUser = null,Object? isLoading = null,Object? effects = null,}) {
   return _then(_self.copyWith(
 userAnimeLists: null == userAnimeLists ? _self.userAnimeLists : userAnimeLists // ignore: cast_nullable_to_non_nullable
 as Map<String, List<Anime>>,userMangaLists: null == userMangaLists ? _self.userMangaLists : userMangaLists // ignore: cast_nullable_to_non_nullable
 as Map<String, List<Manga>>,loggedUser: null == loggedUser ? _self.loggedUser : loggedUser // ignore: cast_nullable_to_non_nullable
-as User,effects: null == effects ? _self.effects : effects // ignore: cast_nullable_to_non_nullable
+as User,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
+as bool,effects: null == effects ? _self.effects : effects // ignore: cast_nullable_to_non_nullable
 as List<AppEffect>,
   ));
 }
@@ -153,10 +154,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Map<String, List<Anime>> userAnimeLists,  Map<String, List<Manga>> userMangaLists,  User loggedUser,  List<AppEffect> effects)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Map<String, List<Anime>> userAnimeLists,  Map<String, List<Manga>> userMangaLists,  User loggedUser,  bool isLoading,  List<AppEffect> effects)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MediaListState() when $default != null:
-return $default(_that.userAnimeLists,_that.userMangaLists,_that.loggedUser,_that.effects);case _:
+return $default(_that.userAnimeLists,_that.userMangaLists,_that.loggedUser,_that.isLoading,_that.effects);case _:
   return orElse();
 
 }
@@ -174,10 +175,10 @@ return $default(_that.userAnimeLists,_that.userMangaLists,_that.loggedUser,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Map<String, List<Anime>> userAnimeLists,  Map<String, List<Manga>> userMangaLists,  User loggedUser,  List<AppEffect> effects)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Map<String, List<Anime>> userAnimeLists,  Map<String, List<Manga>> userMangaLists,  User loggedUser,  bool isLoading,  List<AppEffect> effects)  $default,) {final _that = this;
 switch (_that) {
 case _MediaListState():
-return $default(_that.userAnimeLists,_that.userMangaLists,_that.loggedUser,_that.effects);case _:
+return $default(_that.userAnimeLists,_that.userMangaLists,_that.loggedUser,_that.isLoading,_that.effects);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -194,10 +195,10 @@ return $default(_that.userAnimeLists,_that.userMangaLists,_that.loggedUser,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Map<String, List<Anime>> userAnimeLists,  Map<String, List<Manga>> userMangaLists,  User loggedUser,  List<AppEffect> effects)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Map<String, List<Anime>> userAnimeLists,  Map<String, List<Manga>> userMangaLists,  User loggedUser,  bool isLoading,  List<AppEffect> effects)?  $default,) {final _that = this;
 switch (_that) {
 case _MediaListState() when $default != null:
-return $default(_that.userAnimeLists,_that.userMangaLists,_that.loggedUser,_that.effects);case _:
+return $default(_that.userAnimeLists,_that.userMangaLists,_that.loggedUser,_that.isLoading,_that.effects);case _:
   return null;
 
 }
@@ -209,7 +210,7 @@ return $default(_that.userAnimeLists,_that.userMangaLists,_that.loggedUser,_that
 
 
 class _MediaListState extends MediaListState {
-  const _MediaListState({required final  Map<String, List<Anime>> userAnimeLists, required final  Map<String, List<Manga>> userMangaLists, required this.loggedUser, final  List<AppEffect> effects = const <AppEffect>[]}): _userAnimeLists = userAnimeLists,_userMangaLists = userMangaLists,_effects = effects,super._();
+  const _MediaListState({required final  Map<String, List<Anime>> userAnimeLists, required final  Map<String, List<Manga>> userMangaLists, required this.loggedUser, required this.isLoading, final  List<AppEffect> effects = const <AppEffect>[]}): _userAnimeLists = userAnimeLists,_userMangaLists = userMangaLists,_effects = effects,super._();
   
 
  final  Map<String, List<Anime>> _userAnimeLists;
@@ -227,6 +228,7 @@ class _MediaListState extends MediaListState {
 }
 
 @override final  User loggedUser;
+@override final  bool isLoading;
  final  List<AppEffect> _effects;
 @override@JsonKey() List<AppEffect> get effects {
   if (_effects is EqualUnmodifiableListView) return _effects;
@@ -245,16 +247,16 @@ _$MediaListStateCopyWith<_MediaListState> get copyWith => __$MediaListStateCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MediaListState&&const DeepCollectionEquality().equals(other._userAnimeLists, _userAnimeLists)&&const DeepCollectionEquality().equals(other._userMangaLists, _userMangaLists)&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&const DeepCollectionEquality().equals(other._effects, _effects));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MediaListState&&const DeepCollectionEquality().equals(other._userAnimeLists, _userAnimeLists)&&const DeepCollectionEquality().equals(other._userMangaLists, _userMangaLists)&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&const DeepCollectionEquality().equals(other._effects, _effects));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_userAnimeLists),const DeepCollectionEquality().hash(_userMangaLists),loggedUser,const DeepCollectionEquality().hash(_effects));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_userAnimeLists),const DeepCollectionEquality().hash(_userMangaLists),loggedUser,isLoading,const DeepCollectionEquality().hash(_effects));
 
 @override
 String toString() {
-  return 'MediaListState(userAnimeLists: $userAnimeLists, userMangaLists: $userMangaLists, loggedUser: $loggedUser, effects: $effects)';
+  return 'MediaListState(userAnimeLists: $userAnimeLists, userMangaLists: $userMangaLists, loggedUser: $loggedUser, isLoading: $isLoading, effects: $effects)';
 }
 
 
@@ -265,7 +267,7 @@ abstract mixin class _$MediaListStateCopyWith<$Res> implements $MediaListStateCo
   factory _$MediaListStateCopyWith(_MediaListState value, $Res Function(_MediaListState) _then) = __$MediaListStateCopyWithImpl;
 @override @useResult
 $Res call({
- Map<String, List<Anime>> userAnimeLists, Map<String, List<Manga>> userMangaLists, User loggedUser, List<AppEffect> effects
+ Map<String, List<Anime>> userAnimeLists, Map<String, List<Manga>> userMangaLists, User loggedUser, bool isLoading, List<AppEffect> effects
 });
 
 
@@ -282,12 +284,13 @@ class __$MediaListStateCopyWithImpl<$Res>
 
 /// Create a copy of MediaListState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? userAnimeLists = null,Object? userMangaLists = null,Object? loggedUser = null,Object? effects = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? userAnimeLists = null,Object? userMangaLists = null,Object? loggedUser = null,Object? isLoading = null,Object? effects = null,}) {
   return _then(_MediaListState(
 userAnimeLists: null == userAnimeLists ? _self._userAnimeLists : userAnimeLists // ignore: cast_nullable_to_non_nullable
 as Map<String, List<Anime>>,userMangaLists: null == userMangaLists ? _self._userMangaLists : userMangaLists // ignore: cast_nullable_to_non_nullable
 as Map<String, List<Manga>>,loggedUser: null == loggedUser ? _self.loggedUser : loggedUser // ignore: cast_nullable_to_non_nullable
-as User,effects: null == effects ? _self._effects : effects // ignore: cast_nullable_to_non_nullable
+as User,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
+as bool,effects: null == effects ? _self._effects : effects // ignore: cast_nullable_to_non_nullable
 as List<AppEffect>,
   ));
 }
