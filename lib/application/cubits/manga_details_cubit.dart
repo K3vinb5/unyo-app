@@ -108,13 +108,62 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
       }
     });
     _selectedMangaSubscription = _selectedMangaNotifier.mangaStream.listen((manga) {
-      _getMangaDetails(state.loggedUser, manga);
-      emit(state.copyWith(selectedManga: manga));
+      _handleSelectedMangaChanged(manga);
     });
     _selectedMediaListSubscription = _selectedMediaListNotifier.mediaListStream.listen((mediaList) {
       emit(state.copyWith(selectedMediaList: mediaList));
     });
     _loadInstalledExtensions();
+  }
+
+  /// Applies a selection coming from the notifier.
+  ///
+  /// A different manga id means the open details page was re-pointed at another
+  /// title: every per-title extension field (`extensionMangaResults`,
+  /// `extensionEpisodeResults`, ...) still describes the previous title, so it is
+  /// reset and the new title is resolved against an extension again. A repeated
+  /// emission of the same id is just an echo and must not re-resolve anything.
+  void _handleSelectedMangaChanged(Manga manga) {
+    bool isSameTitle = manga.id == state.selectedManga.id;
+    _getMangaDetails(state.loggedUser, manga);
+    if (isSameTitle) {
+      emit(state.copyWith(selectedManga: manga));
+      return;
+    }
+    Extension? previousExtension = state.selectedExtension;
+    _logger.i(
+      "Switched manga details to ${manga.title.userPreferred} (${manga.id}), resetting the per-title extension state",
+    );
+    emit(state.copyWith(
+      selectedManga: manga,
+      selectedExtension: null,
+      extensionMangaResults: [],
+      extensionEpisodeResults: [],
+      extensionVideoResults: [],
+    ));
+    _resolveExtensionForSwitchedManga(manga, previousExtension);
+  }
+
+  /// Resolves the extension of [manga] after a title switch: the saved mapping
+  /// wins, otherwise the extension the page was already using is carried over.
+  /// With neither, the page stays silent — only a chapter tap warns.
+  Future<void> _resolveExtensionForSwitchedManga(Manga manga, Extension? previousExtension) async {
+    if (state.installedExtensions.isEmpty) {
+      // `_loadInstalledExtensions` resolves the then-selected manga once it lands,
+      // so resolving here would only fetch twice.
+      _logger.d("Extensions are not loaded yet, leaving the resolution of manga ${manga.id} to the initial load.");
+      return;
+    }
+    Extension? carriedExtension = previousExtension != null &&
+            state.installedExtensions.any((extension) => extension.name == previousExtension.name)
+        ? previousExtension
+        : null;
+    await _setSelectedExtension(
+      state.loggedUser,
+      manga,
+      carriedExtension: carriedExtension,
+      promptWhenMissing: false,
+    );
   }
 
   void navigateToMangaDetails(Manga manga, MediaList mediaList) {
@@ -298,7 +347,12 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
     );
   }
 
-  Future<void> _setSelectedExtension(User loggedUser, Manga selectedManga) async {
+  Future<void> _setSelectedExtension(
+    User loggedUser,
+    Manga selectedManga, {
+    Extension? carriedExtension,
+    bool promptWhenMissing = true,
+  }) async {
     try {
       Extension? savedExtension;
       switch (loggedUser) {
@@ -311,7 +365,19 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
         await selectMangaExtension(savedExtension.name);
         return;
       }
+      if (carriedExtension != null) {
+        // Switching titles from a loaded screen implies the user is already in
+        // that extension, so the choice is carried over instead of prompting.
+        _logger.i("Carrying extension ${carriedExtension.name} over to manga ${selectedManga.id}.");
+        emit(state.copyWith(selectedExtension: carriedExtension));
+        await _getMangaInfoFromSelectedExtension(carriedExtension);
+        return;
+      }
       if (isClosed) return;
+      if (!promptWhenMissing) {
+        _logger.d("No saved extension found for manga ${selectedManga.id}; leaving the pick to the user.");
+        return;
+      }
       _showNoExtensionSelectedPrompt();
     } catch (e, stackTrace) {
       handleError("Error setting selected extension: $e", stackTrace: stackTrace);

@@ -67,7 +67,7 @@ class MockAnimeRepositoryAnilist extends Mock implements AnimeRepositoryAnilist 
 final sl = GetIt.instance;
 
 Future<void> setupTestLocator() async{
-  sl.reset();
+  await sl.reset();
   // Singletons
   sl.registerSingleton<Logger>(MockLogger());
 

@@ -167,9 +167,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       }
     });
     _selectedAnimeSubscription = _selectedAnimeNotifier.animeStream.listen((anime) {
-      _getAnimeDetails(state.loggedUser, anime);
-      _getEpisodesDetails(state.loggedUser, anime);
-      emit(state.copyWith(selectedAnime: anime));
+      _handleSelectedAnimeChanged(anime);
     });
     _selectedMediaListSubscription = _selectedMediaListNotifier.mediaListStream.listen((mediaList) {
       emit(state.copyWith(selectedMediaList: mediaList));
@@ -185,6 +183,59 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       }
     });
     _loadInstalledExtensions();
+  }
+
+  /// Applies a selection coming from the notifier.
+  ///
+  /// A different anime id means the open details page was re-pointed at another
+  /// title: every per-title extension field (`extensionAnimeResults`,
+  /// `extensionEpisodeResults`, ...) still describes the previous title, so it is
+  /// reset and the new title is resolved against an extension again. A repeated
+  /// emission of the same id is just an echo and must not re-resolve anything.
+  void _handleSelectedAnimeChanged(Anime anime) {
+    bool isSameTitle = anime.id == state.selectedAnime.id;
+    _getAnimeDetails(state.loggedUser, anime);
+    _getEpisodesDetails(state.loggedUser, anime);
+    if (isSameTitle) {
+      emit(state.copyWith(selectedAnime: anime));
+      return;
+    }
+    Extension? previousExtension = state.selectedExtension;
+    _logger.i(
+      "Switched anime details to ${logTitleFor(anime.title)} (${anime.id}), resetting the per-title extension state",
+    );
+    emit(state.copyWith(
+      selectedAnime: anime,
+      selectedExtension: null,
+      extensionAnimeResults: [],
+      selectedAnimeResultIndex: 0,
+      extensionEpisodeResults: [],
+      extensionVideoResults: [],
+      animeServerDialogReady: false,
+    ));
+    _resolveExtensionForSwitchedAnime(anime, previousExtension);
+  }
+
+  /// Resolves the extension of [anime] after a title switch: the saved mapping
+  /// wins, otherwise the extension the page was already using is carried over.
+  /// With neither, the page stays silent — only an episode tap warns.
+  Future<void> _resolveExtensionForSwitchedAnime(Anime anime, Extension? previousExtension) async {
+    if (state.installedExtensions.isEmpty) {
+      // `_loadInstalledExtensions` resolves the then-selected anime once it lands,
+      // so resolving here would only fetch twice.
+      _logger.d("Extensions are not loaded yet, leaving the resolution of anime ${anime.id} to the initial load.");
+      return;
+    }
+    Extension? carriedExtension = previousExtension != null &&
+            state.installedExtensions.any((extension) => extension.name == previousExtension.name)
+        ? previousExtension
+        : null;
+    await _setSelectedExtension(
+      state.loggedUser,
+      anime,
+      carriedExtension: carriedExtension,
+      promptWhenMissing: false,
+    );
   }
 
   void navigateBackToAnimePage(BuildContext context) {
@@ -852,7 +903,12 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     }
   }
 
-  Future<void> _setSelectedExtension(User loggedUser, Anime selectedAnime) async {
+  Future<void> _setSelectedExtension(
+    User loggedUser,
+    Anime selectedAnime, {
+    Extension? carriedExtension,
+    bool promptWhenMissing = true,
+  }) async {
     try {
       Extension? savedExtension;
       switch (loggedUser) {
@@ -865,7 +921,20 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         await selectAnimeExtension(savedExtension.name);
         return;
       }
+      if (carriedExtension != null) {
+        // Switching titles from a loaded screen implies the user is already in
+        // that extension, so the choice is carried over instead of prompting.
+        _logger.i("Carrying extension ${carriedExtension.name} over to anime ${selectedAnime.id}.");
+        emit(state.copyWith(selectedExtension: carriedExtension));
+        _selectedExtensionNotifier.updateSelectedExtension(carriedExtension);
+        await _getAnimeInfoFromSelectedExtension(carriedExtension);
+        return;
+      }
       if (isClosed) return;
+      if (!promptWhenMissing) {
+        _logger.d("No saved extension found for anime ${selectedAnime.id}; leaving the pick to the user.");
+        return;
+      }
       _showNoExtensionSelectedPrompt();
     } catch (e, stackTrace) {
       handleError("Error setting selected extension: $e", stackTrace: stackTrace);

@@ -26,9 +26,11 @@ import 'package:unyo/core/notification/reload/reload_notifier.dart';
 import 'package:unyo/core/notification/reload/reload_type.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/core/notification/video_info_notifier.dart';
+import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/repositories/extension_repository_aniyomi.dart';
 import 'package:unyo/data/repositories/user_repository_anilist.dart';
 import 'package:unyo/domain/entities/extension/extension.dart';
+import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
 import 'package:unyo/domain/repositories/episode_repository.dart';
@@ -355,6 +357,186 @@ void main() {
       verify(() => animeRepository.updateMediaListEntry(any(), any(), any())).called(1);
       verifyNever(() => reloadNotifier.emitReload(ReloadType.animeMediaListEntryUpdated));
       verifyNever(() => reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated));
+    });
+  });
+
+  group('AnimeDetailsCubit switching to another anime', () {
+    const TitleModel firstTitle = TitleModel(
+      romaji: 'Kusuriya no Hitorigoto',
+      english: 'The Apothecary Diaries',
+      nativeTitle: '薬屋のひとりごと',
+      userPreferred: 'Kusuriya no Hitorigoto',
+    );
+    const TitleModel secondTitle = TitleModel(
+      romaji: 'Sousou no Frieren',
+      english: 'Frieren: Beyond Journey\'s End',
+      nativeTitle: '葬送のフリーレン',
+      userPreferred: 'Sousou no Frieren',
+    );
+
+    final AnimeModel firstAnime = AnimeModel.empty().copyWith(id: 170942, idMal: 58514, title: firstTitle);
+    final AnimeModel secondAnime = AnimeModel.empty().copyWith(id: 154587, idMal: 52991, title: secondTitle);
+
+    late StreamController<Anime> animeStreamController;
+    late StreamController<User> userStreamController;
+    late List<String> searchQueries;
+
+    MockJSAnime jsAnimeWithTitle(String title) {
+      final MockJSAnime anime = MockJSAnime();
+      final MockJString jTitle = MockJString();
+      when(() => jTitle.toDartString()).thenReturn(title);
+      when(() => anime.getTitle()).thenReturn(jTitle);
+      return anime;
+    }
+
+    AnilistUserModel anilistUserWith(Map<String, Extension> mediaExtensionConfigs) {
+      return AnilistUserModel(
+        id: '1',
+        name: 'Test User',
+        settings: SettingsModel(mediaExtensionConfigs: mediaExtensionConfigs),
+        avatarImage: 'avatar.png',
+        bannerImage: 'banner.png',
+        accessCode: '',
+        accessToken: '',
+        refreshToken: '',
+      );
+    }
+
+    /// Opens the details page on [firstAnime] with [testExtension] selected, so a
+    /// test starts from a page that already holds the first title's extension
+    /// results — exactly the state the switch has to invalidate.
+    Future<void> openDetailsPageWithFirstAnime(
+      Map<String, Extension> savedMappings,
+    ) async {
+      animeStreamController = StreamController<Anime>.broadcast();
+      addTearDown(animeStreamController.close);
+      userStreamController = StreamController<User>.broadcast();
+      addTearDown(userStreamController.close);
+      searchQueries = <String>[];
+      when(() => animeNotifier.animeStream).thenAnswer((_) => animeStreamController.stream);
+      when(() => userNotifier.userStream).thenAnswer((_) => userStreamController.stream);
+      when(() => animeRepository.getAnimeDetails(any(), any(), service: any(named: 'service')))
+          .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
+      when(() => animeRepository.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (false, <Anime>[]));
+      when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => <String>[]);
+      when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => <EpisodeInfo>[]);
+      when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => '');
+      when(() => episodesInfoNotifier.updateSelectedEpisodeInfo(any())).thenReturn(null);
+      when(() => mediaListEntryNotifier.updateSelectedMediaListEntry(any())).thenReturn(null);
+      when(() => extensionNotifier.updateSelectedExtension(any())).thenReturn(null);
+      when(() => episodesNotifier.updateSelectedJSEpisodes(any())).thenReturn(null);
+      when(() => userRepository.updateUserInfo(any())).thenAnswer((_) async {});
+      when(() => extensionRepository.getInstalledAnimeExtensions(any()))
+          .thenAnswer((_) async => <Extension>{testExtension});
+      when(() => extensionRepository.getAnimeSearchResults(any(), any())).thenAnswer((invocation) async {
+        final String query = invocation.positionalArguments.first as String;
+        searchQueries.add(query);
+        return <JSAnime>[jsAnimeWithTitle(query)];
+      });
+
+      cubit = buildCubit();
+      await pumpEventQueue();
+      userStreamController.add(anilistUserWith(savedMappings));
+      await pumpEventQueue();
+      animeStreamController.add(firstAnime);
+      await pumpEventQueue();
+      await cubit.selectAnimeExtension(testExtension.name);
+      await pumpEventQueue();
+
+      expect(cubit.state.selectedAnime.id, firstAnime.id);
+      expect(cubit.state.extensionAnimeResults, isNotEmpty);
+    }
+
+    int noExtensionPrompts() => snackbarsOf(cubit.state)
+        .where((effect) => effect.title == 'No Extension Selected')
+        .length;
+
+    test('a saved mapping for the new title re-resolves the extension on the cleared state', () async {
+      await openDetailsPageWithFirstAnime(<String, Extension>{secondAnime.id.toString(): testExtension});
+
+      AnimeDetailsState? stateDuringSwitchFetch;
+      bool switchedToSecondAnime = false;
+      final List<AnimeDetailsState> emittedStates = <AnimeDetailsState>[];
+      final StreamSubscription<AnimeDetailsState> stateSubscription = cubit.stream.listen(emittedStates.add);
+      addTearDown(stateSubscription.cancel);
+      when(() => extensionRepository.getAnimeSearchResults(any(), any())).thenAnswer((invocation) async {
+        final String query = invocation.positionalArguments.first as String;
+        if (switchedToSecondAnime) stateDuringSwitchFetch ??= cubit.state;
+        searchQueries.add(query);
+        return <JSAnime>[jsAnimeWithTitle(query)];
+      });
+
+      switchedToSecondAnime = true;
+      animeStreamController.add(secondAnime);
+      await pumpEventQueue();
+
+      expect(cubit.state.selectedAnime.id, secondAnime.id);
+      expect(
+        stateDuringSwitchFetch,
+        isNotNull,
+        reason: 'the saved mapping of the new title must trigger an extension search',
+      );
+      // (b) the first title's per-title extension state must be gone before the fetch runs.
+      expect(stateDuringSwitchFetch!.selectedAnime.id, secondAnime.id);
+      expect(stateDuringSwitchFetch!.extensionAnimeResults, isEmpty);
+      expect(stateDuringSwitchFetch!.selectedAnimeResultIndex, 0);
+      expect(stateDuringSwitchFetch!.extensionEpisodeResults, isEmpty);
+      expect(stateDuringSwitchFetch!.extensionVideoResults, isEmpty);
+      final AnimeDetailsState resetState =
+          emittedStates.firstWhere((state) => state.selectedAnime.id == secondAnime.id);
+      expect(resetState.selectedExtension, isNull, reason: 'the previous title extension is dropped on the switch');
+      expect(resetState.animeServerDialogReady, isFalse);
+      // (a) the fetch itself targets the new title.
+      expect(searchQueries.last, secondTitle.userPreferred);
+      expect(cubit.state.selectedExtension, same(testExtension));
+      expect(
+        cubit.state.extensionAnimeResults.map((result) => result.getTitle().toDartString()),
+        <String>[secondTitle.userPreferred],
+        reason: 'the new title must end up with its own extension results, not the old ones',
+      );
+      final List<int> episodeFetchIds = verify(
+        () => episodeRepository.getEpisodeInfo(malId: captureAny(named: 'malId'), anilistId: any(named: 'anilistId')),
+      ).captured.cast<int>();
+      expect(
+        episodeFetchIds,
+        contains(secondAnime.idMal),
+        reason: 'the episode metadata fetch must run for the new title too',
+      );
+    });
+
+    test('carries the selected extension over to the new title when the new title has no saved mapping', () async {
+      await openDetailsPageWithFirstAnime(<String, Extension>{});
+      final int promptsBeforeSwitch = noExtensionPrompts();
+
+      animeStreamController.add(secondAnime);
+      await pumpEventQueue();
+
+      expect(cubit.state.selectedAnime.id, secondAnime.id);
+      expect(cubit.state.selectedExtension, same(testExtension), reason: 'the open page was already in that extension');
+      expect(searchQueries.last, secondTitle.userPreferred);
+      expect(cubit.state.extensionAnimeResults, isNotEmpty);
+      expect(
+        noExtensionPrompts(),
+        promptsBeforeSwitch,
+        reason: 'a switch must not prompt for an extension (WP #87 keeps the open path quiet)',
+      );
+    });
+
+    test('re-emitting the same anime id does not resolve the extension again', () async {
+      await openDetailsPageWithFirstAnime(<String, Extension>{secondAnime.id.toString(): testExtension});
+      animeStreamController.add(secondAnime);
+      await pumpEventQueue();
+      final List<String> queriesAfterSwitch = List<String>.of(searchQueries);
+
+      animeStreamController.add(secondAnime);
+      await pumpEventQueue();
+
+      expect(searchQueries, queriesAfterSwitch, reason: 'a same-id echo must not re-fetch from the extension');
+      expect(cubit.state.extensionAnimeResults, isNotEmpty, reason: 'the echo must not clear the resolved results');
     });
   });
 
