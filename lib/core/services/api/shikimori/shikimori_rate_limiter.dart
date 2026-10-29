@@ -34,6 +34,12 @@ import 'package:unyo/core/di/locator.dart';
 /// the shared grant list after every sleep, so N carousels firing in parallel
 /// are serialized onto the same budget instead of each believing it is first.
 ///
+/// The pacing wait is **awaited**, so the calling isolate is released for the
+/// whole delay — the main isolate keeps painting while a request queues. The
+/// gate check and the grant itself are one synchronous step (no `await`
+/// between them), so two callers can never pass the gate together: whichever
+/// one wakes second re-reads the freshly written grant and keeps pacing.
+///
 /// ## Scope decisions
 ///
 /// * The OAuth **token endpoint does not take a grant**. `oauth/token` lives
@@ -86,26 +92,37 @@ class ShikimoriRateLimiter {
   /// Blocks until a request may be sent under the shared budget, then records
   /// the grant. [reason] only labels the DEBUG delay line so a runtime drive
   /// can attribute a stall to the endpoint that queued for it.
+  ///
+  /// Every wait is awaited: the loop suspends the caller (and, on the main
+  /// isolate, the event loop underneath it stays live) instead of spinning on
+  /// the pacing delay.
   Future<void> acquire({String reason = 'request'}) async {
-    Duration delayed = Duration.zero;
+    final DateTime startedAt = _clock();
     while (true) {
       final DateTime now = _clock();
       _prune(now);
       final Duration waitFor = _waitFor(now);
-      if (waitFor <= Duration.zero) {
-        _grants.add(now);
-        _lastGrantAt = now;
-        _totalGrants++;
-        if (delayed > Duration.zero) {
-          _logger.d(
-            "Shikimori request delayed by ${delayed.inMilliseconds} ms "
-            "($reason, ${_grants.length}/$perMinuteLimit in the last minute)",
-          );
-        }
-        return;
+      if (waitFor > Duration.zero) {
+        await _wait(waitFor);
+        continue;
       }
-      _wait(waitFor);
-      delayed += waitFor;
+      // Check-then-grant with no suspension point in between: on a single
+      // isolate no other caller can slip a grant into this window, so two
+      // acquirers can never be granted together.
+      _grants.add(now);
+      _lastGrantAt = now;
+      _totalGrants++;
+
+      // The delay is the measured clock delta, never a sum of the individual
+      // waits (which would re-count the remaining wait on every re-check).
+      final Duration held = now.difference(startedAt);
+      if (held > Duration.zero) {
+        _logger.d(
+          "Shikimori request delayed by ${held.inMilliseconds} ms "
+          "($reason, ${_grants.length}/$perMinuteLimit in the last minute)",
+        );
+      }
+      return;
     }
   }
 
