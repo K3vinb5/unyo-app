@@ -385,7 +385,7 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                         ),
                                         PopupMenuButton<int>(
                                           tooltip: "Select Video Server",
-                                          icon: const Icon(Icons.video_settings_rounded, size: 27),
+                                          icon: const Icon(Icons.dns_rounded, size: 27),
                                           onSelected: (int index) {
                                             _videoService.swapVideoUrl(index);
                                             setState(() {});
