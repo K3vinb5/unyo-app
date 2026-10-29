@@ -15,15 +15,28 @@ abstract final class MediaCardMetrics {
   static const double coverHeight = 200.5;
   static const double coverRadius = 20;
 
+  /// [coverRadius] as a [BorderRadius], so a skeleton can clip its cover stack
+  /// in a `const` tree.
+  static const BorderRadius coverBorderRadius = BorderRadius.all(
+    Radius.circular(coverRadius),
+  );
+
   /// `widgets/styled/media_card.dart` - title and meta rows under the cover.
   static const double titleRowHeight = 24;
   static const double metaRowHeight = 18;
 
   /// `widgets/styled/media_card.dart` - the score badge overlay in the
-  /// bottom-right corner of the cover (`6 + text + 15px star`, 50-radius corner).
+  /// bottom-right corner of the cover (`6 + text + 15px star` wide, 18 high).
   static const double badgeWidth = 46;
   static const double badgeHeight = 18;
-  static const double badgeRadius = 9;
+
+  /// `widgets/styled/media_card.dart` - the badge is a leaf, not a pill: its
+  /// bottom-right corner (50) follows the cover and its top-left corner (50)
+  /// is cut away, so no single uniform radius describes it.
+  static const BorderRadius badgeBorderRadius = BorderRadius.only(
+    bottomRight: Radius.circular(50),
+    topLeft: Radius.circular(50),
+  );
 
   /// `widgets/styled/media_card.dart` - the single text line painted inside
   /// [titleRowHeight] and [metaRowHeight]; a pill the size of the whole row

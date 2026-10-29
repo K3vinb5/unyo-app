@@ -13,6 +13,7 @@ class SkeletonBlock extends StatelessWidget {
     this.width,
     required this.height,
     this.borderRadius = 8,
+    this.shape,
   });
 
   /// Width of the block; `null` fills the available width.
@@ -23,7 +24,18 @@ class SkeletonBlock extends StatelessWidget {
   /// dividers) paints nothing at all.
   final double? width;
   final double height;
+
+  /// Uniform corner radius - sugar for the common case.
+  ///
+  /// Ignored when [shape] is set.
   final double borderRadius;
+
+  /// Non-uniform corners: some components are not pills, they are leaves.
+  ///
+  /// The score badge on the media card carries a 50-radius bottom-right corner
+  /// and a 50-radius top-left one, which a single [borderRadius] cannot
+  /// express. When set, [shape] wins over [borderRadius].
+  final BorderRadius? shape;
 
   /// Base fill: `onSurface` at 6% - the resting skeleton colour.
   static Color baseColor(BuildContext context) =>
@@ -41,7 +53,7 @@ class SkeletonBlock extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: baseColor(context),
-          borderRadius: BorderRadius.circular(borderRadius),
+          borderRadius: shape ?? BorderRadius.circular(borderRadius),
         ),
       ),
     );
