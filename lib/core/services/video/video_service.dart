@@ -31,11 +31,16 @@ class VideoService {
   int _episodeIndex; // This will be used for getting the correct video out of a playlist from a magnet / torrent
   final void Function(String) _onErrorCallback;
 
-  late final mdk.Player _player;
+  final mdk.Player _player;
   final List<ext.Track> subtitleTracks = [];
   final List<ext.Track> audioTracks = [];
-  ext.Track? _currentSubtitleTrack;
-  ext.Track? _currentAudioTrack;
+  // Selection is index based. -1 means "none" for subtitles (subtitles off) and
+  // "player default / no explicit override" for audio.
+  int _subtitleIndex = -1;
+  int _audioIndex = -1;
+  // The user explicitly picked "No subtitles" for the current media, so the
+  // auto-selection on load must not turn the first track back on.
+  bool _subtitlesDisabledByUser = false;
 
   late bool _initialFullscreen;
   late bool _isFullscreen;
@@ -55,25 +60,38 @@ class VideoService {
     required int videoIndex,
     required int episodeIndex,
     required void Function(String) onErrorCallback,
+    @visibleForTesting mdk.Player? player,
   }) : _episodeIndex = episodeIndex,
        _videoIndex = videoIndex,
        _video = video,
        _alternativeVideos = alternativeVideos,
-       _onErrorCallback = onErrorCallback {
-    _player = mdk.Player();
+       _onErrorCallback = onErrorCallback,
+       _player = player ?? mdk.Player() {
+    if (player != null) {
+      // Test seam: the caller owns the player, so skip device/media setup and
+      // only wire the status stream.
+      _initialFullscreen = false;
+      _isFullscreen = false;
+      _listenToMediaStatus();
+      return;
+    }
     _configureDecoder();
     _configurePlayer();
     _setPlayerHttpHeaders(_video.headers);
     _initAsync();
   }
 
+  void _listenToMediaStatus() {
+    _mediaStatusSubscription = _player.onMediaStatus.listen(
+      (event) => _onMediaStatusInit(event.oldValue, event.newValue),
+    );
+  }
+
   /// Inits asynchronous properties and sets player media
   Future<void> _initAsync() async {
     _initialFullscreen = await windowManager.isFullScreen();
     _isFullscreen = _initialFullscreen;
-    _mediaStatusSubscription = _player.onMediaStatus.listen(
-      (event) => _onMediaStatusInit(event.oldValue, event.newValue),
-    );
+    _listenToMediaStatus();
     try {
       final resolvedUrl = await _resolveVideoUrl(_video.videoUrl);
       _player.media = resolvedUrl;
@@ -98,6 +116,11 @@ class VideoService {
     _episodeIndex = episodeIndex;
     _isVideoReady = false;
     _isBuffering = true;
+    // A new media starts from the defaults again: auto-selection on load picks
+    // the first subtitle track and the player default audio.
+    _subtitleIndex = -1;
+    _audioIndex = -1;
+    _subtitlesDisabledByUser = false;
     try {
       final resolvedUrl = await _resolveVideoUrl(_video.videoUrl);
       _player.media = resolvedUrl;
@@ -143,6 +166,14 @@ class VideoService {
   List<ext.Track> get subtitles => subtitleTracks;
 
   List<ext.Track> get audios => audioTracks;
+
+  /// Active subtitle selection, or -1 when subtitles are off.
+  int get subtitleIndex => _subtitleIndex;
+
+  /// Active audio override, or -1 when the player default is used.
+  int get audioIndex => _audioIndex;
+
+  bool get areSubtitlesDisabled => _subtitleIndex < 0;
 
   int get videoIndex => _videoIndex;
 
@@ -239,32 +270,69 @@ class VideoService {
     play();
   }
 
+  /// [subtitleIndex] == -1 turns subtitles off; other out of range indexes are
+  /// rejected and leave the current selection untouched.
   bool setSubtitle(int subtitleIndex) {
+    if (subtitleIndex == -1) {
+      _subtitlesDisabledByUser = true;
+      return _disableSubtitles();
+    }
     if (subtitleIndex < 0 || subtitleIndex >= subtitleTracks.length) {
-      _currentSubtitleTrack = null;
       return false;
     }
-    _currentSubtitleTrack = subtitleTracks[subtitleIndex];
-    if (_currentSubtitleTrack != null && _currentSubtitleTrack!.embedded) {
-      _player.activeSubtitleTracks = [_currentSubtitleTrack!.embeddedIndex];
+    _subtitlesDisabledByUser = false;
+    _subtitleIndex = subtitleIndex;
+    final track = subtitleTracks[subtitleIndex];
+    if (track.embedded) {
+      _player.activeSubtitleTracks = [track.embeddedIndex];
     } else {
-      _player.setMedia(_currentSubtitleTrack!.url, mdk.MediaType.subtitle);
+      _player.setMedia(track.url, mdk.MediaType.subtitle);
     }
     return true;
   }
 
+  /// Turns every subtitle off, including an external file attached with
+  /// [mdk.Player.setMedia] / [mdk.MediaType.subtitle]. An empty active track set
+  /// is MDK's `sid=no`: it disables the embedded streams and the external
+  /// subtitle source of the player alike.
+  bool _disableSubtitles() {
+    _subtitleIndex = -1;
+    _player.activeSubtitleTracks = const <int>[];
+    return true;
+  }
+
+  /// [audioTrackIndex] == -1 falls back to the player default audio: the track
+  /// auto-selection itself would pick (the first available source), NOT an empty
+  /// active track set — in MDK an empty set disables every audio track, which
+  /// would mute playback instead of restoring the default. Only when there is no
+  /// audio source at all is there nothing to select, and clearing is then a
+  /// no-op on the player. Other out of range indexes are rejected.
   bool setAudioTrack(int audioTrackIndex) {
+    if (audioTrackIndex == -1) {
+      _audioIndex = -1;
+      if (audioTracks.isEmpty) {
+        _player.activeAudioTracks = const <int>[];
+        return true;
+      }
+      _activateAudioTrack(audioTracks.first);
+      return true;
+    }
     if (audioTrackIndex < 0 || audioTrackIndex >= audioTracks.length) {
-      _currentAudioTrack = null;
       return false;
     }
-    _currentAudioTrack = audioTracks[audioTrackIndex];
-    if (_currentAudioTrack != null && _currentAudioTrack!.embedded) {
-      _player.activeAudioTracks = [_currentAudioTrack!.embeddedIndex];
-    } else {
-      _player.setMedia(_currentAudioTrack!.url, mdk.MediaType.audio);
-    }
+    _audioIndex = audioTrackIndex;
+    _activateAudioTrack(audioTracks[audioTrackIndex]);
     return true;
+  }
+
+  void _activateAudioTrack(ext.Track track) {
+    if (track.embedded) {
+      // An embedded stream is selectable by its stream index.
+      _player.activeAudioTracks = [track.embeddedIndex];
+    } else {
+      // An external/dub file is attached as an audio media for the player.
+      _player.setMedia(track.url, mdk.MediaType.audio);
+    }
   }
 
   bool setFullscreen(bool fullscreen) {
@@ -500,7 +568,10 @@ class VideoService {
       }
     }
     subtitleTracks.addAll(_video.subtitleTracks);
-    if (subtitleTracks.isNotEmpty) {
+    if (_subtitlesDisabledByUser) {
+      // The user picked "No subtitles" for this media: keep them off.
+      _disableSubtitles();
+    } else if (subtitleTracks.isNotEmpty) {
       setSubtitle(0);
     }
     index = 0;
@@ -518,6 +589,9 @@ class VideoService {
       }
     }
     audioTracks.addAll(_video.audioTracks);
+    // The menu hides this behind a single "Default audio" entry when there is at
+    // most one source, but initialization must still activate what is available:
+    // with a single external/dub file that means attaching it via setMedia.
     if (audioTracks.isNotEmpty) {
       setAudioTrack(0);
     }
