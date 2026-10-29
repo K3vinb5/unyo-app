@@ -8,20 +8,20 @@ import 'package:material_ui/material_ui.dart';
 // Internal dependencies
 import 'package:unyo/presentation/dialogs/theme_color_picker_dialog.dart';
 
-/// WCAG relative luminance, used to prove text/background contrast.
-double relativeLuminance(Color color) {
-  double channel(double value) =>
-      value <= 0.03928 ? value / 12.92 : math.pow((value + 0.055) / 1.055, 2.4).toDouble();
-  return 0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b);
-}
-
-double contrastRatio(Color foreground, Color background) {
-  final double light = math.max(relativeLuminance(foreground), relativeLuminance(background));
-  final double dark = math.min(relativeLuminance(foreground), relativeLuminance(background));
-  return (light + 0.05) / (dark + 0.05);
-}
-
 void main() {
+  /// WCAG relative luminance, used to prove text/background contrast.
+  double relativeLuminance(Color color) {
+    double channel(double value) =>
+        value <= 0.03928 ? value / 12.92 : math.pow((value + 0.055) / 1.055, 2.4).toDouble();
+    return 0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b);
+  }
+
+  double contrastRatio(Color foreground, Color background) {
+    final double light = math.max(relativeLuminance(foreground), relativeLuminance(background));
+    final double dark = math.min(relativeLuminance(foreground), relativeLuminance(background));
+    return (light + 0.05) / (dark + 0.05);
+  }
+
   Future<void> openDialog(WidgetTester tester, {ThemeData? theme}) async {
     tester.view.physicalSize = const Size(1920, 1080);
     tester.view.devicePixelRatio = 1.0;
