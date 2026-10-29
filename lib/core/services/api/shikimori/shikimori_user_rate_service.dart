@@ -10,6 +10,7 @@ import 'package:unyo/core/services/api/http/empty_api_response.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
 import 'package:unyo/core/services/api/shikimori/shikimori_auth_service.dart';
+import 'package:unyo/core/services/api/shikimori/shikimori_rate_limiter.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_list_status_policy.dart';
 import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/user_repository_shikimori.dart';
@@ -48,6 +49,9 @@ class ShikimoriUserRateService {
   static const String userRateField = 'user_rate';
 
   final HttpService _httpService = sl<HttpService>();
+  /// Shared Shikimori budget (WP #64 subpart (d)); resolved lazily so tests that
+  /// only exercise the pure mapping logic do not need it registered.
+  ShikimoriRateLimiter get _rateLimiter => sl<ShikimoriRateLimiter>();
   final ShikimoriAuthService _authService = sl<ShikimoriAuthService>();
   final UserRepositoryShikimori _userRepository = sl<UserRepositoryShikimori>();
   final Logger _logger = sl<Logger>();
@@ -164,6 +168,7 @@ class ShikimoriUserRateService {
         'target_type': target.wireValue,
       },
     );
+    await _rateLimiter.acquire(reason: "REST GET user_rates");
     final ApiResponse<ShikimoriUserRateListEntity> response =
         await _httpService.get<ShikimoriUserRateListEntity>(
       uri.toString(),
@@ -187,6 +192,7 @@ class ShikimoriUserRateService {
       ..['user_id'] = _userId(user)
       ..['target_id'] = targetId
       ..['target_type'] = target.wireValue;
+    await _rateLimiter.acquire(reason: "REST POST user_rates");
     final ApiResponse<ShikimoriUserRateEntity> response = await _httpService.post<ShikimoriUserRateEntity>(
       config.shikimoriUserRatesEndpoint,
       headers: _headers(user),
@@ -204,6 +210,7 @@ class ShikimoriUserRateService {
     required MediaListEntry entry,
     required String status,
   }) async {
+    await _rateLimiter.acquire(reason: "REST PATCH user_rates/:id");
     final ApiResponse<ShikimoriUserRateEntity> response = await _httpService.patch<ShikimoriUserRateEntity>(
       _rateEndpoint(rateId),
       headers: _headers(user),
@@ -216,6 +223,7 @@ class ShikimoriUserRateService {
   }
 
   Future<ShikimoriUserRateEntity> _increment(ShikimoriUserModel user, int rateId) async {
+    await _rateLimiter.acquire(reason: "REST POST user_rates/:id/increment");
     final ApiResponse<ShikimoriUserRateEntity> response = await _httpService.post<ShikimoriUserRateEntity>(
       '${_rateEndpoint(rateId)}/increment',
       headers: _headers(user),
@@ -227,6 +235,7 @@ class ShikimoriUserRateService {
   }
 
   Future<void> _delete(ShikimoriUserModel user, int rateId) async {
+    await _rateLimiter.acquire(reason: "REST DELETE user_rates/:id");
     await _httpService.delete<EmptyApiResponse>(
       _rateEndpoint(rateId),
       headers: _headers(user),

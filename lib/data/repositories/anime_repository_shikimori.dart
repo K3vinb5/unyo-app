@@ -19,6 +19,7 @@ import 'package:unyo/core/services/api/graphql/queries/shikimori_queries.dart' a
 import 'package:unyo/core/services/api/graphql/queries/shikimori_search_parameters.dart';
 import 'package:unyo/core/services/api/http/api_response.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
+import 'package:unyo/core/services/api/shikimori/shikimori_rate_limiter.dart';
 import 'package:unyo/core/services/api/shikimori/shikimori_user_rate_service.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_anime_details.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
@@ -45,6 +46,9 @@ class AnimeRepositoryShikimori with RepositoryMixin implements AnimeRepository {
     instanceName: config.shikimoriGraphQlService,
   );
   final HttpService _httpService = sl<HttpService>();
+  /// The shared Shikimori budget (WP #64 subpart (d)): GraphQL goes through the
+  /// limiter inside [GraphQLService], the REST calls below acquire here.
+  ShikimoriRateLimiter get _rateLimiter => sl<ShikimoriRateLimiter>();
   /// Resolved on first use: the metadata tests build this repository without a
   /// REST list-entry service registered, and no metadata read touches it.
   ShikimoriUserRateService get _userRateService => sl<ShikimoriUserRateService>();
@@ -94,6 +98,7 @@ class AnimeRepositoryShikimori with RepositoryMixin implements AnimeRepository {
   Future<Map<String, List<Anime>>> getCalendarReleases(int page, User loggedUser) async {
     if (page > 1) return <String, List<Anime>>{};
     _logger.i("Fetching Shikimori calendar releases");
+    await _rateLimiter.acquire(reason: "REST /api/calendar");
     final ApiResponse<ShikimoriCalendarQueryEntity> response = await _httpService.get<ShikimoriCalendarQueryEntity>(
       config.shikimoriCalendarEndpoint,
       headers: _requestHeaders,

@@ -13,6 +13,7 @@ import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/services/api/graphql/graphql_exception.dart';
 import 'package:unyo/core/services/api/graphql/graphql_service.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
+import 'package:unyo/core/services/api/shikimori/shikimori_rate_limiter.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
 import 'package:unyo/data/repositories/anime_repository_shikimori.dart';
@@ -22,6 +23,7 @@ import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 
+import '../../core/services/api/shikimori/support/fake_rate_limiter_clock.dart';
 import 'support/fake_graphql_http_service.dart';
 
 /// Repository-level tests for [AnimeRepositoryShikimori].
@@ -60,6 +62,10 @@ void main() {
   }) {
     sl.reset();
     sl.registerSingleton<Logger>(Logger(filter: ProductionFilter()));
+    final FakeRateLimiterClock clock = FakeRateLimiterClock();
+    sl.registerLazySingleton<ShikimoriRateLimiter>(
+      () => ShikimoriRateLimiter(clock: clock.now, wait: clock.wait),
+    );
     http = FakeGraphQlHttpService(payload, getPayload: getPayload, payloadsByQueryMarker: payloadsByQueryMarker);
     sl.registerSingleton<HttpService>(http);
     sl.registerLazySingleton<GraphQLService>(

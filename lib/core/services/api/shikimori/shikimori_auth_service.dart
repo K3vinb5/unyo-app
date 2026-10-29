@@ -34,6 +34,13 @@ class ShikimoriAuthException implements Exception {
 ///   with `{"error":"invalid_token"}`.
 ///
 /// The clock is injectable so the expiry policy can be tested without sleeping.
+///
+/// Rate budget (WP #64 subpart (d)): this endpoint deliberately does **not**
+/// take a grant from `ShikimoriRateLimiter`. `oauth/token` is outside `/api`,
+/// the documented 5 rps / 90 rpm budget covers the API surface, and a refresh
+/// happens at most once per 1-day token lifetime — queueing it behind up to a
+/// minute of API traffic would delay a write for no protection. If Shikimori
+/// ever answers `429` here, route it through the limiter too.
 class ShikimoriAuthService {
   final http.Client _client;
   final DateTime Function() _clock;

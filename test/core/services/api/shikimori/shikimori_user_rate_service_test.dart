@@ -14,12 +14,15 @@ import 'package:unyo/core/services/api/http/api_response.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
 import 'package:unyo/core/services/api/shikimori/shikimori_auth_service.dart';
+import 'package:unyo/core/services/api/shikimori/shikimori_rate_limiter.dart';
 import 'package:unyo/core/services/api/shikimori/shikimori_user_rate_service.dart';
 import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/user_repository_shikimori.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
+
+import 'support/fake_rate_limiter_clock.dart';
 
 class MockLogger extends Mock implements Logger {}
 
@@ -246,6 +249,10 @@ void main() {
   setUp(() async {
     await sl.reset();
     sl.registerSingleton<Logger>(MockLogger());
+    final FakeRateLimiterClock clock = FakeRateLimiterClock();
+    sl.registerLazySingleton<ShikimoriRateLimiter>(
+      () => ShikimoriRateLimiter(clock: clock.now, wait: clock.wait),
+    );
     http = RecordingHttpService();
     sl.registerSingleton<HttpService>(http);
     auth = FakeShikimoriAuthService();
