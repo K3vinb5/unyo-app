@@ -11,9 +11,10 @@ import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/core/di/locator.dart';
 import 'api_response.dart';
 import 'http_exception.dart';
+import 'response_cache_scope.dart';
 
 class HttpService {
-  final http.Client client = http.Client();
+  final http.Client client;
   final Logger _logger = sl<Logger>();
   final Duration timeout;
   final RetryOptions retryOptions;
@@ -23,7 +24,12 @@ class HttpService {
   HttpService({
     this.timeout = const Duration(seconds: 10),
     this.retryOptions = const RetryOptions(maxAttempts: 2),
-  });
+    http.Client? client,
+  }) : client = client ?? http.Client();
+
+  /// Resolved on use, not at construction: test doubles of [HttpService] that
+  /// override [get]/[post] never touch the cache and must not need the scope.
+  ResponseCacheScope get _cacheScope => sl<ResponseCacheScope>();
 
   Future<ApiResponse<T>> get<T>(
     String endpoint, {
@@ -45,8 +51,7 @@ class HttpService {
       }
     } else {
       if (_isCacheable(endpoint)) {
-        final cacheKey = "${'GET'.hashCode}${endpoint.hashCode}${json.encode(_cacheEnabledHeaders(headers)).hashCode}${null.hashCode}${fromJson.runtimeType.hashCode}";
-        _deleteCacheEntry(cacheKey);
+        _deleteCacheEntry(_cacheKey('GET', endpoint, headers: headers, fromJson: fromJson));
       }
     }
     ApiResponse<T> apiResponse = await _request(
@@ -88,8 +93,9 @@ class HttpService {
       }
     } else {
       if (_isCacheable(endpoint)) {
-        final cacheKey = "${'POST'.hashCode}${endpoint.hashCode}${json.encode(_cacheEnabledHeaders(headers)).hashCode}${encodedBody.hashCode}${fromJson.runtimeType.hashCode}";
-        _deleteCacheEntry(cacheKey);
+        _deleteCacheEntry(
+          _cacheKey('POST', endpoint, headers: headers, body: encodedBody, fromJson: fromJson),
+        );
       }
     }
     ApiResponse<T> apiResponse = await _request(
@@ -118,7 +124,7 @@ class HttpService {
     required T Function(Map<String, dynamic>) fromJson,
   }) {
     if (!_isCacheable(endpoint)) return null;
-    final cacheKey = "${method.hashCode}${endpoint.hashCode}${json.encode(_cacheEnabledHeaders(headers)).hashCode}${body.hashCode}${fromJson.runtimeType.hashCode}";
+    final cacheKey = _cacheKey(method, endpoint, headers: headers, body: body, fromJson: fromJson);
     if (_apiResponseCache.containsKey(cacheKey)) {
       _logger.d("Cached response found for $endpoint");
       try {
@@ -160,12 +166,27 @@ class HttpService {
     }
     if (!_isCacheable(endpoint)) return;
     _logger.d("Caching response for $endpoint");
-    final cacheKey = "${method.hashCode}${endpoint.hashCode}${json.encode(_cacheEnabledHeaders(headers)).hashCode}${body.hashCode}${fromJson.runtimeType.hashCode}";
+    final cacheKey = _cacheKey(method, endpoint, headers: headers, body: body, fromJson: fromJson);
     _apiResponseCache[cacheKey] =
         (
           DateTime.now().millisecondsSinceEpoch + cacheTtl.inMilliseconds,
           response,
         );
+  }
+
+  /// Cache key for a request: request identity plus the provider scope the
+  /// response was fetched under ([ResponseCacheScope.revision]). Everything
+  /// cached under an earlier scope stays unreachable, so a provider switch can
+  /// never hand a lazy tab the previous provider's rows.
+  String _cacheKey<T>(
+    String method,
+    String endpoint, {
+    Map<String, String>? headers,
+    String? body,
+    required T Function(Map<String, dynamic>) fromJson,
+  }) {
+    return "${_cacheScope.revision}${method.hashCode}${endpoint.hashCode}"
+        "${json.encode(_cacheEnabledHeaders(headers)).hashCode}${body.hashCode}${fromJson.runtimeType.hashCode}";
   }
 
   bool _isCacheable(String endpoint) {

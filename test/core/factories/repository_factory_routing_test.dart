@@ -183,6 +183,53 @@ void main() {
       expect(mangas, hasLength(1));
       verify(() => anilistManga.getTrendingMangas(1, any(), ignoreCache: false)).called(1);
     });
+
+    test('browse lists route to the AniList repository when AniList is the metadata provider', () async {
+      when(() => anilistManga.getPopularMangas(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (true, <Manga>[MangaModel.empty()]));
+
+      final (bool ok, List<Manga> mangas) = await mangaFactory.getPopularMangas(1, userWith());
+
+      expect(ok, isTrue);
+      expect(mangas, hasLength(1));
+      verify(() => anilistManga.getPopularMangas(1, any(), ignoreCache: false)).called(1);
+    });
+
+    test('mal, kitsu, shikimori and simkl are explicitly unsupported metadata providers', () async {
+      const List<Service> unsupported = <Service>[
+        Service.mal,
+        Service.kitsu,
+        Service.shikimori,
+        Service.simkl,
+      ];
+      expect(MangaRepositoryFactory.supportsMetadataService(Service.anilist), isTrue);
+
+      for (final Service service in unsupported) {
+        expect(
+          MangaRepositoryFactory.supportsMetadataService(service),
+          isFalse,
+          reason: '${service.name} has no manga implementation',
+        );
+        final AnilistUserModel user = userWith(metadataService: service);
+
+        for (final (bool ok, List<Manga> mangas) in <(bool, List<Manga>)>[
+          await mangaFactory.getTrendingMangas(1, user),
+          await mangaFactory.getPopularMangas(1, user),
+          await mangaFactory.getRecentlyCompletedMangas(1, user),
+          await mangaFactory.getUpcomingMangas(1, user),
+        ]) {
+          expect(ok, isFalse, reason: '${service.name} must not look like a successful load');
+          expect(mangas, isEmpty);
+        }
+      }
+
+      verifyNever(() => anilistManga.getTrendingMangas(any(), any(), ignoreCache: any(named: 'ignoreCache')));
+      verifyNever(() => anilistManga.getPopularMangas(any(), any(), ignoreCache: any(named: 'ignoreCache')));
+      verifyNever(
+        () => anilistManga.getRecentlyCompletedMangas(any(), any(), ignoreCache: any(named: 'ignoreCache')),
+      );
+      verifyNever(() => anilistManga.getUpcomingMangas(any(), any(), ignoreCache: any(named: 'ignoreCache')));
+    });
   });
 
   group('cross-provider list entry translation', () {

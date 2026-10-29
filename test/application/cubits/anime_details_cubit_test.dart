@@ -326,6 +326,33 @@ void main() {
       expect(cubit.state.selectedAnimeResultIndex, 1);
       expect(snackbars.any((effect) => effect.title == 'Something went wrong'), isFalse, reason: rendered.join('; '));
     });
+
+    group('metadata-service reload', () {
+      test('a new episode service refetches the episode list for the open anime', () async {
+        final StreamController<ReloadType> reloadStreamController = StreamController<ReloadType>.broadcast();
+        addTearDown(reloadStreamController.close);
+        when(() => reloadNotifier.reloadStream).thenAnswer((_) => reloadStreamController.stream);
+        await emitAnimeIntoState();
+
+        // Consume the selection-time fetch so only the reload's own fetch is left
+        // to count (mocktail's verify consumes the calls it matches).
+        verify(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+            .called(1);
+
+        reloadStreamController.add(ReloadType.newEpisodeService);
+        await pumpEventQueue();
+
+        final List<int> malIds = verify(
+          () => episodeRepository.getEpisodeInfo(malId: captureAny(named: 'malId'), anilistId: any(named: 'anilistId')),
+        ).captured.cast<int>();
+        expect(
+          malIds,
+          hasLength(1),
+          reason: 'episodes are derived from the episode provider, so a switch refetches them exactly once',
+        );
+        expect(malIds.single, 58514, reason: 'the open anime is what gets refetched');
+      });
+    });
   });
 
   group('AnimeDetailsCubit.updateMediaListEntry', () {

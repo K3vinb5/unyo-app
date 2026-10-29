@@ -183,6 +183,12 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         _logger.i("Reloading Anime Details due to anime media list entry update");
         _getUserMediaListEntry(state.loggedUser, state.selectedAnime, ignoreCache: true);
       }
+      if (reloadType == ReloadType.newEpisodeService) {
+        _logger.i("Reloading Anime Details due to new episode service");
+        if (state.selectedAnime.id != 0) {
+          _getEpisodesDetails(state.loggedUser, state.selectedAnime);
+        }
+      }
     });
     _loadInstalledExtensions();
   }

@@ -37,6 +37,7 @@ import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/core/notification/video_info_notifier.dart';
 import 'package:unyo/core/services/api/graphql/graphql_service.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
+import 'package:unyo/core/services/api/http/response_cache_scope.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/core/services/settings/settings_service.dart';
 import 'package:unyo/core/services/torrent/torrent_service.dart';
@@ -78,6 +79,7 @@ void setupLocator() async{
   await sl.isReady<Directory>(instanceName: config.applicationSupportDirectory);
   sl.registerSingleton<Logger>(getLogger());
   // Services
+  sl.registerLazySingleton<ResponseCacheScope>(() => ResponseCacheScope());
   sl.registerLazySingleton<HttpService>(() => HttpService());
   sl.registerLazySingleton<GraphQLService>(
     () => GraphQLService(httpService: sl<HttpService>(), endpoint: config.anilistGraphQLEndpoint),

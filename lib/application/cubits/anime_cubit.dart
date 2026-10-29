@@ -32,6 +32,7 @@ class AnimeCubit extends Cubit<AnimeState> with EffectMixin<AnimeState> {
   final ReloadNotifier _reloadNotifier;
   late StreamSubscription<User> _loggedUserSubscription;
   late StreamSubscription<ReloadType> _reloadSubscription;
+  bool _refreshInFlight = false;
   final Logger _logger = sl<Logger>();
 
   AnimeCubit(
@@ -81,26 +82,57 @@ class AnimeCubit extends Cubit<AnimeState> with EffectMixin<AnimeState> {
     ) async {
       emit(state.copyWith(loggedUser: loggedUser));
       if (!state.userLoaded) {
-        await _fetchRecentlyReleased(1, loggedUser);
-        await _fetchTrending(1, loggedUser);
-        await _fetchRecentlyCompleted(1, loggedUser);
-        await _fetchPopular(1, loggedUser);
-        await _fetchUpcoming(1, loggedUser);
+        await _refreshAll(loggedUser);
         emit(state.copyWith(userLoaded: true, isLoading: false));
       }
     });
     _reloadSubscription = _reloadNotifier.reloadStream.listen((reloadType) async {
-      if (reloadType == ReloadType.newMetadataService) {
-        _logger.i("Reloading Anime Screen due to new metadata service");
-        if (!state.userLoaded) {
-          _fetchRecentlyReleased(1, state.loggedUser, ignoreCache: true);
-          _fetchTrending(1, state.loggedUser, ignoreCache: true);
-          _fetchRecentlyCompleted(1, state.loggedUser, ignoreCache: true);
-          _fetchPopular(1, state.loggedUser, ignoreCache: true);
-          _fetchUpcoming(1, state.loggedUser, ignoreCache: true);
-        }
+      if (reloadType != ReloadType.newMetadataService) {
+        return;
       }
+      _logger.i("Reloading Anime Screen due to new metadata service");
+      if (!state.userLoaded) {
+        // Nothing fetched yet: the initial load still to come already runs
+        // against the new provider, so refetching here would only duplicate it.
+        return;
+      }
+      // Drop the previous provider's rows before refetching: they carry that
+      // provider's entity types and must not stay openable from the screen.
+      _clearLists();
+      await _refreshAll(state.loggedUser, ignoreCache: true);
     });
+  }
+
+  /// The five browse lists, fetched in one place so the initial load and the
+  /// metadata-service reload cannot drift apart.
+  Future<void> _refreshAll(User loggedUser, {bool ignoreCache = false}) async {
+    if (_refreshInFlight) {
+      _logger.d("Skipping anime refresh: a refresh is already in flight");
+      return;
+    }
+    _refreshInFlight = true;
+    try {
+      await _fetchRecentlyReleased(1, loggedUser, ignoreCache: ignoreCache);
+      await _fetchTrending(1, loggedUser, ignoreCache: ignoreCache);
+      await _fetchRecentlyCompleted(1, loggedUser, ignoreCache: ignoreCache);
+      await _fetchPopular(1, loggedUser, ignoreCache: ignoreCache);
+      await _fetchUpcoming(1, loggedUser, ignoreCache: ignoreCache);
+    } finally {
+      _refreshInFlight = false;
+    }
+  }
+
+  void _clearLists() {
+    emit(
+      state.copyWith(
+        recentlyReleased: (false, []),
+        trending: (false, []),
+        recentlyCompleted: (false, []),
+        popular: (false, []),
+        upcoming: (false, []),
+        banners: [],
+      ),
+    );
   }
 
   void navigateToCalendar(BuildContext context) {
