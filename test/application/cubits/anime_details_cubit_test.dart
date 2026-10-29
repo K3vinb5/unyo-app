@@ -197,6 +197,21 @@ void main() {
     });
   });
 
+  group('AnimeDetailsCubit extension prompt on open', () {
+    test('stays quiet on open when extensions are installed but none is selected', () async {
+      when(() => extensionRepository.getInstalledAnimeExtensions(any())).thenAnswer(
+        (_) async => <Extension>{testExtension},
+      );
+
+      cubit = buildCubit();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(cubit.state.installedExtensions, contains(testExtension));
+      expect(cubit.state.selectedExtension, isNull);
+      expect(snackbarsOf(cubit.state), isEmpty);
+    });
+  });
+
   group('AnimeDetailsCubit.selectAnimeExtension', () {
     const String userPreferredTitle = 'Kusuriya no Hitorigoto 3rd Season';
     const String englishTitle = 'The Apothecary Diaries Season 3';
