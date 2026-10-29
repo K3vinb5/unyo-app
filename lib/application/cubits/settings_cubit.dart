@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -25,12 +24,10 @@ import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/repositories/user_repository.dart';
 import 'package:unyo/presentation/dialogs/extensions_dialog.dart';
-import 'package:unyo/presentation/widgets/styled/dark_unyo_button.dart';
-import 'package:unyo/presentation/widgets/styled/light_unyo_button.dart';
+import 'package:unyo/presentation/dialogs/theme_color_picker_dialog.dart';
 
 class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState> {
   final Logger _logger = sl<Logger>();
-  late Color _selectedColor;
 
   // Repositories
   final UserRepository _userRepository;
@@ -74,7 +71,6 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
     _loggedUserSubscription = _loggedUserNotifier.userStream.listen((loggedUser) async {
       emit(state.copyWith(loggedUser: loggedUser));
     });
-    _selectedColor = state.loggedUser.settings.themeColor;
   }
 
   Future<void> updateMediaMetadataService(String? newService) async {
@@ -294,54 +290,12 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
 
   void openColorPickerDialog(BuildContext context) {
     showWidgetDialogEffect(
-      dialog: AlertDialog(
-        backgroundColor: const Color.fromARGB(255, 30, 30, 30),
-        titlePadding: EdgeInsetsDirectional.only(start: 24.0.w, top: 20.0.h),
-        title: const Text(
-          "Pick a color to get a theme based on that color",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
-        ),
-        content: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12.0.w, vertical: 12.0.h),
-          child: SingleChildScrollView(
-            child: Builder(
-              builder: (dialogContext) {
-                return Column(
-                  children: [
-                    ColorPicker(
-                      enableAlpha: false,
-                      pickerColor: state.loggedUser.settings.themeColor,
-                      pickerAreaBorderRadius: BorderRadius.circular(40.0),
-                      onColorChanged: (color) => _selectedColor = color,
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        DarkUnyoButton(
-                          text: "Cancel",
-                          maxHeight: 50,
-                          onPressed: () => Navigator.of(dialogContext).pop(),
-                        ),
-                        SizedBox(width: 25.0.w),
-                        LightUnyoButton(
-                          text: "Confirm",
-                          maxHeight: 50,
-                          onPressed: () {
-                            _themeService.updateThemeFromColors(
-                              loggedUser: state.loggedUser,
-                              primary: _selectedColor,
-                              useWallpaperAsThemeColor: false,
-                            );
-                            Navigator.of(dialogContext).pop();
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                );
-              }
-            ),
-          ),
+      dialog: ThemeColorPickerDialog(
+        initialColor: state.loggedUser.settings.themeColor,
+        onConfirmed: (color) => _themeService.updateThemeFromColors(
+          loggedUser: state.loggedUser,
+          primary: color,
+          useWallpaperAsThemeColor: false,
         ),
       ),
     );
