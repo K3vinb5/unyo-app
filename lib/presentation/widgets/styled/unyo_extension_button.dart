@@ -7,6 +7,14 @@ import 'package:unyo/presentation/widgets/text/text_utils.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class UnyoExtensionButton extends StatelessWidget {
+  /// Icon slot edge, unchanged so `ExtensionRowSkeleton` keeps aligning.
+  static const double iconSize = 52;
+
+  /// Rounded-square icon radius: the trailing action buttons use 10 at 45px,
+  /// the same ratio at 52px rounds to 12 - which matches the rounded-square
+  /// icons in `unyo-design/screens/shots/08-extensions-tab.png`.
+  static const double iconBorderRadius = 12;
+
   final void Function()? onDownloadPressed;
   final void Function()? onUpdatePressed;
   final void Function()? onDeletePressed;
@@ -49,7 +57,14 @@ class UnyoExtensionButton extends StatelessWidget {
             Row(
               children: [
                 SizedBox(width: 20.w),
-                ClipOval(child: UnyoNetworkImage(url: iconUrl, fit: BoxFit.fill, width: 52, height: 52)),
+                UnyoNetworkImage(
+                  url: iconUrl,
+                  fit: BoxFit.fill,
+                  width: iconSize,
+                  height: iconSize,
+                  borderRadius: iconBorderRadius,
+                  showPlaceholder: false,
+                ),
                 SizedBox(width: 14.w),
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,
