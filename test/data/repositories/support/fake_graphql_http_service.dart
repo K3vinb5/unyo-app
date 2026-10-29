@@ -16,19 +16,32 @@ import 'package:unyo/core/services/api/http/http_service.dart';
 /// `research/unyo-64-shikimori-parity-proof/raws/api/`) and records the request
 /// so repository tests can assert the document, its variables and the mandatory
 /// `User-Agent` header — the whole DTO/mapper chain runs for real.
+///
+/// REST calls (`GET /api/calendar`) are answered from [getPayload]; a top-level
+/// JSON array is wrapped as `{'list': [...]}`, exactly what the real
+/// [HttpService] does with a list body.
 class FakeGraphQlHttpService implements HttpService {
-  FakeGraphQlHttpService(this.payload);
+  FakeGraphQlHttpService(this.payload, {this.getPayload, this.payloadsByQueryMarker = const <String, Map<String, dynamic>>{}});
 
   /// Raw response body, envelope (`{"data": …}`) included.
   final Map<String, dynamic> payload;
 
+  /// Raw body answered by [get] (before the list-wrapping rule).
+  final Object? getPayload;
+
+  /// Per-document payloads: the first marker contained in the request document
+  /// wins, otherwise [payload] answers. Lets one test cover a genres lookup and
+  /// a search with different captured responses.
+  final Map<String, Map<String, dynamic>> payloadsByQueryMarker;
+
   String? lastEndpoint;
   Map<String, String>? lastHeaders;
   Map<String, dynamic>? lastBody;
+  String? lastGetEndpoint;
   int calls = 0;
 
   @override
-  http.Client get client => throw UnimplementedError('the fake only answers post()');
+  http.Client get client => throw UnimplementedError('the fake only answers get() and post()');
 
   @override
   Duration get timeout => const Duration(seconds: 10);
@@ -45,8 +58,21 @@ class FakeGraphQlHttpService implements HttpService {
     Map<String, String>? headers,
     bool ignoreCache = false,
     required T Function(Map<String, dynamic>) fromJson,
-  }) {
-    throw UnimplementedError('the fake only answers post()');
+  }) async {
+    calls++;
+    lastGetEndpoint = endpoint;
+    lastEndpoint = endpoint;
+    lastHeaders = headers;
+    final Object? body = getPayload;
+    final Map<String, dynamic> json = body is List<dynamic>
+        ? <String, dynamic>{'list': body}
+        : (body as Map<String, dynamic>? ?? <String, dynamic>{});
+    return ApiResponse<T>(
+      data: fromJson(json),
+      bodyBytes: Uint8List(0),
+      statusCode: 200,
+      headers: const <String, String>{},
+    );
   }
 
   @override
@@ -63,8 +89,16 @@ class FakeGraphQlHttpService implements HttpService {
     // GraphQLService hands the request map to HttpService, which is what would
     // encode it; accept both shapes so the captured body is always a map.
     lastBody = body == null ? null : jsonDecode(jsonEncode(body)) as Map<String, dynamic>;
+    final String document = lastBody?['query']?.toString() ?? '';
+    Map<String, dynamic> chosen = payload;
+    for (final MapEntry<String, Map<String, dynamic>> entry in payloadsByQueryMarker.entries) {
+      if (document.contains(entry.key)) {
+        chosen = entry.value;
+        break;
+      }
+    }
     return ApiResponse<T>(
-      data: fromJson(payload),
+      data: fromJson(chosen),
       bodyBytes: Uint8List(0),
       statusCode: 200,
       headers: const <String, String>{},

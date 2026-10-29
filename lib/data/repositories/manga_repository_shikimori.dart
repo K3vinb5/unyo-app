@@ -10,9 +10,11 @@ import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/services/api/dto/shikimori/manga_details_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/manga_list_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_genres_list_query_entity.dart';
 import 'package:unyo/core/services/api/graphql/graphql_response.dart';
 import 'package:unyo/core/services/api/graphql/graphql_service.dart';
 import 'package:unyo/core/services/api/graphql/queries/shikimori_queries.dart' as shikimori_queries;
+import 'package:unyo/core/services/api/graphql/queries/shikimori_search_parameters.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_manga_details.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_manga_model.dart';
 import 'package:unyo/data/repositories/repository_mixin.dart';
@@ -24,8 +26,9 @@ import 'package:unyo/domain/repositories/manga_repository.dart';
 /// Shikimori manga metadata provider (GraphQL, <https://shikimori.io/api/graphql>).
 ///
 /// Mirrors [AnimeRepositoryShikimori]: one list document with server-side
-/// filters, `mangas(ids:)` for details. Advanced search + filters are WP #64
-/// subpart (b) and stay honest stubs.
+/// filters, `mangas(ids:)` for details, and advanced search over the same
+/// document. The manga genre ids differ from the anime ones, so this repository
+/// keeps its own genre map.
 class MangaRepositoryShikimori with RepositoryMixin implements MangaRepository {
   /// Shikimori caps `limit` at 50.
   static const int pageSize = 50;
@@ -34,6 +37,9 @@ class MangaRepositoryShikimori with RepositoryMixin implements MangaRepository {
     instanceName: config.shikimoriGraphQlService,
   );
   final Logger _logger = sl<Logger>();
+
+  /// Genre **name** (lower-cased) → genre id for `genres(entryType: Manga)`.
+  final Map<String, String> _genreIdsByName = <String, String>{};
 
   /// The API bans IPs that call it without a meaningful `User-Agent`
   /// (`/api/doc` § Requirements), so it goes on every request.
@@ -103,14 +109,38 @@ class MangaRepositoryShikimori with RepositoryMixin implements MangaRepository {
     );
   }
 
-  /// WP #64 subpart (b): generated from `genres(entryType: Manga)` plus the
-  /// kind/status dictionaries.
+  /// Generated from `genres(entryType: Manga)` (PascalCase enum value) plus the
+  /// kind/status/sort dictionaries.
+  ///
+  /// Hidden (`false`) instead of faked: `countries` — `Manga` has no
+  /// country-of-origin field and `mangas(...)` has no origin argument;
+  /// `sortOrders` — `OrderEnum` has no general `_desc` twin.
   @override
-  Future<Map<String, (bool, List<String>)>> getUserMangaAdvancedSearchFilters() {
-    throw UnimplementedError();
+  Future<Map<String, (bool, List<String>)>> getUserMangaAdvancedSearchFilters(User loggedUser) async {
+    final List<ShikimoriGenresListQueryGenres> genres = await _loadGenres(ShikimoriGenreEntryType.manga);
+    final List<String> genreNames = genres
+        .map((ShikimoriGenresListQueryGenres genre) => genre.name.trim())
+        .where((String name) => name.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    return <String, (bool, List<String>)>{
+      'genres': (true, genreNames),
+      'formats': (true, ShikimoriMangaFormatFilters.values.map((ShikimoriMangaFormatFilters value) => ShikimoriSearchParameters.label(value.name)).toList()),
+      'airingStatuses': (true, ShikimoriMangaStatusFilters.values.map((ShikimoriMangaStatusFilters value) => ShikimoriSearchParameters.label(value.name)).toList()),
+      'sortOptions': (true, ShikimoriMangaSortOptions.values.map((ShikimoriMangaSortOptions value) => ShikimoriSearchParameters.label(value.name)).toList()),
+      'countries': (false, <String>[]),
+      'sortOrders': (false, <String>[]),
+    };
   }
 
-  /// WP #64 subpart (b).
+  /// One `mangas(...)` page with every filter the manga schema accepts.
+  ///
+  /// `selectedCountry` has no counterpart: the manga type carries no
+  /// country-of-origin and `mangas(...)` has no origin argument, so the value is
+  /// dropped rather than mapped onto `publisher` (a publisher id is not a
+  /// country). The countries dropdown is hidden by
+  /// [getUserMangaAdvancedSearchFilters] for the same reason.
   @override
   Future<List<Manga>> performMangaAdvancedSearch(
     String query,
@@ -121,8 +151,74 @@ class MangaRepositoryShikimori with RepositoryMixin implements MangaRepository {
     String sort,
     int page,
     User loggedUser,
-  ) {
-    throw UnimplementedError();
+  ) async {
+    _logger.i("Performing advanced manga search on Shikimori");
+    if (selectedCountry != null && selectedCountry.trim().isNotEmpty) {
+      _logger.w("Shikimori has no manga country filter; ignoring '$selectedCountry'");
+    }
+    final String? genre = selectedGenres.isEmpty
+        ? null
+        : ShikimoriSearchParameters.genreIdsFor(selectedGenres, await _genreIds());
+    final ApiGraphQLResponse<MangaListQueryEntity> response =
+        await _shikimoriGraphQLService.query<MangaListQueryEntity>(
+      query: shikimori_queries.shikimoriMangaListQuery,
+      fromJson: MangaListQueryEntity.fromJson,
+      headers: _requestHeaders,
+      variables: <String, dynamic>{
+        'page': page,
+        'limit': pageSize,
+        'order': ShikimoriSearchParameters.orderFor(sort),
+        'kind': ShikimoriSearchParameters.choiceFor(
+          selectedFormat,
+          ShikimoriMangaFormatFilters.values.map((ShikimoriMangaFormatFilters value) => value.name),
+        ),
+        'status': ShikimoriSearchParameters.choiceFor(
+          selectedAiringStatus,
+          ShikimoriMangaStatusFilters.values.map((ShikimoriMangaStatusFilters value) => value.name),
+        ),
+        'search': query.trim().isEmpty ? null : query.trim(),
+        'genre': genre,
+        'censored': loggedUser.settings.enableNsfwContent ? null : false,
+      },
+    );
+    throwIfGraphQlError(response);
+    return response.data.mangas
+        .map((MangaListQueryMangas entry) => ShikimoriMangaModel.fromListEntry(entry))
+        .toList();
+  }
+
+  /// `genres(entryType: Manga)` — PascalCase wire value only.
+  Future<List<ShikimoriGenresListQueryGenres>> _fetchGenres(ShikimoriGenreEntryType entryType) async {
+    final ApiGraphQLResponse<ShikimoriGenresListQueryEntity> response =
+        await _shikimoriGraphQLService.query<ShikimoriGenresListQueryEntity>(
+      query: shikimori_queries.shikimoriGenresListQuery,
+      fromJson: ShikimoriGenresListQueryEntity.fromJson,
+      headers: _requestHeaders,
+      variables: <String, dynamic>{'entryType': entryType.graphqlValue},
+    );
+    throwIfGraphQlError(response);
+    return response.data.genres;
+  }
+
+  Future<Map<String, String>> _genreIds() async {
+    if (_genreIdsByName.isEmpty) {
+      await _loadGenres(ShikimoriGenreEntryType.manga);
+    }
+    return _genreIdsByName;
+  }
+
+  /// Fetches the manga genre dictionary and remembers the name→id map.
+  Future<List<ShikimoriGenresListQueryGenres>> _loadGenres(ShikimoriGenreEntryType entryType) async {
+    final List<ShikimoriGenresListQueryGenres> genres = await _fetchGenres(entryType);
+    _genreIdsByName
+      ..clear()
+      ..addEntries(
+        genres.map((ShikimoriGenresListQueryGenres genre) => MapEntry<String, String>(
+              genre.name.trim().toLowerCase(),
+              genre.id,
+            )),
+      );
+    return genres;
   }
 
   @override

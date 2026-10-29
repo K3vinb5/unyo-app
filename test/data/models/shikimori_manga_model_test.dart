@@ -126,6 +126,13 @@ void main() {
           reason: 'Manga carries one counter; volumes rides on the DTO for the details work');
     });
 
+    test('russian lands in its own slot (WP #64 subpart (b))', () {
+      final ShikimoriMangaModel model = fromList(mangaPayload());
+
+      expect(model.title.russian, isNotEmpty);
+      expect(model.title.userPreferred, 'Berserk', reason: 'the preferred title is untouched');
+    });
+
     test('manga-only statuses map to the AniList vocabulary', () {
       expect(fromList(mangaPayload(status: 'paused')).status, 'HIATUS');
       expect(fromList(mangaPayload(status: 'discontinued')).status, 'CANCELLED');

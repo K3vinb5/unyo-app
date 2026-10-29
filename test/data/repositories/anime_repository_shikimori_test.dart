@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logger/logger.dart';
 
@@ -51,10 +52,14 @@ void main() {
     );
   }
 
-  AnimeRepositoryShikimori repositoryWith(Map<String, dynamic> payload) {
+  AnimeRepositoryShikimori repositoryWith(
+    Map<String, dynamic> payload, {
+    Object? getPayload,
+    Map<String, Map<String, dynamic>> payloadsByQueryMarker = const <String, Map<String, dynamic>>{},
+  }) {
     sl.reset();
     sl.registerSingleton<Logger>(Logger(filter: ProductionFilter()));
-    http = FakeGraphQlHttpService(payload);
+    http = FakeGraphQlHttpService(payload, getPayload: getPayload, payloadsByQueryMarker: payloadsByQueryMarker);
     sl.registerSingleton<HttpService>(http);
     sl.registerLazySingleton<GraphQLService>(
       () => GraphQLService(
@@ -232,6 +237,165 @@ void main() {
       expect(covers, hasLength(2));
       expect(covers.every((String cover) => cover.isNotEmpty), isTrue);
       expect(lastVariables()['order'], 'popularity');
+    });
+  });
+
+  group('AnimeRepositoryShikimori calendar', () {
+    List<dynamic> rawCalendar() =>
+        jsonDecode(File('test/data/fixtures/shikimori/calendar.json').readAsStringSync()) as List<dynamic>;
+
+    test('maps the flat REST calendar into local day buckets', () async {
+      final AnimeRepositoryShikimori repository = repositoryWith(<String, dynamic>{}, getPayload: rawCalendar());
+
+      final Map<String, List<Anime>> calendar = await repository.getCalendarReleases(1, loggedUser());
+
+      expect(http.lastGetEndpoint, config.shikimoriCalendarEndpoint);
+      expect(http.lastGetEndpoint, isNot(config.shikimoriGraphQLEndpoint));
+      expect(http.lastHeaders!['User-Agent'], contains('unyo'));
+
+      final List<Anime> all = calendar.values.expand((List<Anime> day) => day).toList();
+      expect(all, hasLength(4), reason: 'every dated entry lands in exactly one bucket');
+
+      final Anime fx = all.firstWhere((Anime anime) => anime.id == 63337);
+      expect(fx.idMal, 0, reason: 'the calendar carries no mal_id — the native id is never reused (WP #63)');
+      expect(fx.title.russian, 'FX Воин Куруми');
+      expect(fx.title.userPreferred, 'FX Senshi Kurumi-chan', reason: 'name wins the display slot');
+      expect(
+        fx.coverImage,
+        'https://shikimori.io/assets/globals/missing_original.jpg',
+        reason: 'REST poster paths are site-relative',
+      );
+      expect(fx.duration, 1380);
+      expect(fx.episodes, 12);
+      expect(fx.startDate, '1/10/2026');
+      expect(fx.endDate, '0/0/0');
+      expect(fx.status, 'RELEASING');
+      expect(fx.nextAiringEpisode.episode, 5, reason: 'next_episode is explicit in the REST payload');
+      expect(
+        fx.nextAiringEpisode.airingAt,
+        (DateTime.parse('2026-10-29T15:30:00.000+03:00').millisecondsSinceEpoch ~/ 1000).toString(),
+      );
+
+      final Anime anons = all.firstWhere((Anime anime) => anime.id == 65072);
+      expect(anons.status, 'NOT_YET_RELEASED');
+
+      final DateFormat en = DateFormat('EEEE, MMMM d, y');
+      final DateTime fxLocal = DateTime.parse('2026-10-29T15:30:00.000+03:00').toLocal();
+      expect(
+        calendar.containsKey(en.format(DateTime(fxLocal.year, fxLocal.month, fxLocal.day))),
+        isTrue,
+        reason: 'day keys use the same DateFormat as the AniList calendar',
+      );
+      final List<DateTime> days = calendar.keys.map(en.parse).toList();
+      expect(days, orderedEquals(<DateTime>[...days]..sort()), reason: 'days are chronological');
+      for (final List<Anime> day in calendar.values) {
+        final List<int> times = day.map((Anime anime) => int.parse(anime.nextAiringEpisode.airingAt)).toList();
+        expect(times, orderedEquals(<int>[...times]..sort()), reason: 'episodes inside a day are chronological');
+      }
+    });
+
+    test('page 2 is empty because /api/calendar is unpaginated', () async {
+      final AnimeRepositoryShikimori repository = repositoryWith(<String, dynamic>{}, getPayload: rawCalendar());
+
+      expect(await repository.getCalendarReleases(2, loggedUser()), isEmpty);
+      expect(http.calls, 0);
+    });
+
+    test('an entry without next_episode_at is dropped instead of becoming an undated card', () async {
+      final Map<String, dynamic> undated = Map<String, dynamic>.from(rawCalendar().first as Map<String, dynamic>)
+        ..['next_episode_at'] = null;
+      final AnimeRepositoryShikimori repository = repositoryWith(
+        <String, dynamic>{},
+        getPayload: <dynamic>[undated],
+      );
+
+      expect(await repository.getCalendarReleases(1, loggedUser()), isEmpty);
+    });
+  });
+
+  group('AnimeRepositoryShikimori advanced search', () {
+    test('a single search term leaves every other filter unset and maps the results', () async {
+      final AnimeRepositoryShikimori repository = repositoryWith(fixture('animes_search.json'));
+
+      final List<Anime> results = await repository.performAnimeAdvancedSearch(
+        'Frieren',
+        <String>[],
+        null,
+        null,
+        null,
+        null,
+        'Popularity_Desc',
+        1,
+        loggedUser(),
+      );
+
+      expect(results, hasLength(2));
+      expect(lastVariables()['search'], 'Frieren');
+      expect(lastVariables()['order'], 'popularity');
+      expect(lastVariables()['kind'], isNull);
+      expect(lastVariables()['status'], isNull);
+      expect(lastVariables()['season'], isNull);
+      expect(lastVariables()['genre'], isNull);
+      expect(lastVariables()['censored'], isFalse);
+      expect(http.calls, 1, reason: 'no genre lookup happens when no genre is selected');
+      expect(results.first.id, 52347);
+      expect(results.first.idMal, 52347);
+      expect(results.first.title.russian, isNotEmpty);
+      expect(http.lastBody!['query'], contains('DurationString'), reason: 'the live server rejects a plain String here');
+      expect(http.lastBody!['query'], contains('RatingString'));
+      expect(http.lastBody!['query'], contains('OriginString'));
+    });
+
+    test('a multi-filter search translates genres to ids and collapses the order literal', () async {
+      final AnimeRepositoryShikimori repository = repositoryWith(
+        fixture('animes_search.json'),
+        payloadsByQueryMarker: <String, Map<String, dynamic>>{'genres(': fixture('genres_anime.json')},
+      );
+
+      final List<Anime> results = await repository.performAnimeAdvancedSearch(
+        '   ',
+        <String>['Shounen', 'Seinen'],
+        'Fall',
+        'Tv',
+        2023,
+        'Released',
+        'Ranked_Desc',
+        2,
+        loggedUser(),
+      );
+
+      expect(results, hasLength(2));
+      expect(lastVariables()['search'], isNull, reason: 'a blank query is not a filter');
+      expect(lastVariables()['kind'], 'tv');
+      expect(lastVariables()['status'], 'released');
+      expect(lastVariables()['season'], 'fall_2023');
+      expect(lastVariables()['genre'], '27,42', reason: 'genre names are ids on the wire');
+      expect(lastVariables()['order'], 'ranked', reason: 'OrderEnum rejects ranked_desc');
+      expect(lastVariables()['page'], 2);
+      expect(lastVariables()['limit'], AnimeRepositoryShikimori.pageSize);
+      expect(http.lastBody!['query'], contains('studio:'));
+      expect(http.lastBody!['query'], contains(r'duration: $duration'));
+      expect(http.lastBody!['query'], contains('franchise:'));
+    });
+
+    test('filters come from genres(entryType: Anime) with the PascalCase enum value', () async {
+      final AnimeRepositoryShikimori repository = repositoryWith(
+        <String, dynamic>{},
+        payloadsByQueryMarker: <String, Map<String, dynamic>>{'genres(': fixture('genres_anime.json')},
+      );
+
+      final Map<String, (bool, List<String>)> filters =
+          await repository.getUserAnimeAdvancedSearchFilters(loggedUser());
+
+      expect(lastVariables()['entryType'], 'Anime');
+      expect(filters['genres']!.$1, isTrue);
+      expect(filters['genres']!.$2, <String>['Seinen', 'Shoujo', 'Shounen'], reason: 'sorted labels from the genre dictionary');
+      expect(filters['formats']!.$2, contains('Tv special'));
+      expect(filters['airingStatuses']!.$2, containsAll(<String>['Ongoing', 'Released', 'Anons']));
+      expect(filters['seasons']!.$2, containsAll(<String>['Winter', 'Fall']));
+      expect(filters['sortOptions']!.$2, contains('Aired on'));
+      expect(filters['years']!.$1, isFalse, reason: 'the schema has no year argument');
+      expect(filters['sortOrders']!.$1, isFalse, reason: 'OrderEnum has no general _desc twin');
     });
   });
 }

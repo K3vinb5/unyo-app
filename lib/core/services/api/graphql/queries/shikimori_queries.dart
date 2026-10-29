@@ -15,22 +15,25 @@
 //   description field;
 // * `Query.anime`, `Anime.popularity` and `Manga.publishedOn` do not exist.
 
-/// Anime list, used by every anime carousel through the optional filters.
+/// Anime list, used by every anime carousel **and** the advanced search.
 ///
-/// | carousel | variables |
+/// | consumer | variables |
 /// | --- | --- |
 /// | popular | `order: popularity` |
 /// | trending | `order: popularity`, `season: <current season>` |
 /// | recently released | `order: updated_at_desc`, `status: ongoing` |
 /// | recently completed | `order: updated_at_desc`, `status: released` |
 /// | upcoming | `order: popularity`, `status: anons` |
+/// | advanced search | any of `kind`/`status`/`season`/`search`/`genre`/`studio`/ `franchise`/`score`/`duration`/`rating`/`origin`/`censored`/`order` |
 ///
-/// `kind`/`search`/`genre`/`ids`/`censored` are unused by the carousels today
-/// and stay at their `null` default.
+/// Omitted nullable variables mean "do not filter". Argument types are the ones
+/// the live server accepts (probed 2026-10-29,
+/// `raws/api/gql-advanced-search-probes.txt`): `score` is `Int`, `duration` is
+/// the `S`/`D`/`F` enum, `genre`/`studio`/`franchise` are id strings.
 const String shikimoriAnimeListQuery =
     '''
-query Animes(\$page: PositiveInt, \$limit: PositiveInt, \$order: OrderEnum, \$kind: AnimeKindString, \$status: AnimeStatusString, \$season: SeasonString, \$search: String, \$genre: String, \$ids: String, \$censored: Boolean) {
-  animes(page: \$page, limit: \$limit, order: \$order, kind: \$kind, status: \$status, season: \$season, search: \$search, genre: \$genre, ids: \$ids, censored: \$censored) {
+query Animes(\$page: PositiveInt, \$limit: PositiveInt, \$order: OrderEnum, \$kind: AnimeKindString, \$status: AnimeStatusString, \$season: SeasonString, \$search: String, \$genre: String, \$studio: String, \$franchise: String, \$score: Int, \$duration: DurationString, \$rating: RatingString, \$origin: OriginString, \$ids: String, \$censored: Boolean) {
+  animes(page: \$page, limit: \$limit, order: \$order, kind: \$kind, status: \$status, season: \$season, search: \$search, genre: \$genre, studio: \$studio, franchise: \$franchise, score: \$score, duration: \$duration, rating: \$rating, origin: \$origin, ids: \$ids, censored: \$censored) {
     id
     malId
     name
@@ -197,21 +200,24 @@ query Animes(\$ids: String, \$page: PositiveInt, \$limit: PositiveInt) {
 }
 ''';
 
-/// Manga list, used by every manga carousel through the optional filters.
+/// Manga list, used by every manga carousel **and** the advanced search.
 ///
-/// | carousel | variables |
+/// | consumer | variables |
 /// | --- | --- |
 /// | popular | `order: popularity` |
 /// | trending | `order: popularity`, `season: <current season>` |
 /// | recently completed | `order: updated_at_desc`, `status: released` |
 /// | upcoming | `order: popularity`, `status: anons` |
+/// | advanced search | any of `kind`/`status`/`season`/`search`/`genre`/ `publisher`/`franchise`/`score`/`censored`/`order` |
 ///
 /// `Manga` has no `season`/`duration` precision of its own and no
 /// `publishedOn` field at all — `airedOn`/`releasedOn` carry the run dates.
+/// There is no country-of-origin field either, so the manga filter dictionary
+/// has no country option (`publisher` is a publisher id, not a country).
 const String shikimoriMangaListQuery =
     '''
-query Mangas(\$page: PositiveInt, \$limit: PositiveInt, \$order: OrderEnum, \$kind: MangaKindString, \$status: MangaStatusString, \$season: SeasonString, \$search: String, \$genre: String, \$ids: String, \$censored: Boolean) {
-  mangas(page: \$page, limit: \$limit, order: \$order, kind: \$kind, status: \$status, season: \$season, search: \$search, genre: \$genre, ids: \$ids, censored: \$censored) {
+query Mangas(\$page: PositiveInt, \$limit: PositiveInt, \$order: OrderEnum, \$kind: MangaKindString, \$status: MangaStatusString, \$season: SeasonString, \$search: String, \$genre: String, \$publisher: String, \$franchise: String, \$score: Int, \$ids: String, \$censored: Boolean) {
+  mangas(page: \$page, limit: \$limit, order: \$order, kind: \$kind, status: \$status, season: \$season, search: \$search, genre: \$genre, publisher: \$publisher, franchise: \$franchise, score: \$score, ids: \$ids, censored: \$censored) {
     id
     malId
     name

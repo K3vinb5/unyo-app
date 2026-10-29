@@ -3,6 +3,7 @@ import 'package:unyo/core/services/api/dto/shikimori/anime_details_query_entity.
 import 'package:unyo/core/services/api/dto/shikimori/manga_details_query_entity.dart';
 
 // Internal dependencies
+import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/domain/entities/media/airing_episode.dart';
 
 /// Shared field mapping for every Shikimori model factory.
@@ -166,6 +167,42 @@ abstract final class ShikimoriMediaMapper {
   /// date keeps the `0/0/0` sentinel.
   static String date(int day, int month, int year) {
     return "$day/$month/$year";
+  }
+
+  /// ISO8601 date (`2023-10-01`, the REST calendar's `aired_on`/`released_on`
+  /// shape) → the same `day/month/year` string. Missing/junk keeps the sentinel.
+  static String dateFromIso(String isoDate) {
+    final DateTime? parsed = DateTime.tryParse(isoDate.trim());
+    if (parsed == null) return date(0, 0, 0);
+    return date(parsed.day, parsed.month, parsed.year);
+  }
+
+  /// REST serializes scores as strings (`"7.08"`, `"0.0"`), GraphQL as doubles.
+  /// Junk and `"0.0"` degrade to `0` (the unset sentinel).
+  static double parseScore(String rawScore) {
+    return double.tryParse(rawScore.trim()) ?? 0;
+  }
+
+  /// REST returns site-relative poster paths (`/system/animes/original/1.jpg`).
+  /// Empty stays empty so the cover-image consumer can drop the card.
+  static String absoluteImageUrl(String rawUrl) {
+    final String url = rawUrl.trim();
+    if (url.isEmpty) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('/')) return '${config.shikimoriSiteEndpoint}$url';
+    return url;
+  }
+
+  /// Calendar counterpart of [nextAiringEpisode]: the REST payload states the
+  /// episode number explicitly (`next_episode`) instead of `episodesAired`.
+  static AiringEpisode calendarAiringEpisode({required String nextEpisodeAt, required int nextEpisode}) {
+    if (nextEpisodeAt.trim().isEmpty) return AiringEpisodeModel.empty();
+    final DateTime? airingAt = DateTime.tryParse(nextEpisodeAt);
+    if (airingAt == null) return AiringEpisodeModel.empty();
+    return AiringEpisodeModel(
+      episode: nextEpisode,
+      airingAt: (airingAt.millisecondsSinceEpoch ~/ 1000).toString(),
+    );
   }
 
   /// Converts `nextEpisodeAt` + `episodesAired` into the domain airing episode.

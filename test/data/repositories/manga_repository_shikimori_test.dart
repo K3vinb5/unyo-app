@@ -48,10 +48,13 @@ void main() {
     );
   }
 
-  MangaRepositoryShikimori repositoryWith(Map<String, dynamic> payload) {
+  MangaRepositoryShikimori repositoryWith(
+    Map<String, dynamic> payload, {
+    Map<String, Map<String, dynamic>> payloadsByQueryMarker = const <String, Map<String, dynamic>>{},
+  }) {
     sl.reset();
     sl.registerSingleton<Logger>(Logger(filter: ProductionFilter()));
-    http = FakeGraphQlHttpService(payload);
+    http = FakeGraphQlHttpService(payload, payloadsByQueryMarker: payloadsByQueryMarker);
     sl.registerSingleton<HttpService>(http);
     sl.registerLazySingleton<GraphQLService>(
       () => GraphQLService(
@@ -207,6 +210,71 @@ void main() {
       expect(covers, hasLength(2));
       expect(covers.every((String cover) => cover.isNotEmpty), isTrue);
       expect(lastVariables()['order'], 'popularity');
+    });
+  });
+
+  group('MangaRepositoryShikimori advanced search', () {
+    test('filters come from genres(entryType: Manga) with the PascalCase enum value', () async {
+      final MangaRepositoryShikimori repository = repositoryWith(
+        <String, dynamic>{},
+        payloadsByQueryMarker: <String, Map<String, dynamic>>{'genres(': fixture('genres_manga.json')},
+      );
+
+      final Map<String, (bool, List<String>)> filters =
+          await repository.getUserMangaAdvancedSearchFilters(loggedUser());
+
+      expect(lastVariables()['entryType'], 'Manga');
+      expect(filters['genres']!.$1, isTrue);
+      expect(filters['genres']!.$2, <String>['Action', 'Seinen', 'Shounen']);
+      expect(filters['formats']!.$2, contains('Light novel'));
+      expect(filters['airingStatuses']!.$2, containsAll(<String>['Ongoing', 'Paused', 'Discontinued']));
+      expect(filters['sortOptions']!.$2, contains('Aired on'));
+      expect(filters['countries']!.$1, isFalse, reason: 'Manga has no country-of-origin field');
+      expect(filters['sortOrders']!.$1, isFalse, reason: 'OrderEnum has no general _desc twin');
+    });
+
+    test('a multi-filter search maps the manga genre id space and drops the country', () async {
+      final MangaRepositoryShikimori repository = repositoryWith(
+        fixture('mangas_search.json'),
+        payloadsByQueryMarker: <String, Map<String, dynamic>>{'genres(': fixture('genres_manga.json')},
+      );
+
+      final List<Manga> results = await repository.performMangaAdvancedSearch(
+        'Berserk',
+        <String>['Shounen'],
+        'Manga',
+        'Japan',
+        'Released',
+        'Popularity_Desc',
+        1,
+        loggedUser(),
+      );
+
+      expect(results, hasLength(2));
+      expect(lastVariables()['genre'], '47', reason: 'Shounen is id 47 in the manga genre set');
+      expect(lastVariables()['kind'], 'manga');
+      expect(lastVariables()['status'], 'released');
+      expect(lastVariables()['order'], 'popularity');
+      expect(lastVariables()['search'], 'Berserk');
+      expect(lastVariables()['publisher'], isNull, reason: 'a country is not a publisher id');
+      expect(lastVariables()['censored'], isFalse);
+      expect(results.first.id, 1706);
+      expect(results.first.idMal, 1706);
+      expect(results.first.title.russian, isNotEmpty);
+      expect(http.lastBody!['query'], contains('publisher:'));
+      expect(http.lastBody!['query'], contains('franchise:'));
+    });
+
+    test('a single search term does not trigger a genre lookup', () async {
+      final MangaRepositoryShikimori repository = repositoryWith(fixture('mangas_search.json'));
+
+      final List<Manga> results =
+          await repository.performMangaAdvancedSearch('', <String>[], null, null, null, 'Name_Desc', 1, loggedUser());
+
+      expect(results, hasLength(2));
+      expect(http.calls, 1);
+      expect(lastVariables()['search'], isNull);
+      expect(lastVariables()['order'], 'name', reason: 'OrderEnum rejects name_desc');
     });
   });
 }

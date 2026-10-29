@@ -333,4 +333,122 @@ void main() {
       verifyNever(() => shikimoriAnime.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')));
     });
   });
+
+  group('calendar and advanced search follow the metadata provider', () {
+    test('the calendar route is not short-circuited for Shikimori', () async {
+      when(() => shikimoriAnime.getCalendarReleases(any(), any()))
+          .thenAnswer((_) async => <String, List<Anime>>{});
+
+      await animeFactory.getCalendarReleases(1, userWith(metadataService: Service.shikimori));
+
+      verify(() => shikimoriAnime.getCalendarReleases(1, any())).called(1);
+      verifyNever(() => anilistAnime.getCalendarReleases(any(), any()));
+    });
+
+    test('advanced search and its filters reach the Shikimori repository', () async {
+      when(() => shikimoriAnime.getUserAnimeAdvancedSearchFilters(any()))
+          .thenAnswer((_) async => <String, (bool, List<String>)>{
+                'genres': (true, <String>['Action']),
+              });
+      when(() => shikimoriAnime.performAnimeAdvancedSearch(
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+          )).thenAnswer((_) async => <Anime>[AnimeModel.empty()]);
+
+      final AnilistUserModel user = userWith(metadataService: Service.shikimori);
+      final Map<String, (bool, List<String>)> filters =
+          await animeFactory.getUserAnimeAdvancedSearchFilters(user);
+      final List<Anime> results = await animeFactory.performAnimeAdvancedSearch(
+        'Frieren',
+        <String>['Action'],
+        null,
+        null,
+        null,
+        null,
+        'Popularity_Desc',
+        1,
+        user,
+      );
+
+      expect(filters['genres']!.$2, <String>['Action']);
+      expect(results, hasLength(1));
+      verify(() => shikimoriAnime.getUserAnimeAdvancedSearchFilters(any())).called(1);
+      verify(() => shikimoriAnime.performAnimeAdvancedSearch(
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+          )).called(1);
+      verifyNever(() => anilistAnime.getUserAnimeAdvancedSearchFilters(any()));
+      verifyNever(() => anilistAnime.performAnimeAdvancedSearch(
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+          ));
+    });
+
+    test('manga advanced search and filters reach the Shikimori repository', () async {
+      when(() => shikimoriManga.getUserMangaAdvancedSearchFilters(any()))
+          .thenAnswer((_) async => <String, (bool, List<String>)>{
+                'genres': (true, <String>['Shounen']),
+              });
+      when(() => shikimoriManga.performMangaAdvancedSearch(
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+          )).thenAnswer((_) async => <Manga>[MangaModel.empty()]);
+
+      final AnilistUserModel user = userWith(metadataService: Service.shikimori);
+      final Map<String, (bool, List<String>)> filters =
+          await mangaFactory.getUserMangaAdvancedSearchFilters(user);
+      final List<Manga> results = await mangaFactory.performMangaAdvancedSearch(
+        'Berserk',
+        <String>['Shounen'],
+        null,
+        null,
+        null,
+        'Popularity_Desc',
+        1,
+        user,
+      );
+
+      expect(filters['genres']!.$2, <String>['Shounen']);
+      expect(results, hasLength(1));
+      verify(() => shikimoriManga.getUserMangaAdvancedSearchFilters(any())).called(1);
+      verify(() => shikimoriManga.performMangaAdvancedSearch(
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+          )).called(1);
+      verifyNever(() => anilistManga.getUserMangaAdvancedSearchFilters(any()));
+    });
+  });
 }

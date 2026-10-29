@@ -135,6 +135,13 @@ void main() {
       expect(model.title.userPreferred, 'Атака титанов',
           reason: 'an entry with only a Russian title must not render an empty card');
     });
+
+    test('russian lands in its own slot (WP #64 subpart (b))', () {
+      final ShikimoriAnimeModel model = fromList(animePayload());
+
+      expect(model.title.russian, 'Атака титанов', reason: 'the Shikimori russian field maps 1:1');
+      expect(model.title.userPreferred, 'Shingeki no Kyojin', reason: 'the preferred title is untouched');
+    });
   });
 
   group('ShikimoriAnimeModel airing and scores', () {

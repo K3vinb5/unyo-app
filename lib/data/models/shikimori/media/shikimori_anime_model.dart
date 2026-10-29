@@ -4,6 +4,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 // Internal dependencies
 import 'package:unyo/core/services/api/dto/shikimori/anime_details_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_list_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_calendar_query_entity.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_media_mapper.dart';
 import 'package:unyo/domain/entities/media/airing_episode.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
@@ -68,6 +69,7 @@ abstract class ShikimoriAnimeModel with _$ShikimoriAnimeModel implements Anime {
           english: anime.english,
           russian: anime.russian,
         ),
+        russian: anime.russian,
       ),
       averageScore: ShikimoriMediaMapper.scoreOutOfHundred(anime.score),
       bannerImage: anime.poster.mainAlt2xUrl,
@@ -93,6 +95,54 @@ abstract class ShikimoriAnimeModel with _$ShikimoriAnimeModel implements Anime {
     );
   }
 
+  /// One `GET /api/calendar` entry (REST, flat array — WP #64 subpart (b)).
+  ///
+  /// The calendar payload is smaller than the GraphQL one: no `malId` (so
+  /// [ShikimoriMediaMapper.unsetMalId] — the id is never reused as the MAL id,
+  /// WP #63), no description, genres, season or `is_censored` flag, a
+  /// **string** score and site-relative image paths. `next_episode` is the
+  /// episode number about to air.
+  factory ShikimoriAnimeModel.fromCalendarEntry(ShikimoriCalendarQueryList entry) {
+    final ShikimoriCalendarQueryListAnime anime = entry.anime;
+    final double score = ShikimoriMediaMapper.parseScore(anime.score);
+    return ShikimoriAnimeModel(
+      id: anime.id,
+      idMal: ShikimoriMediaMapper.unsetMalId,
+      title: TitleModel(
+        romaji: anime.name,
+        english: '',
+        nativeTitle: '',
+        userPreferred: ShikimoriMediaMapper.preferredTitle(
+          name: anime.name,
+          english: '',
+          russian: anime.russian,
+        ),
+        russian: anime.russian,
+      ),
+      averageScore: ShikimoriMediaMapper.scoreOutOfHundred(score),
+      bannerImage: '',
+      countryOfOrigin: defaultCountryOfOrigin,
+      coverImage: ShikimoriMediaMapper.absoluteImageUrl(anime.image.original),
+      description: '',
+      duration: entry.duration,
+      endDate: ShikimoriMediaMapper.dateFromIso(anime.releasedOn ?? ''),
+      startDate: ShikimoriMediaMapper.dateFromIso(anime.airedOn),
+      episodes: anime.episodes,
+      genres: const <String>[],
+      format: ShikimoriMediaMapper.animeFormat(anime.kind),
+      isAdult: false,
+      popularity: unavailablePopularity,
+      meanScore: ShikimoriMediaMapper.scoreOutOfHundred(score),
+      season: '',
+      status: ShikimoriMediaMapper.animeStatus(anime.status),
+      isFavourite: false,
+      nextAiringEpisode: ShikimoriMediaMapper.calendarAiringEpisode(
+        nextEpisodeAt: entry.nextEpisodeAt,
+        nextEpisode: entry.nextEpisode,
+      ),
+    );
+  }
+
   /// One `related { anime { … } }` entry of `shikimoriAnimeDetailsQuery`.
   ///
   /// Callers must filter with [ShikimoriMediaMapper.isRealAnime] first: a manga
@@ -110,6 +160,7 @@ abstract class ShikimoriAnimeModel with _$ShikimoriAnimeModel implements Anime {
           english: anime.english,
           russian: anime.russian,
         ),
+        russian: anime.russian,
       ),
       averageScore: ShikimoriMediaMapper.scoreOutOfHundred(anime.score),
       bannerImage: anime.poster.mainAlt2xUrl,

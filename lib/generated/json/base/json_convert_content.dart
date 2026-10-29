@@ -25,6 +25,7 @@ import 'package:unyo/core/services/api/dto/shikimori/anime_list_query_entity.dar
 import 'package:unyo/core/services/api/dto/shikimori/anime_mapping_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/manga_details_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/manga_list_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_calendar_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/shikimori_genres_list_query_entity.dart';
 
 JsonConvert jsonConvert = JsonConvert();
@@ -583,6 +584,18 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		if(<MangaListQueryMangasPublishers>[] is M){
 			return data.map<MangaListQueryMangasPublishers>((Map<String, dynamic> e) => MangaListQueryMangasPublishers.fromJson(e)).toList() as M;
 		}
+		if(<ShikimoriCalendarQueryEntity>[] is M){
+			return data.map<ShikimoriCalendarQueryEntity>((Map<String, dynamic> e) => ShikimoriCalendarQueryEntity.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriCalendarQueryList>[] is M){
+			return data.map<ShikimoriCalendarQueryList>((Map<String, dynamic> e) => ShikimoriCalendarQueryList.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriCalendarQueryListAnime>[] is M){
+			return data.map<ShikimoriCalendarQueryListAnime>((Map<String, dynamic> e) => ShikimoriCalendarQueryListAnime.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriCalendarQueryListAnimeImage>[] is M){
+			return data.map<ShikimoriCalendarQueryListAnimeImage>((Map<String, dynamic> e) => ShikimoriCalendarQueryListAnimeImage.fromJson(e)).toList() as M;
+		}
 		if(<ShikimoriGenresListQueryEntity>[] is M){
 			return data.map<ShikimoriGenresListQueryEntity>((Map<String, dynamic> e) => ShikimoriGenresListQueryEntity.fromJson(e)).toList() as M;
 		}
@@ -753,6 +766,10 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		(MangaListQueryMangasReleasedOn).toString(): MangaListQueryMangasReleasedOn.fromJson,
 		(MangaListQueryMangasGenres).toString(): MangaListQueryMangasGenres.fromJson,
 		(MangaListQueryMangasPublishers).toString(): MangaListQueryMangasPublishers.fromJson,
+		(ShikimoriCalendarQueryEntity).toString(): ShikimoriCalendarQueryEntity.fromJson,
+		(ShikimoriCalendarQueryList).toString(): ShikimoriCalendarQueryList.fromJson,
+		(ShikimoriCalendarQueryListAnime).toString(): ShikimoriCalendarQueryListAnime.fromJson,
+		(ShikimoriCalendarQueryListAnimeImage).toString(): ShikimoriCalendarQueryListAnimeImage.fromJson,
 		(ShikimoriGenresListQueryEntity).toString(): ShikimoriGenresListQueryEntity.fromJson,
 		(ShikimoriGenresListQueryGenres).toString(): ShikimoriGenresListQueryGenres.fromJson,
 	};

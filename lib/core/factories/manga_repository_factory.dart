@@ -160,8 +160,18 @@ class MangaRepositoryFactory implements MangaRepository {
   }
 
   @override
-  Future<Map<String, (bool, List<String>)>> getUserMangaAdvancedSearchFilters() async {
-    return _mangaRepositoryAnilist.getUserMangaAdvancedSearchFilters();
+  Future<Map<String, (bool, List<String>)>> getUserMangaAdvancedSearchFilters(User loggedUser) async {
+    switch (loggedUser.settings.metadataService) {
+      case Service.shikimori:
+        _logger.i("Fetching Shikimori manga advanced search filters");
+        return _mangaRepositoryShikimori.getUserMangaAdvancedSearchFilters(loggedUser);
+      case Service.anilist:
+      case Service.mal:
+      case Service.kitsu:
+      case Service.simkl:
+        _logger.i("Fetching Anilist manga advanced search filters");
+        return _mangaRepositoryAnilist.getUserMangaAdvancedSearchFilters(loggedUser);
+    }
   }
 
   @override
@@ -187,8 +197,18 @@ class MangaRepositoryFactory implements MangaRepository {
           page,
           loggedUser,
         );
-      case Service.mal:
       case Service.shikimori:
+        return _mangaRepositoryShikimori.performMangaAdvancedSearch(
+          query,
+          selectedGenres,
+          selectedFormat,
+          selectedCountry,
+          selectedAiringStatus,
+          sort,
+          page,
+          loggedUser,
+        );
+      case Service.mal:
       case Service.simkl:
       case Service.kitsu:
         return [];

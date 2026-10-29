@@ -162,7 +162,7 @@ class MangaAdvancedSearchCubit extends Cubit<MangaAdvancedSearchState>
 
   Future<void> _getLoggedUserServiceFilters(User loggedUser) async {
     try {
-      final filters = await _mangaRepository.getUserMangaAdvancedSearchFilters();
+      final filters = await _mangaRepository.getUserMangaAdvancedSearchFilters(loggedUser);
       emit(
         state.copyWith(
           genresFilters: (filters['genres']?.$1 ?? false, filters['genres']?.$2 ?? []),

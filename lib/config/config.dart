@@ -22,6 +22,14 @@ const String shikimoriClientId = 'sIjHVKp4D3gusN53hob4tDnmvFYgySDiLpWJNTsfVcA';
 const String shikimoriClientSecret = '6y39AFgZ8Ww6cESH_BzyZqYjZRSCrTy9meoY1nm2Cj0';
 const String shikimoriGraphQlService = 'shikimoriGraphQlService';
 const String shikimoriGraphQLEndpoint = 'https://shikimori.io/api/graphql';
+// REST surface. The calendar exists **only** over REST (`/api/calendar`); the
+// `/api/v1/calendar` path is a 404 page (WP #64 evidence
+// `raws/api/rest-v1-calendar-404.html`). GraphQL has no calendar root field.
+const String shikimoriRestEndpoint = 'https://shikimori.io/api';
+const String shikimoriCalendarEndpoint = '$shikimoriRestEndpoint/calendar';
+/// Relative poster paths (`/system/animes/original/1.jpg?…`) are served from
+/// the site root, not from `/api`.
+const String shikimoriSiteEndpoint = 'https://shikimori.io';
 // Shikimori bans IPs that call its API without a meaningful User-Agent
 // (shikimori.io/api/doc, "Restrictions"/"Requirements"), so every request —
 // GraphQL today, REST once the calendar/user_rates work lands — carries this
