@@ -53,6 +53,21 @@ void main() {
     });
   });
 
+  group('ShikimoriSearchParameters.years', () {
+    test('the year dropdown feeds seasonFor: 2023 + Fall is reachable from the UI', () {
+      final List<String> years = ShikimoriSearchParameters.years(now: DateTime(2026, 10, 29));
+
+      expect(years.first, '2026', reason: 'newest first');
+      expect(years.last, '1940');
+      expect(years, contains('2023'));
+      expect(
+        ShikimoriSearchParameters.seasonFor('Fall', int.parse(years.firstWhere((String y) => y == '2023')), <String>['fall']),
+        'fall_2023',
+        reason: 'round 1 finding 2: a rendered year must actually reach the query variable',
+      );
+    });
+  });
+
   group('ShikimoriSearchParameters.genreIdsFor', () {
     test('names become the comma-separated genre id argument', () {
       final Map<String, String> ids = <String, String>{'shounen': '27', 'action': '1'};

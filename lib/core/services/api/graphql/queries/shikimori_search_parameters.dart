@@ -30,9 +30,13 @@ abstract final class ShikimoriSearchParameters {
 
   /// `"Popularity_Desc"` / `"AIRING_ON_ASC"` → an accepted `OrderEnum` value.
   ///
-  /// Only `id` has a descending twin, so `desc` is honoured for `id` and
-  /// ignored everywhere else (the server has no `*_desc` variants). Anything
-  /// unknown degrades to `popularity`, the default the carousels use.
+  /// Only `id` has a descending twin among the accepted literals
+  /// (`id_desc` / `updated_at_desc`), so `desc` is honoured for `id` and
+  /// ignored everywhere else. The UI dictionaries therefore hide the direction
+  /// picker for Shikimori: no exposed sort option (`popularity`, `ranked`,
+  /// `name`, `aired_on`, `episodes`, `status`) has a `_desc` literal, so there
+  /// is no direction the user could choose that the server would honour.
+  /// Anything unknown degrades to `popularity`, the default the carousels use.
   static String orderFor(String sort) {
     final String normalized = sort.trim().toLowerCase().replaceAll(RegExp(r'[\s-]+'), '_');
     final bool descending = normalized.endsWith('_desc');
@@ -60,6 +64,21 @@ abstract final class ShikimoriSearchParameters {
     if (season == null) return null;
     if (year == null || year <= 0) return season;
     return '${season}_$year';
+  }
+
+  /// Year choices for the advanced-search year dropdown: 1940 → the current
+  /// year, newest first. The same shape the AniList dictionary emits, so the
+  /// shared UI needs no provider branch.
+  ///
+  /// The year is only ever sent together with a season (`fall_2023`, see
+  /// [seasonFor]): the schema has no year argument, so a year on its own is
+  /// ignored by the repository (logged, documented).
+  static List<String> years({DateTime? now}) {
+    final int currentYear = (now ?? DateTime.now()).year;
+    return List<String>.generate(
+      currentYear - 1939,
+      (int index) => (1940 + index).toString(),
+    ).reversed.toList();
   }
 
   /// Selected genre labels → the comma-separated `genre` argument.

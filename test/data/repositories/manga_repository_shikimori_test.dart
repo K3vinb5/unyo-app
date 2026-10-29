@@ -230,7 +230,17 @@ void main() {
       expect(filters['airingStatuses']!.$2, containsAll(<String>['Ongoing', 'Paused', 'Discontinued']));
       expect(filters['sortOptions']!.$2, contains('Aired on'));
       expect(filters['countries']!.$1, isFalse, reason: 'Manga has no country-of-origin field');
-      expect(filters['sortOrders']!.$1, isFalse, reason: 'OrderEnum has no general _desc twin');
+      expect(
+        filters['sortOrders']!.$1,
+        isFalse,
+        reason: 'no exposed sort option has a _desc literal in OrderEnum (round 1 finding 1)',
+      );
+      // Sweep guard (round 1): an enabled capability must ship options.
+      for (final MapEntry<String, (bool, List<String>)> entry in filters.entries) {
+        if (entry.value.$1) {
+          expect(entry.value.$2, isNotEmpty, reason: '${entry.key} is enabled but has no options');
+        }
+      }
     });
 
     test('a multi-filter search maps the manga genre id space and drops the country', () async {

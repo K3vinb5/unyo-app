@@ -100,7 +100,13 @@ class AnimeRepositoryShikimori with RepositoryMixin implements AnimeRepository {
         // day, and an undated card in a date-grouped grid is worse than none.
         .where((Anime anime) => anime.nextAiringEpisode.airingAt.isNotEmpty)
         .toList();
-    return _groupByDay(releases);
+    if (!loggedUser.settings.enableNsfwContent && releases.isNotEmpty) {
+      _logger.w(
+        "Shikimori /api/calendar carries no adult marker, so this feed cannot be "
+        "NSFW-filtered (${releases.length} entries left unfiltered)",
+      );
+    }
+    return _groupByDay(visibleCalendarEntries(releases, loggedUser));
   }
 
   /// Groups by local calendar day and orders both axes — days ascending,
@@ -205,11 +211,18 @@ class AnimeRepositoryShikimori with RepositoryMixin implements AnimeRepository {
   /// Generated from `genres(entryType: Anime)` (PascalCase enum value) plus the
   /// kind/status/season/sort dictionaries.
   ///
-  /// Two categories are deliberately **hidden** (`false`) instead of faked:
-  /// * `years` — the schema has no year argument, only `SeasonString`
-  ///   (`fall_2023`), so a free-standing year cannot be expressed;
-  /// * `sortOrders` — `OrderEnum` has no general `_desc` twin (only `id_desc`);
-  ///   the accepted values are already the entries of `sortOptions`.
+  /// Every implemented capability is exposed as `(true, …)` so the UI can
+  /// render it: `years` is a real choice list because the schema's
+  /// `SeasonString` accepts `fall_2023`, i.e. season **plus** year
+  /// ([ShikimoriSearchParameters.seasonFor]). A year without a season is still
+  /// not expressible — there is no year argument — so the repository logs and
+  /// ignores a year-only selection ([performAnimeAdvancedSearch]).
+  ///
+  /// `sortOrders` stays hidden (`false`): `OrderEnum` has exactly two `_desc`
+  /// twins, `id_desc` and `updated_at_desc`, and neither `id` nor `updated_at`
+  /// is an option of [ShikimoriSortOptions], so no direction the user could pick
+  /// would reach the server. The sort FIELD picker is unaffected — the screens
+  /// gate the two dictionaries independently ([AdvancedSearchSortRow]).
   @override
   Future<Map<String, (bool, List<String>)>> getUserAnimeAdvancedSearchFilters(User loggedUser) async {
     final List<ShikimoriGenresListQueryGenres> genres = await _loadGenres(ShikimoriGenreEntryType.anime);
@@ -226,7 +239,7 @@ class AnimeRepositoryShikimori with RepositoryMixin implements AnimeRepository {
       'airingStatuses': (true, ShikimoriAiringStatusFilters.values.map((ShikimoriAiringStatusFilters value) => ShikimoriSearchParameters.label(value.name)).toList()),
       'sortOptions': (true, ShikimoriSortOptions.values.map((ShikimoriSortOptions value) => ShikimoriSearchParameters.label(value.name)).toList()),
       'sortOrders': (false, <String>[]),
-      'years': (false, <String>[]),
+      'years': (true, ShikimoriSearchParameters.years()),
     };
   }
 
@@ -423,4 +436,22 @@ enum ShikimoriSortOptions {
   status,
 }
 
-enum ShikimoriSortOrder { asc, desc }
+/// NSFW gate for the Shikimori calendar, the same shape
+/// `AnimeRepositoryAnilist.getCalendarReleases` applies
+/// (`isAdult && !enableNsfwContent` → dropped).
+///
+/// `/api/calendar` carries **no** adult marker: the live capture
+/// (`research/unyo-64-shikimori-parity-proof/raws/api/rest-calendar.json`, 94
+/// entries) has exactly `id, name, russian, image, url, kind, score, status,
+/// episodes, episodes_aired, aired_on, released_on` per anime — no `rating`, no
+/// `is_censored`. [ShikimoriAnimeModel.fromCalendarEntry] therefore maps
+/// [Anime.isAdult] to its only honest value (`false`) and this filter is a
+/// no-op for the feed as mapped today: the expression is here so the moment the
+/// payload (or a companion lookup) yields a real flag, the calendar honours
+/// `settings.enableNsfwContent` without another call-site change. The residual
+/// gap — adult calendar entries are not filtered — is documented in PR #156.
+List<Anime> visibleCalendarEntries(List<Anime> entries, User loggedUser) {
+  return entries
+      .where((Anime anime) => !anime.isAdult || loggedUser.settings.enableNsfwContent)
+      .toList();
+}

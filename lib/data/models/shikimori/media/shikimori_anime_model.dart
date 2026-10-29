@@ -55,6 +55,20 @@ abstract class ShikimoriAnimeModel with _$ShikimoriAnimeModel implements Anime {
   /// material, e.g. `manga`); the anime database keeps its `JP` default.
   static const String defaultCountryOfOrigin = 'JP';
 
+  /// What `/api/calendar` can say about adult content: nothing.
+  ///
+  /// The live capture
+  /// (`research/unyo-64-shikimori-parity-proof/raws/api/rest-calendar.json`, 94
+  /// entries) carries no `rating` and no `is_censored` — the REST calendar is
+  /// smaller than both the REST anime list and GraphQL `Anime`. [isAdult] is
+  /// therefore `false` for every calendar entry, deliberately, instead of being
+  /// guessed from `kind` (Shikimori has no `hentai` kind — adult titles are
+  /// ordinary kinds with a genre/rating flag) or from the title text. The
+  /// repository still runs the AniList-shaped NSFW gate over the mapped entries
+  /// (`visibleCalendarEntries`), and that gate starts filtering the day this
+  /// constant gains a real signal. Residual gap: PR #156.
+  static const bool calendarReportsAdult = false;
+
   /// One carousel entry (`shikimoriAnimeListQuery`).
   factory ShikimoriAnimeModel.fromListEntry(AnimeListQueryAnimes anime) {
     return ShikimoriAnimeModel(
@@ -130,7 +144,7 @@ abstract class ShikimoriAnimeModel with _$ShikimoriAnimeModel implements Anime {
       episodes: anime.episodes,
       genres: const <String>[],
       format: ShikimoriMediaMapper.animeFormat(anime.kind),
-      isAdult: false,
+      isAdult: calendarReportsAdult,
       popularity: unavailablePopularity,
       meanScore: ShikimoriMediaMapper.scoreOutOfHundred(score),
       season: '',

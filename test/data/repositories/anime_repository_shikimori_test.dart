@@ -14,6 +14,7 @@ import 'package:unyo/core/services/api/graphql/graphql_exception.dart';
 import 'package:unyo/core/services/api/graphql/graphql_service.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
+import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
 import 'package:unyo/data/repositories/anime_repository_shikimori.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/anime_details.dart';
@@ -311,6 +312,29 @@ void main() {
 
       expect(await repository.getCalendarReleases(1, loggedUser()), isEmpty);
     });
+
+    test('the NSFW gate has the AniList shape, over the only signal the payload has', () async {
+      final AnimeRepositoryShikimori repository = repositoryWith(<String, dynamic>{}, getPayload: rawCalendar());
+
+      final Map<String, List<Anime>> calendar = await repository.getCalendarReleases(1, loggedUser());
+      final List<Anime> all = calendar.values.expand((List<Anime> day) => day).toList();
+
+      // `/api/calendar` has no `rating` and no `is_censored` (raw capture), so
+      // the mapper reports the only honest value and the feed cannot be
+      // NSFW-filtered — the residual gap documented in PR #156. The gate still
+      // runs, with the same expression the AniList calendar uses.
+      expect(ShikimoriAnimeModel.calendarReportsAdult, isFalse);
+      expect(all.every((Anime anime) => !anime.isAdult), isTrue);
+      expect(all, hasLength(4), reason: 'nothing to drop while the payload carries no adult marker');
+
+      final Anime adult = _AdultAnime();
+      expect(visibleCalendarEntries(<Anime>[adult], loggedUser()), isEmpty, reason: 'NSFW off drops adult entries');
+      expect(
+        visibleCalendarEntries(<Anime>[adult], loggedUser(enableNsfwContent: true)),
+        hasLength(1),
+        reason: 'NSFW on keeps them, like the AniList path',
+      );
+    });
   });
 
   group('AnimeRepositoryShikimori advanced search', () {
@@ -394,8 +418,32 @@ void main() {
       expect(filters['airingStatuses']!.$2, containsAll(<String>['Ongoing', 'Released', 'Anons']));
       expect(filters['seasons']!.$2, containsAll(<String>['Winter', 'Fall']));
       expect(filters['sortOptions']!.$2, contains('Aired on'));
-      expect(filters['years']!.$1, isFalse, reason: 'the schema has no year argument');
-      expect(filters['sortOrders']!.$1, isFalse, reason: 'OrderEnum has no general _desc twin');
+      expect(
+        filters['years']!.$1,
+        isTrue,
+        reason: 'round 1 finding 2: season+year is expressible as SeasonString (fall_2023), so the year dropdown must render',
+      );
+      expect(filters['years']!.$2.first, '${DateTime.now().year}', reason: 'newest year first, same as the AniList list');
+      expect(filters['years']!.$2, containsAll(<String>['1940', '2023']));
+      expect(
+        filters['sortOrders']!.$1,
+        isFalse,
+        reason: 'no exposed sort option has a _desc literal in OrderEnum (only id_desc/updated_at_desc exist)',
+      );
+      // Sweep guard (round 1): an enabled capability must ship options, or the
+      // screen renders an empty dropdown behind a visible widget.
+      for (final MapEntry<String, (bool, List<String>)> entry in filters.entries) {
+        if (entry.value.$1) {
+          expect(entry.value.$2, isNotEmpty, reason: '${entry.key} is enabled but has no options');
+        }
+      }
     });
   });
+}
+
+/// Only [Anime.isAdult] matters to the calendar NSFW gate; every other member is
+/// never read, so a `Fake` is enough.
+class _AdultAnime extends Fake implements Anime {
+  @override
+  bool get isAdult => true;
 }

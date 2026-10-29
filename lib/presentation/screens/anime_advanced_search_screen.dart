@@ -11,10 +11,11 @@ import 'package:unyo/domain/entities/list/media_list.dart';
 import 'package:unyo/presentation/widgets/styled/media_card.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_dropdown.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_multi_select_dropdown.dart';
-import 'package:unyo/presentation/widgets/styled/unyo_sort_widget.dart';
+import 'package:unyo/presentation/widgets/styled/advanced_search_sort_row.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_textfield.dart';
 import 'package:unyo/presentation/widgets/text/text_body_large.dart';
 import 'package:unyo/presentation/widgets/text/text_headline_medium.dart';
+import 'package:unyo/presentation/widgets/text/media_title_text.dart';
 
 @RoutePage()
 class AnimeAdvancedSearchScreen extends StatelessWidget {
@@ -189,15 +190,14 @@ class _AnimeAdvancedSearchViewState extends State<_AnimeAdvancedSearchView> {
               ),
             ),
             const SizedBox(height: 10,),
-            (state.searchSortOptions.$1 && state.searchSortOrder.$1) ? Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if(state.searchSortOptions.$1) UnyoSortWidget(sortingOptions: state.searchSortOptions.$2, initialSelection: state.selectedSearchSortOption, onSortChanged: context.read<AnimeAdvancedSearchCubit>().updateSearchSortOption,),
-                const SizedBox(width: 10,),
-                if(state.searchSortOrder.$1) UnyoSortWidget(sortingOptions: state.searchSortOrder.$2, initialSelection: state.selectedSearchOrder, onSortChanged: context.read<AnimeAdvancedSearchCubit>().updateSearchSortOrder,),
-                SizedBox(width: 40.w,),
-              ],
-            ) : const SizedBox.shrink(),
+            AdvancedSearchSortRow(
+              sortOptions: state.searchSortOptions,
+              sortOrders: state.searchSortOrder,
+              selectedSortOption: state.selectedSearchSortOption,
+              selectedSortOrder: state.selectedSearchOrder,
+              onSortOptionChanged: context.read<AnimeAdvancedSearchCubit>().updateSearchSortOption,
+              onSortOrderChanged: context.read<AnimeAdvancedSearchCubit>().updateSearchSortOrder,
+            ),
             const SizedBox(height: 20),
             Expanded(
               child: Padding(
@@ -215,7 +215,7 @@ class _AnimeAdvancedSearchViewState extends State<_AnimeAdvancedSearchView> {
                       (context, index) => SizedBox(
                         width: 165,
                         child: MediaCard(
-                          title: state.searchResults[index].title.userPreferred,
+                          title: displayMediaTitle(state.searchResults[index].title),
                           score: state.searchResults[index].averageScore,
                           coverImage: state.searchResults[index].coverImage,
                           onPressed:

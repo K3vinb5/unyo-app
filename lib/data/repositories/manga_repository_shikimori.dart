@@ -112,9 +112,12 @@ class MangaRepositoryShikimori with RepositoryMixin implements MangaRepository {
   /// Generated from `genres(entryType: Manga)` (PascalCase enum value) plus the
   /// kind/status/sort dictionaries.
   ///
-  /// Hidden (`false`) instead of faked: `countries` — `Manga` has no
-  /// country-of-origin field and `mangas(...)` has no origin argument;
-  /// `sortOrders` — `OrderEnum` has no general `_desc` twin.
+  /// `countries` stays hidden (`false`): `Manga` has no country-of-origin field
+  /// and `mangas(...)` has no origin argument, so nothing could be rendered
+  /// behind the dropdown. `sortOrders` stays hidden for the same reason as the
+  /// anime dictionary — no exposed sort option has a `_desc` literal in
+  /// `OrderEnum` — and that must never gate the sort FIELD picker, which the
+  /// screens gate independently ([AdvancedSearchSortRow]).
   @override
   Future<Map<String, (bool, List<String>)>> getUserMangaAdvancedSearchFilters(User loggedUser) async {
     final List<ShikimoriGenresListQueryGenres> genres = await _loadGenres(ShikimoriGenreEntryType.manga);
@@ -270,5 +273,3 @@ enum ShikimoriMangaFormatFilters { manga, manhwa, manhua, light_novel, one_shot,
 enum ShikimoriMangaStatusFilters { ongoing, released, anons, paused, discontinued }
 
 enum ShikimoriMangaSortOptions { popularity, ranked, name, aired_on }
-
-enum ShikimoriMangaSortOrder { asc, desc }

@@ -6,6 +6,7 @@ import 'package:unyo/core/enums/media_type.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/list/media_list.dart';
 import 'package:unyo/presentation/widgets/styled/styled.dart';
+import 'package:unyo/presentation/widgets/text/media_title_text.dart';
 
 class MangaCardList extends StatelessWidget {
   final void Function(Manga, MediaList) onPressed;
@@ -68,7 +69,7 @@ class MangaCardList extends StatelessWidget {
             children: [
               ...mangaList.map(
                     (manga) => MediaCard(
-                  title: manga.title.userPreferred,
+                  title: displayMediaTitle(manga.title),
                   score: manga.averageScore,
                   coverImage: manga.coverImage,
                   onPressed: () => onPressed(
