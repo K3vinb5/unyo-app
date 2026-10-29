@@ -186,7 +186,8 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       if (reloadType == ReloadType.newEpisodeService) {
         _logger.i("Reloading Anime Details due to new episode service");
         if (state.selectedAnime.id != 0) {
-          _getEpisodesDetails(state.loggedUser, state.selectedAnime);
+          _getEpisodesDetails(state.loggedUser, state.selectedAnime, ignoreCache: true);
+          _getAlternativeImage(state.loggedUser, state.selectedAnime, ignoreCache: true);
         }
       }
     });
@@ -801,7 +802,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     }
   }
 
-  Future<void> _getAlternativeImage(User loggedUser, Anime selectedAnime) async {
+  Future<void> _getAlternativeImage(User loggedUser, Anime selectedAnime, {bool ignoreCache = false}) async {
     try {
       _logger.i("Fetching Alternative Image for ${logTitleFor(selectedAnime.title)}");
       final AniZipLookupIds? ids = AniZipLookupIds.forAnime(selectedAnime);
@@ -812,6 +813,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       final String alternateImage = await _episodeRepository.getAlternativeImage(
         malId: ids.malId,
         anilistId: ids.anilistId,
+        ignoreCache: ignoreCache,
       );
       emit(state.copyWith(alternateImage: alternateImage));
     } on HttpServerException catch (e, stackTrace) {
@@ -821,7 +823,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     }
   }
 
-  Future<void> _getEpisodesDetails(User loggedUser, Anime selectedAnime) async {
+  Future<void> _getEpisodesDetails(User loggedUser, Anime selectedAnime, {bool ignoreCache = false}) async {
     try {
       _logger.i("Fetching Episodes Details for ${logTitleFor(selectedAnime.title)}");
       final AniZipLookupIds? ids = AniZipLookupIds.forAnime(selectedAnime);
@@ -832,6 +834,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       final List<EpisodeInfo> episodesInfo = await _episodeRepository.getEpisodeInfo(
         malId: ids.malId,
         anilistId: ids.anilistId,
+        ignoreCache: ignoreCache,
       );
       emit(state.copyWith(episodesInfo: episodesInfo, episodesLoaded: true));
       _episodesInfoNotifier.updateSelectedEpisodeInfo(episodesInfo);

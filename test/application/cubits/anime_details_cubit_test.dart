@@ -237,9 +237,9 @@ void main() {
           .thenAnswer((_) async => (false, <Anime>[]));
       when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
           .thenAnswer((_) async => <String>[]);
-      when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+      when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId'), ignoreCache: any(named: 'ignoreCache')))
           .thenAnswer((_) async => <EpisodeInfo>[]);
-      when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+      when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId'), ignoreCache: any(named: 'ignoreCache')))
           .thenAnswer((_) async => '');
       when(() => episodesInfoNotifier.updateSelectedEpisodeInfo(any())).thenReturn(null);
       when(() => mediaListEntryNotifier.updateSelectedMediaListEntry(any())).thenReturn(null);
@@ -328,29 +328,58 @@ void main() {
     });
 
     group('metadata-service reload', () {
-      test('a new episode service refetches the episode list for the open anime', () async {
+      test('a new episode service refetches the episode list and the alternative image', () async {
         final StreamController<ReloadType> reloadStreamController = StreamController<ReloadType>.broadcast();
         addTearDown(reloadStreamController.close);
         when(() => reloadNotifier.reloadStream).thenAnswer((_) => reloadStreamController.stream);
         await emitAnimeIntoState();
 
-        // Consume the selection-time fetch so only the reload's own fetch is left
-        // to count (mocktail's verify consumes the calls it matches).
-        verify(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
-            .called(1);
+        // Consume the selection-time fetches so only the reload's own show up
+        // (mocktail's verify consumes the calls it matches).
+        verify(
+          () => episodeRepository.getEpisodeInfo(
+            malId: any(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: false,
+          ),
+        ).called(1);
+        verify(
+          () => episodeRepository.getAlternativeImage(
+            malId: any(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: false,
+          ),
+        ).called(1);
 
         reloadStreamController.add(ReloadType.newEpisodeService);
         await pumpEventQueue();
 
-        final List<int> malIds = verify(
-          () => episodeRepository.getEpisodeInfo(malId: captureAny(named: 'malId'), anilistId: any(named: 'anilistId')),
+        final List<int> episodeMalIds = verify(
+          () => episodeRepository.getEpisodeInfo(
+            malId: captureAny(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: true,
+          ),
         ).captured.cast<int>();
         expect(
-          malIds,
-          hasLength(1),
-          reason: 'episodes are derived from the episode provider, so a switch refetches them exactly once',
+          episodeMalIds,
+          <int>[58514],
+          reason: 'episodes are derived from the episode provider, so a switch refetches them once for the open anime — '
+              'bypassing the cache the previous provider filled',
         );
-        expect(malIds.single, 58514, reason: 'the open anime is what gets refetched');
+
+        final List<int> imageMalIds = verify(
+          () => episodeRepository.getAlternativeImage(
+            malId: captureAny(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: true,
+          ),
+        ).captured.cast<int>();
+        expect(
+          imageMalIds,
+          <int>[58514],
+          reason: 'the alternative image comes from the same episode provider and must not stay on the previous one',
+        );
       });
     });
   });

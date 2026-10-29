@@ -137,5 +137,42 @@ void main() {
       verify(() => mangaRepository.getPopularMangas(1, any(), ignoreCache: true)).called(1);
       verify(() => mangaRepository.getUpcomingMangas(1, any(), ignoreCache: true)).called(1);
     });
+
+    test('a provider switch during the initial load lands on the new provider', () async {
+      final Completer<(bool, List<Manga>)> initialFetch = Completer<(bool, List<Manga>)>();
+      bool gated = false;
+      when(() => mangaRepository.getTrendingMangas(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((Invocation invocation) {
+        bool ignoreCache = invocation.namedArguments[#ignoreCache] as bool;
+        if (!ignoreCache && !gated) {
+          gated = true;
+          return initialFetch.future;
+        }
+        return Future<(bool, List<Manga>)>.value((true, <Manga>[MangaModel.empty()]));
+      });
+
+      cubit = buildCubit();
+      userStreamController.add(userWith(Service.anilist));
+      await pumpEventQueue();
+      expect(cubit.state.userLoaded, isFalse, reason: 'the initial load is still awaiting its first fetch');
+
+      // Shikimori has no manga implementation, and it is picked mid-load.
+      userStreamController.add(userWith(Service.shikimori));
+      await pumpEventQueue();
+      reloadStreamController.add(ReloadType.newMetadataService);
+      await pumpEventQueue();
+
+      initialFetch.complete((true, <Manga>[MangaModel.empty()]));
+      await pumpEventQueue();
+
+      expect(cubit.state.userLoaded, isTrue);
+      expect(
+        cubit.state.metadataServiceSupported,
+        isFalse,
+        reason: 'the queued switch must re-run against Shikimori, not the provider the load captured',
+      );
+      expect(cubit.state.trending.$2, isEmpty, reason: 'the previous provider\'s rows must not survive the switch');
+      verifyNever(() => mangaRepository.getPopularMangas(1, any(), ignoreCache: true));
+    });
   });
 }

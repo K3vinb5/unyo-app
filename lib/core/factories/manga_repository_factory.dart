@@ -107,23 +107,13 @@ class MangaRepositoryFactory implements MangaRepository {
 
   @override
   Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser, {Service? service}) async {
-    switch (service ?? loggedUser.settings.metadataService) {
-      case Service.anilist:
-        _logger.i("Fetching Manga Details from AniList for ${selectedManga.title.userPreferred}");
-        return _mangaRepositoryAnilist.getMangaDetails(selectedManga, loggedUser);
-      case Service.mal:
-        _logger.i("Fetching Manga Details from MyMangaList for ${selectedManga.title.userPreferred}");
-        return (false, MangaDetailsModel.empty());
-      case Service.shikimori:
-        _logger.i("Fetching Manga Details from Shikimori for ${selectedManga.title.userPreferred}");
-        return (false, MangaDetailsModel.empty());
-      case Service.kitsu:
-        _logger.i("Fetching Manga Details from Kitsu for ${selectedManga.title.userPreferred}");
-        return (false, MangaDetailsModel.empty());
-      case Service.simkl:
-        _logger.i("Fetching Manga Details from Simkl for ${selectedManga.title.userPreferred}");
-        return (false, MangaDetailsModel.empty());
+    Service metadataService = service ?? loggedUser.settings.metadataService;
+    if (!MangaRepositoryFactory.supportsMetadataService(metadataService)) {
+      _logger.i("Manga Details are not available with ${metadataService.name} for ${selectedManga.title.userPreferred}");
+      return (false, MangaDetailsModel.empty());
     }
+    _logger.i("Fetching Manga Details from AniList for ${selectedManga.title.userPreferred}");
+    return _mangaRepositoryAnilist.getMangaDetails(selectedManga, loggedUser);
   }
 
   @override
@@ -142,24 +132,19 @@ class MangaRepositoryFactory implements MangaRepository {
     int page,
     User loggedUser,
   ) async {
-    switch (loggedUser.settings.metadataService) {
-      case Service.anilist:
-        return _mangaRepositoryAnilist.performMangaAdvancedSearch(
-          query,
-          selectedGenres,
-          selectedFormat,
-          selectedCountry,
-          selectedAiringStatus,
-          sort,
-          page,
-          loggedUser,
-        );
-      case Service.mal:
-      case Service.shikimori:
-      case Service.simkl:
-      case Service.kitsu:
-        return [];
+    if (!MangaRepositoryFactory.supportsMetadataService(loggedUser.settings.metadataService)) {
+      return [];
     }
+    return _mangaRepositoryAnilist.performMangaAdvancedSearch(
+      query,
+      selectedGenres,
+      selectedFormat,
+      selectedCountry,
+      selectedAiringStatus,
+      sort,
+      page,
+      loggedUser,
+    );
   }
 
   @override

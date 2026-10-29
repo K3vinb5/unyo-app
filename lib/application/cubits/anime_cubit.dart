@@ -33,6 +33,8 @@ class AnimeCubit extends Cubit<AnimeState> with EffectMixin<AnimeState> {
   late StreamSubscription<User> _loggedUserSubscription;
   late StreamSubscription<ReloadType> _reloadSubscription;
   bool _refreshInFlight = false;
+  bool _refreshQueued = false;
+  bool _queuedProviderSwitch = false;
   final Logger _logger = sl<Logger>();
 
   AnimeCubit(
@@ -82,7 +84,7 @@ class AnimeCubit extends Cubit<AnimeState> with EffectMixin<AnimeState> {
     ) async {
       emit(state.copyWith(loggedUser: loggedUser));
       if (!state.userLoaded) {
-        await _refreshAll(loggedUser);
+        await _refreshAll(isProviderSwitch: false);
         emit(state.copyWith(userLoaded: true, isLoading: false));
       }
     });
@@ -91,35 +93,51 @@ class AnimeCubit extends Cubit<AnimeState> with EffectMixin<AnimeState> {
         return;
       }
       _logger.i("Reloading Anime Screen due to new metadata service");
-      if (!state.userLoaded) {
-        // Nothing fetched yet: the initial load still to come already runs
-        // against the new provider, so refetching here would only duplicate it.
-        return;
-      }
-      // Drop the previous provider's rows before refetching: they carry that
-      // provider's entity types and must not stay openable from the screen.
-      _clearLists();
-      await _refreshAll(state.loggedUser, ignoreCache: true);
+      await _refreshAll(isProviderSwitch: true);
     });
   }
 
   /// The five browse lists, fetched in one place so the initial load and the
   /// metadata-service reload cannot drift apart.
-  Future<void> _refreshAll(User loggedUser, {bool ignoreCache = false}) async {
+  ///
+  /// Refreshes never drop a request: a switch that arrives while a fetch is
+  /// running is coalesced and replayed once that fetch settles, because the
+  /// running pass started for an older provider (and may even still be the
+  /// initial load). Every pass reads [AnimeState.loggedUser] as it fetches, so
+  /// the replay always runs against the newest provider.
+  Future<void> _refreshAll({required bool isProviderSwitch}) async {
     if (_refreshInFlight) {
-      _logger.d("Skipping anime refresh: a refresh is already in flight");
+      _logger.d("Queueing anime refresh: a refresh is already in flight");
+      _refreshQueued = true;
+      _queuedProviderSwitch = _queuedProviderSwitch || isProviderSwitch;
       return;
     }
     _refreshInFlight = true;
     try {
-      await _fetchRecentlyReleased(1, loggedUser, ignoreCache: ignoreCache);
-      await _fetchTrending(1, loggedUser, ignoreCache: ignoreCache);
-      await _fetchRecentlyCompleted(1, loggedUser, ignoreCache: ignoreCache);
-      await _fetchPopular(1, loggedUser, ignoreCache: ignoreCache);
-      await _fetchUpcoming(1, loggedUser, ignoreCache: ignoreCache);
+      bool providerSwitch = isProviderSwitch;
+      do {
+        _refreshQueued = false;
+        _queuedProviderSwitch = false;
+        if (providerSwitch) {
+          // Drop the previous provider's rows before refetching: they carry
+          // that provider's entity types and must not stay openable.
+          _clearLists();
+        }
+        await _fetchAll(ignoreCache: providerSwitch);
+        providerSwitch = _queuedProviderSwitch;
+      } while (_refreshQueued);
     } finally {
       _refreshInFlight = false;
     }
+  }
+
+  Future<void> _fetchAll({required bool ignoreCache}) async {
+    User loggedUser = state.loggedUser;
+    await _fetchRecentlyReleased(1, loggedUser, ignoreCache: ignoreCache);
+    await _fetchTrending(1, loggedUser, ignoreCache: ignoreCache);
+    await _fetchRecentlyCompleted(1, loggedUser, ignoreCache: ignoreCache);
+    await _fetchPopular(1, loggedUser, ignoreCache: ignoreCache);
+    await _fetchUpcoming(1, loggedUser, ignoreCache: ignoreCache);
   }
 
   void _clearLists() {

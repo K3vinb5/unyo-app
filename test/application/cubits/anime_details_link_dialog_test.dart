@@ -176,9 +176,9 @@ void main() {
         .thenAnswer((_) async => MediaListEntryModel.empty().copyWith(progress: 3, status: 'Current'));
     when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
         .thenAnswer((_) async => <String>[]);
-    when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+    when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId'), ignoreCache: any(named: 'ignoreCache')))
         .thenAnswer((_) async => <EpisodeInfo>[]);
-    when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+    when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId'), ignoreCache: any(named: 'ignoreCache')))
         .thenAnswer((_) async => '');
     when(() => episodesInfoNotifier.updateSelectedEpisodeInfo(any())).thenReturn(null);
     when(() => mediaListEntryNotifier.updateSelectedMediaListEntry(any())).thenReturn(null);
