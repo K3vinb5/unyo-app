@@ -24,6 +24,10 @@ class FakePlayer implements mdk.Player {
   final List<List<int>> subtitleTrackWrites = [];
   final List<List<int>> audioTrackWrites = [];
   final List<({String uri, mdk.MediaType type})> externalMedia = [];
+  final Map<String, String> properties = {};
+  /// Ordered trace of the subtitle-affecting player writes, e.g. `sid=no`
+  /// followed by `activeSubtitleTracks=[]`.
+  final List<String> subtitleWrites = [];
   final StreamController<({mdk.MediaStatus oldValue, mdk.MediaStatus newValue})>
   mediaStatusController = StreamController<
     ({mdk.MediaStatus oldValue, mdk.MediaStatus newValue})
@@ -42,7 +46,19 @@ class FakePlayer implements mdk.Player {
   set activeSubtitleTracks(List<int> value) {
     _activeSubtitleTracks = value;
     subtitleTrackWrites.add(value);
+    subtitleWrites.add('activeSubtitleTracks=$value');
   }
+
+  @override
+  void setProperty(String name, String value) {
+    properties[name] = value;
+    if (name == 'sid' || name == 'subtitle') {
+      subtitleWrites.add('$name=$value');
+    }
+  }
+
+  @override
+  String? getProperty(String name) => properties[name];
 
   @override
   List<int> get activeAudioTracks => _activeAudioTracks;
@@ -192,13 +208,36 @@ void main() {
       twoEmbeddedSubtitles();
       final VideoService service = await buildLoadedService(testVideo());
 
+      player.subtitleWrites.clear();
       expect(service.setSubtitle(-1), isTrue);
       expect(service.areSubtitlesDisabled, isTrue);
       expect(service.subtitleIndex, -1);
-      // An empty active track set is sid=no, so an external subtitle file
-      // attached through setMedia(url, MediaType.subtitle) is off as well.
+      // `subtitle=0` is what actually stops the rendering on the real player:
+      // neither an empty active track set nor `sid=no` alone cleared an attached
+      // .vtt (both verified live, text kept drawing on a paused frame).
+      expect(player.properties['subtitle'], '0');
+      expect(player.properties['sid'], 'no');
+      expect(player.subtitleWrites, [
+        'subtitle=0',
+        'sid=no',
+        'activeSubtitleTracks=[]',
+      ]);
       expect(player.activeSubtitleTracks, isEmpty);
-      expect(player.subtitleTrackWrites.last, isEmpty);
+    });
+
+    test('selecting a track again after "No subtitles" re-enables it', () async {
+      twoEmbeddedSubtitles();
+      final VideoService service = await buildLoadedService(testVideo());
+
+      expect(service.setSubtitle(-1), isTrue);
+      expect(player.activeSubtitleTracks, isEmpty);
+
+      expect(service.setSubtitle(1), isTrue);
+      expect(service.areSubtitlesDisabled, isFalse);
+      expect(service.subtitleIndex, 1);
+      expect(player.activeSubtitleTracks, [1]);
+      // Rendering must be turned back on, otherwise the track decodes invisibly.
+      expect(player.properties['subtitle'], '1');
     });
 
     test('-1 works with no subtitle tracks at all', () async {
@@ -207,6 +246,8 @@ void main() {
       expect(service.subtitles, isEmpty);
       expect(service.setSubtitle(-1), isTrue);
       expect(service.areSubtitlesDisabled, isTrue);
+      expect(player.properties['subtitle'], '0');
+      expect(player.properties['sid'], 'no');
     });
 
     test('an out of range index is rejected and keeps the selection', () async {
@@ -231,6 +272,8 @@ void main() {
       expect(service.subtitles, hasLength(2));
       expect(service.areSubtitlesDisabled, isTrue);
       expect(player.activeSubtitleTracks, isEmpty);
+      expect(player.properties['subtitle'], '0');
+      expect(player.properties['sid'], 'no');
     });
 
     test('a media change resets the disabled state and auto-selects again', () async {

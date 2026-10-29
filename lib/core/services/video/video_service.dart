@@ -283,21 +283,56 @@ class VideoService {
     _subtitlesDisabledByUser = false;
     _subtitleIndex = subtitleIndex;
     final track = subtitleTracks[subtitleIndex];
+    // `subtitle=0` (written by _disableSubtitles) turns off subtitle RENDERING
+    // for every stream type, so it must be lifted before selecting a track.
+    _player.setProperty('subtitle', '1');
     if (track.embedded) {
+      // The index on the track set is what selects the stream.
       _player.activeSubtitleTracks = [track.embeddedIndex];
+      _logger.d(
+        "Subtitle selected: index=$subtitleIndex embedded=${track.embeddedIndex} "
+        "(${track.lang}) -> setProperty(subtitle=1), "
+        "activeSubtitleTracks=${_player.activeSubtitleTracks} "
+        "sid=${_player.getProperty('sid')} subtitle=${_player.getProperty('subtitle')}",
+      );
     } else {
       _player.setMedia(track.url, mdk.MediaType.subtitle);
+      _logger.d(
+        "Subtitle selected: index=$subtitleIndex external (${track.lang}) "
+        "url=${track.url} -> setProperty(subtitle=1), "
+        "setMedia(MediaType.subtitle) sid=${_player.getProperty('sid')} "
+        "subtitle=${_player.getProperty('subtitle')}",
+      );
     }
     return true;
   }
 
   /// Turns every subtitle off, including an external file attached with
-  /// [mdk.Player.setMedia] / [mdk.MediaType.subtitle]. An empty active track set
-  /// is MDK's `sid=no`: it disables the embedded streams and the external
-  /// subtitle source of the player alike.
+  /// [mdk.Player.setMedia] / [mdk.MediaType.subtitle].
+  ///
+  /// Two things that do NOT stop an already rendering subtitle stream on the
+  /// real MDK player (both verified live on an attached .vtt from KickAssAnime):
+  /// an empty active track set, and `sid=no` — the menu said "No subtitles"
+  /// while the text kept drawing on the paused frame. What actually stops it is
+  /// MDK's `subtitle` property ("0" disables subtitle *rendering*, for embedded,
+  /// attached and closed-caption streams alike; `setActiveTracks` only controls
+  /// decoding). It is written first, then `sid=no` and the empty track set keep
+  /// the track selection consistent.
   bool _disableSubtitles() {
     _subtitleIndex = -1;
+    final previousTracks = _player.activeSubtitleTracks;
+    final previousSid = _player.getProperty('sid');
+    final previousRendering = _player.getProperty('subtitle');
+    _player.setProperty('subtitle', '0');
+    _player.setProperty('sid', 'no');
     _player.activeSubtitleTracks = const <int>[];
+    _logger.d(
+      "Subtitles disabled: wrote subtitle=0, sid=no (was subtitle=$previousRendering "
+      "sid=$previousSid activeSubtitleTracks=$previousTracks) -> now "
+      "activeSubtitleTracks=${_player.activeSubtitleTracks} "
+      "sid=${_player.getProperty('sid')} "
+      "subtitle=${_player.getProperty('subtitle')}",
+    );
     return true;
   }
 
@@ -312,8 +347,16 @@ class VideoService {
       _audioIndex = -1;
       if (audioTracks.isEmpty) {
         _player.activeAudioTracks = const <int>[];
+        _logger.d(
+          "Audio track selection reset to default: no audio source available "
+          "-> activeAudioTracks cleared",
+        );
         return true;
       }
+      _logger.d(
+        "Audio track selection reset to default: falling back to "
+        "${audioTracks.first.lang}",
+      );
       _activateAudioTrack(audioTracks.first);
       return true;
     }
@@ -329,9 +372,17 @@ class VideoService {
     if (track.embedded) {
       // An embedded stream is selectable by its stream index.
       _player.activeAudioTracks = [track.embeddedIndex];
+      _logger.d(
+        "Audio track selected: index=$_audioIndex embedded=${track.embeddedIndex} "
+        "(${track.lang}) -> activeAudioTracks=${_player.activeAudioTracks}",
+      );
     } else {
       // An external/dub file is attached as an audio media for the player.
       _player.setMedia(track.url, mdk.MediaType.audio);
+      _logger.d(
+        "Audio track selected: index=$_audioIndex external (${track.lang}) "
+        "url=${track.url} -> setMedia(MediaType.audio)",
+      );
     }
   }
 
