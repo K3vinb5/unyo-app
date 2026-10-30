@@ -42,6 +42,16 @@ void main() {
         BorderRadius.circular(UnyoExtensionButton.iconBorderRadius),
       );
       expect(UnyoExtensionButton.iconBorderRadius, greaterThan(0));
+      expect(
+        UnyoExtensionButton.iconBorderRadius,
+        greaterThanOrEqualTo(14),
+        reason: 'review asked for a rounder corner than the original 12',
+      );
+      expect(
+        UnyoExtensionButton.iconBorderRadius,
+        lessThan(UnyoExtensionButton.iconSize / 2),
+        reason: 'a radius of half the edge would make it a circle, not a rounded square',
+      );
 
       expect(
         find.descendant(of: iconSlot, matching: find.byType(ColoredBox)),

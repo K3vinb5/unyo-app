@@ -11,9 +11,10 @@ class UnyoExtensionButton extends StatelessWidget {
   static const double iconSize = 52;
 
   /// Rounded-square icon radius: the trailing action buttons use 10 at 45px,
-  /// the same ratio at 52px rounds to 12 - which matches the rounded-square
-  /// icons in `unyo-design/screens/shots/08-extensions-tab.png`.
-  static const double iconBorderRadius = 12;
+  /// the same ratio at 52px rounds to 12. Bumped to 16 on review feedback
+  /// ("too square") - still short of half the 52px edge, so it keeps the
+  /// rounded-square look instead of becoming a circle/squircle.
+  static const double iconBorderRadius = 16;
 
   final void Function()? onDownloadPressed;
   final void Function()? onUpdatePressed;
