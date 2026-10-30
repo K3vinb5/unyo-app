@@ -228,7 +228,7 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
           // `currentUser` carries no banner, so there is no wallpaper to sample;
           // the primary colour stays the account colour (same as a local user).
           _logger.d("Getting shikimori user's theme");
-        case LocalUserModel localUserModel:
+        case LocalUserModel _:
           _logger.d("Getting local user's theme");
       }
       _themeService.updateThemeFromColors(

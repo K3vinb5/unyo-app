@@ -175,7 +175,6 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
       state.loggedUser,
       manga,
       carriedExtension: carriedExtension,
-      promptWhenMissing: false,
     );
   }
 
@@ -234,7 +233,7 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
           } catch (e, stackTrace) {
             _logger.w("Failed to persist the selected extension: $e", stackTrace: stackTrace);
           }
-        case LocalUserModel localUserModel:
+        case LocalUserModel _:
       }
       if (isClosed) return;
       await _getMangaInfoFromSelectedExtension(selectedExtension);
@@ -295,7 +294,7 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
         return;
       }
       // Opening the page never nags (WP #87): no prompt when nothing is saved.
-      _setSelectedExtension(state.loggedUser, state.selectedManga, promptWhenMissing: false);
+      _setSelectedExtension(state.loggedUser, state.selectedManga);
     } catch (e, stackTrace) {
       handleError("Failed to load installed extensions $e", stackTrace: stackTrace);
     }
@@ -407,7 +406,6 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
     User loggedUser,
     Manga selectedManga, {
     Extension? carriedExtension,
-    bool promptWhenMissing = true,
   }) async {
     try {
       Extension? savedExtension;
@@ -418,7 +416,7 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
         case ShikimoriUserModel shikimoriUserModel:
           SettingsModel userSettings = shikimoriUserModel.settings as SettingsModel;
           savedExtension = userSettings.mediaExtensionConfigs[selectedManga.id.toString()];
-        case LocalUserModel localUserModel:
+        case LocalUserModel _:
       }
       if (savedExtension != null) {
         await selectMangaExtension(savedExtension.name);
@@ -433,37 +431,11 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
         return;
       }
       if (isClosed) return;
-      if (!promptWhenMissing) {
-        // Nothing to restore and no nag requested (WP #87/#88): the warning
-        // fires when the user taps a chapter without a selected extension.
-        _logger.d("No saved extension found for manga ${selectedManga.id}; leaving the pick to the user.");
-        return;
-      }
-      _showNoExtensionSelectedPrompt();
+      // Nothing to restore (WP #87/#88): the page stays silent, and the warning
+      // fires when the user taps a chapter without a selected extension.
+      _logger.d("No saved extension found for manga ${selectedManga.id}; leaving the pick to the user.");
     } catch (e, stackTrace) {
       handleError("Error setting selected extension: $e", stackTrace: stackTrace);
     }
-  }
-
-  /// Opt-in prompt when a path explicitly asks for one (`promptWhenMissing`).
-  /// The details page open stays quiet (WP #87): the warning fires when the
-  /// user taps a chapter without a selected extension.
-  void _showNoExtensionSelectedPrompt() {
-    if (isClosed) return;
-    if (state.installedExtensions.isEmpty) {
-      _logger.w("No installed extensions available to fetch manga info.");
-      showSnackBarEffect(
-        "No Installed Extensions",
-        message: "Install some extensions to watch some content",
-        contentType: ContentType.warning,
-      );
-      return;
-    }
-    _logger.w("No extension selected to fetch chapters.");
-    showSnackBarEffect(
-      "No Extension Selected",
-      message: "Select an extension to fetch chapters.",
-      contentType: ContentType.warning,
-    );
   }
 }

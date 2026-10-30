@@ -3,7 +3,6 @@ import 'package:unyo/core/enums/service.dart';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
-import 'package:logger/logger.dart';
 // Internal dependencies
 import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/core/di/locator.dart';
@@ -31,7 +30,6 @@ class MangaRepositoryAnilist with RepositoryMixin implements MangaRepository {
   final GraphQLService _anilistGraphQLService = sl<GraphQLService>(
     instanceName: config.anilistGraphQlService,
   );
-  final Logger _logger = sl<Logger>();
 
   @override
   Future<(bool, List<Manga>)> getPopularMangas(int page, User loggedUser, {bool ignoreCache = false}) async {

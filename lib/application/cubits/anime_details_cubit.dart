@@ -272,7 +272,6 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       state.loggedUser,
       anime,
       carriedExtension: carriedExtension,
-      promptWhenMissing: false,
     );
   }
 
@@ -352,7 +351,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
           } catch (e, stackTrace) {
             _logger.w("Failed to persist the selected extension: $e", stackTrace: stackTrace);
           }
-        case LocalUserModel localUserModel:
+        case LocalUserModel _:
       }
       if (isClosed) return;
       await _getAnimeInfoFromSelectedExtension(selectedExtension);
@@ -746,7 +745,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         return;
       }
       // Opening the page never nags (WP #87): no prompt when nothing is saved.
-      _setSelectedExtension(state.loggedUser, state.selectedAnime, promptWhenMissing: false);
+      _setSelectedExtension(state.loggedUser, state.selectedAnime);
     } catch (e, stackTrace) {
       handleError("Failed to load installed extensions $e", stackTrace: stackTrace);
     }
@@ -1022,7 +1021,6 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     User loggedUser,
     Anime selectedAnime, {
     Extension? carriedExtension,
-    bool promptWhenMissing = true,
   }) async {
     try {
       Extension? savedExtension;
@@ -1033,7 +1031,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         case ShikimoriUserModel shikimoriUserModel:
           SettingsModel userSettings = shikimoriUserModel.settings as SettingsModel;
           savedExtension = userSettings.mediaExtensionConfigs[selectedAnime.id.toString()];
-        case LocalUserModel localUserModel:
+        case LocalUserModel _:
       }
       if (savedExtension != null) {
         await selectAnimeExtension(savedExtension.name);
@@ -1049,37 +1047,11 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         return;
       }
       if (isClosed) return;
-      if (!promptWhenMissing) {
-        // Nothing to restore and no nag requested (WP #87/#88): the warning
-        // fires when the user taps an episode without a selected extension.
-        _logger.d("No saved extension found for anime ${selectedAnime.id}; leaving the pick to the user.");
-        return;
-      }
-      _showNoExtensionSelectedPrompt();
+      // Nothing to restore (WP #87/#88): the page stays silent, and the warning
+      // fires when the user taps an episode without a selected extension.
+      _logger.d("No saved extension found for anime ${selectedAnime.id}; leaving the pick to the user.");
     } catch (e, stackTrace) {
       handleError("Error setting selected extension: $e", stackTrace: stackTrace);
     }
-  }
-
-  /// Opt-in prompt when a path explicitly asks for one (`promptWhenMissing`).
-  /// The details page open stays quiet (WP #87): the warning fires when the
-  /// user taps an episode without a selected extension.
-  void _showNoExtensionSelectedPrompt() {
-    if (isClosed) return;
-    if (state.installedExtensions.isEmpty) {
-      _logger.w("No installed extensions available to fetch episodes.");
-      showSnackBarEffect(
-        "No Installed Extensions",
-        message: "Install some extensions to watch some content",
-        contentType: ContentType.warning,
-      );
-      return;
-    }
-    _logger.w("No extension selected to fetch episodes.");
-    showSnackBarEffect(
-      "No Extension Selected",
-      message: "Select an extension to fetch episodes.",
-      contentType: ContentType.warning,
-    );
   }
 }

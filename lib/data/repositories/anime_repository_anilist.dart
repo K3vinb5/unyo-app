@@ -4,7 +4,6 @@ import 'dart:math';
 
 import 'package:collection/collection.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:logger/logger.dart';
 import 'package:unyo/core/di/locator.dart';
 
 // Internal dependencies
@@ -35,7 +34,6 @@ class AnimeRepositoryAnilist with RepositoryMixin implements AnimeRepository {
   final GraphQLService _anilistGraphQLService = sl<GraphQLService>(
     instanceName: config.anilistGraphQlService,
   );
-  final Logger _logger = sl<Logger>();
 
   @override
   Future<(bool, List<Anime>)> getPopularAnimes(int page, User loggedUser, {bool ignoreCache = false}) async {
