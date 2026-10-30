@@ -47,11 +47,9 @@ class VideoService {
   bool _isDisposed = false;
   StreamSubscription<({mdk.MediaStatus oldValue, mdk.MediaStatus newValue})>?
   _mediaStatusSubscription;
-  // TEMP MEASUREMENT (WP #97 probe build only — revert before commit):
-  // production flags are `fromStart | inCache | fast` (keyframe seek). The
-  // residual measurement needs frame-accurate seeks, and mdk is accurate when
-  // the Fast/KeyFrame flag is absent.
-  static const mdk.SeekFlag _seekFlags = mdk.SeekFlag(mdk.SeekFlag.fromStart);
+  static const mdk.SeekFlag _seekFlags = mdk.SeekFlag(
+    mdk.SeekFlag.fromStart | mdk.SeekFlag.inCache | mdk.SeekFlag.fast,
+  );
 
   VideoService({
     required ext.Video video,
@@ -472,9 +470,12 @@ class VideoService {
     }
   }
 
-  /// Single writer of mdk's `sub-delay` property (seconds, positive = later).
+  /// Single writer of mdk's subtitle delay property (seconds, positive = later).
   void _writeSubtitleDelay(Duration offset) {
-    _player.setProperty('sub-delay', SubtitleOffsetController.toMdkSeconds(offset));
+    _player.setProperty(
+      SubtitleOffsetController.playerProperty,
+      SubtitleOffsetController.toMdkSeconds(offset),
+    );
   }
 
   void _setPlayerLogsHandler() {

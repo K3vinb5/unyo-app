@@ -1,4 +1,4 @@
-/// Owns the subtitle delay (`sub-delay`) state of one video session.
+/// Owns the subtitle delay ([playerProperty]) state of one video session.
 ///
 /// The value written to the player is folded from two contributions:
 ///
@@ -19,8 +19,13 @@ class SubtitleOffsetController {
     this.maxOffset = const Duration(seconds: 60),
   });
 
+  /// mdk player property for the subtitle delay, in floating seconds; positive
+  /// presents subtitles later. (mdk has no `sub-delay` — writes to an unknown
+  /// key are silently stored as user data and never take effect.)
+  static const String playerProperty = 'subtitle.delay';
+
   /// Called with the effective offset whenever it changes. The service wires
-  /// this to `player.setProperty('sub-delay', ...)`.
+  /// this to `player.setProperty(playerProperty, ...)`.
   final void Function(Duration offset) onChanged;
 
   /// Hard bound on the effective offset; anything beyond is clamped.
@@ -46,7 +51,7 @@ class SubtitleOffsetController {
     return Duration(milliseconds: videoStartTimeMs);
   }
 
-  /// Converts a delay to the seconds string mdk's `sub-delay` property expects.
+  /// Converts a delay to the seconds string [playerProperty] expects.
   /// Positive values present subtitles later.
   static String toMdkSeconds(Duration delay) =>
       (delay.inMilliseconds / 1000).toStringAsFixed(3);

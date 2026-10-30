@@ -14,6 +14,12 @@ void main() {
   });
 
   group('setSubtitleOffset conversion', () {
+    test('targets mdk\'s real subtitle-delay property (not libmpv\'s sub-delay)', () {
+      // mdk stores writes to unknown keys as inert user data, so the property
+      // name is part of the fix: `sub-delay` silently never took effect.
+      expect(SubtitleOffsetController.playerProperty, 'subtitle.delay');
+    });
+
     test('converts a delay to the seconds string the player property expects', () {
       expect(SubtitleOffsetController.toMdkSeconds(Duration.zero), '0.000');
       expect(
