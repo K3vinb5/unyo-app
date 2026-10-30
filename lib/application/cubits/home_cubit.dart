@@ -154,7 +154,7 @@ class HomeCubit extends Cubit<HomeState> with EffectMixin<HomeState> {
               continueReading: readingList,
             ),
           );
-        case LocalUserModel localUserModel:
+        case LocalUserModel _:
       }
     } catch (e, stackTrace) {
       handleError("Error fetching user info: $e", stackTrace: stackTrace);

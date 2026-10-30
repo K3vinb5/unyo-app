@@ -178,7 +178,7 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
         case ShikimoriUserModel _:
           // `currentUser` carries no banner, so there is no wallpaper to sample.
           _logger.d("Getting shikimori user's theme");
-        case LocalUserModel localUserModel:
+        case LocalUserModel _:
           _logger.d("Getting local user's theme");
       }
       _themeService.updateThemeFromColors(
