@@ -604,6 +604,13 @@ class VideoService {
   void _initSubtitlesAndAudiotracks() {
     subtitleTracks.clear();
     audioTracks.clear();
+    // The lists above are rebuilt for whatever media just loaded — including a
+    // server swap through swapVideoUrl, which never goes through changeVideo.
+    // Selections of the previous media are meaningless now: a stale index would
+    // point outside the new lists (no menu entry checked, "No subtitles" not
+    // reported as off). The branches below re-select when there is a track.
+    _subtitleIndex = -1;
+    _audioIndex = -1;
     int index = 0;
     if (_player.mediaInfo.subtitle != null && _player.mediaInfo.subtitle!.isNotEmpty) {
       for (mdk.SubtitleStreamInfo subtitleStreamInfo in _player.mediaInfo.subtitle!) {

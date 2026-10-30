@@ -373,6 +373,36 @@ void main() {
     });
   });
 
+  group('media swap re-init', () {
+    test('swapping to a media with fewer tracks drops the stale selections', () async {
+      twoEmbeddedSubtitles();
+      twoEmbeddedAudios();
+      final VideoService service = await buildLoadedService(testVideo(), alternatives: 2);
+      expect(service.setSubtitle(1), isTrue);
+      expect(service.setAudioTrack(1), isTrue);
+      expect(service.audioIndex, 1);
+
+      // The server swapped to has a single audio source, which the menu collapses
+      // into "Default audio", and no subtitle tracks at all.
+      player.mediaInfo.subtitle = [];
+      player.mediaInfo.audio = [
+        mdk.AudioStreamInfo()..metadata = {'title': 'Japanese', 'language': 'jpn'},
+      ];
+
+      // A swap reloads the media without changeVideo, so the indexes of the
+      // previous media must not survive into the new track lists.
+      await service.swapVideoUrl(1);
+      player.emitLoaded();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(service.subtitles, isEmpty);
+      expect(service.subtitleIndex, -1);
+      expect(service.areSubtitlesDisabled, isTrue);
+      expect(service.audios, isEmpty);
+      expect(service.audioIndex, -1);
+    });
+  });
+
   test('an external (non embedded) subtitle activates through setMedia', () async {
     final VideoService service = await buildLoadedService(
       testVideo(
