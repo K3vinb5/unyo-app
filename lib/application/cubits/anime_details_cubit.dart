@@ -96,6 +96,12 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   late StreamSubscription<MediaList> _selectedMediaListSubscription;
   late StreamSubscription<ReloadType> _reloadSubscription;
 
+  /// Episode-fetch generation. A switch of episode provider starts a newer
+  /// fetch while the previous one may still be in flight; the older completion
+  /// must not overwrite the newer provider's rows in the state or in
+  /// [EpisodesInfoNotifier].
+  int _episodesFetchGeneration = 0;
+
   // Logger
   final Logger _logger = sl<Logger>();
 
@@ -193,6 +199,13 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       if (reloadType == ReloadType.animeMediaListEntryUpdated) {
         _logger.i("Reloading Anime Details due to anime media list entry update");
         _getUserMediaListEntry(state.loggedUser, state.selectedAnime, ignoreCache: true);
+      }
+      if (reloadType == ReloadType.newEpisodeService) {
+        _logger.i("Reloading Anime Details due to new episode service");
+        if (state.selectedAnime.id != 0) {
+          _getEpisodesDetails(state.loggedUser, state.selectedAnime, ignoreCache: true);
+          _getAlternativeImage(state.loggedUser, state.selectedAnime, ignoreCache: true);
+        }
       }
     });
     _loadInstalledExtensions();
@@ -823,7 +836,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     }
   }
 
-  Future<void> _getAlternativeImage(User loggedUser, Anime selectedAnime) async {
+  Future<void> _getAlternativeImage(User loggedUser, Anime selectedAnime, {bool ignoreCache = false}) async {
     try {
       _logger.i("Fetching Alternative Image for ${logTitleFor(selectedAnime.title)}");
       final AniZipLookupIds? ids = AniZipLookupIds.forAnime(selectedAnime);
@@ -834,6 +847,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       final String alternateImage = await _episodeRepository.getAlternativeImage(
         malId: ids.malId,
         anilistId: ids.anilistId,
+        ignoreCache: ignoreCache,
       );
       emit(state.copyWith(alternateImage: alternateImage));
     } on HttpServerException catch (e, stackTrace) {
@@ -843,7 +857,8 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     }
   }
 
-  Future<void> _getEpisodesDetails(User loggedUser, Anime selectedAnime) async {
+  Future<void> _getEpisodesDetails(User loggedUser, Anime selectedAnime, {bool ignoreCache = false}) async {
+    final int fetchGeneration = ++_episodesFetchGeneration;
     try {
       _logger.i("Fetching Episodes Details for ${logTitleFor(selectedAnime.title)}");
       final AniZipLookupIds? ids = AniZipLookupIds.forAnime(selectedAnime);
@@ -857,7 +872,12 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       final List<EpisodeInfo> episodesInfo = await _episodeRepository.getEpisodeInfo(
         malId: ids.malId,
         anilistId: ids.anilistId,
+        ignoreCache: ignoreCache,
       );
+      if (fetchGeneration != _episodesFetchGeneration) {
+        _logger.i("Discarding episode details: a newer episode provider fetch has started");
+        return;
+      }
       emit(state.copyWith(episodesInfo: episodesInfo, episodesLoaded: true));
       _episodesInfoNotifier.updateSelectedEpisodeInfo(episodesInfo);
     } on HttpServerException catch (e, stackTrace) {

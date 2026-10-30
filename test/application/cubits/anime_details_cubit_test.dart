@@ -334,9 +334,9 @@ void main() {
           .thenAnswer((_) async => (false, <Anime>[]));
       when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
           .thenAnswer((_) async => <String>[]);
-      when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+      when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId'), ignoreCache: any(named: 'ignoreCache')))
           .thenAnswer((_) async => <EpisodeInfo>[]);
-      when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+      when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId'), ignoreCache: any(named: 'ignoreCache')))
           .thenAnswer((_) async => '');
       when(() => episodesInfoNotifier.updateSelectedEpisodeInfo(any())).thenReturn(null);
       when(() => mediaListEntryNotifier.updateSelectedMediaListEntry(any())).thenReturn(null);
@@ -422,6 +422,111 @@ void main() {
       expect(cubit.state.extensionAnimeResults, hasLength(2));
       expect(cubit.state.selectedAnimeResultIndex, 1);
       expect(snackbars.any((effect) => effect.title == 'Something went wrong'), isFalse, reason: rendered.join('; '));
+    });
+
+    group('metadata-service reload', () {
+      test('a new episode service refetches the episode list and the alternative image', () async {
+        final StreamController<ReloadType> reloadStreamController = StreamController<ReloadType>.broadcast();
+        addTearDown(reloadStreamController.close);
+        when(() => reloadNotifier.reloadStream).thenAnswer((_) => reloadStreamController.stream);
+        await emitAnimeIntoState();
+
+        // Consume the selection-time fetches so only the reload's own show up
+        // (mocktail's verify consumes the calls it matches).
+        verify(
+          () => episodeRepository.getEpisodeInfo(
+            malId: any(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: false,
+          ),
+        ).called(1);
+        verify(
+          () => episodeRepository.getAlternativeImage(
+            malId: any(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: false,
+          ),
+        ).called(1);
+
+        reloadStreamController.add(ReloadType.newEpisodeService);
+        await pumpEventQueue();
+
+        final List<int> episodeMalIds = verify(
+          () => episodeRepository.getEpisodeInfo(
+            malId: captureAny(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: true,
+          ),
+        ).captured.cast<int>();
+        expect(
+          episodeMalIds,
+          <int>[58514],
+          reason: 'episodes are derived from the episode provider, so a switch refetches them once for the open anime — '
+              'bypassing the cache the previous provider filled',
+        );
+
+        final List<int> imageMalIds = verify(
+          () => episodeRepository.getAlternativeImage(
+            malId: captureAny(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: true,
+          ),
+        ).captured.cast<int>();
+        expect(
+          imageMalIds,
+          <int>[58514],
+          reason: 'the alternative image comes from the same episode provider and must not stay on the previous one',
+        );
+      });
+      test('an episode fetch from the previous provider does not overwrite the new provider\'s list', () async {
+        final StreamController<ReloadType> reloadStreamController = StreamController<ReloadType>.broadcast();
+        addTearDown(reloadStreamController.close);
+        when(() => reloadNotifier.reloadStream).thenAnswer((_) => reloadStreamController.stream);
+        await emitAnimeIntoState();
+
+        // The AniZip fetch for the open anime hangs while the user switches the
+        // episode provider to Kitsu, whose fetch settles first with an empty list.
+        final Completer<List<EpisodeInfo>> staleFetch = Completer<List<EpisodeInfo>>();
+        when(
+          () => episodeRepository.getEpisodeInfo(
+            malId: any(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: false,
+          ),
+        ).thenAnswer((_) => staleFetch.future);
+        when(
+          () => episodeRepository.getEpisodeInfo(
+            malId: any(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: true,
+          ),
+        ).thenAnswer((_) async => <EpisodeInfo>[]);
+
+        animeStreamController.add(testAnime);
+        await pumpEventQueue();
+        reloadStreamController.add(ReloadType.newEpisodeService);
+        await pumpEventQueue();
+        expect(cubit.state.episodesInfo, isEmpty, reason: 'the new provider settles first with no episodes');
+
+        staleFetch.complete(<EpisodeInfo>[
+          EpisodeInfoModel.empty().copyWith(id: 99, episodeNumber: 1),
+        ]);
+        await pumpEventQueue();
+
+        expect(
+          cubit.state.episodesInfo,
+          isEmpty,
+          reason: 'the previous provider\'s late completion must be discarded, not written over the new list',
+        );
+        final List<List<EpisodeInfo>> pushed = verify(
+          () => episodesInfoNotifier.updateSelectedEpisodeInfo(captureAny()),
+        ).captured.cast<List<EpisodeInfo>>();
+        expect(
+          pushed.expand((episodes) => episodes).where((episode) => episode.id == 99),
+          isEmpty,
+          reason: 'the stale rows must not reach EpisodesInfoNotifier either',
+        );
+      });
     });
   });
 

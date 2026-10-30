@@ -13,6 +13,7 @@ import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/manga_card_list.dart';
 import 'package:unyo/presentation/widgets/styled/media_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_banner_carousel.dart';
+import 'package:unyo/presentation/widgets/text/text_utils.dart';
 
 @RoutePage()
 class MangaScreen extends StatelessWidget {
@@ -75,6 +76,23 @@ class _MangaViewState extends State<_MangaView> {
   Widget build(BuildContext context) {
     return BlocBuilder<MangaCubit, MangaState>(
       builder: (context, state) {
+        if (!state.metadataServiceSupported) {
+          // The provider has no manga implementation at all: say so instead of
+          // rendering the empty rows a failed or empty load would produce.
+          return Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 40.0.w),
+              child: Text(
+                "Manga isn't available with ${TextUtils.capitalize(state.loggedUser.settings.metadataService.name)}",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  color: ColorScheme.of(context).tertiary,
+                ),
+              ),
+            ),
+          );
+        }
         return SingleChildScrollView(
           scrollDirection: Axis.vertical,
           child: Column(
