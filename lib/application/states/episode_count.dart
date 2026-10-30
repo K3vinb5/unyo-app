@@ -35,4 +35,31 @@ class EpisodeCount {
     final int upperBound = episodeCount < 0 ? 0 : episodeCount;
     return normalized > upperBound ? upperBound : normalized;
   }
+
+  /// Progress value to persist for an edit bounded by [episodeCount].
+  ///
+  /// The editor only *displays* the clamped value ([progressForControl]) and
+  /// its slider never reports its initial value back, so saving the untouched
+  /// entry would write a number the user never saw. This returns the value the
+  /// control was showing: clamped when the resolved count is authoritative, and
+  /// the untouched progress when it is not (a zero count means "unknown", and
+  /// zeroing a real progress would lose data instead of fixing a display).
+  static int progressForSave({required int progress, required int episodeCount}) {
+    final int normalized = progress < 0 ? 0 : progress;
+    if (episodeCount <= 0) return normalized;
+    return normalized > episodeCount ? episodeCount : normalized;
+  }
+
+  /// The 1-based episode number each rendered row stands for.
+  ///
+  /// Rows built from an extension list must be labelled and navigated by the
+  /// numbers the extension returned — a list can start at 13 or skip numbers —
+  /// so their position is never used as the episode number. Without extension
+  /// results the rows come from the metadata total and count from 1.
+  static List<int> episodeNumbers({required List<int> extensionEpisodeNumbers, required int count}) {
+    if (extensionEpisodeNumbers.isNotEmpty) {
+      return extensionEpisodeNumbers.take(count).toList(growable: false);
+    }
+    return List<int>.generate(count, (int index) => index + 1, growable: false);
+  }
 }

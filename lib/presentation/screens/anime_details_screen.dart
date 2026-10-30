@@ -93,10 +93,17 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
       ];
     }
     List<Widget> episodeButtons = [];
+    final List<int> episodeNumbers = EpisodeCount.episodeNumbers(
+      extensionEpisodeNumbers: state.extensionEpisodeResults
+          .map((episode) => episode.getEpisode_number().toInt())
+          .toList(growable: false),
+      count: numEpisodes,
+    );
     for (int i = 0; i < numEpisodes; i++) {
+      final int episodeNumber = episodeNumbers[i];
       episodeButtons.add(
         UnyoEpisodeButton(
-          mainTitle: "Episode ${i + 1}",
+          mainTitle: "Episode $episodeNumber",
           secondaryTitle:
               state.episodesInfo.length > i
                   ? (state.episodesInfo[i].title.userPreferred != ""
@@ -107,14 +114,14 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
               state.episodesInfo.length > i
                   ? (state.episodesInfo[i].image != "" ? state.episodesInfo[i].image : state.alternateImage)
                   : (state.alternateImage != "" ? state.alternateImage : state.selectedAnime.coverImage),
-          episodeNumber: i + 1,
+          episodeNumber: episodeNumber,
           progress: state.mediaListEntry.progress,
           released:
               state.selectedAnime.nextAiringEpisode.episode != 0
                   ? (state.selectedAnime.nextAiringEpisode.episode - 1)
                   : numEpisodes,
           showDivider: i != 0,
-          onPressed: () => context.read<AnimeDetailsCubit>().openAnimeServerSelectionDrawer(context, i),
+          onPressed: () => context.read<AnimeDetailsCubit>().openAnimeServerSelectionDrawer(context, episodeNumber),
         ),
       );
     }

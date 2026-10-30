@@ -39,10 +39,17 @@ class EpisodeListDrawer extends StatelessWidget {
       ];
     }
     List<Widget> episodeButtons = [];
+    final List<int> episodeNumbers = EpisodeCount.episodeNumbers(
+      extensionEpisodeNumbers: state.extensionEpisodeResults
+          .map((episode) => episode.getEpisode_number().toInt())
+          .toList(growable: false),
+      count: numEpisodes,
+    );
     for (int i = 0; i < numEpisodes; i++) {
+      final int episodeNumber = episodeNumbers[i];
       episodeButtons.add(
         UnyoEpisodeButton(
-          mainTitle: "Episode ${i + 1}",
+          mainTitle: "Episode $episodeNumber",
           secondaryTitle: state.episodesInfo.length > i
               ? (state.episodesInfo[i].title.userPreferred != ""
                     ? state.episodesInfo[i].title.userPreferred
@@ -53,7 +60,7 @@ class EpisodeListDrawer extends StatelessWidget {
                     ? state.episodesInfo[i].image
                     : state.selectedAnime.coverImage)
               : state.selectedAnime.coverImage,
-          episodeNumber: i + 1,
+          episodeNumber: episodeNumber,
           progress: state.mediaListEntry.progress,
           released: state.selectedAnime.nextAiringEpisode.episode != 0
               ? (state.selectedAnime.nextAiringEpisode.episode - 1)

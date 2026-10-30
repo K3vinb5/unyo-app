@@ -6,6 +6,7 @@ import 'package:jni/jni.dart' show JString;
 import 'package:material_ui/material_ui.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:unyo_lib/jmodels/jsanime.dart';
+import 'package:unyo_lib/jmodels/jsepisode.dart';
 // Internal dependencies
 import 'package:unyo/application/cubits/anime_details_cubit.dart';
 import 'package:unyo/application/effects/app_effects.dart';
@@ -37,6 +38,7 @@ import 'package:unyo/domain/repositories/episode_repository.dart';
 import 'package:unyo/core/services/media/media_id_service.dart';
 import 'package:unyo/core/services/media/media_link_exception.dart';
 import 'package:unyo/domain/repositories/media_id_cache.dart';
+import 'package:unyo/presentation/drawers/anime_server_selection_drawer.dart';
 
 import '../../core/di/locator.dart' show setupTestLocator;
 
@@ -59,7 +61,14 @@ class MockEpisodesNotifier extends Mock implements EpisodesNotifier {}
 class MockReloadNotifier extends Mock implements ReloadNotifier {}
 
 class MockJSAnime extends Mock implements JSAnime {}
+class MockJSEpisode extends Mock implements JSEpisode {}
 class MockJString extends Mock implements JString {}
+
+JSEpisode episodeWithNumber(int number) {
+  final JSEpisode episode = MockJSEpisode();
+  when(() => episode.getEpisode_number()).thenReturn(number.toDouble());
+  return episode;
+}
 
 void main() {
   late AnimeDetailsCubit cubit;
@@ -119,6 +128,7 @@ void main() {
     registerFallbackValue(ExtensionModel.empty());
     registerFallbackValue(AnimeModel.empty());
     registerFallbackValue(MediaListEntryModel.empty());
+    registerFallbackValue(MockJSAnime());
   });
 
   setUp(() async {
@@ -196,6 +206,76 @@ void main() {
         isTrue,
       );
       expect(snackbars.any((effect) => effect.title.contains('null')), isFalse);
+    });
+
+    test('opens the extension episode the button was labelled with, not its list position', () async {
+      when(() => extensionRepository.getInstalledAnimeExtensions(any())).thenAnswer(
+        (_) async => <Extension>{testExtension},
+      );
+      final MockJSAnime extensionAnime = MockJSAnime();
+      final MockJString extensionAnimeTitle = MockJString();
+      when(() => extensionAnimeTitle.toDartString()).thenReturn('Episode Numbers');
+      when(() => extensionAnime.getTitle()).thenReturn(extensionAnimeTitle);
+      when(
+        () => extensionRepository.getAnimeSearchResults(any(), any()),
+      ).thenAnswer((_) async => <JSAnime>[extensionAnime]);
+      // A continuous-season list: the first episode of this entry is episode 13.
+      when(() => extensionRepository.getAnimeEpisodeList(any(), any())).thenAnswer(
+        (_) async => <JSEpisode>[episodeWithNumber(13), episodeWithNumber(14)],
+      );
+      when(() => extensionNotifier.updateSelectedExtension(any())).thenReturn(null);
+      when(() => episodesNotifier.updateSelectedJSEpisodes(any())).thenReturn(null);
+      when(() => mediaListEntryNotifier.updateSelectedMediaListEntry(any())).thenReturn(null);
+      when(() => episodesInfoNotifier.updateSelectedEpisodeInfo(any())).thenReturn(null);
+      when(() => animeRepository.getAnimeDetails(any(), any(), service: any(named: 'service')))
+          .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
+      when(() => animeRepository.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (false, <Anime>[]));
+      when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => <String>[]);
+      when(() => animeRepository.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+      when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => <EpisodeInfo>[]);
+      when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => '');
+      final StreamController<Anime> animeStreamController = StreamController<Anime>.broadcast();
+      addTearDown(animeStreamController.close);
+      when(() => animeNotifier.animeStream).thenAnswer((_) => animeStreamController.stream);
+
+      cubit = buildCubit();
+      await pumpEventQueue();
+      animeStreamController.add(
+        AnimeModel.empty().copyWith(
+          id: 2,
+          idMal: 0,
+          title: const TitleModel(
+            romaji: 'Episode Numbers',
+            english: 'Episode Numbers',
+            nativeTitle: 'Episode Numbers',
+            userPreferred: 'Episode Numbers',
+          ),
+        ),
+      );
+      await pumpEventQueue();
+      await cubit.selectAnimeExtension(testExtension.name);
+      await pumpEventQueue();
+      expect(cubit.state.extensionAnimeResults, hasLength(1));
+
+      await cubit.openAnimeServerSelectionDrawer(MockBuildContext(), 14);
+
+      final List<ShowDrawerDialogEffect> drawers = cubit.state.effects.whereType<ShowDrawerDialogEffect>().toList();
+      expect(drawers, hasLength(1), reason: 'episode 14 is in the extension list, so the drawer must open');
+      expect(
+        (drawers.single.drawerDialog as AnimeServerSelectionDrawer).episodeIndex,
+        1,
+        reason: 'the button labelled Episode 14 is the second extension episode, not list position 13',
+      );
+      expect(
+        snackbarsOf(cubit.state).any((effect) => effect.message.contains('Only 2 episodes were found')),
+        isFalse,
+        reason: 'an episode number must never be resolved as a list position',
+      );
     });
   });
 
@@ -358,6 +438,60 @@ void main() {
       verifyNever(() => reloadNotifier.emitReload(ReloadType.animeMediaListEntryUpdated));
       verifyNever(() => reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated));
     });
+
+    test('persists the progress the list editor displayed instead of an out-of-range entry value', () async {
+      final StreamController<Anime> animeStreamController = StreamController<Anime>.broadcast();
+      addTearDown(animeStreamController.close);
+      when(() => animeNotifier.animeStream).thenAnswer((_) => animeStreamController.stream);
+      when(() => animeRepository.getAnimeDetails(any(), any(), service: any(named: 'service')))
+          .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
+      when(() => animeRepository.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (false, <Anime>[]));
+      when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => <String>[]);
+      when(() => animeRepository.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+      when(() => animeRepository.updateMediaListEntry(any(), any(), any())).thenAnswer(
+        (_) async => MediaListEntryModel.empty(),
+      );
+      when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => <EpisodeInfo>[]);
+      when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => '');
+      when(() => mediaListEntryNotifier.updateSelectedMediaListEntry(any())).thenReturn(null);
+      when(() => episodesInfoNotifier.updateSelectedEpisodeInfo(any())).thenReturn(null);
+      when(() => extensionRepository.getInstalledAnimeExtensions(any())).thenAnswer((_) async => <Extension>{});
+      final MockBuildContext buildContext = MockBuildContext();
+      // The dialog is already gone in this test, so the save path stops before
+      // the pop effect (which needs a mounted AutoRouter).
+      when(() => buildContext.mounted).thenReturn(false);
+
+      cubit = buildCubit();
+      await pumpEventQueue();
+      animeStreamController.add(
+        AnimeModel.empty().copyWith(
+          id: 3,
+          idMal: 58514,
+          episodes: 12,
+          title: const TitleModel(romaji: 'Twelve', english: 'Twelve', nativeTitle: 'Twelve', userPreferred: 'Twelve'),
+        ),
+      );
+      await pumpEventQueue();
+      // A stale entry can hold more progress than the resolved count.
+      await cubit.updateMediaListEntryProgress(40);
+
+      await cubit.updateMediaListEntry(buildContext);
+
+      final List<MediaListEntry> saved = verify(
+        () => animeRepository.updateMediaListEntry(captureAny(), any(), any()),
+      ).captured.cast<MediaListEntry>();
+      expect(saved, hasLength(1));
+      expect(
+        saved.single.progress,
+        12,
+        reason: 'the slider rendered the clamped 12, so saving 40 would write a value the user never saw',
+      );
+    });
   });
 
   group('AnimeDetailsCubit.episodesLoaded', () {
@@ -428,6 +562,74 @@ void main() {
       verifyNever(
         () => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')),
       );
+    });
+
+    test('drops the previous record\'s episodes when the selected anime changes', () async {
+      final StreamController<Anime> animeStreamController = StreamController<Anime>.broadcast();
+      addTearDown(animeStreamController.close);
+      when(() => animeNotifier.animeStream).thenAnswer((_) => animeStreamController.stream);
+      when(() => animeRepository.getAnimeDetails(any(), any(), service: any(named: 'service')))
+          .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
+      when(() => animeRepository.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (false, <Anime>[]));
+      when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => <String>[]);
+      when(() => animeRepository.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+      when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => <EpisodeInfo>[EpisodeInfoModel.empty()]);
+      when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => '');
+      when(() => mediaListEntryNotifier.updateSelectedMediaListEntry(any())).thenReturn(null);
+      when(() => episodesInfoNotifier.updateSelectedEpisodeInfo(any())).thenReturn(null);
+      when(() => extensionRepository.getInstalledAnimeExtensions(any())).thenAnswer((_) async => <Extension>{});
+
+      final Anime addressable = AnimeModel.empty().copyWith(
+        id: 1,
+        idMal: 58514,
+        title: const TitleModel(romaji: 'First', english: 'First', nativeTitle: 'First', userPreferred: 'First'),
+      );
+      final ShikimoriAnimeModel unaddressable = ShikimoriAnimeModel(
+        id: 91,
+        idMal: 0,
+        title: const TitleModel(romaji: 'Second', english: 'Second', nativeTitle: '', userPreferred: 'Second'),
+        averageScore: 0,
+        bannerImage: '',
+        countryOfOrigin: 'JP',
+        coverImage: '',
+        description: '',
+        duration: 24,
+        endDate: '',
+        startDate: '',
+        episodes: 0,
+        genres: const <String>[],
+        format: 'TV',
+        isAdult: false,
+        popularity: 0,
+        meanScore: 0,
+        season: '',
+        status: 'RELEASING',
+        isFavourite: false,
+        nextAiringEpisode: AiringEpisodeModel.empty(),
+      );
+
+      cubit = buildCubit();
+      await pumpEventQueue();
+      animeStreamController.add(addressable);
+      await pumpEventQueue();
+      expect(cubit.state.episodesInfo, hasLength(1), reason: 'setup: the first record loaded its episode metadata');
+
+      animeStreamController.add(unaddressable);
+      await pumpEventQueue();
+
+      expect(cubit.state.selectedAnime.title.userPreferred, 'Second');
+      expect(
+        cubit.state.episodesInfo,
+        isEmpty,
+        reason: 'the first record\'s episodes must not be rendered — or counted by EpisodeCount.resolve — for the new one',
+      );
+      expect(cubit.state.extensionEpisodeResults, isEmpty);
+      expect(cubit.state.episodesLoaded, isTrue, reason: 'the new record still settles its own gate');
     });
   });
 

@@ -64,4 +64,56 @@ void main() {
       expect(EpisodeCount.progressForControl(progress: 5, episodeCount: 0), 0);
     });
   });
+
+  group('EpisodeCount.progressForSave', () {
+    test('persists the clamped progress the control displayed', () {
+      expect(
+        EpisodeCount.progressForSave(progress: 40, episodeCount: 12),
+        12,
+        reason: 'the slider showed 12, so saving 40 would write a value the user never saw',
+      );
+    });
+
+    test('keeps an in-range progress untouched', () {
+      expect(EpisodeCount.progressForSave(progress: 5, episodeCount: 12), 5);
+      expect(EpisodeCount.progressForSave(progress: 12, episodeCount: 12), 12);
+    });
+
+    test('preserves valid progress when the resolved count is not authoritative', () {
+      expect(
+        EpisodeCount.progressForSave(progress: 5, episodeCount: 0),
+        5,
+        reason: 'an unknown total must not zero a real progress',
+      );
+      expect(EpisodeCount.progressForSave(progress: 5, episodeCount: -1), 5);
+    });
+
+    test('persists the "no progress yet" sentinel as 0', () {
+      expect(EpisodeCount.progressForSave(progress: -1, episodeCount: 12), 0);
+      expect(EpisodeCount.progressForSave(progress: -1, episodeCount: 0), 0);
+    });
+  });
+
+  group('EpisodeCount.episodeNumbers', () {
+    test('uses the episode numbers the extension returned', () {
+      expect(
+        EpisodeCount.episodeNumbers(extensionEpisodeNumbers: <int>[13, 14], count: 2),
+        <int>[13, 14],
+        reason: 'a list starting at 13 must not be relabelled 1 and 2',
+      );
+      expect(
+        EpisodeCount.episodeNumbers(extensionEpisodeNumbers: <int>[3, 7, 11], count: 3),
+        <int>[3, 7, 11],
+        reason: 'skipped numbers have to survive as labels',
+      );
+    });
+
+    test('counts from 1 when the rows come from the metadata total', () {
+      expect(EpisodeCount.episodeNumbers(extensionEpisodeNumbers: const <int>[], count: 3), <int>[1, 2, 3]);
+    });
+
+    test('returns nothing when no row is rendered', () {
+      expect(EpisodeCount.episodeNumbers(extensionEpisodeNumbers: const <int>[], count: 0), isEmpty);
+    });
+  });
 }
