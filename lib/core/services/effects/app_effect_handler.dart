@@ -141,22 +141,9 @@ class AppEffectHandler {
         contentType: effect.contentType,
         inMaterialBanner: true,
       ),
-      // One explicit dismiss control, labelled so it cannot be confused with
-      // the decorative failure badge on the left of the ribbon (that glyph is
-      // package-owned and has no gesture behind it).
-      actions: <Widget>[
-        TextButton(
-          key: const ValueKey<String>("notification-dismiss"),
-          onPressed: () {
-            lifetime.cancel();
-            if (identical(_visibleBanner, lifetime)) {
-              _visibleBanner = null;
-            }
-            messenger.hideCurrentMaterialBanner();
-          },
-          child: const Text("Dismiss"),
-        ),
-      ],
+      // No tappable action: the banner dismisses itself through the auto-hide
+      // below, so an empty slot keeps the layout without a control to tap.
+      actions: const [SizedBox.shrink()],
     );
 
     messenger.hideCurrentMaterialBanner();
