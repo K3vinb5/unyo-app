@@ -45,6 +45,15 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
   late StreamSubscription<User> _loggedUserSubscription;
   late StreamSubscription<MediaList> _selectedMediaListSubscription;
 
+  /// Extension the page was showing when a switch arrived before
+  /// [MangaDetailsState.installedExtensions] had loaded. The load callback
+  /// consumes it, so a deferred switch resolves exactly like an immediate one
+  /// (saved mapping first, then this extension, never a prompt).
+  Extension? _deferredSwitchPreviousExtension;
+
+  /// Whether a title switch is waiting for the installed extensions to load.
+  bool _hasDeferredSwitch = false;
+
   // Logger
   final Logger _logger = sl<Logger>();
 
@@ -108,13 +117,65 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
       }
     });
     _selectedMangaSubscription = _selectedMangaNotifier.mangaStream.listen((manga) {
-      _getMangaDetails(state.loggedUser, manga);
-      emit(state.copyWith(selectedManga: manga));
+      _handleSelectedMangaChanged(manga);
     });
     _selectedMediaListSubscription = _selectedMediaListNotifier.mediaListStream.listen((mediaList) {
       emit(state.copyWith(selectedMediaList: mediaList));
     });
     _loadInstalledExtensions();
+  }
+
+  /// Applies a selection coming from the notifier.
+  ///
+  /// A different manga id means the open details page was re-pointed at another
+  /// title: every per-title extension field (`extensionMangaResults`,
+  /// `extensionEpisodeResults`, ...) still describes the previous title, so it is
+  /// reset and the new title is resolved against an extension again. A repeated
+  /// emission of the same id is just an echo and must not re-resolve anything.
+  void _handleSelectedMangaChanged(Manga manga) {
+    bool isSameTitle = manga.id == state.selectedManga.id;
+    _getMangaDetails(state.loggedUser, manga);
+    if (isSameTitle) {
+      emit(state.copyWith(selectedManga: manga));
+      return;
+    }
+    Extension? previousExtension = state.selectedExtension;
+    _logger.i(
+      "Switched manga details to ${manga.title.userPreferred} (${manga.id}), resetting the per-title extension state",
+    );
+    emit(state.copyWith(
+      selectedManga: manga,
+      selectedExtension: null,
+      extensionMangaResults: [],
+      extensionEpisodeResults: [],
+      extensionVideoResults: [],
+    ));
+    _resolveExtensionForSwitchedManga(manga, previousExtension);
+  }
+
+  /// Resolves the extension of [manga] after a title switch: the saved mapping
+  /// wins, otherwise the extension the page was already using is carried over.
+  /// With neither, the page stays silent — only a chapter tap warns.
+  Future<void> _resolveExtensionForSwitchedManga(Manga manga, Extension? previousExtension) async {
+    if (state.installedExtensions.isEmpty) {
+      // `_loadInstalledExtensions` resolves the then-selected manga once it lands,
+      // so resolving here would only fetch twice. Remember that the pending
+      // resolution comes from a switch, so the load callback stays silent.
+      _deferredSwitchPreviousExtension = previousExtension;
+      _hasDeferredSwitch = true;
+      _logger.d("Extensions are not loaded yet, leaving the resolution of manga ${manga.id} to the initial load.");
+      return;
+    }
+    Extension? carriedExtension = previousExtension != null &&
+            state.installedExtensions.any((extension) => extension.name == previousExtension.name)
+        ? previousExtension
+        : null;
+    await _setSelectedExtension(
+      state.loggedUser,
+      manga,
+      carriedExtension: carriedExtension,
+      promptWhenMissing: false,
+    );
   }
 
   void navigateToMangaDetails(Manga manga, MediaList mediaList) {
@@ -209,13 +270,26 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
       );
       if (isClosed) return;
       emit(state.copyWith(installedExtensions: installedExtensions));
-      _setSelectedExtension(state.loggedUser, state.selectedManga);
+      if (_hasDeferredSwitch) {
+        // A switch landed before the extensions did: resolve it the way an
+        // immediate switch would have (carry-over included), instead of the
+        // initial-page path.
+        _hasDeferredSwitch = false;
+        final Extension? previousExtension = _deferredSwitchPreviousExtension;
+        _deferredSwitchPreviousExtension = null;
+        await _resolveExtensionForSwitchedManga(state.selectedManga, previousExtension);
+        return;
+      }
+      // Opening the page never nags (WP #87): no prompt when nothing is saved.
+      _setSelectedExtension(state.loggedUser, state.selectedManga, promptWhenMissing: false);
     } catch (e, stackTrace) {
       handleError("Failed to load installed extensions $e", stackTrace: stackTrace);
     }
   }
 
   Future<void> _getMangaInfoFromSelectedExtension(Extension selectedExtension) async {
+    final Manga requestedManga = state.selectedManga;
+    final int requestedMangaId = requestedManga.id;
     try {
       if (state.installedExtensions.isEmpty) {
         _logger.w("No installed extensions available to fetch manga info.");
@@ -227,13 +301,19 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
         return;
       }
       _logger.i(
-        "Fetching Manga Info from extension ${selectedExtension.name} for ${state.selectedManga.title.userPreferred}",
+        "Fetching Manga Info from extension ${selectedExtension.name} for ${requestedManga.title.userPreferred}",
       );
       List<JSManga> mangaResults = await _extensionRepositoryAniyomi.getMangaSearchResults(
-        state.selectedManga.title.userPreferred,
+        requestedManga.title.userPreferred,
         selectedExtension,
       );
-      if (isClosed) return;
+      // The page may have been re-pointed at another title while the search
+      // ran: those results describe the old title and must not overwrite the
+      // cleared state of the title that is open now.
+      if (isClosed || state.selectedManga.id != requestedMangaId) {
+        _logger.d("Discarding extension results for manga $requestedMangaId, the page moved on.");
+        return;
+      }
       emit(state.copyWith(extensionMangaResults: mangaResults));
     } catch (e, stackTrace) {
       handleError("Error fetching Manga Info from selected extension: $e", stackTrace: stackTrace);
@@ -309,7 +389,12 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
     );
   }
 
-  Future<void> _setSelectedExtension(User loggedUser, Manga selectedManga) async {
+  Future<void> _setSelectedExtension(
+    User loggedUser,
+    Manga selectedManga, {
+    Extension? carriedExtension,
+    bool promptWhenMissing = true,
+  }) async {
     try {
       Extension? savedExtension;
       switch (loggedUser) {
@@ -322,11 +407,46 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
         await selectMangaExtension(savedExtension.name);
         return;
       }
-      // Nothing to restore: opening the page does not nag, the warning fires
-      // when the user taps a chapter without a selected extension.
-      _logger.d("No saved extension found for manga ${selectedManga.id}; leaving the pick to the user.");
+      if (carriedExtension != null) {
+        // Switching titles from a loaded screen implies the user is already in
+        // that extension, so the choice is carried over instead of prompting.
+        _logger.i("Carrying extension ${carriedExtension.name} over to manga ${selectedManga.id}.");
+        emit(state.copyWith(selectedExtension: carriedExtension));
+        await _getMangaInfoFromSelectedExtension(carriedExtension);
+        return;
+      }
+      if (isClosed) return;
+      if (!promptWhenMissing) {
+        // Nothing to restore and no nag requested (WP #87/#88): the warning
+        // fires when the user taps a chapter without a selected extension.
+        _logger.d("No saved extension found for manga ${selectedManga.id}; leaving the pick to the user.");
+        return;
+      }
+      _showNoExtensionSelectedPrompt();
     } catch (e, stackTrace) {
       handleError("Error setting selected extension: $e", stackTrace: stackTrace);
     }
+  }
+
+  /// Opt-in prompt when a path explicitly asks for one (`promptWhenMissing`).
+  /// The details page open stays quiet (WP #87): the warning fires when the
+  /// user taps a chapter without a selected extension.
+  void _showNoExtensionSelectedPrompt() {
+    if (isClosed) return;
+    if (state.installedExtensions.isEmpty) {
+      _logger.w("No installed extensions available to fetch manga info.");
+      showSnackBarEffect(
+        "No Installed Extensions",
+        message: "Install some extensions to watch some content",
+        contentType: ContentType.warning,
+      );
+      return;
+    }
+    _logger.w("No extension selected to fetch chapters.");
+    showSnackBarEffect(
+      "No Extension Selected",
+      message: "Select an extension to fetch chapters.",
+      contentType: ContentType.warning,
+    );
   }
 }
