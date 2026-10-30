@@ -161,7 +161,33 @@ void main() {
   });
 
   group('AnimeDetailsCubit.openAnimeServerSelectionDrawer', () {
+    test('guides to the Extensions tab when no extension is installed at all', () async {
+      cubit = buildCubit();
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.openAnimeServerSelectionDrawer(MockBuildContext(), 0);
+
+      final List<ShowSnackbarEffect> snackbars = snackbarsOf(cubit.state);
+      expect(cubit.state.installedExtensions, isEmpty);
+      expect(cubit.state.animeServerDialogLoading, isFalse);
+      expect(
+        snackbars.any(
+          (effect) =>
+              effect.title == 'No Installed Extensions' &&
+              effect.message == 'Open the Extensions tab to install one.',
+        ),
+        isTrue,
+      );
+      // The "select one" wording is wrong when the dropdown has no options.
+      expect(snackbars.any((effect) => effect.title == 'No Extension Selected'), isFalse);
+      expect(cubit.state.effects.whereType<ShowDrawerDialogEffect>(), isEmpty);
+    });
+
     test('warns about a missing extension instead of a "null Error" and clears the loading flag', () async {
+      when(() => extensionRepository.getInstalledAnimeExtensions(any())).thenAnswer(
+        (_) async => <Extension>{testExtension},
+      );
+
       cubit = buildCubit();
       await Future<void>.delayed(Duration.zero);
 

@@ -294,6 +294,17 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   Future<void> openAnimeServerSelectionDrawer(BuildContext context, int episodeNumber) async {
     if (state.animeServerDialogLoading) return;
+    // Nothing to pick from: point at the Extensions tab instead of asking for a
+    // selection the dropdown cannot offer.
+    if (state.installedExtensions.isEmpty) {
+      _logger.w("No installed extensions to fetch episodes.");
+      showSnackBarEffect(
+        "No Installed Extensions",
+        message: "Open the Extensions tab to install one.",
+        contentType: ContentType.warning,
+      );
+      return;
+    }
     Extension? selectedExtension = state.selectedExtension;
     if (selectedExtension == null) {
       _logger.w("No extension selected to open the server selection drawer.");
