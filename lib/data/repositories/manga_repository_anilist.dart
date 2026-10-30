@@ -134,7 +134,7 @@ class MangaRepositoryAnilist with RepositoryMixin implements MangaRepository {
   }
 
   @override
-  Future<Map<String, (bool, List<String>)>> getUserMangaAdvancedSearchFilters() async {
+  Future<Map<String, (bool, List<String>)>> getUserMangaAdvancedSearchFilters(User loggedUser) async {
     Map<String, (bool, List<String>)> filters = {};
     filters.addAll({
       'genres': (

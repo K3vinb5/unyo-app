@@ -8,3 +8,4 @@ const episodeServiceEnumAdapterName = 'EpisodeServiceEnumAdapter';
 const extensionModelAdapterName = 'ExtensionModelAdapter';
 const anilistMangaDetailsModelAdapterName = 'MangaProgressModelAdapter';
 const mangaListEntryModelAdapterName = 'MediaListEntryModelAdapter';
+const shikimoriUserModelAdapterName = 'ShikimoriUserModelAdapter';

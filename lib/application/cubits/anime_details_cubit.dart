@@ -12,6 +12,7 @@ import 'package:logger/logger.dart';
 import 'package:unyo/application/cubits/effect_mixin.dart';
 import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/application/states/anime_details_state.dart';
+import 'package:unyo/application/states/episode_count.dart';
 import 'package:bloc/bloc.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/service.dart';
@@ -30,6 +31,7 @@ import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/core/services/media/media_provenance.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
+import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
 import 'package:unyo/domain/repositories/user_repository.dart';
 import 'package:unyo/domain/repositories/episode_repository.dart';
@@ -79,6 +81,15 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   /// Question the link dialog is currently asking, if any.
   MediaLinkProposal? _mediaLinkProposal;
 
+  /// Extension the page was showing when a switch arrived before
+  /// [AnimeDetailsState.installedExtensions] had loaded. The load callback
+  /// consumes it, so a deferred switch resolves exactly like an immediate one
+  /// (saved mapping first, then this extension, never a prompt).
+  Extension? _deferredSwitchPreviousExtension;
+
+  /// Whether a title switch is waiting for the installed extensions to load.
+  bool _hasDeferredSwitch = false;
+
   // Notifiers / Subscriptions
   final UserNotifier _loggedUserNotifier;
   final AnimeNotifier _selectedAnimeNotifier;
@@ -94,6 +105,12 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   late StreamSubscription<User> _loggedUserSubscription;
   late StreamSubscription<MediaList> _selectedMediaListSubscription;
   late StreamSubscription<ReloadType> _reloadSubscription;
+
+  /// Episode-fetch generation. A switch of episode provider starts a newer
+  /// fetch while the previous one may still be in flight; the older completion
+  /// must not overwrite the newer provider's rows in the state or in
+  /// [EpisodesInfoNotifier].
+  int _episodesFetchGeneration = 0;
 
   // Logger
   final Logger _logger = sl<Logger>();
@@ -167,9 +184,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       }
     });
     _selectedAnimeSubscription = _selectedAnimeNotifier.animeStream.listen((anime) {
-      _getAnimeDetails(state.loggedUser, anime);
-      _getEpisodesDetails(state.loggedUser, anime);
-      emit(state.copyWith(selectedAnime: anime));
+      _handleSelectedAnimeChanged(anime);
     });
     _selectedMediaListSubscription = _selectedMediaListNotifier.mediaListStream.listen((mediaList) {
       emit(state.copyWith(selectedMediaList: mediaList));
@@ -183,8 +198,82 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         _logger.i("Reloading Anime Details due to anime media list entry update");
         _getUserMediaListEntry(state.loggedUser, state.selectedAnime, ignoreCache: true);
       }
+      if (reloadType == ReloadType.newEpisodeService) {
+        _logger.i("Reloading Anime Details due to new episode service");
+        if (state.selectedAnime.id != 0) {
+          _getEpisodesDetails(state.loggedUser, state.selectedAnime, ignoreCache: true);
+          _getAlternativeImage(state.loggedUser, state.selectedAnime, ignoreCache: true);
+        }
+      }
     });
     _loadInstalledExtensions();
+  }
+
+  /// Applies a selection coming from the notifier.
+  ///
+  /// A different anime id means the open details page was re-pointed at another
+  /// title: every per-title extension field (`extensionAnimeResults`,
+  /// `extensionEpisodeResults`, ...) still describes the previous title, so it is
+  /// reset and the new title is resolved against an extension again. A repeated
+  /// emission of the same id is just an echo and must not re-resolve anything.
+  void _handleSelectedAnimeChanged(Anime anime) {
+    bool isSameTitle = anime.id == state.selectedAnime.id;
+    if (isSameTitle) {
+      // A repeated emission of the same id is just an echo: refetch what the
+      // page already shows, but clear nothing — the resolved state stays.
+      emit(state.copyWith(selectedAnime: anime));
+      _getAnimeDetails(state.loggedUser, anime);
+      _getEpisodesDetails(state.loggedUser, anime);
+      return;
+    }
+    Extension? previousExtension = state.selectedExtension;
+    _logger.i(
+      "Switched anime details to ${logTitleFor(anime.title)} (${anime.id}), resetting the per-title extension state",
+    );
+    // One cubit serves every anime the user opens, so the previous record's
+    // episodes have to go before this one starts loading: they would
+    // otherwise be resolved into the new record's episode count and rendered
+    // as its rows (the no-AniZip-id path settles the gate without ever
+    // replacing them).
+    emit(state.copyWith(
+      selectedAnime: anime,
+      selectedExtension: null,
+      extensionAnimeResults: [],
+      selectedAnimeResultIndex: 0,
+      extensionEpisodeResults: [],
+      extensionVideoResults: [],
+      animeServerDialogReady: false,
+      episodesInfo: const <EpisodeInfo>[],
+      episodesLoaded: false,
+    ));
+    _getAnimeDetails(state.loggedUser, anime);
+    _getEpisodesDetails(state.loggedUser, anime);
+    _resolveExtensionForSwitchedAnime(anime, previousExtension);
+  }
+
+  /// Resolves the extension of [anime] after a title switch: the saved mapping
+  /// wins, otherwise the extension the page was already using is carried over.
+  /// With neither, the page stays silent — only an episode tap warns.
+  Future<void> _resolveExtensionForSwitchedAnime(Anime anime, Extension? previousExtension) async {
+    if (state.installedExtensions.isEmpty) {
+      // `_loadInstalledExtensions` resolves the then-selected anime once it lands,
+      // so resolving here would only fetch twice. Remember that the pending
+      // resolution comes from a switch, so the load callback stays silent.
+      _deferredSwitchPreviousExtension = previousExtension;
+      _hasDeferredSwitch = true;
+      _logger.d("Extensions are not loaded yet, leaving the resolution of anime ${anime.id} to the initial load.");
+      return;
+    }
+    Extension? carriedExtension = previousExtension != null &&
+            state.installedExtensions.any((extension) => extension.name == previousExtension.name)
+        ? previousExtension
+        : null;
+    await _setSelectedExtension(
+      state.loggedUser,
+      anime,
+      carriedExtension: carriedExtension,
+      promptWhenMissing: false,
+    );
   }
 
   void navigateBackToAnimePage(BuildContext context) {
@@ -250,6 +339,19 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
           } catch (e, stackTrace) {
             _logger.w("Failed to persist the selected extension: $e", stackTrace: stackTrace);
           }
+        case ShikimoriUserModel shikimoriUserModel:
+          try {
+            SettingsModel userSettings = shikimoriUserModel.settings as SettingsModel;
+            Map<String, Extension> mediaExtensionsConfigUpdated = Map.from(userSettings.mediaExtensionConfigs);
+            mediaExtensionsConfigUpdated.addAll({state.selectedAnime.id.toString(): selectedExtension});
+            await _userRepository.updateUserInfo(
+              shikimoriUserModel.copyWith(
+                settings: userSettings.copyWith(mediaExtensionConfigs: mediaExtensionsConfigUpdated),
+              ),
+            );
+          } catch (e, stackTrace) {
+            _logger.w("Failed to persist the selected extension: $e", stackTrace: stackTrace);
+          }
         case LocalUserModel localUserModel:
       }
       if (isClosed) return;
@@ -268,8 +370,19 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     showWidgetDialogEffect(dialog: AnimeDetailsMediaEntryDialog(cubit: this));
   }
 
-  Future<void> openAnimeServerSelectionDrawer(BuildContext context, int episodeIndex) async {
+  Future<void> openAnimeServerSelectionDrawer(BuildContext context, int episodeNumber) async {
     if (state.animeServerDialogLoading) return;
+    // Nothing to pick from: point at the Extensions tab instead of asking for a
+    // selection the dropdown cannot offer.
+    if (state.installedExtensions.isEmpty) {
+      _logger.w("No installed extensions to fetch episodes.");
+      showSnackBarEffect(
+        "No Installed Extensions",
+        message: "Open the Extensions tab to install one.",
+        contentType: ContentType.warning,
+      );
+      return;
+    }
     Extension? selectedExtension = state.selectedExtension;
     if (selectedExtension == null) {
       _logger.w("No extension selected to open the server selection drawer.");
@@ -299,12 +412,15 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         state.extensionAnimeResults[state.selectedAnimeResultIndex],
       );
       if (!canOpenDrawer) return;
-      // Episode buttons pass the 0-based button index, the episode number is +1.
-      // The drawer indexes the extension episode list, which does not have to
-      // match the anime metadata episode list.
-      int resolvedEpisodeIndex = EpisodeIndex.resolveExtensionEpisodeIndex(state.extensionEpisodeResults, episodeIndex + 1);
+      // Episode buttons pass the episode number they are labelled with; the
+      // extension list does not have to start at 1 or be contiguous, so that
+      // number has to be resolved against it instead of used as a position.
+      int resolvedEpisodeIndex = EpisodeIndex.resolveExtensionEpisodeIndex(
+        state.extensionEpisodeResults,
+        episodeNumber,
+      );
       if (resolvedEpisodeIndex < 0) {
-        _logger.w("Episode ${episodeIndex + 1} is not part of the extension episode results.");
+        _logger.w("Episode $episodeNumber is not part of the extension episode results.");
         showSnackBarEffect(
           "${selectedExtension.name} Error",
           message: "Only ${state.extensionEpisodeResults.length} episodes were found",
@@ -352,6 +468,20 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   Future<void> updateMediaListEntry(BuildContext context) async {
     MediaListEntry desiredMediaListEntry = state.newMediaListEntry;
+    // The list editor clamps progress into the resolved episode range for
+    // display and its slider never reports that clamped initial value back, so
+    // persist what the user actually saw instead of an out-of-range value.
+    final int savedProgress = EpisodeCount.progressForSave(
+      progress: desiredMediaListEntry.progress,
+      episodeCount: EpisodeCount.resolve(
+        extensionResults: state.extensionEpisodeResults.length,
+        episodesInfo: state.episodesInfo.length,
+        metadataTotal: state.selectedAnime.episodes,
+      ),
+    );
+    if (savedProgress != desiredMediaListEntry.progress) {
+      desiredMediaListEntry = (desiredMediaListEntry as MediaListEntryModel).copyWith(progress: savedProgress);
+    }
     MediaListEntry beforeUpdateMediaListEntry = state.mediaListEntry;
     try {
       _logger.i("Updating Media List Entry to $desiredMediaListEntry");
@@ -605,13 +735,26 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       );
       if (isClosed) return;
       emit(state.copyWith(installedExtensions: installedExtensions));
-      _setSelectedExtension(state.loggedUser, state.selectedAnime);
+      if (_hasDeferredSwitch) {
+        // A switch landed before the extensions did: resolve it the way an
+        // immediate switch would have (carry-over included), instead of the
+        // initial-page path.
+        _hasDeferredSwitch = false;
+        final Extension? previousExtension = _deferredSwitchPreviousExtension;
+        _deferredSwitchPreviousExtension = null;
+        await _resolveExtensionForSwitchedAnime(state.selectedAnime, previousExtension);
+        return;
+      }
+      // Opening the page never nags (WP #87): no prompt when nothing is saved.
+      _setSelectedExtension(state.loggedUser, state.selectedAnime, promptWhenMissing: false);
     } catch (e, stackTrace) {
       handleError("Failed to load installed extensions $e", stackTrace: stackTrace);
     }
   }
 
   Future<void> _getAnimeInfoFromSelectedExtension(Extension selectedExtension) async {
+    final Anime requestedAnime = state.selectedAnime;
+    final int requestedAnimeId = requestedAnime.id;
     try {
       if (state.installedExtensions.isEmpty) {
         _logger.w("No installed extensions available to fetch anime info.");
@@ -623,35 +766,41 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         return;
       }
       _logger.i(
-        "Fetching Anime Info from extension ${selectedExtension.name} for ${state.selectedAnime.title.userPreferred}",
+        "Fetching Anime Info from extension ${selectedExtension.name} for ${requestedAnime.title.userPreferred}",
       );
       List<JSAnime> animeResults = await _extensionRepositoryAniyomi.getAnimeSearchResults(
-        state.selectedAnime.title.userPreferred,
+        requestedAnime.title.userPreferred,
         selectedExtension,
       );
       if (animeResults.isEmpty) {
-        _logger.w("No results found in ${selectedExtension.name} for ${state.selectedAnime.title.userPreferred}, trying alternative english title.");
+        _logger.w("No results found in ${selectedExtension.name} for ${requestedAnime.title.userPreferred}, trying alternative english title.");
         animeResults = await _extensionRepositoryAniyomi.getAnimeSearchResults(
-          state.selectedAnime.title.english,
+          requestedAnime.title.english,
           selectedExtension,
         );
       }
       if (animeResults.isEmpty) {
-        _logger.w("No results found in ${selectedExtension.name} for ${state.selectedAnime.title.english}, trying alternative native title.");
+        _logger.w("No results found in ${selectedExtension.name} for ${requestedAnime.title.english}, trying alternative native title.");
         animeResults = await _extensionRepositoryAniyomi.getAnimeSearchResults(
-          state.selectedAnime.title.nativeTitle,
+          requestedAnime.title.nativeTitle,
           selectedExtension,
         );
       }
       if (animeResults.isEmpty) {
-        _logger.w("No results found in ${selectedExtension.name} for ${state.selectedAnime.title.nativeTitle}, trying alternative romaji title.");
+        _logger.w("No results found in ${selectedExtension.name} for ${requestedAnime.title.nativeTitle}, trying alternative romaji title.");
         animeResults = await _extensionRepositoryAniyomi.getAnimeSearchResults(
-          state.selectedAnime.title.romaji,
+          requestedAnime.title.romaji,
           selectedExtension,
         );
       }
-      int selectedAnimeResultIndex = await _fuzzySelectAnimeResultIndex(animeResults);
-      if (isClosed) return;
+      int selectedAnimeResultIndex = await _fuzzySelectAnimeResultIndex(requestedAnime, animeResults);
+      // The page may have been re-pointed at another title while the searches
+      // ran: those results describe the old title, so they are dropped instead
+      // of overwriting the state of the title that is open now.
+      if (isClosed || state.selectedAnime.id != requestedAnimeId) {
+        _logger.d("Discarding extension results for anime $requestedAnimeId, the page moved on.");
+        return;
+      }
       emit(state.copyWith(extensionAnimeResults: animeResults, selectedAnimeResultIndex: selectedAnimeResultIndex));
       if (animeResults.isNotEmpty) {
         showSnackBarEffect(
@@ -662,8 +811,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       } else {
         showSnackBarEffect(
           selectedExtension.name,
-          message:
-              "No results found in ${selectedExtension.name} for ${state.selectedAnime.title.userPreferred}",
+          message: "No results found in ${selectedExtension.name} for ${requestedAnime.title.userPreferred}",
           contentType: ContentType.warning,
         );
       }
@@ -672,18 +820,15 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     }
   }
 
-  Future<int> _fuzzySelectAnimeResultIndex(List<JSAnime> animeResults) async {
+  Future<int> _fuzzySelectAnimeResultIndex(Anime anime, List<JSAnime> animeResults) async {
     // No candidates to score; 0 is the canonical index for an empty result set
     // (consumers guard on state.extensionAnimeResults.isEmpty before using it).
     if (animeResults.isEmpty) return 0;
     Set<String> animeTitles = {
-      state.selectedAnime.title.userPreferred.toLowerCase(),
-      if (state.selectedAnime.title.english.isNotEmpty)
-        state.selectedAnime.title.english.toLowerCase(),
-      if (state.selectedAnime.title.romaji.isNotEmpty)
-        state.selectedAnime.title.romaji.toLowerCase(),
-      if (state.selectedAnime.title.nativeTitle.isNotEmpty)
-        state.selectedAnime.title.nativeTitle.toLowerCase(),
+      anime.title.userPreferred.toLowerCase(),
+      if (anime.title.english.isNotEmpty) anime.title.english.toLowerCase(),
+      if (anime.title.romaji.isNotEmpty) anime.title.romaji.toLowerCase(),
+      if (anime.title.nativeTitle.isNotEmpty) anime.title.nativeTitle.toLowerCase(),
     };
     List<(int, JSAnime)> resultScores = [];
     for (var validTitle in animeTitles) {
@@ -719,24 +864,27 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       return false;
     }
     try {
+      final Anime requestedAnime = state.selectedAnime;
+      final int requestedAnimeId = requestedAnime.id;
       _logger.i(
-        "Fetching Episodes Info from extension ${selectedExtension.name} for ${state.selectedAnime.title.userPreferred}",
+        "Fetching Episodes Info from extension ${selectedExtension.name} for ${requestedAnime.title.userPreferred}",
       );
       List<JSEpisode> episodeResults = await _extensionRepositoryAniyomi.getAnimeEpisodeList(
         selectedJSAnime,
         selectedExtension,
       );
+      // A switch while the episode list was in flight makes this list describe
+      // the previous title; it must not land on the title that is open now.
+      if (isClosed || state.selectedAnime.id != requestedAnimeId) return false;
       if (episodeResults.isNotEmpty) {
         List<JSEpisode> sortedEpisodes = episodeResults.sorted((animeEpisode1, animeEpisode2) => animeEpisode1.getEpisode_number().toInt() - animeEpisode2.getEpisode_number().toInt());
-        if (isClosed) return false;
         emit(state.copyWith(extensionEpisodeResults: sortedEpisodes));
         _selectedEpisodesNotifier.updateSelectedJSEpisodes(sortedEpisodes);
         return true;
       } else {
         showSnackBarEffect(
           selectedExtension.name,
-          message:
-              "No episodes found in ${selectedExtension.name} for ${state.selectedAnime.title.userPreferred}",
+          message: "No episodes found in ${selectedExtension.name} for ${requestedAnime.title.userPreferred}",
           contentType: ContentType.warning,
         );
         return false;
@@ -769,22 +917,25 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       return false;
     }
     try {
+      final Anime requestedAnime = state.selectedAnime;
+      final int requestedAnimeId = requestedAnime.id;
       _logger.i(
-        "Fetching Videos Info from extension ${selectedExtension.name} for ${state.selectedAnime.title.userPreferred}",
+        "Fetching Videos Info from extension ${selectedExtension.name} for ${requestedAnime.title.userPreferred}",
       );
       List<JVideo> videoResults = await _extensionRepositoryAniyomi.getAnimeVideoList(
         selectedJSEpisode,
         selectedExtension,
       );
+      // Same race as the episode list: a link list fetched for the previous
+      // title must not be offered on the current one.
+      if (isClosed || state.selectedAnime.id != requestedAnimeId) return false;
       if (videoResults.isNotEmpty) {
-        if (isClosed) return false;
         emit(state.copyWith(extensionVideoResults: videoResults.map((jVideo) => ext.Video.fromJVideo(jVideo)).toList()));
         return true;
       } else {
         showSnackBarEffect(
           selectedExtension.name,
-          message:
-              "No video links found in ${selectedExtension.name} for ${state.selectedAnime.title.userPreferred}",
+          message: "No video links found in ${selectedExtension.name} for ${requestedAnime.title.userPreferred}",
           contentType: ContentType.warning,
         );
         return false;
@@ -795,7 +946,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     }
   }
 
-  Future<void> _getAlternativeImage(User loggedUser, Anime selectedAnime) async {
+  Future<void> _getAlternativeImage(User loggedUser, Anime selectedAnime, {bool ignoreCache = false}) async {
     try {
       _logger.i("Fetching Alternative Image for ${logTitleFor(selectedAnime.title)}");
       final AniZipLookupIds? ids = AniZipLookupIds.forAnime(selectedAnime);
@@ -806,37 +957,52 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       final String alternateImage = await _episodeRepository.getAlternativeImage(
         malId: ids.malId,
         anilistId: ids.anilistId,
+        ignoreCache: ignoreCache,
       );
       emit(state.copyWith(alternateImage: alternateImage));
     } on HttpServerException catch (e, stackTrace) {
-      handleError("Error fetching Alternative Image:", responseBody: e.message, stackTrace: stackTrace);
+      // Optional data (WP #92 item 3): the details page renders fine without an
+      // alternate image, so this failure is logged, not surfaced.
+      _logger.w("Error fetching Alternative Image: ${e.message}", error: e, stackTrace: stackTrace);
     } catch (e, stackTrace) {
-      handleError("Error fetching Alternative Image: $e", stackTrace: stackTrace);
+      // Optional data (WP #92 item 3): logged, never a banner.
+      _logger.w("Error fetching Alternative Image", error: e, stackTrace: stackTrace);
     }
   }
 
-  Future<void> _getEpisodesDetails(User loggedUser, Anime selectedAnime) async {
+  Future<void> _getEpisodesDetails(User loggedUser, Anime selectedAnime, {bool ignoreCache = false}) async {
+    final int fetchGeneration = ++_episodesFetchGeneration;
     try {
       _logger.i("Fetching Episodes Details for ${logTitleFor(selectedAnime.title)}");
       final AniZipLookupIds? ids = AniZipLookupIds.forAnime(selectedAnime);
       if (ids == null) {
         _logger.w("No AniZip-addressable id for ${logTitleFor(selectedAnime.title)} (${MediaProvenance.ofAnime(selectedAnime).name} record, no MAL id)");
+        // Nothing to look up: settle the gate so the episode rows render the
+        // data we already have instead of shimmering forever.
+        emit(state.copyWith(episodesLoaded: true));
         return;
       }
       final List<EpisodeInfo> episodesInfo = await _episodeRepository.getEpisodeInfo(
         malId: ids.malId,
         anilistId: ids.anilistId,
+        ignoreCache: ignoreCache,
       );
+      if (fetchGeneration != _episodesFetchGeneration) {
+        _logger.i("Discarding episode details: a newer episode provider fetch has started");
+        return;
+      }
       emit(state.copyWith(episodesInfo: episodesInfo, episodesLoaded: true));
       _episodesInfoNotifier.updateSelectedEpisodeInfo(episodesInfo);
     } on HttpServerException catch (e, stackTrace) {
       // Mark the list as settled so the episode rows fall back to their
       // data-less rendering instead of shimmering forever.
       emit(state.copyWith(episodesLoaded: true));
-      handleError("Error fetching Episodes details:", responseBody: e.message, stackTrace: stackTrace);
+      // Optional data (WP #92 item 3): episode metadata is a nice-to-have, so a
+      // failed lookup is logged instead of bannered.
+      _logger.w("Error fetching Episodes details: ${e.message}", error: e, stackTrace: stackTrace);
     } catch (e, stackTrace) {
       emit(state.copyWith(episodesLoaded: true));
-      handleError("Error fetching Episodes Details: $e", stackTrace: stackTrace);
+      _logger.w("Error fetching Episodes Details", error: e, stackTrace: stackTrace);
     }
   }
 
@@ -852,12 +1018,20 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     }
   }
 
-  Future<void> _setSelectedExtension(User loggedUser, Anime selectedAnime) async {
+  Future<void> _setSelectedExtension(
+    User loggedUser,
+    Anime selectedAnime, {
+    Extension? carriedExtension,
+    bool promptWhenMissing = true,
+  }) async {
     try {
       Extension? savedExtension;
       switch (loggedUser) {
         case AnilistUserModel anilistUserModel:
           SettingsModel userSettings = anilistUserModel.settings as SettingsModel;
+          savedExtension = userSettings.mediaExtensionConfigs[selectedAnime.id.toString()];
+        case ShikimoriUserModel shikimoriUserModel:
+          SettingsModel userSettings = shikimoriUserModel.settings as SettingsModel;
           savedExtension = userSettings.mediaExtensionConfigs[selectedAnime.id.toString()];
         case LocalUserModel localUserModel:
       }
@@ -865,11 +1039,47 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         await selectAnimeExtension(savedExtension.name);
         return;
       }
-      // Nothing to restore: opening the page does not nag, the warning fires
-      // when the user taps an episode without a selected extension.
-      _logger.d("No saved extension found for anime ${selectedAnime.id}; leaving the pick to the user.");
+      if (carriedExtension != null) {
+        // Switching titles from a loaded screen implies the user is already in
+        // that extension, so the choice is carried over instead of prompting.
+        _logger.i("Carrying extension ${carriedExtension.name} over to anime ${selectedAnime.id}.");
+        emit(state.copyWith(selectedExtension: carriedExtension));
+        _selectedExtensionNotifier.updateSelectedExtension(carriedExtension);
+        await _getAnimeInfoFromSelectedExtension(carriedExtension);
+        return;
+      }
+      if (isClosed) return;
+      if (!promptWhenMissing) {
+        // Nothing to restore and no nag requested (WP #87/#88): the warning
+        // fires when the user taps an episode without a selected extension.
+        _logger.d("No saved extension found for anime ${selectedAnime.id}; leaving the pick to the user.");
+        return;
+      }
+      _showNoExtensionSelectedPrompt();
     } catch (e, stackTrace) {
       handleError("Error setting selected extension: $e", stackTrace: stackTrace);
     }
+  }
+
+  /// Opt-in prompt when a path explicitly asks for one (`promptWhenMissing`).
+  /// The details page open stays quiet (WP #87): the warning fires when the
+  /// user taps an episode without a selected extension.
+  void _showNoExtensionSelectedPrompt() {
+    if (isClosed) return;
+    if (state.installedExtensions.isEmpty) {
+      _logger.w("No installed extensions available to fetch episodes.");
+      showSnackBarEffect(
+        "No Installed Extensions",
+        message: "Install some extensions to watch some content",
+        contentType: ContentType.warning,
+      );
+      return;
+    }
+    _logger.w("No extension selected to fetch episodes.");
+    showSnackBarEffect(
+      "No Extension Selected",
+      message: "Select an extension to fetch episodes.",
+      contentType: ContentType.warning,
+    );
   }
 }

@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$TitleModel {
 
- String get romaji; String get english; String get nativeTitle; String get userPreferred;
+ String get romaji; String get english; String get nativeTitle; String get userPreferred; String get russian;
 /// Create a copy of TitleModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,12 +28,12 @@ $TitleModelCopyWith<TitleModel> get copyWith => _$TitleModelCopyWithImpl<TitleMo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TitleModel&&(identical(other.romaji, romaji) || other.romaji == romaji)&&(identical(other.english, english) || other.english == english)&&(identical(other.nativeTitle, nativeTitle) || other.nativeTitle == nativeTitle)&&(identical(other.userPreferred, userPreferred) || other.userPreferred == userPreferred));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TitleModel&&(identical(other.romaji, romaji) || other.romaji == romaji)&&(identical(other.english, english) || other.english == english)&&(identical(other.nativeTitle, nativeTitle) || other.nativeTitle == nativeTitle)&&(identical(other.userPreferred, userPreferred) || other.userPreferred == userPreferred)&&(identical(other.russian, russian) || other.russian == russian));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,romaji,english,nativeTitle,userPreferred);
+int get hashCode => Object.hash(runtimeType,romaji,english,nativeTitle,userPreferred,russian);
 
 
 
@@ -44,7 +44,7 @@ abstract mixin class $TitleModelCopyWith<$Res>  {
   factory $TitleModelCopyWith(TitleModel value, $Res Function(TitleModel) _then) = _$TitleModelCopyWithImpl;
 @useResult
 $Res call({
- String romaji, String english, String nativeTitle, String userPreferred
+ String romaji, String english, String nativeTitle, String userPreferred, String russian
 });
 
 
@@ -61,12 +61,13 @@ class _$TitleModelCopyWithImpl<$Res>
 
 /// Create a copy of TitleModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? romaji = null,Object? english = null,Object? nativeTitle = null,Object? userPreferred = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? romaji = null,Object? english = null,Object? nativeTitle = null,Object? userPreferred = null,Object? russian = null,}) {
   return _then(_self.copyWith(
 romaji: null == romaji ? _self.romaji : romaji // ignore: cast_nullable_to_non_nullable
 as String,english: null == english ? _self.english : english // ignore: cast_nullable_to_non_nullable
 as String,nativeTitle: null == nativeTitle ? _self.nativeTitle : nativeTitle // ignore: cast_nullable_to_non_nullable
 as String,userPreferred: null == userPreferred ? _self.userPreferred : userPreferred // ignore: cast_nullable_to_non_nullable
+as String,russian: null == russian ? _self.russian : russian // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -152,10 +153,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String romaji,  String english,  String nativeTitle,  String userPreferred)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String romaji,  String english,  String nativeTitle,  String userPreferred,  String russian)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TitleModel() when $default != null:
-return $default(_that.romaji,_that.english,_that.nativeTitle,_that.userPreferred);case _:
+return $default(_that.romaji,_that.english,_that.nativeTitle,_that.userPreferred,_that.russian);case _:
   return orElse();
 
 }
@@ -173,10 +174,10 @@ return $default(_that.romaji,_that.english,_that.nativeTitle,_that.userPreferred
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String romaji,  String english,  String nativeTitle,  String userPreferred)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String romaji,  String english,  String nativeTitle,  String userPreferred,  String russian)  $default,) {final _that = this;
 switch (_that) {
 case _TitleModel():
-return $default(_that.romaji,_that.english,_that.nativeTitle,_that.userPreferred);case _:
+return $default(_that.romaji,_that.english,_that.nativeTitle,_that.userPreferred,_that.russian);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -193,10 +194,10 @@ return $default(_that.romaji,_that.english,_that.nativeTitle,_that.userPreferred
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String romaji,  String english,  String nativeTitle,  String userPreferred)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String romaji,  String english,  String nativeTitle,  String userPreferred,  String russian)?  $default,) {final _that = this;
 switch (_that) {
 case _TitleModel() when $default != null:
-return $default(_that.romaji,_that.english,_that.nativeTitle,_that.userPreferred);case _:
+return $default(_that.romaji,_that.english,_that.nativeTitle,_that.userPreferred,_that.russian);case _:
   return null;
 
 }
@@ -208,13 +209,14 @@ return $default(_that.romaji,_that.english,_that.nativeTitle,_that.userPreferred
 @JsonSerializable()
 
 class _TitleModel implements TitleModel {
-  const _TitleModel({required this.romaji, required this.english, required this.nativeTitle, required this.userPreferred});
+  const _TitleModel({required this.romaji, required this.english, required this.nativeTitle, required this.userPreferred, this.russian = ''});
   factory _TitleModel.fromJson(Map<String, dynamic> json) => _$TitleModelFromJson(json);
 
 @override final  String romaji;
 @override final  String english;
 @override final  String nativeTitle;
 @override final  String userPreferred;
+@override@JsonKey() final  String russian;
 
 /// Create a copy of TitleModel
 /// with the given fields replaced by the non-null parameter values.
@@ -229,12 +231,12 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TitleModel&&(identical(other.romaji, romaji) || other.romaji == romaji)&&(identical(other.english, english) || other.english == english)&&(identical(other.nativeTitle, nativeTitle) || other.nativeTitle == nativeTitle)&&(identical(other.userPreferred, userPreferred) || other.userPreferred == userPreferred));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TitleModel&&(identical(other.romaji, romaji) || other.romaji == romaji)&&(identical(other.english, english) || other.english == english)&&(identical(other.nativeTitle, nativeTitle) || other.nativeTitle == nativeTitle)&&(identical(other.userPreferred, userPreferred) || other.userPreferred == userPreferred)&&(identical(other.russian, russian) || other.russian == russian));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,romaji,english,nativeTitle,userPreferred);
+int get hashCode => Object.hash(runtimeType,romaji,english,nativeTitle,userPreferred,russian);
 
 
 
@@ -245,7 +247,7 @@ abstract mixin class _$TitleModelCopyWith<$Res> implements $TitleModelCopyWith<$
   factory _$TitleModelCopyWith(_TitleModel value, $Res Function(_TitleModel) _then) = __$TitleModelCopyWithImpl;
 @override @useResult
 $Res call({
- String romaji, String english, String nativeTitle, String userPreferred
+ String romaji, String english, String nativeTitle, String userPreferred, String russian
 });
 
 
@@ -262,12 +264,13 @@ class __$TitleModelCopyWithImpl<$Res>
 
 /// Create a copy of TitleModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? romaji = null,Object? english = null,Object? nativeTitle = null,Object? userPreferred = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? romaji = null,Object? english = null,Object? nativeTitle = null,Object? userPreferred = null,Object? russian = null,}) {
   return _then(_TitleModel(
 romaji: null == romaji ? _self.romaji : romaji // ignore: cast_nullable_to_non_nullable
 as String,english: null == english ? _self.english : english // ignore: cast_nullable_to_non_nullable
 as String,nativeTitle: null == nativeTitle ? _self.nativeTitle : nativeTitle // ignore: cast_nullable_to_non_nullable
 as String,userPreferred: null == userPreferred ? _self.userPreferred : userPreferred // ignore: cast_nullable_to_non_nullable
+as String,russian: null == russian ? _self.russian : russian // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

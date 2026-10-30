@@ -100,7 +100,7 @@ void main() {
     when(() => mockUserNotifier.userStream).thenAnswer((_) => userStreamController.stream);
     when(() => mockAnimeGenresNotifier.animeGenreStream).thenAnswer((_) => genreStreamController.stream);
 
-    when(() => mockAnimeRepository.getUserAnimeAdvancedSearchFilters()).thenAnswer(
+    when(() => mockAnimeRepository.getUserAnimeAdvancedSearchFilters(any())).thenAnswer(
       (_) async => {
         'genres': (true, ['Action', 'Adventure', 'Comedy']),
         'seasons': (true, ['WINTER', 'SPRING', 'SUMMER', 'FALL']),
@@ -164,7 +164,7 @@ void main() {
         predicate<AnimeAdvancedSearchState>((state) => state.searchResults.isNotEmpty),
       ],
       verify: (_) {
-        verify(() => mockAnimeRepository.getUserAnimeAdvancedSearchFilters()).called(1);
+        verify(() => mockAnimeRepository.getUserAnimeAdvancedSearchFilters(any())).called(1);
         verify(() => mockAnimeRepository.performAnimeAdvancedSearch(
           any(),
           any(),
@@ -500,7 +500,7 @@ void main() {
       },
       wait: const Duration(milliseconds: 100),
       verify: (_) {
-        verify(() => mockAnimeRepository.getUserAnimeAdvancedSearchFilters()).called(1);
+        verify(() => mockAnimeRepository.getUserAnimeAdvancedSearchFilters(any())).called(1);
       },
     );
 

@@ -1,0 +1,98 @@
+[
+  {
+    "next_episode": 5,
+    "next_episode_at": "2026-10-29T15:30:00.000+03:00",
+    "duration": 1380,
+    "anime": {
+      "id": 63337,
+      "name": "FX Senshi Kurumi-chan",
+      "russian": "FX Воин Куруми",
+      "image": {
+        "original": "/assets/globals/missing_original.jpg",
+        "preview": "/assets/globals/missing_preview.jpg",
+        "x96": "/assets/globals/missing_x96.jpg",
+        "x48": "/assets/globals/missing_x48.jpg"
+      },
+      "url": "/animes/63337-fx-senshi-kurumi-chan",
+      "kind": "tv",
+      "score": "7.08",
+      "status": "ongoing",
+      "episodes": 12,
+      "episodes_aired": 4,
+      "aired_on": "2026-10-01",
+      "released_on": null
+    }
+  },
+  {
+    "next_episode": 277,
+    "next_episode_at": "2026-10-30T01:40:00.000+03:00",
+    "duration": 60,
+    "anime": {
+      "id": 50250,
+      "name": "Chiikawa",
+      "russian": "Тикава",
+      "image": {
+        "original": "/system/animes/original/50250.jpg?1718941610",
+        "preview": "/system/animes/preview/50250.jpg?1718941610",
+        "x96": "/system/animes/x96/50250.jpg?1718941610",
+        "x48": "/system/animes/x48/50250.jpg?1718941610"
+      },
+      "url": "/animes/50250-chiikawa",
+      "kind": "tv",
+      "score": "8.63",
+      "status": "ongoing",
+      "episodes": 0,
+      "episodes_aired": 276,
+      "aired_on": "2022-04-04",
+      "released_on": null
+    }
+  },
+  {
+    "next_episode": 1,
+    "next_episode_at": "2026-10-30T09:00:00.000+03:00",
+    "duration": null,
+    "anime": {
+      "id": 65072,
+      "name": "Luo Xiaohei Zhanji: Xueqian Pian",
+      "russian": "Легенда о Сяохэе Ло: Детсадовские годы",
+      "image": {
+        "original": "/assets/globals/missing_original.jpg",
+        "preview": "/assets/globals/missing_preview.jpg",
+        "x96": "/assets/globals/missing_x96.jpg",
+        "x48": "/assets/globals/missing_x48.jpg"
+      },
+      "url": "/animes/65072-luo-xiaohei-zhanji-xueqian-pian",
+      "kind": "ona",
+      "score": "0.0",
+      "status": "anons",
+      "episodes": 6,
+      "episodes_aired": 0,
+      "aired_on": "2026-10-30",
+      "released_on": null
+    }
+  },
+  {
+    "next_episode": 1,
+    "next_episode_at": "2026-11-06T09:00:00.000+03:00",
+    "duration": null,
+    "anime": {
+      "id": 63045,
+      "name": "Demons' Crest",
+      "russian": "Герб демонов",
+      "image": {
+        "original": "/assets/globals/missing_original.jpg",
+        "preview": "/assets/globals/missing_preview.jpg",
+        "x96": "/assets/globals/missing_x96.jpg",
+        "x48": "/assets/globals/missing_x48.jpg"
+      },
+      "url": "/animes/63045-demons-crest",
+      "kind": "ona",
+      "score": "0.0",
+      "status": "anons",
+      "episodes": 0,
+      "episodes_aired": 0,
+      "aired_on": "2026-11-06",
+      "released_on": null
+    }
+  }
+]

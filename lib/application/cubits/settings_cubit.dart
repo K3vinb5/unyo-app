@@ -14,12 +14,14 @@ import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/notification/reload/reload_notifier.dart';
 import 'package:unyo/core/notification/reload/reload_type.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
+import 'package:unyo/core/services/api/http/response_cache_scope.dart';
 import 'package:unyo/core/services/media/episode_service.dart';
 import 'package:unyo/core/services/media/media_service.dart';
 import 'package:unyo/core/theme/color_image_service.dart';
 import 'package:unyo/core/theme/theme_service.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
+import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/repositories.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
@@ -83,6 +85,9 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
         metadataService: MediaServiceFactory.getEnumMediaService(newService),
       );
       await _updateUserInfo(updatedSettings);
+      // Lazy tabs have no cubit to receive the reload broadcast, so the cache
+      // the previous provider populated is scoped out here as well.
+      sl<ResponseCacheScope>().invalidate();
       _reloadNotifier.emitReload(ReloadType.newMetadataService);
     } catch (e, stackTrace) {
       logger.e("Error updating media metadata service $e", stackTrace: stackTrace);
@@ -96,6 +101,11 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
         episodeService: EpisodeMediaServiceFactory.getEnumEpisodeService(newService),
       );
       await _updateUserInfo(updatedSettings);
+      // The episode provider changed too: cached AniZip rows belong to the
+      // provider that served them, so scope them out exactly like the metadata
+      // switch does.
+      sl<ResponseCacheScope>().invalidate();
+      _reloadNotifier.emitReload(ReloadType.newEpisodeService);
     } catch (e, stackTrace) {
       logger.e("Error updating episode metadata service $e", stackTrace: stackTrace);
       handleError("Error updating episode metadata service", stackTrace: stackTrace);
@@ -214,6 +224,10 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
           wallpaperColors = await _colorImageService.getColorsFromPalleteGenerator(
             NetworkImage(anilistUserModel.bannerImage),
           );
+        case ShikimoriUserModel _:
+          // `currentUser` carries no banner, so there is no wallpaper to sample;
+          // the primary colour stays the account colour (same as a local user).
+          _logger.d("Getting shikimori user's theme");
         case LocalUserModel localUserModel:
           _logger.d("Getting local user's theme");
       }
@@ -353,6 +367,10 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
         case AnilistUserModel anilistUserModel:
           AnilistUserModel updatedAnilistUserModel = anilistUserModel.copyWith(settings: settings);
           await _userRepository.updateUserInfo(updatedAnilistUserModel);
+          break;
+        case ShikimoriUserModel shikimoriUserModel:
+          ShikimoriUserModel updatedShikimoriUserModel = shikimoriUserModel.copyWith(settings: settings);
+          await _userRepository.updateUserInfo(updatedShikimoriUserModel);
           break;
         case LocalUserModel localUserModel:
           LocalUserModel updatedLocalUserModel = localUserModel.copyWith(settings: settings);

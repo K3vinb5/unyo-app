@@ -7,7 +7,7 @@ import 'package:logger/logger.dart';
 
 // Internal dependencies
 import 'package:unyo/core/enums/service.dart';
-import 'package:unyo/core/services/api/dto/shikimori/anime_popular_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/anime_list_query_entity.dart';
 import 'package:unyo/core/services/api/http/api_response.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
@@ -236,8 +236,8 @@ void main() {
         aniZipLookup: MediaMappingRepositoryAnizip(),
         mappingLookup: FakeMediaMappingLookup(const <MediaLinkCandidate>[]),
       );
-      final Anime record = ShikimoriAnimeModel.fromAnimesPopularQuery(
-        AnimePopularQueryAnimes.fromJson(<String, dynamic>{
+      final Anime record = ShikimoriAnimeModel.fromListEntry(
+        AnimeListQueryAnimes.fromJson(<String, dynamic>{
           'id': '65261',
           'malId': '58514',
           'name': title,

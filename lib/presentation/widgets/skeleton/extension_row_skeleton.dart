@@ -6,11 +6,10 @@ import 'package:unyo/presentation/widgets/skeleton/skeleton_block.dart';
 /// ([UnyoExtensionButton]): 70-high row, the name + pill block at the left and
 /// the trailing action button. Screen-util units follow the real widget.
 ///
-/// The real row reserves `20.w + 52 + 14.w` for its `ClipOval` icon, but that
-/// icon is a remote `Image.network` that in practice never resolves, so the
-/// loaded row shows a blank slot instead of a circle. The placeholder keeps the
-/// slot width (the pills must land where the loaded text lands) and paints no
-/// circle at all.
+/// The real row reserves `20.w + 52 + 14.w` for its rounded-square icon
+/// ([UnyoExtensionButton.iconSize], radius [UnyoExtensionButton.iconBorderRadius]).
+/// The placeholder keeps that slot width so the pills land where the loaded
+/// text lands, and paints no icon shape at all.
 class ExtensionRowSkeleton extends StatelessWidget {
   const ExtensionRowSkeleton({super.key, this.showActionButton = true});
 
@@ -19,7 +18,7 @@ class ExtensionRowSkeleton extends StatelessWidget {
   /// `unyo_extension_button.dart` - `Container(height: 70)`.
   static const double rowHeight = 70;
 
-  /// `unyo_extension_button.dart` - `Image.network(iconUrl, width: 52)`.
+  /// `unyo_extension_button.dart` - rounded-square icon slot edge (52px).
   static const double iconSlotSize = 52;
 
   @override

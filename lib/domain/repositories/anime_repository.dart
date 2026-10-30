@@ -15,7 +15,9 @@ abstract class AnimeRepository {
   /// unresolved-mapping fallback (WP #61 rule 5), where details must come from
   /// the record's own provider instead of the metadata provider.
   Future<(bool, AnimeDetails)> getAnimeDetails(Anime selectedAnime, User loggedUser, {Service? service});
-  Future<Map<String, (bool, List<String>)>> getUserAnimeAdvancedSearchFilters();
+  /// Filters are provider-specific (`genres(entryType: ...)`), so the metadata
+  /// provider from [loggedUser] decides which dictionary is built.
+  Future<Map<String, (bool, List<String>)>> getUserAnimeAdvancedSearchFilters(User loggedUser);
   Future<List<Anime>> performAnimeAdvancedSearch(
     String query,
     List<String> selectedGenres,

@@ -44,7 +44,7 @@ class AccountCreationDialog extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               LoginCard(
-                                svgPicture: SvgPicture.asset(
+                                logo: SvgPicture.asset(
                                   'assets/images/anilist.svg',
                                   width: 120.w,
                                   height: 120.h,
@@ -55,7 +55,18 @@ class AccountCreationDialog extends StatelessWidget {
                                 isSelected: state.selectedLoginCard == LoginCardType.anilist,
                               ),
                               LoginCard(
-                                svgPicture: SvgPicture.asset(
+                                logo: SvgPicture.asset(
+                                  'assets/images/shikimori.svg',
+                                  width: 120.w,
+                                  height: 120.h,
+                                ),
+                                title: 'Shikimori',
+                                description: 'Sync your list with Shikimori',
+                                onTap: () => context.read<LoginCubit>().selectLoginType(LoginCardType.shikimori),
+                                isSelected: state.selectedLoginCard == LoginCardType.shikimori,
+                              ),
+                              LoginCard(
+                                logo: SvgPicture.asset(
                                   'assets/images/myanimelist.svg',
                                   width: 120.w,
                                   height: 120.h,
@@ -66,7 +77,7 @@ class AccountCreationDialog extends StatelessWidget {
                                 isSelected: state.selectedLoginCard == LoginCardType.mal,
                               ),
                               LoginCard(
-                                svgPicture: SvgPicture.asset(
+                                logo: SvgPicture.asset(
                                   'assets/images/local_account.svg',
                                   width: 130.w,
                                   height: 130.h,

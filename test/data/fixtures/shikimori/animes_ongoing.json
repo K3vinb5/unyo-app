@@ -1,0 +1,48 @@
+{
+  "data": {
+    "animes": [
+      {
+        "id": "61469",
+        "malId": "61469",
+        "name": "Steel Ball Run: JoJo no Kimyou na Bouken",
+        "status": "ongoing",
+        "kind": "ona",
+        "episodes": 0,
+        "episodesAired": 6,
+        "nextEpisodeAt": null,
+        "season": null,
+        "airedOn": {
+          "date": "2026-03-19"
+        }
+      },
+      {
+        "id": "61967",
+        "malId": "61967",
+        "name": "Black Clover 2nd Season",
+        "status": "ongoing",
+        "kind": "tv",
+        "episodes": 0,
+        "episodesAired": 4,
+        "nextEpisodeAt": "2026-10-31T17:00:00+03:00",
+        "season": "fall_2026",
+        "airedOn": {
+          "date": "2026-10-03"
+        }
+      },
+      {
+        "id": "21",
+        "malId": "21",
+        "name": "One Piece",
+        "status": "ongoing",
+        "kind": "tv",
+        "episodes": 0,
+        "episodesAired": 1180,
+        "nextEpisodeAt": "2026-11-01T17:15:00+03:00",
+        "season": "fall_1999",
+        "airedOn": {
+          "date": "1999-10-20"
+        }
+      }
+    ]
+  }
+}

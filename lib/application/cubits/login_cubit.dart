@@ -27,6 +27,7 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
   // Repositories
   final UserRepositoryLocal _userRepositoryLocal;
   final UserRepositoryAnilist _userRepositoryAnilist;
+  final UserRepositoryShikimori _userRepositoryShikimori;
   final Logger _logger = sl<Logger>();
 
   // Notifiers / Subscriptions
@@ -43,6 +44,7 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
     this._loggedUserNotifier,
     this._newUserNotifier,
     this._userRepositoryAnilist,
+    this._userRepositoryShikimori,
     this._colorImageService,
     this._themeService,
   ) : super(
@@ -107,6 +109,9 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
         case AnilistUserModel anilistUserModel:
           _logger.i("Logging in Anilist User: ${anilistUserModel.name}");
           await _loginAnilistUser(anilistUserModel);
+        case ShikimoriUserModel shikimoriUserModel:
+          _logger.i("Logging in Shikimori User: ${shikimoriUserModel.name}");
+          await _loginShikimoriUser(shikimoriUserModel);
         case LocalUserModel localUserModel:
           _logger.i("Logging in Local User: ${localUserModel.name}");
         default:
@@ -131,6 +136,9 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
       case LoginCardType.anilist:
         _logger.i("Attempting to create Anilist User");
         await _createAnilistUser();
+      case LoginCardType.shikimori:
+        _logger.i("Attempting to create Shikimori User");
+        await _createShikimoriUser();
       case LoginCardType.mal:
         _logger.i("Attempting to create MyAnimeList User");
       case LoginCardType.local:
@@ -146,7 +154,9 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
           (await _userRepositoryLocal.fetchAllLoggedInUsers()).cast<User>();
       List<User> usersAvailableAnilist =
           (await _userRepositoryAnilist.fetchAllLoggedInUsers()).cast<User>();
-      _updateAvailableUsers(usersAvailableAnilist + usersAvailableLocal);
+      List<User> usersAvailableShikimori =
+          (await _userRepositoryShikimori.fetchAllLoggedInUsers()).cast<User>();
+      _updateAvailableUsers(usersAvailableAnilist + usersAvailableShikimori + usersAvailableLocal);
     } finally {
       // Settles the avatar skeletons even when a repository fails.
       if (!isClosed && state.isLoading) {
@@ -165,6 +175,9 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
               .getColorsFromPalleteGenerator(
             NetworkImage(anilistUserModel.bannerImage),
           );
+        case ShikimoriUserModel _:
+          // `currentUser` carries no banner, so there is no wallpaper to sample.
+          _logger.d("Getting shikimori user's theme");
         case LocalUserModel localUserModel:
           _logger.d("Getting local user's theme");
       }
@@ -210,6 +223,29 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
       }
     }
     _loggedUserNotifier.updateUser(user);
+  }
+
+  /// A Shikimori access token lives 1 day and there is no JWT to inspect, so the
+  /// stored expiry decides: an expired pair is rotated here (from the stored
+  /// refresh token) and re-persisted before the session starts.
+  Future<void> _loginShikimoriUser(ShikimoriUserModel user) async {
+    try {
+      final ShikimoriUserModel fresh = await _userRepositoryShikimori.ensureFreshAccessToken(user);
+      _loggedUserNotifier.updateUser(fresh);
+    } catch (e, stackTrace) {
+      handleError(
+        "Error refreshing the Shikimori token: $e",
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<void> _createShikimoriUser() async {
+    try {
+      await _userRepositoryShikimori.attemptCreateUser();
+    } catch (e, stackTrace) {
+      handleError("Error creating Shikimori user $e", stackTrace: stackTrace);
+    }
   }
 
   Future<void> _createAnilistUser() async {

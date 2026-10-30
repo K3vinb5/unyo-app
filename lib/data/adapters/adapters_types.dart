@@ -8,3 +8,4 @@ const episodeServiceAdapterType = 6;
 const extensionAdapterType = 7;
 const anilistMangaDetailsAdapterType = 8;
 const mediaListEntryAdapterType = 9;
+const shikimoriUserAdapterType = 10;

@@ -2,6 +2,9 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 // Internal dependencies
+import 'package:unyo/core/services/api/dto/shikimori/manga_details_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/manga_list_query_entity.dart';
+import 'package:unyo/data/models/shikimori/media/shikimori_media_mapper.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/media/title.dart';
 
@@ -36,142 +39,119 @@ abstract class ShikimoriMangaModel with _$ShikimoriMangaModel implements Manga {
   factory ShikimoriMangaModel.fromJson(Map<String, dynamic> json) =>
       _$ShikimoriMangaModelFromJson(json);
 
-  // factory ShikimoriMangaModel.fromListEntry(
-  //     ShikimoriMangaListGraphqlMangas entry,) {
-  //   return ShikimoriMangaModel(
-  //     id: int.parse(entry.id),
-  //     idMal: int.tryParse(entry.malId) ?? -1,
-  //     title: TitleModel(
-  //       romaji: entry.name,
-  //       english: entry.english,
-  //       userPreferred: entry.name,
-  //       nativeTitle: entry.japanese,
-  //     ),
-  //     averageScore: (entry.score * 10).round(),
-  //     bannerImage: entry.poster.originalUrl,
-  //     chapters: entry.chapters,
-  //     countryOfOrigin: 'JP',
-  //     coverImage: entry.poster.mainUrl,
-  //     description: '',
-  //     endDate: _formatIncompleteDate(entry.releasedOn),
-  //     startDate: _formatIncompleteDate(entry.airedOn),
-  //     genres: entry.genres.map((g) => g.name).toList(),
-  //     format: _mapMangaKindToFormat(entry.kind),
-  //     isAdult: !entry.isCensored,
-  //     popularity: 0,
-  //     meanScore: (entry.score * 10).round(),
-  //     status: _mapMangaStatusToAnilist(entry.status),
-  //     isFavourite: false,
-  //   );
-  // }
+  /// Shikimori's `Manga` type has no popularity counter (mirror of
+  /// [ShikimoriAnimeModel.unavailablePopularity], WP #64 §8).
+  static const int unavailablePopularity = 0;
 
-  // factory ShikimoriMangaModel.fromDetailsEntry(
-  //     ShikimoriMangaDetailsGraphqlManga entry,) {
-  //   return ShikimoriMangaModel(
-  //     id: int.parse(entry.id),
-  //     idMal: int.tryParse(entry.malId) ?? -1,
-  //     title: TitleModel(
-  //       romaji: entry.name,
-  //       english: entry.english,
-  //       userPreferred: entry.name,
-  //       nativeTitle: entry.japanese,
-  //     ),
-  //     averageScore: (entry.score * 10).round(),
-  //     bannerImage: entry.poster.originalUrl,
-  //     chapters: entry.chapters,
-  //     countryOfOrigin: 'JP',
-  //     coverImage: entry.poster.mainUrl,
-  //     description: entry.description,
-  //     endDate: _formatIncompleteDate(entry.releasedOn),
-  //     startDate: _formatIncompleteDate(entry.airedOn),
-  //     genres: entry.genres.map((g) => g.name).toList(),
-  //     format: _mapMangaKindToFormat(entry.kind),
-  //     isAdult: !entry.isCensored,
-  //     popularity: 0,
-  //     meanScore: (entry.score * 10).round(),
-  //     status: _mapMangaStatusToAnilist(entry.status),
-  //     isFavourite: false,
-  //   );
-  // }
+  /// `Manga` has no country-of-origin field in the Shikimori schema; the
+  /// manga database keeps its `JP` default.
+  static const String defaultCountryOfOrigin = 'JP';
 
-  // factory ShikimoriMangaModel.fromRelatedEntry(
-  //     ShikimoriMangaDetailsGraphqlMangaRelatedAnime entry,) {
-  //   return ShikimoriMangaModel(
-  //     id: int.parse(entry.id),
-  //     idMal: -1,
-  //     title: TitleModel(
-  //       romaji: entry.name,
-  //       english: '',
-  //       userPreferred: entry.name,
-  //       nativeTitle: '',
-  //     ),
-  //     averageScore: 0,
-  //     bannerImage: entry.poster.mainUrl,
-  //     chapters: entry.episodes,
-  //     countryOfOrigin: 'JP',
-  //     coverImage: entry.poster.mainUrl,
-  //     description: '',
-  //     endDate: '',
-  //     startDate: '',
-  //     genres: [],
-  //     format: _mapMangaKindToFormat(entry.kind),
-  //     isAdult: false,
-  //     popularity: 0,
-  //     meanScore: 0,
-  //     status: 'FINISHED',
-  //     isFavourite: false,
-  //   );
-  // }
-
-}
-
-String _formatIncompleteDate(dynamic dateObj) {
-  if (dateObj == null) return '';
-  final year = dateObj.year;
-  final month = dateObj.month;
-  final day = dateObj.day;
-  if (year == 0 && month == 0 && day == 0) return '';
-  final parts = <String>[];
-  if (day > 0) parts.add(day.toString().padLeft(2, '0'));
-  if (month > 0) parts.add(month.toString().padLeft(2, '0'));
-  if (year > 0) parts.add(year.toString());
-  return parts.join('/');
-}
-
-String _mapMangaKindToFormat(String kind) {
-  switch (kind) {
-    case 'manga':
-      return 'MANGA';
-    case 'manhwa':
-      return 'MANHWA';
-    case 'manhua':
-      return 'MANHUA';
-    case 'light_novel':
-      return 'NOVEL';
-    case 'novel':
-      return 'NOVEL';
-    case 'one_shot':
-      return 'ONE_SHOT';
-    case 'doujin':
-      return 'DOUJINSHI';
-    default:
-      return kind.toUpperCase();
+  /// One carousel entry (`shikimoriMangaListQuery`).
+  factory ShikimoriMangaModel.fromListEntry(MangaListQueryMangas manga) {
+    return ShikimoriMangaModel(
+      id: ShikimoriMediaMapper.parseId(manga.id),
+      idMal: ShikimoriMediaMapper.parseMalId(manga.malId),
+      title: TitleModel(
+        romaji: manga.name,
+        english: manga.english,
+        nativeTitle: manga.japanese,
+        userPreferred: ShikimoriMediaMapper.preferredTitle(
+          name: manga.name,
+          english: manga.english,
+          russian: manga.russian,
+        ),
+        russian: manga.russian,
+      ),
+      averageScore: ShikimoriMediaMapper.scoreOutOfHundred(manga.score),
+      bannerImage: manga.poster.mainAlt2xUrl,
+      // The domain keeps one chapter counter; Shikimori's `volumes` has no slot
+      // in it (the DTO still carries both, see the details model test).
+      chapters: manga.chapters,
+      countryOfOrigin: defaultCountryOfOrigin,
+      coverImage: manga.poster.originalUrl,
+      description: manga.description,
+      endDate: ShikimoriMediaMapper.date(manga.releasedOn.day, manga.releasedOn.month, manga.releasedOn.year),
+      startDate: ShikimoriMediaMapper.date(manga.airedOn.day, manga.airedOn.month, manga.airedOn.year),
+      genres: manga.genres.map((MangaListQueryMangasGenres genre) => genre.name).toList(),
+      format: ShikimoriMediaMapper.mangaFormat(manga.kind),
+      isAdult: manga.isCensored,
+      popularity: unavailablePopularity,
+      meanScore: ShikimoriMediaMapper.scoreOutOfHundred(manga.score),
+      status: ShikimoriMediaMapper.mangaStatus(manga.status),
+      isFavourite: false,
+    );
   }
-}
 
-String _mapMangaStatusToAnilist(String status) {
-  switch (status) {
-    case 'anons':
-      return 'NOT_YET_RELEASED';
-    case 'ongoing':
-      return 'RELEASING';
-    case 'released':
-      return 'FINISHED';
-    case 'paused':
-      return 'HIATUS';
-    case 'discontinued':
-      return 'CANCELLED';
-    default:
-      return status.toUpperCase();
+  /// The addressed entry of `shikimoriMangaDetailsQuery`.
+  factory ShikimoriMangaModel.fromDetailsEntry(MangaDetailsQueryMangas manga) {
+    return ShikimoriMangaModel(
+      id: ShikimoriMediaMapper.parseId(manga.id),
+      idMal: ShikimoriMediaMapper.parseMalId(manga.malId),
+      title: TitleModel(
+        romaji: manga.name,
+        english: manga.english,
+        nativeTitle: manga.japanese,
+        userPreferred: ShikimoriMediaMapper.preferredTitle(
+          name: manga.name,
+          english: manga.english,
+          russian: manga.russian,
+        ),
+        russian: manga.russian,
+      ),
+      averageScore: ShikimoriMediaMapper.scoreOutOfHundred(manga.score),
+      bannerImage: manga.poster.mainAlt2xUrl,
+      chapters: manga.chapters,
+      countryOfOrigin: defaultCountryOfOrigin,
+      coverImage: manga.poster.originalUrl,
+      description: manga.description,
+      endDate: ShikimoriMediaMapper.date(manga.releasedOn.day, manga.releasedOn.month, manga.releasedOn.year),
+      startDate: ShikimoriMediaMapper.date(manga.airedOn.day, manga.airedOn.month, manga.airedOn.year),
+      genres: manga.genres.map((MangaDetailsQueryMangasGenres genre) => genre.name).toList(),
+      format: ShikimoriMediaMapper.mangaFormat(manga.kind),
+      isAdult: manga.isCensored,
+      popularity: unavailablePopularity,
+      meanScore: ShikimoriMediaMapper.scoreOutOfHundred(manga.score),
+      status: ShikimoriMediaMapper.mangaStatus(manga.status),
+      isFavourite: false,
+    );
+  }
+
+  /// One `related { manga { … } }` entry of `shikimoriMangaDetailsQuery`.
+  ///
+  /// Callers must filter with [ShikimoriMediaMapper.isRealManga] first: an anime
+  /// adaptation arrives as a default-constructed node with `id == ''` (the
+  /// #78/#77 phantom-media trap, mirrored on the manga side).
+  factory ShikimoriMangaModel.fromRelatedEntry(MangaDetailsQueryMangasRelatedManga manga) {
+    return ShikimoriMangaModel(
+      id: ShikimoriMediaMapper.parseId(manga.id),
+      idMal: ShikimoriMediaMapper.parseMalId(manga.malId),
+      title: TitleModel(
+        romaji: manga.name,
+        english: manga.english,
+        nativeTitle: manga.japanese,
+        userPreferred: ShikimoriMediaMapper.preferredTitle(
+          name: manga.name,
+          english: manga.english,
+          russian: manga.russian,
+        ),
+        russian: manga.russian,
+      ),
+      averageScore: ShikimoriMediaMapper.scoreOutOfHundred(manga.score),
+      bannerImage: manga.poster.mainAlt2xUrl,
+      chapters: manga.chapters,
+      countryOfOrigin: defaultCountryOfOrigin,
+      coverImage: manga.poster.originalUrl,
+      description: manga.description,
+      endDate: ShikimoriMediaMapper.date(manga.releasedOn.day, manga.releasedOn.month, manga.releasedOn.year),
+      startDate: ShikimoriMediaMapper.date(manga.airedOn.day, manga.airedOn.month, manga.airedOn.year),
+      genres: manga.genres.map((MangaDetailsQueryMangasRelatedMangaGenres genre) => genre.name).toList(),
+      format: ShikimoriMediaMapper.mangaFormat(manga.kind),
+      isAdult: manga.isCensored,
+      popularity: unavailablePopularity,
+      meanScore: ShikimoriMediaMapper.scoreOutOfHundred(manga.score),
+      status: ShikimoriMediaMapper.mangaStatus(manga.status),
+      isFavourite: false,
+    );
   }
 }

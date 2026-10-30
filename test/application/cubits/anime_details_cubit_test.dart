@@ -6,10 +6,12 @@ import 'package:jni/jni.dart' show JString;
 import 'package:material_ui/material_ui.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:unyo_lib/jmodels/jsanime.dart';
+import 'package:unyo_lib/jmodels/jsepisode.dart';
 // Internal dependencies
 import 'package:unyo/application/cubits/anime_details_cubit.dart';
 import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/application/states/anime_details_state.dart';
+import 'package:unyo/domain/entities/media/airing_episode.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/anime_details.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
@@ -26,15 +28,19 @@ import 'package:unyo/core/notification/reload/reload_notifier.dart';
 import 'package:unyo/core/notification/reload/reload_type.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/core/notification/video_info_notifier.dart';
+import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
+import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
 import 'package:unyo/data/repositories/extension_repository_aniyomi.dart';
 import 'package:unyo/data/repositories/user_repository_anilist.dart';
 import 'package:unyo/domain/entities/extension/extension.dart';
+import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
 import 'package:unyo/domain/repositories/episode_repository.dart';
 import 'package:unyo/core/services/media/media_id_service.dart';
 import 'package:unyo/core/services/media/media_link_exception.dart';
 import 'package:unyo/domain/repositories/media_id_cache.dart';
+import 'package:unyo/presentation/drawers/anime_server_selection_drawer.dart';
 
 import '../../core/di/locator.dart' show setupTestLocator;
 
@@ -57,7 +63,14 @@ class MockEpisodesNotifier extends Mock implements EpisodesNotifier {}
 class MockReloadNotifier extends Mock implements ReloadNotifier {}
 
 class MockJSAnime extends Mock implements JSAnime {}
+class MockJSEpisode extends Mock implements JSEpisode {}
 class MockJString extends Mock implements JString {}
+
+JSEpisode episodeWithNumber(int number) {
+  final JSEpisode episode = MockJSEpisode();
+  when(() => episode.getEpisode_number()).thenReturn(number.toDouble());
+  return episode;
+}
 
 void main() {
   late AnimeDetailsCubit cubit;
@@ -117,6 +130,7 @@ void main() {
     registerFallbackValue(ExtensionModel.empty());
     registerFallbackValue(AnimeModel.empty());
     registerFallbackValue(MediaListEntryModel.empty());
+    registerFallbackValue(MockJSAnime());
   });
 
   setUp(() async {
@@ -149,7 +163,33 @@ void main() {
   });
 
   group('AnimeDetailsCubit.openAnimeServerSelectionDrawer', () {
+    test('guides to the Extensions tab when no extension is installed at all', () async {
+      cubit = buildCubit();
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.openAnimeServerSelectionDrawer(MockBuildContext(), 0);
+
+      final List<ShowSnackbarEffect> snackbars = snackbarsOf(cubit.state);
+      expect(cubit.state.installedExtensions, isEmpty);
+      expect(cubit.state.animeServerDialogLoading, isFalse);
+      expect(
+        snackbars.any(
+          (effect) =>
+              effect.title == 'No Installed Extensions' &&
+              effect.message == 'Open the Extensions tab to install one.',
+        ),
+        isTrue,
+      );
+      // The "select one" wording is wrong when the dropdown has no options.
+      expect(snackbars.any((effect) => effect.title == 'No Extension Selected'), isFalse);
+      expect(cubit.state.effects.whereType<ShowDrawerDialogEffect>(), isEmpty);
+    });
+
     test('warns about a missing extension instead of a "null Error" and clears the loading flag', () async {
+      when(() => extensionRepository.getInstalledAnimeExtensions(any())).thenAnswer(
+        (_) async => <Extension>{testExtension},
+      );
+
       cubit = buildCubit();
       await Future<void>.delayed(Duration.zero);
 
@@ -194,6 +234,76 @@ void main() {
         isTrue,
       );
       expect(snackbars.any((effect) => effect.title.contains('null')), isFalse);
+    });
+
+    test('opens the extension episode the button was labelled with, not its list position', () async {
+      when(() => extensionRepository.getInstalledAnimeExtensions(any())).thenAnswer(
+        (_) async => <Extension>{testExtension},
+      );
+      final MockJSAnime extensionAnime = MockJSAnime();
+      final MockJString extensionAnimeTitle = MockJString();
+      when(() => extensionAnimeTitle.toDartString()).thenReturn('Episode Numbers');
+      when(() => extensionAnime.getTitle()).thenReturn(extensionAnimeTitle);
+      when(
+        () => extensionRepository.getAnimeSearchResults(any(), any()),
+      ).thenAnswer((_) async => <JSAnime>[extensionAnime]);
+      // A continuous-season list: the first episode of this entry is episode 13.
+      when(() => extensionRepository.getAnimeEpisodeList(any(), any())).thenAnswer(
+        (_) async => <JSEpisode>[episodeWithNumber(13), episodeWithNumber(14)],
+      );
+      when(() => extensionNotifier.updateSelectedExtension(any())).thenReturn(null);
+      when(() => episodesNotifier.updateSelectedJSEpisodes(any())).thenReturn(null);
+      when(() => mediaListEntryNotifier.updateSelectedMediaListEntry(any())).thenReturn(null);
+      when(() => episodesInfoNotifier.updateSelectedEpisodeInfo(any())).thenReturn(null);
+      when(() => animeRepository.getAnimeDetails(any(), any(), service: any(named: 'service')))
+          .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
+      when(() => animeRepository.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (false, <Anime>[]));
+      when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => <String>[]);
+      when(() => animeRepository.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+      when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => <EpisodeInfo>[]);
+      when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => '');
+      final StreamController<Anime> animeStreamController = StreamController<Anime>.broadcast();
+      addTearDown(animeStreamController.close);
+      when(() => animeNotifier.animeStream).thenAnswer((_) => animeStreamController.stream);
+
+      cubit = buildCubit();
+      await pumpEventQueue();
+      animeStreamController.add(
+        AnimeModel.empty().copyWith(
+          id: 2,
+          idMal: 0,
+          title: const TitleModel(
+            romaji: 'Episode Numbers',
+            english: 'Episode Numbers',
+            nativeTitle: 'Episode Numbers',
+            userPreferred: 'Episode Numbers',
+          ),
+        ),
+      );
+      await pumpEventQueue();
+      await cubit.selectAnimeExtension(testExtension.name);
+      await pumpEventQueue();
+      expect(cubit.state.extensionAnimeResults, hasLength(1));
+
+      await cubit.openAnimeServerSelectionDrawer(MockBuildContext(), 14);
+
+      final List<ShowDrawerDialogEffect> drawers = cubit.state.effects.whereType<ShowDrawerDialogEffect>().toList();
+      expect(drawers, hasLength(1), reason: 'episode 14 is in the extension list, so the drawer must open');
+      expect(
+        (drawers.single.drawerDialog as AnimeServerSelectionDrawer).episodeIndex,
+        1,
+        reason: 'the button labelled Episode 14 is the second extension episode, not list position 13',
+      );
+      expect(
+        snackbarsOf(cubit.state).any((effect) => effect.message.contains('Only 2 episodes were found')),
+        isFalse,
+        reason: 'an episode number must never be resolved as a list position',
+      );
     });
   });
 
@@ -252,9 +362,9 @@ void main() {
           .thenAnswer((_) async => (false, <Anime>[]));
       when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
           .thenAnswer((_) async => <String>[]);
-      when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+      when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId'), ignoreCache: any(named: 'ignoreCache')))
           .thenAnswer((_) async => <EpisodeInfo>[]);
-      when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+      when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId'), ignoreCache: any(named: 'ignoreCache')))
           .thenAnswer((_) async => '');
       when(() => episodesInfoNotifier.updateSelectedEpisodeInfo(any())).thenReturn(null);
       when(() => mediaListEntryNotifier.updateSelectedMediaListEntry(any())).thenReturn(null);
@@ -341,6 +451,111 @@ void main() {
       expect(cubit.state.selectedAnimeResultIndex, 1);
       expect(snackbars.any((effect) => effect.title == 'Something went wrong'), isFalse, reason: rendered.join('; '));
     });
+
+    group('metadata-service reload', () {
+      test('a new episode service refetches the episode list and the alternative image', () async {
+        final StreamController<ReloadType> reloadStreamController = StreamController<ReloadType>.broadcast();
+        addTearDown(reloadStreamController.close);
+        when(() => reloadNotifier.reloadStream).thenAnswer((_) => reloadStreamController.stream);
+        await emitAnimeIntoState();
+
+        // Consume the selection-time fetches so only the reload's own show up
+        // (mocktail's verify consumes the calls it matches).
+        verify(
+          () => episodeRepository.getEpisodeInfo(
+            malId: any(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: false,
+          ),
+        ).called(1);
+        verify(
+          () => episodeRepository.getAlternativeImage(
+            malId: any(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: false,
+          ),
+        ).called(1);
+
+        reloadStreamController.add(ReloadType.newEpisodeService);
+        await pumpEventQueue();
+
+        final List<int> episodeMalIds = verify(
+          () => episodeRepository.getEpisodeInfo(
+            malId: captureAny(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: true,
+          ),
+        ).captured.cast<int>();
+        expect(
+          episodeMalIds,
+          <int>[58514],
+          reason: 'episodes are derived from the episode provider, so a switch refetches them once for the open anime — '
+              'bypassing the cache the previous provider filled',
+        );
+
+        final List<int> imageMalIds = verify(
+          () => episodeRepository.getAlternativeImage(
+            malId: captureAny(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: true,
+          ),
+        ).captured.cast<int>();
+        expect(
+          imageMalIds,
+          <int>[58514],
+          reason: 'the alternative image comes from the same episode provider and must not stay on the previous one',
+        );
+      });
+      test('an episode fetch from the previous provider does not overwrite the new provider\'s list', () async {
+        final StreamController<ReloadType> reloadStreamController = StreamController<ReloadType>.broadcast();
+        addTearDown(reloadStreamController.close);
+        when(() => reloadNotifier.reloadStream).thenAnswer((_) => reloadStreamController.stream);
+        await emitAnimeIntoState();
+
+        // The AniZip fetch for the open anime hangs while the user switches the
+        // episode provider to Kitsu, whose fetch settles first with an empty list.
+        final Completer<List<EpisodeInfo>> staleFetch = Completer<List<EpisodeInfo>>();
+        when(
+          () => episodeRepository.getEpisodeInfo(
+            malId: any(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: false,
+          ),
+        ).thenAnswer((_) => staleFetch.future);
+        when(
+          () => episodeRepository.getEpisodeInfo(
+            malId: any(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: true,
+          ),
+        ).thenAnswer((_) async => <EpisodeInfo>[]);
+
+        animeStreamController.add(testAnime);
+        await pumpEventQueue();
+        reloadStreamController.add(ReloadType.newEpisodeService);
+        await pumpEventQueue();
+        expect(cubit.state.episodesInfo, isEmpty, reason: 'the new provider settles first with no episodes');
+
+        staleFetch.complete(<EpisodeInfo>[
+          EpisodeInfoModel.empty().copyWith(id: 99, episodeNumber: 1),
+        ]);
+        await pumpEventQueue();
+
+        expect(
+          cubit.state.episodesInfo,
+          isEmpty,
+          reason: 'the previous provider\'s late completion must be discarded, not written over the new list',
+        );
+        final List<List<EpisodeInfo>> pushed = verify(
+          () => episodesInfoNotifier.updateSelectedEpisodeInfo(captureAny()),
+        ).captured.cast<List<EpisodeInfo>>();
+        expect(
+          pushed.expand((episodes) => episodes).where((episode) => episode.id == 99),
+          isEmpty,
+          reason: 'the stale rows must not reach EpisodesInfoNotifier either',
+        );
+      });
+    });
   });
 
   group('AnimeDetailsCubit.updateMediaListEntry', () {
@@ -370,6 +585,475 @@ void main() {
       verify(() => animeRepository.updateMediaListEntry(any(), any(), any())).called(1);
       verifyNever(() => reloadNotifier.emitReload(ReloadType.animeMediaListEntryUpdated));
       verifyNever(() => reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated));
+    });
+
+    test('persists the progress the list editor displayed instead of an out-of-range entry value', () async {
+      final StreamController<Anime> animeStreamController = StreamController<Anime>.broadcast();
+      addTearDown(animeStreamController.close);
+      when(() => animeNotifier.animeStream).thenAnswer((_) => animeStreamController.stream);
+      when(() => animeRepository.getAnimeDetails(any(), any(), service: any(named: 'service')))
+          .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
+      when(() => animeRepository.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (false, <Anime>[]));
+      when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => <String>[]);
+      when(() => animeRepository.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+      when(() => animeRepository.updateMediaListEntry(any(), any(), any())).thenAnswer(
+        (_) async => MediaListEntryModel.empty(),
+      );
+      when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => <EpisodeInfo>[]);
+      when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => '');
+      when(() => mediaListEntryNotifier.updateSelectedMediaListEntry(any())).thenReturn(null);
+      when(() => episodesInfoNotifier.updateSelectedEpisodeInfo(any())).thenReturn(null);
+      when(() => extensionRepository.getInstalledAnimeExtensions(any())).thenAnswer((_) async => <Extension>{});
+      final MockBuildContext buildContext = MockBuildContext();
+      // The dialog is already gone in this test, so the save path stops before
+      // the pop effect (which needs a mounted AutoRouter).
+      when(() => buildContext.mounted).thenReturn(false);
+
+      cubit = buildCubit();
+      await pumpEventQueue();
+      animeStreamController.add(
+        AnimeModel.empty().copyWith(
+          id: 3,
+          idMal: 58514,
+          episodes: 12,
+          title: const TitleModel(romaji: 'Twelve', english: 'Twelve', nativeTitle: 'Twelve', userPreferred: 'Twelve'),
+        ),
+      );
+      await pumpEventQueue();
+      // A stale entry can hold more progress than the resolved count.
+      await cubit.updateMediaListEntryProgress(40);
+
+      await cubit.updateMediaListEntry(buildContext);
+
+      final List<MediaListEntry> saved = verify(
+        () => animeRepository.updateMediaListEntry(captureAny(), any(), any()),
+      ).captured.cast<MediaListEntry>();
+      expect(saved, hasLength(1));
+      expect(
+        saved.single.progress,
+        12,
+        reason: 'the slider rendered the clamped 12, so saving 40 would write a value the user never saw',
+      );
+    });
+  });
+
+  group('AnimeDetailsCubit.episodesLoaded', () {
+    test('settles the episode gate for a Shikimori record with no MAL id and no episode total', () async {
+      final StreamController<Anime> animeStreamController = StreamController<Anime>.broadcast();
+      addTearDown(animeStreamController.close);
+      when(() => animeNotifier.animeStream).thenAnswer((_) => animeStreamController.stream);
+      when(() => animeRepository.getAnimeDetails(any(), any(), service: any(named: 'service')))
+          .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
+      when(() => animeRepository.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (false, <Anime>[]));
+      when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => <String>[]);
+      when(() => animeRepository.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+      when(() => mediaListEntryNotifier.updateSelectedMediaListEntry(any())).thenReturn(null);
+      when(() => extensionRepository.getInstalledAnimeExtensions(any())).thenAnswer((_) async => <Extension>{});
+
+      // A Shikimori record whose source published no MAL id and no episode
+      // total: AniZip cannot address it, so the episode metadata fetch bails.
+      final ShikimoriAnimeModel shikimoriAnime = ShikimoriAnimeModel(
+        id: 90,
+        idMal: 0,
+        title: const TitleModel(romaji: 'No Total', english: 'No Total', nativeTitle: '', userPreferred: 'No Total'),
+        averageScore: 0,
+        bannerImage: '',
+        countryOfOrigin: 'JP',
+        coverImage: '',
+        description: '',
+        duration: 24,
+        endDate: '',
+        startDate: '',
+        episodes: 0,
+        genres: const <String>[],
+        format: 'TV',
+        isAdult: false,
+        popularity: 0,
+        meanScore: 0,
+        season: '',
+        status: 'RELEASING',
+        isFavourite: false,
+        nextAiringEpisode: AiringEpisodeModel.empty(),
+      );
+
+      cubit = buildCubit();
+      await pumpEventQueue();
+      animeStreamController.add(shikimoriAnime);
+      await pumpEventQueue();
+
+      expect(cubit.state.selectedAnime.episodes, 0);
+      expect(
+        cubit.state.episodesLoaded,
+        isTrue,
+        reason: 'the no-id path must settle the gate instead of shimmering forever',
+      );
+      final List<ShowSnackbarEffect> snackbars = snackbarsOf(cubit.state);
+      final List<String> rendered = snackbars.map((ShowSnackbarEffect effect) => '${effect.title} / ${effect.message}').toList();
+      expect(
+        snackbars.any((ShowSnackbarEffect effect) => effect.title == 'Something went wrong'),
+        isFalse,
+        reason: 'an unaddressable record is an expected state, not an error, got: $rendered',
+      );
+      expect(
+        snackbars.any((ShowSnackbarEffect effect) => effect.message.contains('Episodes')),
+        isFalse,
+        reason: 'the episode metadata fetch must be skipped, not failed, got: $rendered',
+      );
+      verifyNever(
+        () => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')),
+      );
+    });
+
+    test('drops the previous record\'s episodes when the selected anime changes', () async {
+      final StreamController<Anime> animeStreamController = StreamController<Anime>.broadcast();
+      addTearDown(animeStreamController.close);
+      when(() => animeNotifier.animeStream).thenAnswer((_) => animeStreamController.stream);
+      when(() => animeRepository.getAnimeDetails(any(), any(), service: any(named: 'service')))
+          .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
+      when(() => animeRepository.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (false, <Anime>[]));
+      when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => <String>[]);
+      when(() => animeRepository.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+      when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => <EpisodeInfo>[EpisodeInfoModel.empty()]);
+      when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => '');
+      when(() => mediaListEntryNotifier.updateSelectedMediaListEntry(any())).thenReturn(null);
+      when(() => episodesInfoNotifier.updateSelectedEpisodeInfo(any())).thenReturn(null);
+      when(() => extensionRepository.getInstalledAnimeExtensions(any())).thenAnswer((_) async => <Extension>{});
+
+      final Anime addressable = AnimeModel.empty().copyWith(
+        id: 1,
+        idMal: 58514,
+        title: const TitleModel(romaji: 'First', english: 'First', nativeTitle: 'First', userPreferred: 'First'),
+      );
+      final ShikimoriAnimeModel unaddressable = ShikimoriAnimeModel(
+        id: 91,
+        idMal: 0,
+        title: const TitleModel(romaji: 'Second', english: 'Second', nativeTitle: '', userPreferred: 'Second'),
+        averageScore: 0,
+        bannerImage: '',
+        countryOfOrigin: 'JP',
+        coverImage: '',
+        description: '',
+        duration: 24,
+        endDate: '',
+        startDate: '',
+        episodes: 0,
+        genres: const <String>[],
+        format: 'TV',
+        isAdult: false,
+        popularity: 0,
+        meanScore: 0,
+        season: '',
+        status: 'RELEASING',
+        isFavourite: false,
+        nextAiringEpisode: AiringEpisodeModel.empty(),
+      );
+
+      cubit = buildCubit();
+      await pumpEventQueue();
+      animeStreamController.add(addressable);
+      await pumpEventQueue();
+      expect(cubit.state.episodesInfo, hasLength(1), reason: 'setup: the first record loaded its episode metadata');
+
+      animeStreamController.add(unaddressable);
+      await pumpEventQueue();
+
+      expect(cubit.state.selectedAnime.title.userPreferred, 'Second');
+      expect(
+        cubit.state.episodesInfo,
+        isEmpty,
+        reason: 'the first record\'s episodes must not be rendered — or counted by EpisodeCount.resolve — for the new one',
+      );
+      expect(cubit.state.extensionEpisodeResults, isEmpty);
+      expect(cubit.state.episodesLoaded, isTrue, reason: 'the new record still settles its own gate');
+    });
+  });
+
+  group('AnimeDetailsCubit switching to another anime', () {
+    const TitleModel firstTitle = TitleModel(
+      romaji: 'Kusuriya no Hitorigoto',
+      english: 'The Apothecary Diaries',
+      nativeTitle: '薬屋のひとりごと',
+      userPreferred: 'Kusuriya no Hitorigoto',
+    );
+    const TitleModel secondTitle = TitleModel(
+      romaji: 'Sousou no Frieren',
+      english: 'Frieren: Beyond Journey\'s End',
+      nativeTitle: '葬送のフリーレン',
+      userPreferred: 'Sousou no Frieren',
+    );
+
+    final AnimeModel firstAnime = AnimeModel.empty().copyWith(id: 170942, idMal: 58514, title: firstTitle);
+    final AnimeModel secondAnime = AnimeModel.empty().copyWith(id: 154587, idMal: 52991, title: secondTitle);
+
+    late StreamController<Anime> animeStreamController;
+    late StreamController<User> userStreamController;
+    late List<String> searchQueries;
+
+    MockJSAnime jsAnimeWithTitle(String title) {
+      final MockJSAnime anime = MockJSAnime();
+      final MockJString jTitle = MockJString();
+      when(() => jTitle.toDartString()).thenReturn(title);
+      when(() => anime.getTitle()).thenReturn(jTitle);
+      return anime;
+    }
+
+    AnilistUserModel anilistUserWith(Map<String, Extension> mediaExtensionConfigs) {
+      return AnilistUserModel(
+        id: '1',
+        name: 'Test User',
+        settings: SettingsModel(mediaExtensionConfigs: mediaExtensionConfigs),
+        avatarImage: 'avatar.png',
+        bannerImage: 'banner.png',
+        accessCode: '',
+        accessToken: '',
+        refreshToken: '',
+      );
+    }
+
+    /// Wires the streams/repository stubs and pushes [savedMappings] as the
+    /// logged user, leaving the page without a selected title. Pass
+    /// [pendingExtensions] to hold the installed-extension load open.
+    Future<void> startDetailsPage(
+      Map<String, Extension> savedMappings, {
+      Completer<Set<Extension>>? pendingExtensions,
+    }) async {
+      animeStreamController = StreamController<Anime>.broadcast();
+      addTearDown(animeStreamController.close);
+      userStreamController = StreamController<User>.broadcast();
+      addTearDown(userStreamController.close);
+      searchQueries = <String>[];
+      when(() => animeNotifier.animeStream).thenAnswer((_) => animeStreamController.stream);
+      when(() => userNotifier.userStream).thenAnswer((_) => userStreamController.stream);
+      when(() => animeRepository.getAnimeDetails(any(), any(), service: any(named: 'service')))
+          .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
+      when(() => animeRepository.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (false, <Anime>[]));
+      when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => <String>[]);
+      when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => <EpisodeInfo>[]);
+      when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => '');
+      when(() => episodesInfoNotifier.updateSelectedEpisodeInfo(any())).thenReturn(null);
+      when(() => mediaListEntryNotifier.updateSelectedMediaListEntry(any())).thenReturn(null);
+      when(() => extensionNotifier.updateSelectedExtension(any())).thenReturn(null);
+      when(() => episodesNotifier.updateSelectedJSEpisodes(any())).thenReturn(null);
+      when(() => userRepository.updateUserInfo(any())).thenAnswer((_) async {});
+      when(() => extensionRepository.getInstalledAnimeExtensions(any())).thenAnswer(
+        (_) => pendingExtensions?.future ?? Future.value(<Extension>{testExtension}),
+      );
+      when(() => extensionRepository.getAnimeSearchResults(any(), any())).thenAnswer((invocation) async {
+        final String query = invocation.positionalArguments.first as String;
+        searchQueries.add(query);
+        return <JSAnime>[jsAnimeWithTitle(query)];
+      });
+
+      cubit = buildCubit();
+      await pumpEventQueue();
+      userStreamController.add(anilistUserWith(savedMappings));
+      await pumpEventQueue();
+    }
+
+    /// Opens the details page on [firstAnime] with [testExtension] selected, so a
+    /// test starts from a page that already holds the first title's extension
+    /// results — exactly the state the switch has to invalidate.
+    Future<void> openDetailsPageWithFirstAnime(
+      Map<String, Extension> savedMappings,
+    ) async {
+      await startDetailsPage(savedMappings);
+      animeStreamController.add(firstAnime);
+      await pumpEventQueue();
+      await cubit.selectAnimeExtension(testExtension.name);
+      await pumpEventQueue();
+
+      expect(cubit.state.selectedAnime.id, firstAnime.id);
+      expect(cubit.state.extensionAnimeResults, isNotEmpty);
+    }
+
+    int noExtensionPrompts() => snackbarsOf(cubit.state)
+        .where((effect) => effect.title == 'No Extension Selected')
+        .length;
+
+    test('a saved mapping for the new title re-resolves the extension on the cleared state', () async {
+      await openDetailsPageWithFirstAnime(<String, Extension>{secondAnime.id.toString(): testExtension});
+
+      AnimeDetailsState? stateDuringSwitchFetch;
+      bool switchedToSecondAnime = false;
+      final List<AnimeDetailsState> emittedStates = <AnimeDetailsState>[];
+      final StreamSubscription<AnimeDetailsState> stateSubscription = cubit.stream.listen(emittedStates.add);
+      addTearDown(stateSubscription.cancel);
+      when(() => extensionRepository.getAnimeSearchResults(any(), any())).thenAnswer((invocation) async {
+        final String query = invocation.positionalArguments.first as String;
+        if (switchedToSecondAnime) stateDuringSwitchFetch ??= cubit.state;
+        searchQueries.add(query);
+        return <JSAnime>[jsAnimeWithTitle(query)];
+      });
+
+      switchedToSecondAnime = true;
+      animeStreamController.add(secondAnime);
+      await pumpEventQueue();
+
+      expect(cubit.state.selectedAnime.id, secondAnime.id);
+      expect(
+        stateDuringSwitchFetch,
+        isNotNull,
+        reason: 'the saved mapping of the new title must trigger an extension search',
+      );
+      // (b) the first title's per-title extension state must be gone before the fetch runs.
+      expect(stateDuringSwitchFetch!.selectedAnime.id, secondAnime.id);
+      expect(stateDuringSwitchFetch!.extensionAnimeResults, isEmpty);
+      expect(stateDuringSwitchFetch!.selectedAnimeResultIndex, 0);
+      expect(stateDuringSwitchFetch!.extensionEpisodeResults, isEmpty);
+      expect(stateDuringSwitchFetch!.extensionVideoResults, isEmpty);
+      final AnimeDetailsState resetState =
+          emittedStates.firstWhere((state) => state.selectedAnime.id == secondAnime.id);
+      expect(resetState.selectedExtension, isNull, reason: 'the previous title extension is dropped on the switch');
+      expect(resetState.animeServerDialogReady, isFalse);
+      // (a) the fetch itself targets the new title.
+      expect(searchQueries.last, secondTitle.userPreferred);
+      expect(cubit.state.selectedExtension, same(testExtension));
+      expect(
+        cubit.state.extensionAnimeResults.map((result) => result.getTitle().toDartString()),
+        <String>[secondTitle.userPreferred],
+        reason: 'the new title must end up with its own extension results, not the old ones',
+      );
+      final List<int> episodeFetchIds = verify(
+        () => episodeRepository.getEpisodeInfo(malId: captureAny(named: 'malId'), anilistId: any(named: 'anilistId')),
+      ).captured.cast<int>();
+      expect(
+        episodeFetchIds,
+        contains(secondAnime.idMal),
+        reason: 'the episode metadata fetch must run for the new title too',
+      );
+    });
+
+    test('carries the selected extension over to the new title when the new title has no saved mapping', () async {
+      await openDetailsPageWithFirstAnime(<String, Extension>{});
+      final int promptsBeforeSwitch = noExtensionPrompts();
+
+      animeStreamController.add(secondAnime);
+      await pumpEventQueue();
+
+      expect(cubit.state.selectedAnime.id, secondAnime.id);
+      expect(cubit.state.selectedExtension, same(testExtension), reason: 'the open page was already in that extension');
+      expect(searchQueries.last, secondTitle.userPreferred);
+      expect(cubit.state.extensionAnimeResults, isNotEmpty);
+      expect(
+        noExtensionPrompts(),
+        promptsBeforeSwitch,
+        reason: 'a switch must not prompt for an extension (WP #87 keeps the open path quiet)',
+      );
+    });
+
+    test('re-emitting the same anime id does not resolve the extension again', () async {
+      await openDetailsPageWithFirstAnime(<String, Extension>{secondAnime.id.toString(): testExtension});
+      animeStreamController.add(secondAnime);
+      await pumpEventQueue();
+      final List<String> queriesAfterSwitch = List<String>.of(searchQueries);
+
+      animeStreamController.add(secondAnime);
+      await pumpEventQueue();
+
+      expect(searchQueries, queriesAfterSwitch, reason: 'a same-id echo must not re-fetch from the extension');
+      expect(cubit.state.extensionAnimeResults, isNotEmpty, reason: 'the echo must not clear the resolved results');
+    });
+
+    test('a switch landing before the extensions load stays silent when they arrive', () async {
+      final Completer<Set<Extension>> pendingExtensions = Completer<Set<Extension>>();
+      await startDetailsPage(<String, Extension>{}, pendingExtensions: pendingExtensions);
+      animeStreamController.add(firstAnime);
+      await pumpEventQueue();
+      expect(cubit.state.installedExtensions, isEmpty, reason: 'the load is still pending');
+
+      animeStreamController.add(secondAnime);
+      await pumpEventQueue();
+      expect(cubit.state.selectedAnime.id, secondAnime.id);
+
+      pendingExtensions.complete(<Extension>{testExtension});
+      await pumpEventQueue();
+
+      expect(cubit.state.installedExtensions, isNotEmpty);
+      expect(cubit.state.selectedAnime.id, secondAnime.id);
+      expect(
+        noExtensionPrompts(),
+        0,
+        reason: 'the deferred switch must resolve like an immediate one, not like the initial page load',
+      );
+      expect(cubit.state.selectedExtension, isNull, reason: 'no saved mapping and nothing carried over to resolve with');
+      expect(searchQueries, isEmpty);
+    });
+
+    test('a switch landing before the extensions load resolves the saved mapping once they arrive', () async {
+      final Completer<Set<Extension>> pendingExtensions = Completer<Set<Extension>>();
+      await startDetailsPage(
+        <String, Extension>{secondAnime.id.toString(): testExtension},
+        pendingExtensions: pendingExtensions,
+      );
+      animeStreamController.add(firstAnime);
+      await pumpEventQueue();
+
+      animeStreamController.add(secondAnime);
+      await pumpEventQueue();
+
+      pendingExtensions.complete(<Extension>{testExtension});
+      await pumpEventQueue();
+
+      expect(
+        searchQueries.last,
+        secondTitle.userPreferred,
+        reason: 'the deferred switch must search the extension for the title that is open now',
+      );
+      expect(cubit.state.selectedExtension, same(testExtension));
+      expect(cubit.state.extensionAnimeResults, isNotEmpty);
+      expect(noExtensionPrompts(), 0);
+    });
+
+    test('a late search for the previous title does not overwrite the new title results', () async {
+      await openDetailsPageWithFirstAnime(<String, Extension>{secondAnime.id.toString(): testExtension});
+      final Completer<List<JSAnime>> firstTitleSearch = Completer<List<JSAnime>>();
+      when(() => extensionRepository.getAnimeSearchResults(any(), any())).thenAnswer((invocation) {
+        final String query = invocation.positionalArguments.first as String;
+        searchQueries.add(query);
+        if (query == firstTitle.userPreferred) return firstTitleSearch.future;
+        return Future.value(<JSAnime>[jsAnimeWithTitle(query)]);
+      });
+
+      final Future<void> firstTitleFetch = cubit.selectAnimeExtension(testExtension.name);
+      await pumpEventQueue();
+
+      animeStreamController.add(secondAnime);
+      await pumpEventQueue();
+      expect(cubit.state.extensionAnimeResults.map((result) => result.getTitle().toDartString()), <String>[
+        secondTitle.userPreferred,
+      ]);
+
+      firstTitleSearch.complete(<JSAnime>[jsAnimeWithTitle('Stale result from the previous title')]);
+      await firstTitleFetch;
+      await pumpEventQueue();
+
+      expect(
+        cubit.state.extensionAnimeResults.map((result) => result.getTitle().toDartString()),
+        <String>[secondTitle.userPreferred],
+        reason: 'results fetched for the previous title must be discarded, not emitted onto the new one',
+      );
+      expect(
+        snackbarsOf(cubit.state).where((effect) => effect.message.contains('Stale result')),
+        isEmpty,
+        reason: 'a discarded fetch must not snackbar a result the page does not show',
+      );
     });
   });
 

@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$MangaState {
 
- (bool, List<Manga>) get trending; (bool, List<Manga>) get recentlyCompleted; (bool, List<Manga>) get popular; (bool, List<Manga>) get upcoming; List<Manga> get banners; User get loggedUser; bool get isLoading; List<AppEffect> get effects; bool get userLoaded;
+ (bool, List<Manga>) get trending; (bool, List<Manga>) get recentlyCompleted; (bool, List<Manga>) get popular; (bool, List<Manga>) get upcoming; List<Manga> get banners; User get loggedUser; bool get isLoading; bool get metadataServiceSupported; List<AppEffect> get effects; bool get userLoaded;
 /// Create a copy of MangaState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $MangaStateCopyWith<MangaState> get copyWith => _$MangaStateCopyWithImpl<MangaSt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MangaState&&(identical(other.trending, trending) || other.trending == trending)&&(identical(other.recentlyCompleted, recentlyCompleted) || other.recentlyCompleted == recentlyCompleted)&&(identical(other.popular, popular) || other.popular == popular)&&(identical(other.upcoming, upcoming) || other.upcoming == upcoming)&&const DeepCollectionEquality().equals(other.banners, banners)&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&const DeepCollectionEquality().equals(other.effects, effects)&&(identical(other.userLoaded, userLoaded) || other.userLoaded == userLoaded));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MangaState&&(identical(other.trending, trending) || other.trending == trending)&&(identical(other.recentlyCompleted, recentlyCompleted) || other.recentlyCompleted == recentlyCompleted)&&(identical(other.popular, popular) || other.popular == popular)&&(identical(other.upcoming, upcoming) || other.upcoming == upcoming)&&const DeepCollectionEquality().equals(other.banners, banners)&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.metadataServiceSupported, metadataServiceSupported) || other.metadataServiceSupported == metadataServiceSupported)&&const DeepCollectionEquality().equals(other.effects, effects)&&(identical(other.userLoaded, userLoaded) || other.userLoaded == userLoaded));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,trending,recentlyCompleted,popular,upcoming,const DeepCollectionEquality().hash(banners),loggedUser,isLoading,const DeepCollectionEquality().hash(effects),userLoaded);
+int get hashCode => Object.hash(runtimeType,trending,recentlyCompleted,popular,upcoming,const DeepCollectionEquality().hash(banners),loggedUser,isLoading,metadataServiceSupported,const DeepCollectionEquality().hash(effects),userLoaded);
 
 @override
 String toString() {
-  return 'MangaState(trending: $trending, recentlyCompleted: $recentlyCompleted, popular: $popular, upcoming: $upcoming, banners: $banners, loggedUser: $loggedUser, isLoading: $isLoading, effects: $effects, userLoaded: $userLoaded)';
+  return 'MangaState(trending: $trending, recentlyCompleted: $recentlyCompleted, popular: $popular, upcoming: $upcoming, banners: $banners, loggedUser: $loggedUser, isLoading: $isLoading, metadataServiceSupported: $metadataServiceSupported, effects: $effects, userLoaded: $userLoaded)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $MangaStateCopyWith<$Res>  {
   factory $MangaStateCopyWith(MangaState value, $Res Function(MangaState) _then) = _$MangaStateCopyWithImpl;
 @useResult
 $Res call({
- (bool, List<Manga>) trending, (bool, List<Manga>) recentlyCompleted, (bool, List<Manga>) popular, (bool, List<Manga>) upcoming, List<Manga> banners, User loggedUser, bool isLoading, List<AppEffect> effects, bool userLoaded
+ (bool, List<Manga>) trending, (bool, List<Manga>) recentlyCompleted, (bool, List<Manga>) popular, (bool, List<Manga>) upcoming, List<Manga> banners, User loggedUser, bool isLoading, bool metadataServiceSupported, List<AppEffect> effects, bool userLoaded
 });
 
 
@@ -62,7 +62,7 @@ class _$MangaStateCopyWithImpl<$Res>
 
 /// Create a copy of MangaState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? trending = null,Object? recentlyCompleted = null,Object? popular = null,Object? upcoming = null,Object? banners = null,Object? loggedUser = null,Object? isLoading = null,Object? effects = null,Object? userLoaded = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? trending = null,Object? recentlyCompleted = null,Object? popular = null,Object? upcoming = null,Object? banners = null,Object? loggedUser = null,Object? isLoading = null,Object? metadataServiceSupported = null,Object? effects = null,Object? userLoaded = null,}) {
   return _then(_self.copyWith(
 trending: null == trending ? _self.trending : trending // ignore: cast_nullable_to_non_nullable
 as (bool, List<Manga>),recentlyCompleted: null == recentlyCompleted ? _self.recentlyCompleted : recentlyCompleted // ignore: cast_nullable_to_non_nullable
@@ -71,6 +71,7 @@ as (bool, List<Manga>),upcoming: null == upcoming ? _self.upcoming : upcoming //
 as (bool, List<Manga>),banners: null == banners ? _self.banners : banners // ignore: cast_nullable_to_non_nullable
 as List<Manga>,loggedUser: null == loggedUser ? _self.loggedUser : loggedUser // ignore: cast_nullable_to_non_nullable
 as User,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
+as bool,metadataServiceSupported: null == metadataServiceSupported ? _self.metadataServiceSupported : metadataServiceSupported // ignore: cast_nullable_to_non_nullable
 as bool,effects: null == effects ? _self.effects : effects // ignore: cast_nullable_to_non_nullable
 as List<AppEffect>,userLoaded: null == userLoaded ? _self.userLoaded : userLoaded // ignore: cast_nullable_to_non_nullable
 as bool,
@@ -158,10 +159,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( (bool, List<Manga>) trending,  (bool, List<Manga>) recentlyCompleted,  (bool, List<Manga>) popular,  (bool, List<Manga>) upcoming,  List<Manga> banners,  User loggedUser,  bool isLoading,  List<AppEffect> effects,  bool userLoaded)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( (bool, List<Manga>) trending,  (bool, List<Manga>) recentlyCompleted,  (bool, List<Manga>) popular,  (bool, List<Manga>) upcoming,  List<Manga> banners,  User loggedUser,  bool isLoading,  bool metadataServiceSupported,  List<AppEffect> effects,  bool userLoaded)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MangaState() when $default != null:
-return $default(_that.trending,_that.recentlyCompleted,_that.popular,_that.upcoming,_that.banners,_that.loggedUser,_that.isLoading,_that.effects,_that.userLoaded);case _:
+return $default(_that.trending,_that.recentlyCompleted,_that.popular,_that.upcoming,_that.banners,_that.loggedUser,_that.isLoading,_that.metadataServiceSupported,_that.effects,_that.userLoaded);case _:
   return orElse();
 
 }
@@ -179,10 +180,10 @@ return $default(_that.trending,_that.recentlyCompleted,_that.popular,_that.upcom
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( (bool, List<Manga>) trending,  (bool, List<Manga>) recentlyCompleted,  (bool, List<Manga>) popular,  (bool, List<Manga>) upcoming,  List<Manga> banners,  User loggedUser,  bool isLoading,  List<AppEffect> effects,  bool userLoaded)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( (bool, List<Manga>) trending,  (bool, List<Manga>) recentlyCompleted,  (bool, List<Manga>) popular,  (bool, List<Manga>) upcoming,  List<Manga> banners,  User loggedUser,  bool isLoading,  bool metadataServiceSupported,  List<AppEffect> effects,  bool userLoaded)  $default,) {final _that = this;
 switch (_that) {
 case _MangaState():
-return $default(_that.trending,_that.recentlyCompleted,_that.popular,_that.upcoming,_that.banners,_that.loggedUser,_that.isLoading,_that.effects,_that.userLoaded);case _:
+return $default(_that.trending,_that.recentlyCompleted,_that.popular,_that.upcoming,_that.banners,_that.loggedUser,_that.isLoading,_that.metadataServiceSupported,_that.effects,_that.userLoaded);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -199,10 +200,10 @@ return $default(_that.trending,_that.recentlyCompleted,_that.popular,_that.upcom
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( (bool, List<Manga>) trending,  (bool, List<Manga>) recentlyCompleted,  (bool, List<Manga>) popular,  (bool, List<Manga>) upcoming,  List<Manga> banners,  User loggedUser,  bool isLoading,  List<AppEffect> effects,  bool userLoaded)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( (bool, List<Manga>) trending,  (bool, List<Manga>) recentlyCompleted,  (bool, List<Manga>) popular,  (bool, List<Manga>) upcoming,  List<Manga> banners,  User loggedUser,  bool isLoading,  bool metadataServiceSupported,  List<AppEffect> effects,  bool userLoaded)?  $default,) {final _that = this;
 switch (_that) {
 case _MangaState() when $default != null:
-return $default(_that.trending,_that.recentlyCompleted,_that.popular,_that.upcoming,_that.banners,_that.loggedUser,_that.isLoading,_that.effects,_that.userLoaded);case _:
+return $default(_that.trending,_that.recentlyCompleted,_that.popular,_that.upcoming,_that.banners,_that.loggedUser,_that.isLoading,_that.metadataServiceSupported,_that.effects,_that.userLoaded);case _:
   return null;
 
 }
@@ -214,7 +215,7 @@ return $default(_that.trending,_that.recentlyCompleted,_that.popular,_that.upcom
 
 
 class _MangaState extends MangaState {
-  const _MangaState({required this.trending, required this.recentlyCompleted, required this.popular, required this.upcoming, required final  List<Manga> banners, required this.loggedUser, required this.isLoading, final  List<AppEffect> effects = const <AppEffect>[], required this.userLoaded}): _banners = banners,_effects = effects,super._();
+  const _MangaState({required this.trending, required this.recentlyCompleted, required this.popular, required this.upcoming, required final  List<Manga> banners, required this.loggedUser, required this.isLoading, this.metadataServiceSupported = true, final  List<AppEffect> effects = const <AppEffect>[], required this.userLoaded}): _banners = banners,_effects = effects,super._();
   
 
 @override final  (bool, List<Manga>) trending;
@@ -230,6 +231,7 @@ class _MangaState extends MangaState {
 
 @override final  User loggedUser;
 @override final  bool isLoading;
+@override@JsonKey() final  bool metadataServiceSupported;
  final  List<AppEffect> _effects;
 @override@JsonKey() List<AppEffect> get effects {
   if (_effects is EqualUnmodifiableListView) return _effects;
@@ -249,16 +251,16 @@ _$MangaStateCopyWith<_MangaState> get copyWith => __$MangaStateCopyWithImpl<_Man
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MangaState&&(identical(other.trending, trending) || other.trending == trending)&&(identical(other.recentlyCompleted, recentlyCompleted) || other.recentlyCompleted == recentlyCompleted)&&(identical(other.popular, popular) || other.popular == popular)&&(identical(other.upcoming, upcoming) || other.upcoming == upcoming)&&const DeepCollectionEquality().equals(other._banners, _banners)&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&const DeepCollectionEquality().equals(other._effects, _effects)&&(identical(other.userLoaded, userLoaded) || other.userLoaded == userLoaded));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MangaState&&(identical(other.trending, trending) || other.trending == trending)&&(identical(other.recentlyCompleted, recentlyCompleted) || other.recentlyCompleted == recentlyCompleted)&&(identical(other.popular, popular) || other.popular == popular)&&(identical(other.upcoming, upcoming) || other.upcoming == upcoming)&&const DeepCollectionEquality().equals(other._banners, _banners)&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.metadataServiceSupported, metadataServiceSupported) || other.metadataServiceSupported == metadataServiceSupported)&&const DeepCollectionEquality().equals(other._effects, _effects)&&(identical(other.userLoaded, userLoaded) || other.userLoaded == userLoaded));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,trending,recentlyCompleted,popular,upcoming,const DeepCollectionEquality().hash(_banners),loggedUser,isLoading,const DeepCollectionEquality().hash(_effects),userLoaded);
+int get hashCode => Object.hash(runtimeType,trending,recentlyCompleted,popular,upcoming,const DeepCollectionEquality().hash(_banners),loggedUser,isLoading,metadataServiceSupported,const DeepCollectionEquality().hash(_effects),userLoaded);
 
 @override
 String toString() {
-  return 'MangaState(trending: $trending, recentlyCompleted: $recentlyCompleted, popular: $popular, upcoming: $upcoming, banners: $banners, loggedUser: $loggedUser, isLoading: $isLoading, effects: $effects, userLoaded: $userLoaded)';
+  return 'MangaState(trending: $trending, recentlyCompleted: $recentlyCompleted, popular: $popular, upcoming: $upcoming, banners: $banners, loggedUser: $loggedUser, isLoading: $isLoading, metadataServiceSupported: $metadataServiceSupported, effects: $effects, userLoaded: $userLoaded)';
 }
 
 
@@ -269,7 +271,7 @@ abstract mixin class _$MangaStateCopyWith<$Res> implements $MangaStateCopyWith<$
   factory _$MangaStateCopyWith(_MangaState value, $Res Function(_MangaState) _then) = __$MangaStateCopyWithImpl;
 @override @useResult
 $Res call({
- (bool, List<Manga>) trending, (bool, List<Manga>) recentlyCompleted, (bool, List<Manga>) popular, (bool, List<Manga>) upcoming, List<Manga> banners, User loggedUser, bool isLoading, List<AppEffect> effects, bool userLoaded
+ (bool, List<Manga>) trending, (bool, List<Manga>) recentlyCompleted, (bool, List<Manga>) popular, (bool, List<Manga>) upcoming, List<Manga> banners, User loggedUser, bool isLoading, bool metadataServiceSupported, List<AppEffect> effects, bool userLoaded
 });
 
 
@@ -286,7 +288,7 @@ class __$MangaStateCopyWithImpl<$Res>
 
 /// Create a copy of MangaState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? trending = null,Object? recentlyCompleted = null,Object? popular = null,Object? upcoming = null,Object? banners = null,Object? loggedUser = null,Object? isLoading = null,Object? effects = null,Object? userLoaded = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? trending = null,Object? recentlyCompleted = null,Object? popular = null,Object? upcoming = null,Object? banners = null,Object? loggedUser = null,Object? isLoading = null,Object? metadataServiceSupported = null,Object? effects = null,Object? userLoaded = null,}) {
   return _then(_MangaState(
 trending: null == trending ? _self.trending : trending // ignore: cast_nullable_to_non_nullable
 as (bool, List<Manga>),recentlyCompleted: null == recentlyCompleted ? _self.recentlyCompleted : recentlyCompleted // ignore: cast_nullable_to_non_nullable
@@ -295,6 +297,7 @@ as (bool, List<Manga>),upcoming: null == upcoming ? _self.upcoming : upcoming //
 as (bool, List<Manga>),banners: null == banners ? _self._banners : banners // ignore: cast_nullable_to_non_nullable
 as List<Manga>,loggedUser: null == loggedUser ? _self.loggedUser : loggedUser // ignore: cast_nullable_to_non_nullable
 as User,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
+as bool,metadataServiceSupported: null == metadataServiceSupported ? _self.metadataServiceSupported : metadataServiceSupported // ignore: cast_nullable_to_non_nullable
 as bool,effects: null == effects ? _self._effects : effects // ignore: cast_nullable_to_non_nullable
 as List<AppEffect>,userLoaded: null == userLoaded ? _self.userLoaded : userLoaded // ignore: cast_nullable_to_non_nullable
 as bool,

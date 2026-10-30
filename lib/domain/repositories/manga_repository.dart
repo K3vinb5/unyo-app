@@ -11,7 +11,7 @@ abstract class MangaRepository {
   /// [service] overrides the configured metadata provider. See
   /// `AnimeRepository.getAnimeDetails`.
   Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser, {Service? service});
-  Future<Map<String, (bool, List<String>)>> getUserMangaAdvancedSearchFilters();
+  Future<Map<String, (bool, List<String>)>> getUserMangaAdvancedSearchFilters(User loggedUser);
   Future<List<Manga>> performMangaAdvancedSearch(
     String query,
     List<String> selectedGenres,

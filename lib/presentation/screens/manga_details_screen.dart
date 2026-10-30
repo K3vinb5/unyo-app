@@ -18,6 +18,7 @@ import 'package:unyo/presentation/widgets/styled/unyo_media_banner.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_character_list.dart';
 import 'package:unyo/presentation/widgets/text/text_body_medium.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
+import 'package:unyo/presentation/widgets/text/media_title_text.dart';
 
 @RoutePage()
 class MangaDetailsScreen extends StatelessWidget {
@@ -91,7 +92,7 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
       episodeButtons.add(
         UnyoEpisodeButton(
           mainTitle: "Chapter ${i + 1}",
-          secondaryTitle: "${state.selectedManga.title.userPreferred} Chapter ${i + 1}",
+          secondaryTitle: "${displayMediaTitle(state.selectedManga.title)} Chapter ${i + 1}",
           episodeImageUrl: state.selectedManga.bannerImage != "" ? state.selectedManga.bannerImage : state.selectedManga.coverImage,
           episodeNumber: i + 1,
           progress: state.mediaListEntry.progress,
@@ -152,7 +153,7 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
                                   state.selectedManga.coverImage != ""
                                       ? state.selectedManga.coverImage
                                       : state.alternateImage,
-                                  title: state.selectedManga.title.userPreferred,
+                                  title: displayMediaTitle(state.selectedManga.title),
                                   status: state.selectedManga.status,
                                   tag: "${state.selectedMediaList.name}-${state.selectedManga.id}",
                                 ),

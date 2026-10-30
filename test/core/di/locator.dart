@@ -14,6 +14,7 @@ import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/core/notification/video_info_notifier.dart';
 import 'package:unyo/core/services/api/graphql/graphql_service.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
+import 'package:unyo/core/services/api/http/response_cache_scope.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/core/services/torrent/torrent_service.dart';
 import 'package:unyo/core/theme/color_image_service.dart';
@@ -67,11 +68,12 @@ class MockAnimeRepositoryAnilist extends Mock implements AnimeRepositoryAnilist 
 final sl = GetIt.instance;
 
 Future<void> setupTestLocator() async{
-  sl.reset();
+  await sl.reset();
   // Singletons
   sl.registerSingleton<Logger>(MockLogger());
 
   // Services - use real instances for non-mocked services
+  sl.registerLazySingleton<ResponseCacheScope>(() => ResponseCacheScope());
   sl.registerLazySingleton<HttpService>(() => HttpService());
   sl.registerLazySingleton<GraphQLService>(
     () => MockGraphQLService(httpService: sl<HttpService>(), endpoint: config.anilistGraphQLEndpoint),

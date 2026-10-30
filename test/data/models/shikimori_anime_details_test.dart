@@ -60,7 +60,8 @@ void main() {
       expect(details.recommendedAnimes, hasLength(1));
       expect(details.recommendedAnimes.single.id, 42);
       expect(details.recommendedAnimes.single.idMal, 42);
-      expect(details.recommendedAnimes.single.title.romaji, 'Берсерк');
+      expect(details.recommendedAnimes.single.title.romaji, 'Kenpuu Denki Berserk');
+      expect(details.recommendedAnimes.single.title.userPreferred, 'Kenpuu Denki Berserk');
     });
 
     test('manga-only relations produce no recommended anime at all', () {
@@ -85,10 +86,15 @@ void main() {
       expect(details.recommendedAnimes, isEmpty);
     });
 
-    test('default DTOs still map a usable media list entry and characters', () {
+    test('an absent userRate degrades to the add-to-list sentinel', () {
+      // Without an Authorization header the API returns `userRate: null`, which
+      // the DTO turns into a default instance whose status is ''. Mapping that
+      // literally produced an entry with a blank status; the details model
+      // keeps the "add to list" sentinel instead.
       final ShikimoriAnimeDetailsModel details = mapRelated([mangaRelation()]);
 
-      expect(details.mediaListEntry.progress, 0);
+      expect(details.mediaListEntry.status, 'ADD TO LIST');
+      expect(details.mediaListEntry.progress, -1);
       expect(details.characters, isEmpty);
     });
   });

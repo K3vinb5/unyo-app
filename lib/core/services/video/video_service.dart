@@ -33,12 +33,19 @@ class VideoService implements VideoPlaybackCommands {
   int _episodeIndex; // This will be used for getting the correct video out of a playlist from a magnet / torrent
   final void Function(String) _onErrorCallback;
 
-  late final mdk.Player _player;
+  final mdk.Player _player;
   final List<ext.Track> subtitleTracks = [];
   final List<ext.Track> audioTracks = [];
-  ext.Track? _currentSubtitleTrack;
-  ext.Track? _currentAudioTrack;
+  // Selection is index based. -1 means "none" for subtitles (subtitles off) and
+  // "player default / no explicit override" for audio.
+  int _subtitleIndex = -1;
+  int _audioIndex = -1;
+  // Last subtitle track the user explicitly picked, so the captions toggle (`C`)
+  // can restore it after turning subtitles off.
   int _lastSubtitleIndex = 0;
+  // The user explicitly picked "No subtitles" for the current media, so the
+  // auto-selection on load must not turn the first track back on.
+  bool _subtitlesDisabledByUser = false;
 
   late bool _initialFullscreen;
   late bool _isFullscreen;
@@ -62,25 +69,38 @@ class VideoService implements VideoPlaybackCommands {
     required int videoIndex,
     required int episodeIndex,
     required void Function(String) onErrorCallback,
+    @visibleForTesting mdk.Player? player,
   }) : _episodeIndex = episodeIndex,
        _videoIndex = videoIndex,
        _video = video,
        _alternativeVideos = alternativeVideos,
-       _onErrorCallback = onErrorCallback {
-    _player = mdk.Player();
+       _onErrorCallback = onErrorCallback,
+       _player = player ?? mdk.Player() {
+    if (player != null) {
+      // Test seam: the caller owns the player, so skip device/media setup and
+      // only wire the status stream.
+      _initialFullscreen = false;
+      _isFullscreen = false;
+      _listenToMediaStatus();
+      return;
+    }
     _configureDecoder();
     _configurePlayer();
     _setPlayerHttpHeaders(_video.headers);
     _initAsync();
   }
 
+  void _listenToMediaStatus() {
+    _mediaStatusSubscription = _player.onMediaStatus.listen(
+      (event) => _onMediaStatusInit(event.oldValue, event.newValue),
+    );
+  }
+
   /// Inits asynchronous properties and sets player media
   Future<void> _initAsync() async {
     _initialFullscreen = await windowManager.isFullScreen();
     _isFullscreen = _initialFullscreen;
-    _mediaStatusSubscription = _player.onMediaStatus.listen(
-      (event) => _onMediaStatusInit(event.oldValue, event.newValue),
-    );
+    _listenToMediaStatus();
     try {
       final resolvedUrl = await _resolveVideoUrl(_video.videoUrl);
       _player.media = resolvedUrl;
@@ -106,6 +126,11 @@ class VideoService implements VideoPlaybackCommands {
     _isVideoReady = false;
     _isBuffering = true;
     _emitPlaybackState();
+    // A new media starts from the defaults again: auto-selection on load picks
+    // the first subtitle track and the player default audio.
+    _subtitleIndex = -1;
+    _audioIndex = -1;
+    _subtitlesDisabledByUser = false;
     try {
       final resolvedUrl = await _resolveVideoUrl(_video.videoUrl);
       _player.media = resolvedUrl;
@@ -150,7 +175,7 @@ class VideoService implements VideoPlaybackCommands {
   double get playbackSpeed => _player.playbackRate;
 
   @override
-  bool get subtitlesEnabled => _currentSubtitleTrack != null;
+  bool get subtitlesEnabled => _subtitleIndex >= 0;
 
   double get aspectRatio {
     final streams = _player.mediaInfo.video;
@@ -164,6 +189,14 @@ class VideoService implements VideoPlaybackCommands {
   List<ext.Track> get subtitles => subtitleTracks;
 
   List<ext.Track> get audios => audioTracks;
+
+  /// Active subtitle selection, or -1 when subtitles are off.
+  int get subtitleIndex => _subtitleIndex;
+
+  /// Active audio override, or -1 when the player default is used.
+  int get audioIndex => _audioIndex;
+
+  bool get areSubtitlesDisabled => _subtitleIndex < 0;
 
   int get videoIndex => _videoIndex;
 
@@ -269,17 +302,40 @@ class VideoService implements VideoPlaybackCommands {
     play();
   }
 
+  /// [subtitleIndex] == -1 turns subtitles off; other out of range indexes are
+  /// rejected and leave the current selection untouched.
   bool setSubtitle(int subtitleIndex) {
+    if (subtitleIndex == -1) {
+      _subtitlesDisabledByUser = true;
+      return _disableSubtitles();
+    }
     if (subtitleIndex < 0 || subtitleIndex >= subtitleTracks.length) {
-      _currentSubtitleTrack = null;
       return false;
     }
+    _subtitlesDisabledByUser = false;
+    _subtitleIndex = subtitleIndex;
     _lastSubtitleIndex = subtitleIndex;
-    _currentSubtitleTrack = subtitleTracks[subtitleIndex];
-    if (_currentSubtitleTrack != null && _currentSubtitleTrack!.embedded) {
-      _player.activeSubtitleTracks = [_currentSubtitleTrack!.embeddedIndex];
+    final track = subtitleTracks[subtitleIndex];
+    // `subtitle=0` (written by _disableSubtitles) turns off subtitle RENDERING
+    // for every stream type, so it must be lifted before selecting a track.
+    _player.setProperty('subtitle', '1');
+    if (track.embedded) {
+      // The index on the track set is what selects the stream.
+      _player.activeSubtitleTracks = [track.embeddedIndex];
+      _logger.d(
+        "Subtitle selected: index=$subtitleIndex embedded=${track.embeddedIndex} "
+        "(${track.lang}) -> setProperty(subtitle=1), "
+        "activeSubtitleTracks=${_player.activeSubtitleTracks} "
+        "sid=${_player.getProperty('sid')} subtitle=${_player.getProperty('subtitle')}",
+      );
     } else {
-      _player.setMedia(_currentSubtitleTrack!.url, mdk.MediaType.subtitle);
+      _player.setMedia(track.url, mdk.MediaType.subtitle);
+      _logger.d(
+        "Subtitle selected: index=$subtitleIndex external (${track.lang}) "
+        "url=${track.url} -> setProperty(subtitle=1), "
+        "setMedia(MediaType.subtitle) sid=${_player.getProperty('sid')} "
+        "subtitle=${_player.getProperty('subtitle')}",
+      );
     }
     return true;
   }
@@ -293,18 +349,83 @@ class VideoService implements VideoPlaybackCommands {
     return setSubtitle(_lastSubtitleIndex.clamp(0, subtitleTracks.length - 1));
   }
 
+  /// Turns every subtitle off, including an external file attached with
+  /// [mdk.Player.setMedia] / [mdk.MediaType.subtitle].
+  ///
+  /// Two things that do NOT stop an already rendering subtitle stream on the
+  /// real MDK player (both verified live on an attached .vtt from KickAssAnime):
+  /// an empty active track set, and `sid=no` — the menu said "No subtitles"
+  /// while the text kept drawing on the paused frame. What actually stops it is
+  /// MDK's `subtitle` property ("0" disables subtitle *rendering*, for embedded,
+  /// attached and closed-caption streams alike; `setActiveTracks` only controls
+  /// decoding). It is written first, then `sid=no` and the empty track set keep
+  /// the track selection consistent.
+  bool _disableSubtitles() {
+    _subtitleIndex = -1;
+    final previousTracks = _player.activeSubtitleTracks;
+    final previousSid = _player.getProperty('sid');
+    final previousRendering = _player.getProperty('subtitle');
+    _player.setProperty('subtitle', '0');
+    _player.setProperty('sid', 'no');
+    _player.activeSubtitleTracks = const <int>[];
+    _logger.d(
+      "Subtitles disabled: wrote subtitle=0, sid=no (was subtitle=$previousRendering "
+      "sid=$previousSid activeSubtitleTracks=$previousTracks) -> now "
+      "activeSubtitleTracks=${_player.activeSubtitleTracks} "
+      "sid=${_player.getProperty('sid')} "
+      "subtitle=${_player.getProperty('subtitle')}",
+    );
+    return true;
+  }
+
+  /// [audioTrackIndex] == -1 falls back to the player default audio: the track
+  /// auto-selection itself would pick (the first available source), NOT an empty
+  /// active track set — in MDK an empty set disables every audio track, which
+  /// would mute playback instead of restoring the default. Only when there is no
+  /// audio source at all is there nothing to select, and clearing is then a
+  /// no-op on the player. Other out of range indexes are rejected.
   bool setAudioTrack(int audioTrackIndex) {
+    if (audioTrackIndex == -1) {
+      _audioIndex = -1;
+      if (audioTracks.isEmpty) {
+        _player.activeAudioTracks = const <int>[];
+        _logger.d(
+          "Audio track selection reset to default: no audio source available "
+          "-> activeAudioTracks cleared",
+        );
+        return true;
+      }
+      _logger.d(
+        "Audio track selection reset to default: falling back to "
+        "${audioTracks.first.lang}",
+      );
+      _activateAudioTrack(audioTracks.first);
+      return true;
+    }
     if (audioTrackIndex < 0 || audioTrackIndex >= audioTracks.length) {
-      _currentAudioTrack = null;
       return false;
     }
-    _currentAudioTrack = audioTracks[audioTrackIndex];
-    if (_currentAudioTrack != null && _currentAudioTrack!.embedded) {
-      _player.activeAudioTracks = [_currentAudioTrack!.embeddedIndex];
-    } else {
-      _player.setMedia(_currentAudioTrack!.url, mdk.MediaType.audio);
-    }
+    _audioIndex = audioTrackIndex;
+    _activateAudioTrack(audioTracks[audioTrackIndex]);
     return true;
+  }
+
+  void _activateAudioTrack(ext.Track track) {
+    if (track.embedded) {
+      // An embedded stream is selectable by its stream index.
+      _player.activeAudioTracks = [track.embeddedIndex];
+      _logger.d(
+        "Audio track selected: index=$_audioIndex embedded=${track.embeddedIndex} "
+        "(${track.lang}) -> activeAudioTracks=${_player.activeAudioTracks}",
+      );
+    } else {
+      // An external/dub file is attached as an audio media for the player.
+      _player.setMedia(track.url, mdk.MediaType.audio);
+      _logger.d(
+        "Audio track selected: index=$_audioIndex external (${track.lang}) "
+        "url=${track.url} -> setMedia(MediaType.audio)",
+      );
+    }
   }
 
   @override
@@ -546,6 +667,13 @@ class VideoService implements VideoPlaybackCommands {
   void _initSubtitlesAndAudiotracks() {
     subtitleTracks.clear();
     audioTracks.clear();
+    // The lists above are rebuilt for whatever media just loaded — including a
+    // server swap through swapVideoUrl, which never goes through changeVideo.
+    // Selections of the previous media are meaningless now: a stale index would
+    // point outside the new lists (no menu entry checked, "No subtitles" not
+    // reported as off). The branches below re-select when there is a track.
+    _subtitleIndex = -1;
+    _audioIndex = -1;
     int index = 0;
     if (_player.mediaInfo.subtitle != null && _player.mediaInfo.subtitle!.isNotEmpty) {
       for (mdk.SubtitleStreamInfo subtitleStreamInfo in _player.mediaInfo.subtitle!) {
@@ -561,7 +689,10 @@ class VideoService implements VideoPlaybackCommands {
       }
     }
     subtitleTracks.addAll(_video.subtitleTracks);
-    if (subtitleTracks.isNotEmpty) {
+    if (_subtitlesDisabledByUser) {
+      // The user picked "No subtitles" for this media: keep them off.
+      _disableSubtitles();
+    } else if (subtitleTracks.isNotEmpty) {
       setSubtitle(0);
     }
     index = 0;
@@ -579,6 +710,9 @@ class VideoService implements VideoPlaybackCommands {
       }
     }
     audioTracks.addAll(_video.audioTracks);
+    // The menu hides this behind a single "Default audio" entry when there is at
+    // most one source, but initialization must still activate what is available:
+    // with a single external/dub file that means attaching it via setMedia.
     if (audioTracks.isNotEmpty) {
       setAudioTrack(0);
     }

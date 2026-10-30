@@ -3,6 +3,7 @@ import 'package:hive_ce/hive.dart';
 import 'package:unyo/core/services/api/dto/anilist/media_details_media_list_entry_entity.dart';
 import 'package:unyo/core/services/api/dto/anilist/save_media_list_entry_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_details_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/manga_details_query_entity.dart';
 import 'package:unyo/data/adapters/adapters_names.dart' as names;
 import 'package:unyo/data/adapters/adapters_types.dart' as types;
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
@@ -101,14 +102,47 @@ abstract class MediaListEntryModel with _$MediaListEntryModel implements MediaLi
   Map<String, dynamic> toJson() => _$MediaListEntryModelToJson(this as _MediaListEntryModel);
 
   factory MediaListEntryModel.fromAnimeDetailsQueryAnimesUserRate(AnimeDetailsQueryAnimesUserRate userRate) {
-    return MediaListEntryModel(
+    return MediaListEntryModel.fromShikimoriUserRate(
       progress: userRate.episodes,
-      progressVolumes: 0,
-      score: userRate.score.toDouble(),
+      score: userRate.score,
       repeat: userRate.rewatches,
-      status: userRate.status.toUpperCase().replaceAll("_", " "),
-      startedAt: TextUtils.formatISO8601DateTime(userRate.createdAt),
-      completedAt: TextUtils.formatISO8601DateTime(userRate.updatedAt),
+      status: userRate.status,
+      createdAt: userRate.createdAt,
+      updatedAt: userRate.updatedAt,
+    );
+  }
+
+  factory MediaListEntryModel.fromMangaDetailsQueryMangasUserRate(MangaDetailsQueryMangasUserRate userRate) {
+    return MediaListEntryModel.fromShikimoriUserRate(
+      progress: userRate.episodes,
+      // Shikimori's manga rate counts chapters in `episodes`, there is no
+      // separate volume progress on the type.
+      score: userRate.score,
+      repeat: userRate.rewatches,
+      status: userRate.status,
+      createdAt: userRate.createdAt,
+      updatedAt: userRate.updatedAt,
+    );
+  }
+
+  /// Shared shape of Shikimori's `userRate` node (anime and manga kinds have
+  /// identical fields, only the parent type name differs).
+  factory MediaListEntryModel.fromShikimoriUserRate({
+    required int progress,
+    required int score,
+    required int repeat,
+    required String status,
+    required String createdAt,
+    required String updatedAt,
+  }) {
+    return MediaListEntryModel(
+      progress: progress,
+      progressVolumes: 0,
+      score: score.toDouble(),
+      repeat: repeat,
+      status: status.toUpperCase().replaceAll("_", " "),
+      startedAt: TextUtils.formatISO8601DateTime(createdAt),
+      completedAt: TextUtils.formatISO8601DateTime(updatedAt),
     );
   }
 }
