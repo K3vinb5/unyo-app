@@ -8,17 +8,14 @@ void main() {
   /// The harness gives every root widget a 1200-wide box.
   const double harnessWidth = 1200;
 
-  Finder block({
-    double? width,
-    double? height,
-    bool nullWidth = false,
-  }) => find.byWidgetPredicate(
-    (Widget widget) =>
-        widget is SkeletonBlock &&
-        (width == null || widget.width == width) &&
-        (height == null || widget.height == height) &&
-        (!nullWidth || widget.width == null),
-  );
+  Finder block({double? width, double? height, bool nullWidth = false}) =>
+      find.byWidgetPredicate(
+        (Widget widget) =>
+            widget is SkeletonBlock &&
+            (width == null || widget.width == width) &&
+            (height == null || widget.height == height) &&
+            (!nullWidth || widget.width == null),
+      );
 
   group('MediaCardSkeleton', () {
     testWidgets('mirrors the card: cover, score badge and two text lines', (
@@ -73,6 +70,45 @@ void main() {
         ),
       );
     });
+
+    testWidgets('keeps the score badge inside the cover silhouette', (
+      tester,
+    ) async {
+      await pumpSkeletonHarness(tester, const MediaCardSkeleton());
+
+      final Finder cover = block(
+        width: MediaCardMetrics.coverWidth,
+        height: MediaCardMetrics.coverHeight,
+      );
+      final Finder coverClip = find.ancestor(
+        of: cover,
+        matching: find.byType(ClipRRect),
+      );
+      expect(
+        coverClip,
+        findsOneWidget,
+        reason: 'the cover stack must be clipped to the cover radius',
+      );
+      expect(
+        tester.widget<ClipRRect>(coverClip).borderRadius,
+        BorderRadius.circular(MediaCardMetrics.coverRadius),
+      );
+
+      final Finder badge = block(
+        width: MediaCardMetrics.badgeWidth,
+        height: MediaCardMetrics.badgeHeight,
+      );
+      expect(
+        find.descendant(of: coverClip, matching: badge),
+        findsOneWidget,
+        reason: 'the badge placeholder is painted inside the clipped cover',
+      );
+      expect(
+        tester.widget<SkeletonBlock>(badge).shape,
+        MediaCardMetrics.badgeBorderRadius,
+        reason: 'the placeholder badge is the leaf shape, not a uniform radius',
+      );
+    });
   });
 
   group('CardRowSkeleton', () {
@@ -89,7 +125,11 @@ void main() {
       );
 
       expect(count.left, greaterThan(title.right), reason: 'count is inline');
-      expect(count.bottom, title.bottom, reason: 'title and count share a baseline');
+      expect(
+        count.bottom,
+        title.bottom,
+        reason: 'title and count share a baseline',
+      );
       expect(arrows, findsNWidgets(2));
       final Rect firstArrow = tester.getRect(arrows.first);
       final Rect lastArrow = tester.getRect(arrows.last);

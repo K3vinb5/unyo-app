@@ -296,6 +296,17 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
   void openMangaServerSelectionDrawer(BuildContext context, int chapterIndex) {
     if (isClosed) return;
     _logger.i("Chapter ${chapterIndex + 1} pressed for ${state.selectedManga.title.userPreferred}");
+    // Nothing to pick from: point at the Extensions tab instead of asking for a
+    // selection the dropdown cannot offer.
+    if (state.installedExtensions.isEmpty) {
+      _logger.w("No installed extensions to fetch chapters.");
+      showSnackBarEffect(
+        "No Installed Extensions",
+        message: "Open the Extensions tab to install one.",
+        contentType: ContentType.warning,
+      );
+      return;
+    }
     if (state.selectedExtension == null) {
       _logger.w("No extension selected to fetch chapters.");
       showSnackBarEffect(
@@ -328,30 +339,11 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
         await selectMangaExtension(savedExtension.name);
         return;
       }
-      if (isClosed) return;
-      _showNoExtensionSelectedPrompt();
+      // Nothing to restore: opening the page does not nag, the warning fires
+      // when the user taps a chapter without a selected extension.
+      _logger.d("No saved extension found for manga ${selectedManga.id}; leaving the pick to the user.");
     } catch (e, stackTrace) {
       handleError("Error setting selected extension: $e", stackTrace: stackTrace);
     }
-  }
-
-  /// Proactive prompt when the details page opens without a usable extension.
-  void _showNoExtensionSelectedPrompt() {
-    if (isClosed) return;
-    if (state.installedExtensions.isEmpty) {
-      _logger.w("No installed extensions available to fetch manga info.");
-      showSnackBarEffect(
-        "No Installed Extensions",
-        message: "Install some extensions to watch some content",
-        contentType: ContentType.warning,
-      );
-      return;
-    }
-    _logger.w("No extension selected to fetch chapters.");
-    showSnackBarEffect(
-      "No Extension Selected",
-      message: "Select an extension to fetch chapters.",
-      contentType: ContentType.warning,
-    );
   }
 }

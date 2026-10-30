@@ -78,10 +78,8 @@ class MediaCard extends StatelessWidget {
                                 child: Container(
                                   decoration: BoxDecoration(
                                     color: ColorScheme.of(context).primary,
-                                    borderRadius: const BorderRadius.only(
-                                      bottomRight: Radius.circular(50),
-                                      topLeft: Radius.circular(50),
-                                    ),
+                                    borderRadius:
+                                        MediaCardMetrics.badgeBorderRadius,
                                   ),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(

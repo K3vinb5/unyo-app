@@ -40,6 +40,10 @@ void main() {
   late MockMangaGenresNotifier mangaGenresNotifier;
   late MockMediaListNotifier mediaListNotifier;
   late StreamController<User> userStreamController;
+  // Second cubit with nothing installed, built in `setUp` on purpose: get_it 9
+  // defers `sl.reset()`, so the `sl<Logger>()` registration is gone by the time
+  // a test body builds a cubit itself.
+  late MangaDetailsCubit cubitWithoutInstalledExtensions;
 
   const ExtensionModel testExtension = ExtensionModel(
     name: 'TestExtension',
@@ -99,11 +103,23 @@ void main() {
       extensionRepository,
       userRepository,
     );
+    final MockExtensionRepositoryAniyomi emptyExtensionRepository = MockExtensionRepositoryAniyomi();
+    when(() => emptyExtensionRepository.getInstalledMangaExtensions(any())).thenAnswer((_) async => <Extension>{});
+    cubitWithoutInstalledExtensions = MangaDetailsCubit(
+      mangaRepository,
+      userNotifier,
+      mangaNotifier,
+      mangaGenresNotifier,
+      mediaListNotifier,
+      emptyExtensionRepository,
+      userRepository,
+    );
     await Future<void>.delayed(Duration.zero);
   });
 
   tearDown(() async {
     await cubit.close();
+    await cubitWithoutInstalledExtensions.close();
     await userStreamController.close();
   });
 
@@ -138,6 +154,23 @@ void main() {
   });
 
   group('MangaDetailsCubit.openMangaServerSelectionDrawer', () {
+    test('guides to the Extensions tab when no extension is installed at all', () {
+      cubitWithoutInstalledExtensions.openMangaServerSelectionDrawer(MockBuildContext(), 0);
+
+      final List<ShowSnackbarEffect> snackbars =
+          cubitWithoutInstalledExtensions.state.effects.whereType<ShowSnackbarEffect>().toList();
+      expect(cubitWithoutInstalledExtensions.state.installedExtensions, isEmpty);
+      expect(
+        snackbars.any(
+          (effect) =>
+              effect.title == 'No Installed Extensions' &&
+              effect.message == 'Open the Extensions tab to install one.',
+        ),
+        isTrue,
+      );
+      expect(snackbars.any((effect) => effect.title == 'No Extension Selected'), isFalse);
+    });
+
     test('warns that a chapter needs an extension when none is selected', () {
       cubit.openMangaServerSelectionDrawer(MockBuildContext(), 0);
 
@@ -170,17 +203,12 @@ void main() {
   });
 
   group('MangaDetailsCubit extension prompt on open', () {
-    test('prompts once on open when extensions are installed but none is selected', () async {
+    test('stays quiet on open when extensions are installed but none is selected', () async {
       await Future<void>.delayed(Duration.zero);
 
       final List<ShowSnackbarEffect> snackbars = cubit.state.effects.whereType<ShowSnackbarEffect>().toList();
-      expect(
-        snackbars.any(
-          (effect) =>
-              effect.title == 'No Extension Selected' && effect.message == 'Select an extension to fetch chapters.',
-        ),
-        isTrue,
-      );
+      expect(cubit.state.installedExtensions, contains(testExtension));
+      expect(snackbars, isEmpty);
     });
   });
 }

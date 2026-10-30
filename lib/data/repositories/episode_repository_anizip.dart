@@ -13,27 +13,37 @@ class EpisodeRepositoryAnizip implements EpisodeRepository {
   final Logger _logger = sl<Logger>();
 
   @override
-  Future<List<EpisodeInfo>> getEpisodeInfo({required int malId, required int anilistId}) async {
+  Future<List<EpisodeInfo>> getEpisodeInfo({
+    required int malId,
+    required int anilistId,
+    bool ignoreCache = false,
+  }) async {
     if (anilistId >= 0) {
-      return _fetchEpisodesFromAnilistId(anilistId);
+      return _fetchEpisodesFromAnilistId(anilistId, ignoreCache: ignoreCache);
     } else {
-      return _fetchEpisodesFromMalId(malId);
+      return _fetchEpisodesFromMalId(malId, ignoreCache: ignoreCache);
     }
   }
 
   @override
-  Future<String> getAlternativeImage({required int malId, required int anilistId}) async{
+  Future<String> getAlternativeImage({
+    required int malId,
+    required int anilistId,
+    bool ignoreCache = false,
+  }) async{
     if (anilistId >= 0) {
-      return _fetchAlternativeImageFromAnilistId(anilistId);
+      return _fetchAlternativeImageFromAnilistId(anilistId, ignoreCache: ignoreCache);
     } else {
-      return _fetchAlternativeImageFromMalId(malId);
+      return _fetchAlternativeImageFromMalId(malId, ignoreCache: ignoreCache);
     }
   }
 
-  Future<List<EpisodeInfo>> _fetchEpisodesFromAnilistId(int anilistId) async {
+  Future<List<EpisodeInfo>> _fetchEpisodesFromAnilistId(int anilistId, {required bool ignoreCache}) async {
     _logger.i("Fetching episodes from Anizip for Anilist ID $anilistId");
     ApiResponse<AnizipMappings> anizipResponse = await _httpService.get(
-        "${config.anizipBaseEndpoint}/mappings?anilist_id=$anilistId", fromJson: AnizipMappings.fromJson);
+        "${config.anizipBaseEndpoint}/mappings?anilist_id=$anilistId",
+        fromJson: AnizipMappings.fromJson,
+        ignoreCache: ignoreCache);
     if (anizipResponse.statusCode > 299) {
       _logger.e("Failed to fetch episodes from Anizip for Anilist ID $anilistId: Status Code ${anizipResponse.statusCode}");
       return [];
@@ -41,10 +51,12 @@ class EpisodeRepositoryAnizip implements EpisodeRepository {
     return anizipResponse.data.episodesInfo;
   }
 
-  Future<List<EpisodeInfo>> _fetchEpisodesFromMalId(int malId) async {
+  Future<List<EpisodeInfo>> _fetchEpisodesFromMalId(int malId, {required bool ignoreCache}) async {
     _logger.i("Fetching episodes from Anizip for MAL ID $malId");
     ApiResponse<AnizipMappings> anizipResponse = await _httpService.get(
-        "${config.anizipBaseEndpoint}/mappings?mal_id=$malId", fromJson: AnizipMappings.fromJson);
+        "${config.anizipBaseEndpoint}/mappings?mal_id=$malId",
+        fromJson: AnizipMappings.fromJson,
+        ignoreCache: ignoreCache);
     if (anizipResponse.statusCode > 299) {
       _logger.e("Failed to fetch episodes from Anizip for MAL ID $malId: Status Code ${anizipResponse.statusCode}");
       return [];
@@ -52,10 +64,12 @@ class EpisodeRepositoryAnizip implements EpisodeRepository {
     return anizipResponse.data.episodesInfo;
   }
 
-  Future<String> _fetchAlternativeImageFromAnilistId(int anilistId) async {
+  Future<String> _fetchAlternativeImageFromAnilistId(int anilistId, {required bool ignoreCache}) async {
     _logger.i("Fetching alternative image from Anizip for Anilist ID $anilistId");
     ApiResponse<AnizipMappings> anizipResponse = await _httpService.get(
-        "${config.anizipBaseEndpoint}/mappings?anilist_id=$anilistId", fromJson: AnizipMappings.fromJson);
+        "${config.anizipBaseEndpoint}/mappings?anilist_id=$anilistId",
+        fromJson: AnizipMappings.fromJson,
+        ignoreCache: ignoreCache);
     if (anizipResponse.statusCode > 299) {
       _logger.e("Failed to fetch alternative image from Anizip for Anilist ID $anilistId: Status Code ${anizipResponse.statusCode}");
       return "";
@@ -63,10 +77,12 @@ class EpisodeRepositoryAnizip implements EpisodeRepository {
     return anizipResponse.data.mediaImage;
   }
 
-  Future<String> _fetchAlternativeImageFromMalId(int malId) async {
+  Future<String> _fetchAlternativeImageFromMalId(int malId, {required bool ignoreCache}) async {
     _logger.i("Fetching alternative image from Anizip for MAL ID $malId");
     ApiResponse<AnizipMappings> anizipResponse = await _httpService.get(
-        "${config.anizipBaseEndpoint}/mappings?mal_id=$malId", fromJson: AnizipMappings.fromJson);
+        "${config.anizipBaseEndpoint}/mappings?mal_id=$malId",
+        fromJson: AnizipMappings.fromJson,
+        ignoreCache: ignoreCache);
     if (anizipResponse.statusCode > 299) {
       _logger.e("Failed to fetch alternative image from Anizip for MAL ID $malId: Status Code ${anizipResponse.statusCode}");
       return "";

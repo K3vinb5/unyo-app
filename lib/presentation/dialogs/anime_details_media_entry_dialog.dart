@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/application/cubits/anime_details_cubit.dart';
 import 'package:unyo/application/states/anime_details_state.dart';
+import 'package:unyo/application/states/episode_count.dart';
 import 'package:unyo/presentation/widgets/styled/dark_unyo_button.dart';
 import 'package:unyo/presentation/widgets/styled/light_unyo_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_dropdown.dart';
@@ -12,6 +13,14 @@ class AnimeDetailsMediaEntryDialog extends StatelessWidget {
   final AnimeDetailsCubit cubit;
 
   const AnimeDetailsMediaEntryDialog({super.key, required this.cubit});
+
+  /// The list editor's progress range: the same resolved count the episode
+  /// lists render, so an unknown provider total cannot collapse it to zero.
+  int _episodeCount(AnimeDetailsState state) => EpisodeCount.resolve(
+    extensionResults: state.extensionEpisodeResults.length,
+    episodesInfo: state.episodesInfo.length,
+    metadataTotal: state.selectedAnime.episodes,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -62,9 +71,12 @@ class AnimeDetailsMediaEntryDialog extends StatelessWidget {
                           SizedBox(height: 25.0.h),
                         UnyoSlider(
                             minValue: 0,
-                            initialValue: state.newMediaListEntry.progress != -1 ? state.newMediaListEntry.progress : 0,
+                            initialValue: EpisodeCount.progressForControl(
+                              progress: state.newMediaListEntry.progress,
+                              episodeCount: _episodeCount(state),
+                            ),
                             title: "Progress",
-                            maxValue: state.selectedAnime.episodes,
+                            maxValue: _episodeCount(state),
                             onChanged:
                                 (value) =>
                                 context.read<AnimeDetailsCubit>().updateMediaListEntryProgress(value.toInt()),

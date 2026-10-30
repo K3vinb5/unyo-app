@@ -14,6 +14,7 @@ import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/notification/reload/reload_notifier.dart';
 import 'package:unyo/core/notification/reload/reload_type.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
+import 'package:unyo/core/services/api/http/response_cache_scope.dart';
 import 'package:unyo/core/services/media/episode_service.dart';
 import 'package:unyo/core/services/media/media_service.dart';
 import 'package:unyo/core/theme/color_image_service.dart';
@@ -84,6 +85,9 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
         metadataService: MediaServiceFactory.getEnumMediaService(newService),
       );
       await _updateUserInfo(updatedSettings);
+      // Lazy tabs have no cubit to receive the reload broadcast, so the cache
+      // the previous provider populated is scoped out here as well.
+      sl<ResponseCacheScope>().invalidate();
       _reloadNotifier.emitReload(ReloadType.newMetadataService);
     } catch (e, stackTrace) {
       logger.e("Error updating media metadata service $e", stackTrace: stackTrace);
@@ -97,6 +101,11 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
         episodeService: EpisodeMediaServiceFactory.getEnumEpisodeService(newService),
       );
       await _updateUserInfo(updatedSettings);
+      // The episode provider changed too: cached AniZip rows belong to the
+      // provider that served them, so scope them out exactly like the metadata
+      // switch does.
+      sl<ResponseCacheScope>().invalidate();
+      _reloadNotifier.emitReload(ReloadType.newEpisodeService);
     } catch (e, stackTrace) {
       logger.e("Error updating episode metadata service $e", stackTrace: stackTrace);
       handleError("Error updating episode metadata service", stackTrace: stackTrace);

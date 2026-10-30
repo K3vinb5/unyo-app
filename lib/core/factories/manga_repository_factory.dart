@@ -14,17 +14,31 @@ import 'package:unyo/domain/repositories/manga_repository.dart';
 /// Factory that resolves the correct [MangaRepository] implementation
 /// based on the metadata provider (`settings.metadataService`).
 ///
-/// Reads are routed by the metadata provider (`settings.metadataService`):
+/// [supportsMetadataService] is the single routing table deciding support:
 /// - [Service.anilist] → delegates to [MangaRepositoryAnilist]
 /// - [Service.shikimori] → delegates to [MangaRepositoryShikimori]
 /// - All other services → returns safe empty defaults
-///
-/// Advanced search and its filter dictionaries are still WP #64 subpart (b) on
-/// the Shikimori side, so those two keep returning empty defaults.
 class MangaRepositoryFactory implements MangaRepository {
   final MangaRepositoryAnilist _mangaRepositoryAnilist = sl<MangaRepositoryAnilist>();
   final MangaRepositoryShikimori _mangaRepositoryShikimori = sl<MangaRepositoryShikimori>();
   final Logger _logger = sl<Logger>();
+
+  /// Whether [service] can serve manga browse lists at all.
+  ///
+  /// The cubit asks this before fetching so an unsupported provider renders an
+  /// explicit "Manga isn't available with …" state instead of an empty list
+  /// that is indistinguishable from a load result.
+  static bool supportsMetadataService(Service service) {
+    switch (service) {
+      case Service.anilist:
+      case Service.shikimori:
+        return true;
+      case Service.mal:
+      case Service.kitsu:
+      case Service.simkl:
+        return false;
+    }
+  }
 
   @override
   Future<(bool, List<Manga>)> getTrendingMangas(
@@ -32,6 +46,9 @@ class MangaRepositoryFactory implements MangaRepository {
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
+    if (!MangaRepositoryFactory.supportsMetadataService(loggedUser.settings.metadataService)) {
+      return (false, <Manga>[]);
+    }
     switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Anilist trending manga");
@@ -60,6 +77,9 @@ class MangaRepositoryFactory implements MangaRepository {
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
+    if (!MangaRepositoryFactory.supportsMetadataService(loggedUser.settings.metadataService)) {
+      return (false, <Manga>[]);
+    }
     switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Anilist popular manga");
@@ -88,6 +108,9 @@ class MangaRepositoryFactory implements MangaRepository {
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
+    if (!MangaRepositoryFactory.supportsMetadataService(loggedUser.settings.metadataService)) {
+      return (false, <Manga>[]);
+    }
     switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Anilist recently completed manga");
@@ -116,6 +139,9 @@ class MangaRepositoryFactory implements MangaRepository {
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
+    if (!MangaRepositoryFactory.supportsMetadataService(loggedUser.settings.metadataService)) {
+      return (false, <Manga>[]);
+    }
     switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Anilist upcoming manga");
@@ -140,21 +166,21 @@ class MangaRepositoryFactory implements MangaRepository {
 
   @override
   Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser, {Service? service}) async {
-    switch (service ?? loggedUser.settings.metadataService) {
+    Service metadataService = service ?? loggedUser.settings.metadataService;
+    if (!MangaRepositoryFactory.supportsMetadataService(metadataService)) {
+      _logger.i("Manga Details are not available with ${metadataService.name} for ${selectedManga.title.userPreferred}");
+      return (false, MangaDetailsModel.empty());
+    }
+    switch (metadataService) {
       case Service.anilist:
         _logger.i("Fetching Manga Details from AniList for ${selectedManga.title.userPreferred}");
         return _mangaRepositoryAnilist.getMangaDetails(selectedManga, loggedUser);
-      case Service.mal:
-        _logger.i("Fetching Manga Details from MyMangaList for ${selectedManga.title.userPreferred}");
-        return (false, MangaDetailsModel.empty());
       case Service.shikimori:
         _logger.i("Fetching Manga Details from Shikimori for ${selectedManga.title.userPreferred}");
         return _mangaRepositoryShikimori.getMangaDetails(selectedManga, loggedUser);
+      case Service.mal:
       case Service.kitsu:
-        _logger.i("Fetching Manga Details from Kitsu for ${selectedManga.title.userPreferred}");
-        return (false, MangaDetailsModel.empty());
       case Service.simkl:
-        _logger.i("Fetching Manga Details from Simkl for ${selectedManga.title.userPreferred}");
         return (false, MangaDetailsModel.empty());
     }
   }
@@ -185,6 +211,9 @@ class MangaRepositoryFactory implements MangaRepository {
     int page,
     User loggedUser,
   ) async {
+    if (!MangaRepositoryFactory.supportsMetadataService(loggedUser.settings.metadataService)) {
+      return [];
+    }
     switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         return _mangaRepositoryAnilist.performMangaAdvancedSearch(
@@ -217,6 +246,10 @@ class MangaRepositoryFactory implements MangaRepository {
 
   @override
   Future<List<String>> getMediaCoverImages(User loggedUser, {bool ignoreCache = false}) async {
+    if (!MangaRepositoryFactory.supportsMetadataService(loggedUser.settings.metadataService)) {
+      _logger.i("Manga banners are not available with ${loggedUser.settings.metadataService.name}");
+      return [];
+    }
     switch (loggedUser.settings.metadataService) {
       case Service.anilist:
         _logger.i("Fetching Manga Banners from AniList for ...");
@@ -224,20 +257,15 @@ class MangaRepositoryFactory implements MangaRepository {
           loggedUser,
           ignoreCache: ignoreCache,
         );
-      case Service.mal:
-        _logger.i("Fetching Manga Banners from MyMangaList for ...");
-        return [];
       case Service.shikimori:
         _logger.i("Fetching Manga Banners from Shikimori for ...");
         return _mangaRepositoryShikimori.getMediaCoverImages(
           loggedUser,
           ignoreCache: ignoreCache,
         );
+      case Service.mal:
       case Service.kitsu:
-        _logger.i("Fetching Manga Banners from Kitsu for ...");
-        return [];
       case Service.simkl:
-        _logger.i("Fetching Manga Banners from Simkl for ...");
         return [];
     }
   }
