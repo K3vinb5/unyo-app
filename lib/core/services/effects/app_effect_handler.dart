@@ -11,8 +11,14 @@ import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/core/di/locator.dart';
 
 class AppEffectHandler {
-  final _logger = sl<Logger>();
-  Timer timer = Timer(Duration.zero, () {});
+  final Logger _logger = sl<Logger>();
+
+  /// The banner currently on screen. The auto-hide timer lives inside
+  /// [_BannerLifetime], i.e. the lifetime belongs to the notification, not to
+  /// the handler: a replacing notification cancels the previous lifetime and
+  /// starts its own, so nothing renews a banner that is already showing.
+  _BannerLifetime? _visibleBanner;
+
   late BuildContext rootContext;
 
   /// Effects are kept on the state snapshot. When a cubit emits again before
@@ -117,7 +123,15 @@ class AppEffectHandler {
     ShowSnackbarEffect effect,
   ) {
     _logger.d("Handling ShowSnackbarEffect");
-    final snackBar = MaterialBanner(
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final _BannerLifetime lifetime = _BannerLifetime();
+
+    // A replacement notification takes over the screen: stop the previous
+    // banner's countdown instead of extending anything it had left.
+    _visibleBanner?.cancel();
+    _visibleBanner = lifetime;
+
+    final MaterialBanner snackBar = MaterialBanner(
       elevation: double.maxFinite,
       backgroundColor: Colors.transparent,
       forceActionsBelow: true,
@@ -127,15 +141,47 @@ class AppEffectHandler {
         contentType: effect.contentType,
         inMaterialBanner: true,
       ),
-      actions: const [SizedBox.shrink()],
+      // One explicit dismiss control, labelled so it cannot be confused with
+      // the decorative failure badge on the left of the ribbon (that glyph is
+      // package-owned and has no gesture behind it).
+      actions: <Widget>[
+        TextButton(
+          key: const ValueKey<String>("notification-dismiss"),
+          onPressed: () {
+            lifetime.cancel();
+            if (identical(_visibleBanner, lifetime)) {
+              _visibleBanner = null;
+            }
+            messenger.hideCurrentMaterialBanner();
+          },
+          child: const Text("Dismiss"),
+        ),
+      ],
     );
 
-    timer.cancel();
-    ScaffoldMessenger.of(context)
-      ..hideCurrentMaterialBanner()
-      ..showMaterialBanner(snackBar);
-    timer = Timer(Duration(seconds: effect.contentType == ContentType.success ? 1 : 3), () {
-      ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+    messenger.hideCurrentMaterialBanner();
+    final ScaffoldFeatureController<MaterialBanner, MaterialBannerClosedReason> controller =
+        messenger.showMaterialBanner(snackBar);
+
+    final Duration duration = Duration(seconds: effect.contentType == ContentType.success ? 1 : 3);
+    lifetime.schedule(duration, () {
+      final bool isCurrent = identical(_visibleBanner, lifetime);
+      _logger.d("Auto-hiding notification after ${duration.inSeconds}s (current banner: $isCurrent)");
+      if (!isCurrent) return;
+      _visibleBanner = null;
+      messenger.hideCurrentMaterialBanner();
+      // `closed` only completes when the messenger actually removes the
+      // banner. If this line never follows the one above, the hide was a
+      // no-op (wrong messenger / banner not hosted); if it follows, the
+      // auto-hide went through.
+      controller.closed.then<void>(
+        (MaterialBannerClosedReason reason) {
+          _logger.d("Notification auto-hide closed after ${duration.inSeconds}s (reason: ${reason.name})");
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          _logger.e("Notification auto-hide failed after ${duration.inSeconds}s", error: error, stackTrace: stackTrace);
+        },
+      );
     });
   }
 
@@ -180,5 +226,24 @@ class AppEffectHandler {
 
   void _handleUnkownEffect(AppEffect effect) {
     _logger.e("Unimplemented Effect Handler for effect: $effect");
+  }
+}
+
+/// One notification's auto-hide countdown.
+///
+/// The timer belongs to the notification, not to [AppEffectHandler]: showing a
+/// new notification cancels the previous lifetime and starts a fresh one, so a
+/// replacement never renews the lifetime of the banner it replaced.
+class _BannerLifetime {
+  Timer? _timer;
+
+  void schedule(Duration duration, void Function() onExpired) {
+    _timer?.cancel();
+    _timer = Timer(duration, onExpired);
+  }
+
+  void cancel() {
+    _timer?.cancel();
+    _timer = null;
   }
 }

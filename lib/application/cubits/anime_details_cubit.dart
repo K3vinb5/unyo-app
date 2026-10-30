@@ -12,6 +12,7 @@ import 'package:logger/logger.dart';
 import 'package:unyo/application/cubits/effect_mixin.dart';
 import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/application/states/anime_details_state.dart';
+import 'package:unyo/application/states/episode_count.dart';
 import 'package:bloc/bloc.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/service.dart';
@@ -104,6 +105,12 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   late StreamSubscription<MediaList> _selectedMediaListSubscription;
   late StreamSubscription<ReloadType> _reloadSubscription;
 
+  /// Episode-fetch generation. A switch of episode provider starts a newer
+  /// fetch while the previous one may still be in flight; the older completion
+  /// must not overwrite the newer provider's rows in the state or in
+  /// [EpisodesInfoNotifier].
+  int _episodesFetchGeneration = 0;
+
   // Logger
   final Logger _logger = sl<Logger>();
 
@@ -190,6 +197,13 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         _logger.i("Reloading Anime Details due to anime media list entry update");
         _getUserMediaListEntry(state.loggedUser, state.selectedAnime, ignoreCache: true);
       }
+      if (reloadType == ReloadType.newEpisodeService) {
+        _logger.i("Reloading Anime Details due to new episode service");
+        if (state.selectedAnime.id != 0) {
+          _getEpisodesDetails(state.loggedUser, state.selectedAnime, ignoreCache: true);
+          _getAlternativeImage(state.loggedUser, state.selectedAnime, ignoreCache: true);
+        }
+      }
     });
     _loadInstalledExtensions();
   }
@@ -203,16 +217,23 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
   /// emission of the same id is just an echo and must not re-resolve anything.
   void _handleSelectedAnimeChanged(Anime anime) {
     bool isSameTitle = anime.id == state.selectedAnime.id;
-    _getAnimeDetails(state.loggedUser, anime);
-    _getEpisodesDetails(state.loggedUser, anime);
     if (isSameTitle) {
+      // A repeated emission of the same id is just an echo: refetch what the
+      // page already shows, but clear nothing — the resolved state stays.
       emit(state.copyWith(selectedAnime: anime));
+      _getAnimeDetails(state.loggedUser, anime);
+      _getEpisodesDetails(state.loggedUser, anime);
       return;
     }
     Extension? previousExtension = state.selectedExtension;
     _logger.i(
       "Switched anime details to ${logTitleFor(anime.title)} (${anime.id}), resetting the per-title extension state",
     );
+    // One cubit serves every anime the user opens, so the previous record's
+    // episodes have to go before this one starts loading: they would
+    // otherwise be resolved into the new record's episode count and rendered
+    // as its rows (the no-AniZip-id path settles the gate without ever
+    // replacing them).
     emit(state.copyWith(
       selectedAnime: anime,
       selectedExtension: null,
@@ -221,7 +242,11 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       extensionEpisodeResults: [],
       extensionVideoResults: [],
       animeServerDialogReady: false,
+      episodesInfo: const <EpisodeInfo>[],
+      episodesLoaded: false,
     ));
+    _getAnimeDetails(state.loggedUser, anime);
+    _getEpisodesDetails(state.loggedUser, anime);
     _resolveExtensionForSwitchedAnime(anime, previousExtension);
   }
 
@@ -331,8 +356,19 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     showWidgetDialogEffect(dialog: AnimeDetailsMediaEntryDialog(cubit: this));
   }
 
-  Future<void> openAnimeServerSelectionDrawer(BuildContext context, int episodeIndex) async {
+  Future<void> openAnimeServerSelectionDrawer(BuildContext context, int episodeNumber) async {
     if (state.animeServerDialogLoading) return;
+    // Nothing to pick from: point at the Extensions tab instead of asking for a
+    // selection the dropdown cannot offer.
+    if (state.installedExtensions.isEmpty) {
+      _logger.w("No installed extensions to fetch episodes.");
+      showSnackBarEffect(
+        "No Installed Extensions",
+        message: "Open the Extensions tab to install one.",
+        contentType: ContentType.warning,
+      );
+      return;
+    }
     Extension? selectedExtension = state.selectedExtension;
     if (selectedExtension == null) {
       _logger.w("No extension selected to open the server selection drawer.");
@@ -362,12 +398,15 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         state.extensionAnimeResults[state.selectedAnimeResultIndex],
       );
       if (!canOpenDrawer) return;
-      // Episode buttons pass the 0-based button index, the episode number is +1.
-      // The drawer indexes the extension episode list, which does not have to
-      // match the anime metadata episode list.
-      int resolvedEpisodeIndex = EpisodeIndex.resolveExtensionEpisodeIndex(state.extensionEpisodeResults, episodeIndex + 1);
+      // Episode buttons pass the episode number they are labelled with; the
+      // extension list does not have to start at 1 or be contiguous, so that
+      // number has to be resolved against it instead of used as a position.
+      int resolvedEpisodeIndex = EpisodeIndex.resolveExtensionEpisodeIndex(
+        state.extensionEpisodeResults,
+        episodeNumber,
+      );
       if (resolvedEpisodeIndex < 0) {
-        _logger.w("Episode ${episodeIndex + 1} is not part of the extension episode results.");
+        _logger.w("Episode $episodeNumber is not part of the extension episode results.");
         showSnackBarEffect(
           "${selectedExtension.name} Error",
           message: "Only ${state.extensionEpisodeResults.length} episodes were found",
@@ -415,6 +454,20 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   Future<void> updateMediaListEntry(BuildContext context) async {
     MediaListEntry desiredMediaListEntry = state.newMediaListEntry;
+    // The list editor clamps progress into the resolved episode range for
+    // display and its slider never reports that clamped initial value back, so
+    // persist what the user actually saw instead of an out-of-range value.
+    final int savedProgress = EpisodeCount.progressForSave(
+      progress: desiredMediaListEntry.progress,
+      episodeCount: EpisodeCount.resolve(
+        extensionResults: state.extensionEpisodeResults.length,
+        episodesInfo: state.episodesInfo.length,
+        metadataTotal: state.selectedAnime.episodes,
+      ),
+    );
+    if (savedProgress != desiredMediaListEntry.progress) {
+      desiredMediaListEntry = (desiredMediaListEntry as MediaListEntryModel).copyWith(progress: savedProgress);
+    }
     MediaListEntry beforeUpdateMediaListEntry = state.mediaListEntry;
     try {
       _logger.i("Updating Media List Entry to $desiredMediaListEntry");
@@ -670,15 +723,16 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       emit(state.copyWith(installedExtensions: installedExtensions));
       if (_hasDeferredSwitch) {
         // A switch landed before the extensions did: resolve it the way an
-        // immediate switch would have, instead of running the initial-page path
-        // (which prompts when the title has no saved mapping).
+        // immediate switch would have (carry-over included), instead of the
+        // initial-page path.
         _hasDeferredSwitch = false;
         final Extension? previousExtension = _deferredSwitchPreviousExtension;
         _deferredSwitchPreviousExtension = null;
         await _resolveExtensionForSwitchedAnime(state.selectedAnime, previousExtension);
         return;
       }
-      _setSelectedExtension(state.loggedUser, state.selectedAnime);
+      // Opening the page never nags (WP #87): no prompt when nothing is saved.
+      _setSelectedExtension(state.loggedUser, state.selectedAnime, promptWhenMissing: false);
     } catch (e, stackTrace) {
       handleError("Failed to load installed extensions $e", stackTrace: stackTrace);
     }
@@ -878,7 +932,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     }
   }
 
-  Future<void> _getAlternativeImage(User loggedUser, Anime selectedAnime) async {
+  Future<void> _getAlternativeImage(User loggedUser, Anime selectedAnime, {bool ignoreCache = false}) async {
     try {
       _logger.i("Fetching Alternative Image for ${logTitleFor(selectedAnime.title)}");
       final AniZipLookupIds? ids = AniZipLookupIds.forAnime(selectedAnime);
@@ -889,37 +943,52 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       final String alternateImage = await _episodeRepository.getAlternativeImage(
         malId: ids.malId,
         anilistId: ids.anilistId,
+        ignoreCache: ignoreCache,
       );
       emit(state.copyWith(alternateImage: alternateImage));
     } on HttpServerException catch (e, stackTrace) {
-      handleError("Error fetching Alternative Image:", responseBody: e.message, stackTrace: stackTrace);
+      // Optional data (WP #92 item 3): the details page renders fine without an
+      // alternate image, so this failure is logged, not surfaced.
+      _logger.w("Error fetching Alternative Image: ${e.message}", error: e, stackTrace: stackTrace);
     } catch (e, stackTrace) {
-      handleError("Error fetching Alternative Image: $e", stackTrace: stackTrace);
+      // Optional data (WP #92 item 3): logged, never a banner.
+      _logger.w("Error fetching Alternative Image", error: e, stackTrace: stackTrace);
     }
   }
 
-  Future<void> _getEpisodesDetails(User loggedUser, Anime selectedAnime) async {
+  Future<void> _getEpisodesDetails(User loggedUser, Anime selectedAnime, {bool ignoreCache = false}) async {
+    final int fetchGeneration = ++_episodesFetchGeneration;
     try {
       _logger.i("Fetching Episodes Details for ${logTitleFor(selectedAnime.title)}");
       final AniZipLookupIds? ids = AniZipLookupIds.forAnime(selectedAnime);
       if (ids == null) {
         _logger.w("No AniZip-addressable id for ${logTitleFor(selectedAnime.title)} (${MediaProvenance.ofAnime(selectedAnime).name} record, no MAL id)");
+        // Nothing to look up: settle the gate so the episode rows render the
+        // data we already have instead of shimmering forever.
+        emit(state.copyWith(episodesLoaded: true));
         return;
       }
       final List<EpisodeInfo> episodesInfo = await _episodeRepository.getEpisodeInfo(
         malId: ids.malId,
         anilistId: ids.anilistId,
+        ignoreCache: ignoreCache,
       );
+      if (fetchGeneration != _episodesFetchGeneration) {
+        _logger.i("Discarding episode details: a newer episode provider fetch has started");
+        return;
+      }
       emit(state.copyWith(episodesInfo: episodesInfo, episodesLoaded: true));
       _episodesInfoNotifier.updateSelectedEpisodeInfo(episodesInfo);
     } on HttpServerException catch (e, stackTrace) {
       // Mark the list as settled so the episode rows fall back to their
       // data-less rendering instead of shimmering forever.
       emit(state.copyWith(episodesLoaded: true));
-      handleError("Error fetching Episodes details:", responseBody: e.message, stackTrace: stackTrace);
+      // Optional data (WP #92 item 3): episode metadata is a nice-to-have, so a
+      // failed lookup is logged instead of bannered.
+      _logger.w("Error fetching Episodes details: ${e.message}", error: e, stackTrace: stackTrace);
     } catch (e, stackTrace) {
       emit(state.copyWith(episodesLoaded: true));
-      handleError("Error fetching Episodes Details: $e", stackTrace: stackTrace);
+      _logger.w("Error fetching Episodes Details", error: e, stackTrace: stackTrace);
     }
   }
 
@@ -964,6 +1033,8 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       }
       if (isClosed) return;
       if (!promptWhenMissing) {
+        // Nothing to restore and no nag requested (WP #87/#88): the warning
+        // fires when the user taps an episode without a selected extension.
         _logger.d("No saved extension found for anime ${selectedAnime.id}; leaving the pick to the user.");
         return;
       }
@@ -973,7 +1044,9 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     }
   }
 
-  /// Proactive prompt when the details page opens without a usable extension.
+  /// Opt-in prompt when a path explicitly asks for one (`promptWhenMissing`).
+  /// The details page open stays quiet (WP #87): the warning fires when the
+  /// user taps an episode without a selected extension.
   void _showNoExtensionSelectedPrompt() {
     if (isClosed) return;
     if (state.installedExtensions.isEmpty) {

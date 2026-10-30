@@ -11,6 +11,7 @@ import 'package:unyo/application/states/video_state.dart';
 
 // Internal dependencies
 import 'package:unyo/core/services/video/video_service.dart';
+import 'package:unyo/domain/entities/extension/track.dart' as ext;
 import 'package:unyo/presentation/drawers/episode_list_drawer.dart';
 import 'package:unyo/presentation/widgets/styled/dark_unyo_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_fade_overlay.dart';
@@ -25,6 +26,71 @@ class UnyoVideoControls extends StatefulWidget {
   final VideoService videoService;
 
   const UnyoVideoControls({super.key, required this.videoCubit, required this.videoService});
+
+  /// Audio entries. With at most one source there is nothing to choose, so the
+  /// menu offers a single "Default audio" entry (index -1) instead of an empty
+  /// list; index 0 is the default track in that case, so both count as checked.
+  @visibleForTesting
+  static List<PopupMenuEntry<int>> buildAudioMenuItems({
+    required List<ext.Track> audios,
+    required int activeIndex,
+  }) {
+    if (audios.length <= 1) {
+      return <PopupMenuEntry<int>>[
+        PopupMenuItem<int>(value: -1, child: _menuRow('Default audio', activeIndex <= 0)),
+      ];
+    }
+    return audios
+        .mapIndexed(
+          (index, audio) => PopupMenuItem<int>(
+            value: index,
+            // When no explicit override is set, the default track (the first
+            // one, which is what "Default audio" selects) is the active entry.
+            child: _menuRow(_trackLabel(audio), activeIndex == index || (activeIndex < 0 && index == 0)),
+          ),
+        )
+        .toList();
+  }
+
+  /// Subtitle entries. "No subtitles" (index -1) is always first so the menu is
+  /// never an empty popup, and it is the entry that is checked when subtitles
+  /// are off.
+  @visibleForTesting
+  static List<PopupMenuEntry<int>> buildSubtitleMenuItems({
+    required List<ext.Track> subtitles,
+    required int activeIndex,
+  }) {
+    return <PopupMenuEntry<int>>[
+      PopupMenuItem<int>(value: -1, child: _menuRow('No subtitles', activeIndex < 0)),
+      ...subtitles.mapIndexed(
+        (index, subtitle) => PopupMenuItem<int>(
+          value: index,
+          child: _menuRow(_trackLabel(subtitle), activeIndex == index),
+        ),
+      ),
+    ];
+  }
+
+  static String _trackLabel(ext.Track track) =>
+      '${track.lang}${track.embedded ? ' - Embedded' : ''}';
+
+  /// Same layout as the video server menu: label on the left, check on the right.
+  static Widget _menuRow(String label, bool checked) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(label, maxLines: 3, softWrap: true, overflow: TextOverflow.ellipsis),
+        ),
+        checked
+            ? const Padding(
+                padding: EdgeInsets.only(left: 12.0),
+                child: Icon(Icons.check_rounded, size: 16),
+              )
+            : const SizedBox.shrink(),
+      ],
+    );
+  }
 
   @override
   State<UnyoVideoControls> createState() => _UnyoVideoControlsState();
@@ -358,14 +424,10 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                             _videoService.setAudioTrack(index);
                                             setState(() {});
                                           },
-                                          itemBuilder: (BuildContext context) => _videoService.audios
-                                              .mapIndexed(
-                                                (index, audio) => PopupMenuItem<int>(
-                                                  value: index,
-                                                  child: Text('${audio.lang}${audio.embedded ? ' - Embedded' : ''}'),
-                                                ),
-                                              )
-                                              .toList(),
+                                          itemBuilder: (BuildContext context) => UnyoVideoControls.buildAudioMenuItems(
+                                            audios: _videoService.audios,
+                                            activeIndex: _videoService.audioIndex,
+                                          ),
                                         ),
                                         PopupMenuButton<int>(
                                           tooltip: "Select Subtitle Track",
@@ -374,18 +436,14 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                             _videoService.setSubtitle(index);
                                             setState(() {});
                                           },
-                                          itemBuilder: (BuildContext context) => _videoService.subtitles
-                                              .mapIndexed(
-                                                (index, subtitle) => PopupMenuItem<int>(
-                                              value: index,
-                                              child: Text('${subtitle.lang}${subtitle.embedded ? ' - Embedded' : ''}'),
-                                            ),
-                                          )
-                                              .toList(),
+                                          itemBuilder: (BuildContext context) => UnyoVideoControls.buildSubtitleMenuItems(
+                                            subtitles: _videoService.subtitles,
+                                            activeIndex: _videoService.subtitleIndex,
+                                          ),
                                         ),
                                         PopupMenuButton<int>(
                                           tooltip: "Select Video Server",
-                                          icon: const Icon(Icons.video_settings_rounded, size: 27),
+                                          icon: const Icon(Icons.dns_rounded, size: 27),
                                           onSelected: (int index) {
                                             _videoService.swapVideoUrl(index);
                                             setState(() {});

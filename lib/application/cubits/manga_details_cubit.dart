@@ -272,15 +272,16 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
       emit(state.copyWith(installedExtensions: installedExtensions));
       if (_hasDeferredSwitch) {
         // A switch landed before the extensions did: resolve it the way an
-        // immediate switch would have, instead of running the initial-page path
-        // (which prompts when the title has no saved mapping).
+        // immediate switch would have (carry-over included), instead of the
+        // initial-page path.
         _hasDeferredSwitch = false;
         final Extension? previousExtension = _deferredSwitchPreviousExtension;
         _deferredSwitchPreviousExtension = null;
         await _resolveExtensionForSwitchedManga(state.selectedManga, previousExtension);
         return;
       }
-      _setSelectedExtension(state.loggedUser, state.selectedManga);
+      // Opening the page never nags (WP #87): no prompt when nothing is saved.
+      _setSelectedExtension(state.loggedUser, state.selectedManga, promptWhenMissing: false);
     } catch (e, stackTrace) {
       handleError("Failed to load installed extensions $e", stackTrace: stackTrace);
     }
@@ -361,6 +362,17 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
   void openMangaServerSelectionDrawer(BuildContext context, int chapterIndex) {
     if (isClosed) return;
     _logger.i("Chapter ${chapterIndex + 1} pressed for ${state.selectedManga.title.userPreferred}");
+    // Nothing to pick from: point at the Extensions tab instead of asking for a
+    // selection the dropdown cannot offer.
+    if (state.installedExtensions.isEmpty) {
+      _logger.w("No installed extensions to fetch chapters.");
+      showSnackBarEffect(
+        "No Installed Extensions",
+        message: "Open the Extensions tab to install one.",
+        contentType: ContentType.warning,
+      );
+      return;
+    }
     if (state.selectedExtension == null) {
       _logger.w("No extension selected to fetch chapters.");
       showSnackBarEffect(
@@ -405,6 +417,8 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
       }
       if (isClosed) return;
       if (!promptWhenMissing) {
+        // Nothing to restore and no nag requested (WP #87/#88): the warning
+        // fires when the user taps a chapter without a selected extension.
         _logger.d("No saved extension found for manga ${selectedManga.id}; leaving the pick to the user.");
         return;
       }
@@ -414,7 +428,9 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
     }
   }
 
-  /// Proactive prompt when the details page opens without a usable extension.
+  /// Opt-in prompt when a path explicitly asks for one (`promptWhenMissing`).
+  /// The details page open stays quiet (WP #87): the warning fires when the
+  /// user taps a chapter without a selected extension.
   void _showNoExtensionSelectedPrompt() {
     if (isClosed) return;
     if (state.installedExtensions.isEmpty) {

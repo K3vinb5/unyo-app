@@ -25,13 +25,18 @@ class EpisodeRepositoryFactory implements EpisodeRepository {
   User get _loggedUser => _loggedUserNotifier.currentUser;
 
   @override
-  Future<List<EpisodeInfo>> getEpisodeInfo({required int malId, required int anilistId}) async {
+  Future<List<EpisodeInfo>> getEpisodeInfo({
+    required int malId,
+    required int anilistId,
+    bool ignoreCache = false,
+  }) async {
     switch (_loggedUser.settings.episodeService) {
       case EpisodeService.anizip:
         _logger.i("Fetching episode info from Anizip");
         return _episodeRepositoryAnizip.getEpisodeInfo(
           malId: malId,
           anilistId: anilistId,
+          ignoreCache: ignoreCache,
         );
       case EpisodeService.kitsu:
         _logger.i("Fetching episode info from Kitsu");
@@ -40,13 +45,18 @@ class EpisodeRepositoryFactory implements EpisodeRepository {
   }
 
   @override
-  Future<String> getAlternativeImage({required int malId, required int anilistId}) async {
+  Future<String> getAlternativeImage({
+    required int malId,
+    required int anilistId,
+    bool ignoreCache = false,
+  }) async {
     switch (_loggedUser.settings.episodeService) {
       case EpisodeService.anizip:
         _logger.i("Fetching alternative image from Anizip");
         return _episodeRepositoryAnizip.getAlternativeImage(
           malId: malId,
           anilistId: anilistId,
+          ignoreCache: ignoreCache,
         );
       case EpisodeService.kitsu:
         _logger.i("Fetching alternative image from Kitsu");

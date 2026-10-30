@@ -1,5 +1,4 @@
 // External dependencies
-import 'dart:math';
 import 'dart:ui';
 
 import 'package:material_ui/material_ui.dart';
@@ -8,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // Internal dependencies
 import 'package:unyo/application/cubits/video_cubit.dart';
+import 'package:unyo/application/states/episode_count.dart';
 import 'package:unyo/application/states/video_state.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_episode_button.dart';
@@ -18,7 +18,11 @@ class EpisodeListDrawer extends StatelessWidget {
   const EpisodeListDrawer({super.key, required this.cubit});
 
   List<Widget> _getEpisodeButtonsWidgets(BuildContext context, VideoState state) {
-    int numEpisodes = max(state.selectedAnime.episodes, state.episodesInfo.length);
+    final int numEpisodes = EpisodeCount.resolve(
+      extensionResults: state.extensionEpisodeResults.length,
+      episodesInfo: state.episodesInfo.length,
+      metadataTotal: state.selectedAnime.episodes,
+    );
     if (numEpisodes == 0) {
       return [
         Row(
@@ -35,10 +39,17 @@ class EpisodeListDrawer extends StatelessWidget {
       ];
     }
     List<Widget> episodeButtons = [];
+    final List<int> episodeNumbers = EpisodeCount.episodeNumbers(
+      extensionEpisodeNumbers: state.extensionEpisodeResults
+          .map((episode) => episode.getEpisode_number().toInt())
+          .toList(growable: false),
+      count: numEpisodes,
+    );
     for (int i = 0; i < numEpisodes; i++) {
+      final int episodeNumber = episodeNumbers[i];
       episodeButtons.add(
         UnyoEpisodeButton(
-          mainTitle: "Episode ${i + 1}",
+          mainTitle: "Episode $episodeNumber",
           secondaryTitle: state.episodesInfo.length > i
               ? (state.episodesInfo[i].title.userPreferred != ""
                     ? state.episodesInfo[i].title.userPreferred
@@ -49,7 +60,7 @@ class EpisodeListDrawer extends StatelessWidget {
                     ? state.episodesInfo[i].image
                     : state.selectedAnime.coverImage)
               : state.selectedAnime.coverImage,
-          episodeNumber: i + 1,
+          episodeNumber: episodeNumber,
           progress: state.mediaListEntry.progress,
           released: state.selectedAnime.nextAiringEpisode.episode != 0
               ? (state.selectedAnime.nextAiringEpisode.episode - 1)

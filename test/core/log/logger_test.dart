@@ -56,6 +56,65 @@ void main() {
       expect(logFiles.single.existsSync(), isTrue);
     });
 
+    test('prunes old logs inside <appSupport>/logs, keeping the newest 20', () {
+      // Regression for WP #85: rotation used to list the app-support ROOT while
+      // the log file lives in `<appSupport>/logs/`, so the `.log` filter matched
+      // nothing and `<appSupport>/logs` grew unbounded.
+      final Directory logsDir = Directory('${tempRoot.path}/logs')..createSync(recursive: true);
+      final DateTime base = DateTime(2026, 1, 1);
+      for (int i = 0; i < 25; i++) {
+        File('${logsDir.path}/log_$i.log')
+          ..createSync()
+          ..setLastModifiedSync(base.add(Duration(minutes: i)));
+      }
+
+      LogFilePruner.prune(logsDir);
+
+      final List<File> remaining = logsDir
+          .listSync()
+          .whereType<File>()
+          .where((File file) => file.path.endsWith('.log'))
+          .toList();
+      expect(remaining, hasLength(LogFilePruner.maxRetained));
+      // The newest 20 (indices 5..24) survive; the 5 oldest are gone.
+      for (int i = 0; i < 25; i++) {
+        final bool shouldExist = i >= 5;
+        expect(
+          File('${logsDir.path}/log_$i.log').existsSync(),
+          shouldExist,
+          reason: 'log_$i.log existence',
+        );
+      }
+    });
+
+    test('rotation via getLogger() prunes the logs subdirectory, not the root', () {
+      final Directory logsDir = Directory('${tempRoot.path}/logs')..createSync(recursive: true);
+      final DateTime base = DateTime(2026, 1, 1);
+      for (int i = 0; i < 25; i++) {
+        File('${logsDir.path}/old_$i.log')
+          ..createSync()
+          ..setLastModifiedSync(base.add(Duration(minutes: i)));
+      }
+      sl.registerSingleton<Directory>(
+        tempRoot,
+        instanceName: config.applicationSupportDirectory,
+      );
+
+      expect(getLogger, returnsNormally);
+
+      // 25 pre-existing + the 1 freshly created file = 26 -> 6 pruned back to 20.
+      final List<File> remaining = logsDir
+          .listSync()
+          .whereType<File>()
+          .where((File file) => file.path.endsWith('.log'))
+          .toList();
+      expect(remaining, hasLength(LogFilePruner.maxRetained));
+      // Oldest files are the ones dropped.
+      for (int i = 0; i < 6; i++) {
+        expect(File('${logsDir.path}/old_$i.log').existsSync(), isFalse, reason: 'old_$i.log');
+      }
+    });
+
     test('succeeds on a support dir whose logs directory already exists', () {
       Directory('${tempRoot.path}/logs').createSync(recursive: true);
       sl.registerSingleton<Directory>(
