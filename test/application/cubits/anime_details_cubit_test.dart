@@ -381,6 +381,55 @@ void main() {
           reason: 'the alternative image comes from the same episode provider and must not stay on the previous one',
         );
       });
+      test('an episode fetch from the previous provider does not overwrite the new provider\'s list', () async {
+        final StreamController<ReloadType> reloadStreamController = StreamController<ReloadType>.broadcast();
+        addTearDown(reloadStreamController.close);
+        when(() => reloadNotifier.reloadStream).thenAnswer((_) => reloadStreamController.stream);
+        await emitAnimeIntoState();
+
+        // The AniZip fetch for the open anime hangs while the user switches the
+        // episode provider to Kitsu, whose fetch settles first with an empty list.
+        final Completer<List<EpisodeInfo>> staleFetch = Completer<List<EpisodeInfo>>();
+        when(
+          () => episodeRepository.getEpisodeInfo(
+            malId: any(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: false,
+          ),
+        ).thenAnswer((_) => staleFetch.future);
+        when(
+          () => episodeRepository.getEpisodeInfo(
+            malId: any(named: 'malId'),
+            anilistId: any(named: 'anilistId'),
+            ignoreCache: true,
+          ),
+        ).thenAnswer((_) async => <EpisodeInfo>[]);
+
+        animeStreamController.add(testAnime);
+        await pumpEventQueue();
+        reloadStreamController.add(ReloadType.newEpisodeService);
+        await pumpEventQueue();
+        expect(cubit.state.episodesInfo, isEmpty, reason: 'the new provider settles first with no episodes');
+
+        staleFetch.complete(<EpisodeInfo>[
+          EpisodeInfoModel.empty().copyWith(id: 99, episodeNumber: 1),
+        ]);
+        await pumpEventQueue();
+
+        expect(
+          cubit.state.episodesInfo,
+          isEmpty,
+          reason: 'the previous provider\'s late completion must be discarded, not written over the new list',
+        );
+        final List<List<EpisodeInfo>> pushed = verify(
+          () => episodesInfoNotifier.updateSelectedEpisodeInfo(captureAny()),
+        ).captured.cast<List<EpisodeInfo>>();
+        expect(
+          pushed.expand((episodes) => episodes).where((episode) => episode.id == 99),
+          isEmpty,
+          reason: 'the stale rows must not reach EpisodesInfoNotifier either',
+        );
+      });
     });
   });
 

@@ -38,6 +38,9 @@ class HttpService {
     required T Function(Map<String, dynamic>) fromJson,
   }) async {
     _logger.d("GET request to $endpoint attempting to return instance of $T");
+    final String? cacheKey = _isCacheable(endpoint)
+        ? _cacheKey('GET', endpoint, headers: headers, fromJson: fromJson)
+        : null;
     if (!ignoreCache) {
       ApiResponse<T>? cachedApiResponse = _getCachedResponse<T>(
         'GET',
@@ -50,8 +53,8 @@ class HttpService {
         return cachedApiResponse;
       }
     } else {
-      if (_isCacheable(endpoint)) {
-        _deleteCacheEntry(_cacheKey('GET', endpoint, headers: headers, fromJson: fromJson));
+      if (cacheKey != null) {
+        _deleteCacheEntry(cacheKey);
       }
     }
     ApiResponse<T> apiResponse = await _request(
@@ -60,12 +63,13 @@ class HttpService {
       fromJson: fromJson,
       headers: headers,
     );
+    // Insert under the key captured before the await: a provider switch that
+    // lands while the request is in flight must not let the older provider's
+    // response be stored under the newer scope's key.
     _cacheResponse(
       apiResponse,
-      'GET',
       endpoint,
-      headers: headers,
-      fromJson: fromJson,
+      cacheKey: cacheKey,
     );
     return apiResponse;
   }
@@ -79,6 +83,9 @@ class HttpService {
   }) async {
     _logger.d("POST request to $endpoint attempting to return instance of $T");
     final encodedBody = json.encode(body);
+    final String? cacheKey = _isCacheable(endpoint)
+        ? _cacheKey('POST', endpoint, headers: headers, body: encodedBody, fromJson: fromJson)
+        : null;
     if (!ignoreCache) {
       ApiResponse<T>? cachedApiResponse = _getCachedResponse<T>(
         'POST',
@@ -92,10 +99,8 @@ class HttpService {
         return cachedApiResponse;
       }
     } else {
-      if (_isCacheable(endpoint)) {
-        _deleteCacheEntry(
-          _cacheKey('POST', endpoint, headers: headers, body: encodedBody, fromJson: fromJson),
-        );
+      if (cacheKey != null) {
+        _deleteCacheEntry(cacheKey);
       }
     }
     ApiResponse<T> apiResponse = await _request(
@@ -105,13 +110,11 @@ class HttpService {
       headers: headers,
       body: encodedBody,
     );
+    // See [get]: the key must be the one captured before the await.
     _cacheResponse(
       apiResponse,
-      'POST',
       endpoint,
-      headers: headers,
-      body: encodedBody,
-      fromJson: fromJson
+      cacheKey: cacheKey,
     );
     return apiResponse;
   }
@@ -154,19 +157,15 @@ class HttpService {
 
   void _cacheResponse<T>(
     ApiResponse<T> response,
-    String method,
     String endpoint, {
-    Map<String, String>? headers,
-    String? body,
-    required T Function(Map<String, dynamic>) fromJson,
+    required String? cacheKey,
   }) {
     if (response.statusCode >= 300) {
       _logger.w("Not caching response for $endpoint due to client error with status code ${response.statusCode}");
       return;
     }
-    if (!_isCacheable(endpoint)) return;
+    if (cacheKey == null) return;
     _logger.d("Caching response for $endpoint");
-    final cacheKey = _cacheKey(method, endpoint, headers: headers, body: body, fromJson: fromJson);
     _apiResponseCache[cacheKey] =
         (
           DateTime.now().millisecondsSinceEpoch + cacheTtl.inMilliseconds,
