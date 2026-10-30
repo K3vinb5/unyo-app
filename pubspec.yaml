@@ -120,6 +120,7 @@ flutter:
     - assets/images/myanimelist.svg
     - assets/images/anilist.svg
     - assets/images/local_account.svg
+    - assets/images/shikimori.svg
     - assets/services/torrserver/amd64/linux/torrserver
     - assets/services/torrserver/amd64/macos/torrserver
     - assets/services/torrserver/amd64/windows/torrserver.exe

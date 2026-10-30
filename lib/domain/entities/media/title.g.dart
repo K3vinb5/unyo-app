@@ -11,6 +11,7 @@ _TitleModel _$TitleModelFromJson(Map<String, dynamic> json) => _TitleModel(
   english: json['english'] as String,
   nativeTitle: json['nativeTitle'] as String,
   userPreferred: json['userPreferred'] as String,
+  russian: json['russian'] as String? ?? '',
 );
 
 Map<String, dynamic> _$TitleModelToJson(_TitleModel instance) =>
@@ -19,4 +20,5 @@ Map<String, dynamic> _$TitleModelToJson(_TitleModel instance) =>
       'english': instance.english,
       'nativeTitle': instance.nativeTitle,
       'userPreferred': instance.userPreferred,
+      'russian': instance.russian,
     };

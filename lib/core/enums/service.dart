@@ -15,13 +15,13 @@ enum Service {
 
 /// Single place that states which [Service] values are wired up for each role.
 ///
-/// v1: AniList is the only provider that owns accounts/lists, while details can
-/// come from AniList or Shikimori. Extend these lists (do not add ad-hoc checks
-/// in the UI) when MAL/Kitsu/Simkl user repositories land.
+/// AniList and Shikimori own accounts/lists (WP #64 subpart (c) registered the
+/// second one), while details can come from either. Extend these lists (do not
+/// add ad-hoc checks in the UI) when MAL/Kitsu/Simkl user repositories land.
 class ProviderCapabilities {
   const ProviderCapabilities._();
 
-  static const List<Service> userProviders = [Service.anilist];
+  static const List<Service> userProviders = [Service.anilist, Service.shikimori];
 
   static const List<Service> metadataProviders = [Service.anilist, Service.shikimori];
 

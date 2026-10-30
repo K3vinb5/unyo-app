@@ -1,0 +1,132 @@
+{
+  "data": {
+    "animes": [
+      {
+        "id": "62516",
+        "malId": "62516",
+        "name": "Dandadan 3rd Season",
+        "english": "Dan Da Dan Season 3",
+        "japanese": "ダンダダン 第3期",
+        "russian": "Дандадан 3",
+        "poster": {
+          "originalUrl": "https://shikimori.io/uploads/poster/animes/62516/7908552767e9f8f3a64bc94c8e56e8fe.jpeg",
+          "mainAlt2xUrl": "https://shikimori.io/uploads/poster/animes/62516/main_alt_2x-ec07d5a2ad45bdbe403645315c576ffc.jpeg"
+        },
+        "description": "С какой только нечистью ни успели столкнуться [character=196898]Момо Аясэ[/character] и [character=196899]Кэн Такакура[/character], но количество её не спешит уменьшаться. Чем больше в мире странностей, тем шире становится их команда, готовая пожертвовать всем ради спасения человечества, которое даже не подозревает о надвигающихся опасностях.\nНа этот раз старшеклассники столкнулись с огромным кайдзю, управляемым некой девушкой... которая, кажется, крайне заинтересована в [character=196899]Кэне[/character].",
+        "duration": 0,
+        "airedOn": {
+          "date": "2027-01-01",
+          "day": null,
+          "month": null,
+          "year": 2027
+        },
+        "releasedOn": {
+          "date": null,
+          "day": null,
+          "month": null,
+          "year": null
+        },
+        "episodes": 0,
+        "episodesAired": 0,
+        "nextEpisodeAt": null,
+        "genres": [
+          {
+            "id": "27",
+            "name": "Shounen",
+            "kind": "demographic",
+            "russian": "Сёнен"
+          },
+          {
+            "id": "1",
+            "name": "Action",
+            "kind": "genre",
+            "russian": "Экшен"
+          },
+          {
+            "id": "4",
+            "name": "Comedy",
+            "kind": "genre",
+            "russian": "Комедия"
+          },
+          {
+            "id": "37",
+            "name": "Supernatural",
+            "kind": "genre",
+            "russian": "Сверхъестественное"
+          }
+        ],
+        "kind": "tv",
+        "isCensored": false,
+        "score": 0.0,
+        "season": "?",
+        "status": "anons"
+      },
+      {
+        "id": "57584",
+        "malId": "57584",
+        "name": "Kage no Jitsuryokusha ni Naritakute! Movie: Zankyou-hen",
+        "english": "The Eminence in Shadow: Lost Echoes",
+        "japanese": "劇場版 陰の実力者 になりたくて！残響編",
+        "russian": "Восхождение в тени! Реверберация",
+        "poster": {
+          "originalUrl": "https://shikimori.io/uploads/poster/animes/57584/5509201ef72fdc7f3e1e7d59101d695a.jpeg",
+          "mainAlt2xUrl": "https://shikimori.io/uploads/poster/animes/57584/main_alt_2x-82e6e2f23360b8249b4edb41b7739eef.jpeg"
+        },
+        "description": "Продолжение [i]«Восхождение в тени! 2»[/i].",
+        "duration": 0,
+        "airedOn": {
+          "date": "2027-01-01",
+          "day": null,
+          "month": null,
+          "year": 2027
+        },
+        "releasedOn": {
+          "date": null,
+          "day": null,
+          "month": null,
+          "year": null
+        },
+        "episodes": 1,
+        "episodesAired": 0,
+        "nextEpisodeAt": null,
+        "genres": [
+          {
+            "id": "1",
+            "name": "Action",
+            "kind": "genre",
+            "russian": "Экшен"
+          },
+          {
+            "id": "4",
+            "name": "Comedy",
+            "kind": "genre",
+            "russian": "Комедия"
+          },
+          {
+            "id": "10",
+            "name": "Fantasy",
+            "kind": "genre",
+            "russian": "Фэнтези"
+          },
+          {
+            "id": "130",
+            "name": "Isekai",
+            "kind": "theme",
+            "russian": "Исэкай"
+          },
+          {
+            "id": "106",
+            "name": "Reincarnation",
+            "kind": "theme",
+            "russian": "Реинкарнация"
+          }
+        ],
+        "kind": "movie",
+        "isCensored": false,
+        "score": 0.0,
+        "season": null,
+        "status": "anons"
+      }
+    ]
+  }
+}

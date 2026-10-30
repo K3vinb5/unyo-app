@@ -6,6 +6,8 @@ import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/application/states/manga_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:unyo/core/di/locator.dart';
+import 'package:unyo/core/enums/service.dart';
+import 'package:unyo/core/factories/manga_repository_factory.dart';
 
 import 'package:unyo/core/notification/manga_genres_notifier.dart';
 import 'package:unyo/core/notification/manga_notifier.dart';
@@ -28,6 +30,9 @@ class MangaCubit extends Cubit<MangaState> with EffectMixin<MangaState> {
   final ReloadNotifier _reloadNotifier;
   late StreamSubscription<User> _loggedUserSubscription;
   late StreamSubscription<ReloadType> _reloadSubscription;
+  bool _refreshInFlight = false;
+  bool _refreshQueued = false;
+  bool _queuedProviderSwitch = false;
   final Logger _logger = sl<Logger>();
 
   MangaCubit(
@@ -75,22 +80,87 @@ class MangaCubit extends Cubit<MangaState> with EffectMixin<MangaState> {
     ) async {
       emit(state.copyWith(loggedUser: loggedUser));
       if (!state.userLoaded) {
-        await _fetchTrending(1, loggedUser);
-        await _fetchRecentlyCompleted(1, loggedUser);
-        await _fetchPopular(1, loggedUser);
-        await _fetchUpcoming(1, loggedUser);
+        await _refreshAll(isProviderSwitch: false);
         emit(state.copyWith(userLoaded: true, isLoading: false));
       }
     });
     _reloadSubscription = _reloadNotifier.reloadStream.listen((reloadType) async {
-      if (reloadType == ReloadType.newMetadataService) {
-        _logger.i("Reloading manga data due to new metadata service");
-        _fetchTrending(1, state.loggedUser, ignoreCache: true);
-        _fetchRecentlyCompleted(1, state.loggedUser, ignoreCache: true);
-        _fetchPopular(1, state.loggedUser, ignoreCache: true);
-        _fetchUpcoming(1, state.loggedUser, ignoreCache: true);
+      if (reloadType != ReloadType.newMetadataService) {
+        return;
       }
+      _logger.i("Reloading manga data due to new metadata service");
+      await _refreshAll(isProviderSwitch: true);
     });
+  }
+
+  /// The four browse lists, fetched in one place so the initial load and the
+  /// metadata-service reload cannot drift apart.
+  ///
+  /// Refreshes never drop a request: a switch that arrives while a fetch is
+  /// running is coalesced and replayed once that fetch settles, because the
+  /// running pass started for an older provider (and may even still be the
+  /// initial load). Every pass reads [MangaState.loggedUser] as it fetches, so
+  /// the replay always runs against the newest provider.
+  Future<void> _refreshAll({required bool isProviderSwitch}) async {
+    if (_refreshInFlight) {
+      _logger.d("Queueing manga refresh: a refresh is already in flight");
+      _refreshQueued = true;
+      _queuedProviderSwitch = _queuedProviderSwitch || isProviderSwitch;
+      return;
+    }
+    _refreshInFlight = true;
+    try {
+      bool providerSwitch = isProviderSwitch;
+      do {
+        _refreshQueued = false;
+        _queuedProviderSwitch = false;
+        if (providerSwitch) {
+          // Drop the previous provider's rows before refetching: they carry
+          // that provider's entity types and must not stay openable.
+          _clearLists();
+        }
+        await _fetchAll(ignoreCache: providerSwitch);
+        providerSwitch = _queuedProviderSwitch;
+      } while (_refreshQueued);
+    } finally {
+      _refreshInFlight = false;
+    }
+  }
+
+  Future<void> _fetchAll({required bool ignoreCache}) async {
+    User loggedUser = state.loggedUser;
+    Service metadataService = loggedUser.settings.metadataService;
+    if (!MangaRepositoryFactory.supportsMetadataService(metadataService)) {
+      _logger.w("Manga is not available with ${metadataService.name}");
+      emit(
+        state.copyWith(
+          metadataServiceSupported: false,
+          trending: (true, []),
+          recentlyCompleted: (true, []),
+          popular: (true, []),
+          upcoming: (true, []),
+          banners: [],
+        ),
+      );
+      return;
+    }
+    emit(state.copyWith(metadataServiceSupported: true));
+    await _fetchTrending(1, loggedUser, ignoreCache: ignoreCache);
+    await _fetchRecentlyCompleted(1, loggedUser, ignoreCache: ignoreCache);
+    await _fetchPopular(1, loggedUser, ignoreCache: ignoreCache);
+    await _fetchUpcoming(1, loggedUser, ignoreCache: ignoreCache);
+  }
+
+  void _clearLists() {
+    emit(
+      state.copyWith(
+        trending: (false, []),
+        recentlyCompleted: (false, []),
+        popular: (false, []),
+        upcoming: (false, []),
+        banners: [],
+      ),
+    );
   }
 
   void navigateToAdvancedSearch(BuildContext context) {

@@ -10,6 +10,7 @@ import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
 import 'package:unyo/presentation/widgets/text/texts.dart';
+import 'package:unyo/presentation/widgets/text/media_title_text.dart';
 
 class UnyoBannerCarousel extends StatefulWidget {
   final List<Anime>? animeList;
@@ -167,9 +168,9 @@ class _UnyoBannerCarouselState extends State<UnyoBannerCarousel> {
   String _titleAt(int index) {
     final animeList = widget.animeList;
     if (animeList != null && index < animeList.length) {
-      return animeList[index].title.userPreferred;
+      return displayMediaTitle(animeList[index].title);
     }
-    return widget.mangaList![index].title.userPreferred;
+    return displayMediaTitle(widget.mangaList![index].title);
   }
 
   int _scoreAt(int index) {

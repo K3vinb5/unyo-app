@@ -114,6 +114,41 @@ void main() {
     });
   });
 
+  testWidgets('forwards filterQuality and can skip the skeleton slot', (
+    tester,
+  ) async {
+    await withFakeImages(() async {
+      await pumpSkeletonHarness(
+        tester,
+        const UnyoNetworkImage(
+          url: 'https://example.test/sharp.png',
+          width: 140,
+          height: 200.5,
+          filterQuality: FilterQuality.high,
+          showPlaceholder: false,
+        ),
+      );
+
+      final Image image = tester.widget<Image>(
+        find.descendant(
+          of: find.byType(UnyoNetworkImage),
+          matching: find.byType(Image),
+        ),
+      );
+      expect(image.filterQuality, FilterQuality.high);
+      expect(
+        find.descendant(
+          of: find.byType(UnyoNetworkImage),
+          matching: find.byType(ColoredBox),
+        ),
+        findsNothing,
+        reason: 'showPlaceholder: false must drop the skeleton colour',
+      );
+      expect(tester.getSize(find.byType(UnyoNetworkImage)), slotSize);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   testWidgets('an empty url paints only the placeholder', (tester) async {
     await pumpSkeletonHarness(
       tester,

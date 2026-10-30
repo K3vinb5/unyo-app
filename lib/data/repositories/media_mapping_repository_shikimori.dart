@@ -24,6 +24,9 @@ class MediaMappingRepositoryShikimori implements MediaMappingLookup {
   );
   final Logger _logger = sl<Logger>();
 
+  /// Every Shikimori request carries the shared header map (User-Agent).
+  Map<String, String> get _requestHeaders => config.shikimoriRequestHeaders;
+
   @override
   Future<MediaLinkCandidate?> lookupByMalId(Service target, int malId) async {
     if (target != Service.shikimori) return null;
@@ -66,6 +69,7 @@ class MediaMappingRepositoryShikimori implements MediaMappingLookup {
         query: shikimori_queries.animeMappingQuery,
         fromJson: AnimeMappingQueryEntity.fromJson,
         variables: variables,
+        headers: _requestHeaders,
         ignoreCache: true,
       );
       if (response.errors != null && response.errors!.isNotEmpty) {

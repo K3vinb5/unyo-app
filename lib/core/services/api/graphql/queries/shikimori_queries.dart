@@ -1,40 +1,71 @@
-//sort and type are important
-// {
-//   "page": 1,
-//   "limit": 50,
-//   "order": "aired_on" or "popularity",
-// }
-const animeUpcomingOrPopularQuery =
-'''
-query Animes(\$page: PositiveInt, \$limit: PositiveInt, \$order: OrderEnum) {
-  animes(page: \$page, limit: \$limit, order: \$order) {
-    malId
+// Shikimori GraphQL documents (POST https://shikimori.io/api/graphql).
+//
+// Constraints verified live on 2026-10-29 (evidence bundle:
+// `research/unyo-64-shikimori-parity-proof/raws/api/`, WP #64):
+// * **max query depth 5**, the root `query` counting as level 1 — so
+//   `related { anime { poster { originalUrl } } }` is as deep as a document may
+//   go, and the details documents are deliberately kept at that limit;
+// * every `animes`/`mangas` filter argument is nullable: `null` (or omitting the
+//   variable) means "not filtered", which is what lets ONE list document serve
+//   popular / trending / upcoming / recently released / recently completed;
+// * `order` is an `OrderEnum` literal (`popularity`, `updated_at_desc`, …) and
+//   must be passed as a variable, never as a quoted inline string;
+// * `malId` is an `ID` serialized as a JSON **string** (nullable in the schema);
+// * `description`/`descriptionHtml` are Russian-only — the schema has no English
+//   description field;
+// * `Query.anime`, `Anime.popularity` and `Manga.publishedOn` do not exist.
+
+/// Anime list, used by every anime carousel **and** the advanced search.
+///
+/// | consumer | variables |
+/// | --- | --- |
+/// | popular | `order: popularity` |
+/// | trending | `order: popularity`, `season: <current season>` |
+/// | recently released | `order: updated_at_desc`, `status: ongoing` |
+/// | recently completed | `order: updated_at_desc`, `status: released` |
+/// | upcoming | `order: popularity`, `status: anons` |
+/// | advanced search | any of `kind`/`status`/`season`/`search`/`genre`/`studio`/ `franchise`/`score`/`duration`/`rating`/`origin`/`censored`/`order` |
+///
+/// Omitted nullable variables mean "do not filter". Argument types are the ones
+/// the live server accepts (probed 2026-10-29,
+/// `raws/api/gql-advanced-search-probes.txt`): `score` is `Int`, `duration` is
+/// the `S`/`D`/`F` enum, `genre`/`studio`/`franchise` are id strings.
+const String shikimoriAnimeListQuery =
+    '''
+query Animes(\$page: PositiveInt, \$limit: PositiveInt, \$order: OrderEnum, \$kind: AnimeKindString, \$status: AnimeStatusString, \$season: SeasonString, \$search: String, \$genre: String, \$studio: String, \$franchise: String, \$score: Int, \$duration: DurationString, \$rating: RatingString, \$origin: OriginString, \$ids: String, \$censored: Boolean) {
+  animes(page: \$page, limit: \$limit, order: \$order, kind: \$kind, status: \$status, season: \$season, search: \$search, genre: \$genre, studio: \$studio, franchise: \$franchise, score: \$score, duration: \$duration, rating: \$rating, origin: \$origin, ids: \$ids, censored: \$censored) {
     id
-    english
+    malId
     name
-    russian
+    english
     japanese
+    russian
     poster {
       originalUrl
       mainAlt2xUrl
-    } 
+    }
     description
     duration
     airedOn {
+      date
       day
       month
       year
     }
     releasedOn {
+      date
       day
       month
       year
     }
     episodes
+    episodesAired
     nextEpisodeAt
     genres {
-      kind
+      id
       name
+      kind
+      russian
     }
     kind
     isCensored
@@ -44,108 +75,64 @@ query Animes(\$page: PositiveInt, \$limit: PositiveInt, \$order: OrderEnum) {
   }
 }
 ''';
-// {
-//   "page": 1,
-//   "limit": 50,
-//   "season": "sprint_2026"
-//   "order": "popularity",
-// }
-const animeTrendingQuery =
-'''
-query Animes(\$page: PositiveInt, \$limit: PositiveInt, \$order: OrderEnum, \$season: SeasonString) {
-  animes(page: \$page, limit: \$limit, order: \$order, season: \$season) {
-    malId
-    id
-    english
-    name
-    russian
-    japanese
-    poster {
-      originalUrl
-      mainAlt2xUrl
-    } 
-    description
-    duration
-    airedOn {
-      day
-      month
-      year
-    }
-    releasedOn {
-      day
-      month
-      year
-    }
-    episodes
-    nextEpisodeAt
-    genres {
-      kind
-      name
-    }
-    kind
-    isCensored
-    score
-    season
-    status
-  }
-}
-''';
-// {
-//   "page": 1,
-//   "limit": 50,
-//   "season": "sprint_2026"
-//   "order": "updated_at" or "popularity",
-//   "status": "ongoing" or "released"
-// }
-const animeRecentlyReleasedOrRecentlyCompletedQuery =
-'''
-query Animes(\$page: PositiveInt, \$limit: PositiveInt, \$order: OrderEnum, \$season: SeasonString, \$status: AnimeStatusString) {
-  animes(page: \$page, limit: \$limit, order: \$order, season: \$season, status: \$status) {
-    malId
-    id
-    english
-    name
-    russian
-    japanese
-    poster {
-      originalUrl
-      mainAlt2xUrl
-    } 
-    description
-    duration
-    airedOn {
-      day
-      month
-      year
-    }
-    releasedOn {
-      day
-      month
-      year
-    }
-    episodes
-    nextEpisodeAt
-    genres {
-      kind
-      name
-    }
-    kind
-    isCensored
-    score
-    season
-    status
-  }
-}
-''';
-// {
-// "ids": selectedAnime.id,
-// "page" : 1,
-// "limit": 20,
-// }
-const String shikimoriAnimeDetailsQuery = '''
- query Animes(\$ids: String, \$page: PositiveInt, \$limit: PositiveInt) {
+
+/// Anime details, addressed by the native Shikimori id (`ids` is a
+/// comma-separated string). Includes the viewer's own rate plus the related
+/// graph and the character cast.
+///
+/// GraphQL note: `related { anime { … } }` is `null` for every non-anime
+/// relation (manga/novel adaptations) and `userRate` is `null` without an
+/// Authorization header — both are handled by the model factories.
+///
+/// {
+///   "ids": `selectedAnime.id` as a string,
+///   "page": 1,
+///   "limit": 20
+/// }
+const String shikimoriAnimeDetailsQuery =
+    '''
+query Animes(\$ids: String, \$page: PositiveInt, \$limit: PositiveInt) {
   animes(ids: \$ids, page: \$page, limit: \$limit) {
+    id
+    malId
+    name
+    english
+    japanese
+    russian
+    poster {
+      originalUrl
+      mainAlt2xUrl
+    }
+    description
+    duration
+    airedOn {
+      date
+      day
+      month
+      year
+    }
+    releasedOn {
+      date
+      day
+      month
+      year
+    }
+    episodes
+    episodesAired
+    nextEpisodeAt
+    genres {
+      id
+      name
+      kind
+      russian
+    }
+    kind
+    isCensored
+    score
+    season
+    status
     userRate {
+      id
       episodes
       score
       rewatches
@@ -154,23 +141,27 @@ const String shikimoriAnimeDetailsQuery = '''
       updatedAt
     }
     characterRoles {
+      id
+      rolesEn
+      rolesRu
       character {
         id
+        name
         poster {
           originalUrl
         }
-        name
       }
     }
     related {
       relationKind
+      relationText
       anime {
-        malId
         id
-        english
+        malId
         name
-        russian
+        english
         japanese
+        russian
         poster {
           originalUrl
           mainAlt2xUrl
@@ -178,20 +169,25 @@ const String shikimoriAnimeDetailsQuery = '''
         description
         duration
         airedOn {
+          date
           day
           month
           year
         }
         releasedOn {
+          date
           day
           month
           year
         }
         episodes
+        episodesAired
         nextEpisodeAt
         genres {
-          kind
+          id
           name
+          kind
+          russian
         }
         kind
         isCensored
@@ -201,147 +197,126 @@ const String shikimoriAnimeDetailsQuery = '''
       }
     }
   }
-} 
+}
 ''';
-// {
-//   "page": 1,
-//   "limit": 50,
-//   "order": "aired_on" or "popularity",
-// }
-const mangaUpcomingOrPopularQuery =
-'''
-query Mangas(\$page: PositiveInt, \$limit: PositiveInt, \$order: OrderEnum) {
-  mangas(page: \$page, limit: \$limit, order: \$order) {
-    malId
+
+/// Manga list, used by every manga carousel **and** the advanced search.
+///
+/// | consumer | variables |
+/// | --- | --- |
+/// | popular | `order: popularity` |
+/// | trending | `order: popularity`, `season: <current season>` |
+/// | recently completed | `order: updated_at_desc`, `status: released` |
+/// | upcoming | `order: popularity`, `status: anons` |
+/// | advanced search | any of `kind`/`status`/`season`/`search`/`genre`/ `publisher`/`franchise`/`score`/`censored`/`order` |
+///
+/// `Manga` has no `season`/`duration` precision of its own and no
+/// `publishedOn` field at all — `airedOn`/`releasedOn` carry the run dates.
+/// There is no country-of-origin field either, so the manga filter dictionary
+/// has no country option (`publisher` is a publisher id, not a country).
+const String shikimoriMangaListQuery =
+    '''
+query Mangas(\$page: PositiveInt, \$limit: PositiveInt, \$order: OrderEnum, \$kind: MangaKindString, \$status: MangaStatusString, \$season: SeasonString, \$search: String, \$genre: String, \$publisher: String, \$franchise: String, \$score: Int, \$ids: String, \$censored: Boolean) {
+  mangas(page: \$page, limit: \$limit, order: \$order, kind: \$kind, status: \$status, season: \$season, search: \$search, genre: \$genre, publisher: \$publisher, franchise: \$franchise, score: \$score, ids: \$ids, censored: \$censored) {
     id
-    english
+    malId
     name
-    russian
+    english
     japanese
+    russian
     poster {
       originalUrl
       mainAlt2xUrl
-    } 
+    }
     description
     airedOn {
+      date
       day
       month
       year
     }
     releasedOn {
+      date
       day
       month
       year
     }
+    volumes
     chapters
     genres {
-      kind
+      id
       name
+      kind
+      russian
     }
     kind
     isCensored
     score
     status
-  }
-}
-''';
-// {
-//   "page": 1,
-//   "limit": 50,
-//   "season": "sprint_2026"
-//   "order": "popularity",
-// }
-const mangaTrendingQuery =
-'''
-query Mangas(\$page: PositiveInt, \$limit: PositiveInt, \$order: OrderEnum, \$season: SeasonString) {
-  mangas(page: \$page, limit: \$limit, order: \$order, season: \$season) {
-    malId
-    id
-    english
-    name
-    russian
-    japanese
-    poster {
-      originalUrl
-      mainAlt2xUrl
-    } 
-    description
-    airedOn {
-      day
-      month
-      year
-    }
-    releasedOn {
-      day
-      month
-      year
-    }
-    chapters
-    genres {
-      kind
+    publishers {
+      id
       name
     }
-    kind
-    isCensored
-    score
-    status
   }
 }
 ''';
-// {
-//   "page": 1,
-//   "limit": 50,
-//   "season": "sprint_2026"
-//   "order": "updated_at" or "popularity",
-//   "status": "ongoing" or "released"
-// }
-const mangaRecentlyReleasedOrRecentlyCompletedQuery =
-'''
-query Mangas(\$page: PositiveInt, \$limit: PositiveInt, \$order: OrderEnum, \$season: SeasonString, \$status: MangaStatusString) {
-  mangas(page: \$page, limit: \$limit, order: \$order, season: \$season, status: \$status) {
-    malId
-    id
-    english
-    name
-    russian
-    japanese
-    poster {
-      originalUrl
-      mainAlt2xUrl
-    } 
-    description
-    airedOn {
-      day
-      month
-      year
-    }
-    releasedOn {
-      day
-      month
-      year
-    }
-    chapters
-    genres {
-      kind
-      name
-    }
-    kind
-    isCensored
-    score
-    status
-  }
-}
-''';
-// {
-// "ids": selectedManga.id,
-// "page" : 1,
-// "limit": 20,
-// }
+
+/// Manga details, addressed by the native Shikimori id (`ids` string).
+///
+/// GraphQL note: `related { manga { … } }` is `null` for anime adaptations
+/// (the mirror image of the anime side), so the mapper must never turn such a
+/// relation into a phantom manga card.
+///
+/// {
+///   "ids": `selectedManga.id` as a string,
+///   "page": 1,
+///   "limit": 20
+/// }
 const String shikimoriMangaDetailsQuery =
-'''
- query Mangas(\$ids: String, \$page: PositiveInt, \$limit: PositiveInt) {
+    '''
+query Mangas(\$ids: String, \$page: PositiveInt, \$limit: PositiveInt) {
   mangas(ids: \$ids, page: \$page, limit: \$limit) {
+    id
+    malId
+    name
+    english
+    japanese
+    russian
+    poster {
+      originalUrl
+      mainAlt2xUrl
+    }
+    description
+    airedOn {
+      date
+      day
+      month
+      year
+    }
+    releasedOn {
+      date
+      day
+      month
+      year
+    }
+    volumes
+    chapters
+    genres {
+      id
+      name
+      kind
+      russian
+    }
+    kind
+    isCensored
+    score
+    status
+    publishers {
+      id
+      name
+    }
     userRate {
+      id
       episodes
       score
       rewatches
@@ -350,42 +325,51 @@ const String shikimoriMangaDetailsQuery =
       updatedAt
     }
     characterRoles {
+      id
+      rolesEn
+      rolesRu
       character {
         id
+        name
         poster {
           originalUrl
         }
-        name
       }
     }
     related {
       relationKind
+      relationText
       manga {
-        malId
         id
-        english
+        malId
         name
-        russian
+        english
         japanese
+        russian
         poster {
           originalUrl
           mainAlt2xUrl
         }
         description
         airedOn {
+          date
           day
           month
           year
         }
         releasedOn {
+          date
           day
           month
           year
         }
+        volumes
         chapters
         genres {
-          kind
+          id
           name
+          kind
+          russian
         }
         kind
         isCensored
@@ -394,8 +378,9 @@ const String shikimoriMangaDetailsQuery =
       }
     }
   }
-} 
+}
 ''';
+
 // Used to translate a record between providers: by native id (the `ids` probe
 // verifies the returned `malId`) or by title (`search`, a heuristic that the
 // user has to confirm).
@@ -405,7 +390,7 @@ const String shikimoriMangaDetailsQuery =
 //   "limit": 5,
 // }
 const String animeMappingQuery =
-'''
+    '''
 query Animes(\$ids: String, \$search: String, \$limit: PositiveInt) {
   animes(ids: \$ids, search: \$search, limit: \$limit) {
     id
@@ -420,15 +405,164 @@ query Animes(\$ids: String, \$search: String, \$limit: PositiveInt) {
   }
 }
 ''';
-// Genres list query
+
+/// Genre dictionary. `GenreEntryTypeEnum` values are PascalCase (`Anime`,
+/// `Manga`) — lowercase and SCREAMING_CASE are both rejected by the server.
+///
+/// {
+///   "entryType": "Anime" | "Manga"
+/// }
 const String shikimoriGenresListQuery =
-r'''
+    r'''
   query GenresList($entryType: GenreEntryTypeEnum!) {
     genres(entryType: $entryType) {
       id
       name
       russian
       kind
+    }
+  }
+''';
+
+/// Who the stored OAuth token belongs to (WP #64 subpart (c)).
+///
+/// `users(login:)` does not exist on this schema (WP #64 §8) and
+/// `currentUser` answers `null` without a token
+/// (`raws/api/gql-currentuser-unauth.json`), so this is the only viewer query.
+const String shikimoriViewerQuery =
+    r'''
+  query CurrentUser {
+    currentUser {
+      id
+      nickname
+      avatarUrl
+      url
+      lastOnlineAt
+    }
+  }
+''';
+
+/// One page of the viewer's **anime** rates (`userRates`), 50 per page.
+///
+/// * one document per target type: selecting the `anime` **and** `manga` node of
+///   a rate exceeds the query-cost budget (227 > 190,
+///   `raws/api/gql-user-rates-probes.txt` §5);
+/// * the nested node is exactly the carousel shape, so every card maps through
+///   `ShikimoriAnimeModel.fromListEntry`;
+/// * `status` is a `UserRateStatusEnum` (`planned|watching|rewatching|completed|on_hold|dropped`)
+///   and `rewatching` is a status, not a flag.
+const String shikimoriAnimeUserRatesQuery =
+    r'''
+  query AnimeUserRates($userId: ID, $targetType: UserRateTargetTypeEnum, $status: UserRateStatusEnum, $page: PositiveInt, $limit: PositiveInt) {
+    userRates(userId: $userId, targetType: $targetType, status: $status, page: $page, limit: $limit) {
+      id
+      status
+      score
+      episodes
+      rewatches
+      volumes
+      chapters
+      createdAt
+      updatedAt
+      anime {
+        id
+        malId
+        name
+        english
+        japanese
+        russian
+        poster {
+          originalUrl
+          mainAlt2xUrl
+        }
+        description
+        duration
+        airedOn {
+          date
+          day
+          month
+          year
+        }
+        releasedOn {
+          date
+          day
+          month
+          year
+        }
+        episodes
+        episodesAired
+        nextEpisodeAt
+        genres {
+          id
+          name
+          kind
+          russian
+        }
+        kind
+        isCensored
+        score
+        season
+        status
+      }
+    }
+  }
+''';
+
+/// Manga mirror of [shikimoriAnimeUserRatesQuery] (one document per target type).
+const String shikimoriMangaUserRatesQuery =
+    r'''
+  query MangaUserRates($userId: ID, $targetType: UserRateTargetTypeEnum, $status: UserRateStatusEnum, $page: PositiveInt, $limit: PositiveInt) {
+    userRates(userId: $userId, targetType: $targetType, status: $status, page: $page, limit: $limit) {
+      id
+      status
+      score
+      episodes
+      rewatches
+      volumes
+      chapters
+      createdAt
+      updatedAt
+      manga {
+        id
+        malId
+        name
+        english
+        japanese
+        russian
+        poster {
+          originalUrl
+          mainAlt2xUrl
+        }
+        description
+        airedOn {
+          date
+          day
+          month
+          year
+        }
+        releasedOn {
+          date
+          day
+          month
+          year
+        }
+        volumes
+        chapters
+        genres {
+          id
+          name
+          kind
+          russian
+        }
+        kind
+        isCensored
+        score
+        status
+        publishers {
+          id
+          name
+        }
+      }
     }
   }
 ''';

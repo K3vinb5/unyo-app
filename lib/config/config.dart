@@ -22,6 +22,32 @@ const String shikimoriClientId = 'sIjHVKp4D3gusN53hob4tDnmvFYgySDiLpWJNTsfVcA';
 const String shikimoriClientSecret = '6y39AFgZ8Ww6cESH_BzyZqYjZRSCrTy9meoY1nm2Cj0';
 const String shikimoriGraphQlService = 'shikimoriGraphQlService';
 const String shikimoriGraphQLEndpoint = 'https://shikimori.io/api/graphql';
+/// OAuth2 token endpoint (multipart form, `grant_type=authorization_code` or
+/// `refresh_token`). A refresh returns a **new access AND a new refresh token**,
+/// and the access token lives 1 day (`raws/api/rest-oauth-guide-extracted.txt`).
+const String shikimoriTokenEndpoint = 'https://shikimori.io/oauth/token';
+/// Access-token lifetime, stated by the OAuth guide ("expired in 1 day").
+/// A one-minute safety margin keeps a token from expiring mid-request.
+const Duration shikimoriAccessTokenTtl = Duration(days: 1);
+const Duration shikimoriAccessTokenExpiryMargin = Duration(minutes: 1);
+// REST surface. The calendar exists **only** over REST (`/api/calendar`); the
+// `/api/v1/calendar` path is a 404 page (WP #64 evidence
+// `raws/api/rest-v1-calendar-404.html`). GraphQL has no calendar root field.
+const String shikimoriRestEndpoint = 'https://shikimori.io/api';
+const String shikimoriCalendarEndpoint = '$shikimoriRestEndpoint/calendar';
+/// REST v2 list entries. GraphQL's `Mutation` root is a stub (`testField`), so
+/// every write goes through this one (create/update/increment/destroy).
+const String shikimoriUserRatesEndpoint = '$shikimoriRestEndpoint/v2/user_rates';
+/// Relative poster paths (`/system/animes/original/1.jpg?…`) are served from
+/// the site root, not from `/api`.
+const String shikimoriSiteEndpoint = 'https://shikimori.io';
+// Shikimori bans IPs that call its API without a meaningful User-Agent
+// (shikimori.io/api/doc, "Restrictions"/"Requirements"), so every request —
+// GraphQL today, REST once the calendar/user_rates work lands — carries this
+// one header map instead of one literal per call site.
+const Map<String, String> shikimoriRequestHeaders = <String, String>{
+  'User-Agent': 'unyo (https://gitea.k3vinb5.dev/Unyo/unyo-app)',
+};
 // Anizip API configuration
 const String anizipBaseEndpoint = 'https://api.ani.zip';
 // Aniski API configuration

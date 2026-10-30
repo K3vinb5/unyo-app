@@ -1,0 +1,180 @@
+{
+  "data": {
+    "mangas": [
+      {
+        "id": "2",
+        "malId": "2",
+        "name": "Berserk",
+        "english": "Berserk",
+        "japanese": "ベルセルク",
+        "russian": "Берсерк",
+        "poster": {
+          "originalUrl": "https://shikimori.io/uploads/poster/mangas/2/1b55dd3a4afe472f28ce0c9d4f507005.jpeg",
+          "mainAlt2xUrl": "https://shikimori.io/uploads/poster/mangas/2/main_alt_2x-185672bdceaf16805d73583ffdb2e6ac.jpeg"
+        },
+        "description": "Наёмник Гатс, по прозвищу Чёрный Мечник, странствует по магическому королевству Мидланд, вооружившись двухметровым мечом «Убийцей Драконов» и уничтожая на своём пути полчища демонов, охотящихся на него. Не жалея ни себя, ни тех, кто попадается ему под руку, он неустанно движется вперёд, ведомый только безудержной жаждой мести. Но откуда она берёт своё начало? Какое тяжкое бремя несёт на своих плечах Гатс? И есть ли шанс на простое светлое будущее у того, кто воочию повидал сам ад?..\n\n«Берсерк» — это тёмная и печальная сага о неистовых жестоких сражениях, недостижимых мечтах, дружбе и предательстве, а также печальной судьбе одного человека.",
+        "airedOn": {
+          "date": "1989-08-25",
+          "day": 25,
+          "month": 8,
+          "year": 1989
+        },
+        "releasedOn": {
+          "date": null,
+          "day": null,
+          "month": null,
+          "year": null
+        },
+        "volumes": 0,
+        "chapters": 0,
+        "genres": [
+          {
+            "id": "52",
+            "name": "Seinen",
+            "kind": "demographic",
+            "russian": "Сэйнэн"
+          },
+          {
+            "id": "56",
+            "name": "Action",
+            "kind": "genre",
+            "russian": "Экшен"
+          },
+          {
+            "id": "68",
+            "name": "Adventure",
+            "kind": "genre",
+            "russian": "Приключения"
+          },
+          {
+            "id": "126",
+            "name": "Award Winning",
+            "kind": "theme",
+            "russian": "Удостоено наград"
+          },
+          {
+            "id": "50",
+            "name": "Drama",
+            "kind": "genre",
+            "russian": "Драма"
+          },
+          {
+            "id": "57",
+            "name": "Fantasy",
+            "kind": "genre",
+            "russian": "Фэнтези"
+          },
+          {
+            "id": "80",
+            "name": "Horror",
+            "kind": "genre",
+            "russian": "Ужасы"
+          },
+          {
+            "id": "127",
+            "name": "Gore",
+            "kind": "theme",
+            "russian": "Жестокость"
+          },
+          {
+            "id": "70",
+            "name": "Military",
+            "kind": "theme",
+            "russian": "Военное"
+          },
+          {
+            "id": "67",
+            "name": "Psychological",
+            "kind": "theme",
+            "russian": "Психологическое"
+          }
+        ],
+        "kind": "manga",
+        "isCensored": false,
+        "score": 9.46,
+        "status": "ongoing",
+        "publishers": [
+          {
+            "id": "2",
+            "name": "Young Animal"
+          }
+        ]
+      },
+      {
+        "id": "116778",
+        "malId": "116778",
+        "name": "Chainsaw Man",
+        "english": "Chainsaw Man",
+        "japanese": "チェンソーマン",
+        "russian": "Человек-бензопила",
+        "poster": {
+          "originalUrl": "https://shikimori.io/uploads/poster/mangas/116778/b6e5ff8536aa65939bba099a7b677237.png",
+          "mainAlt2xUrl": "https://shikimori.io/uploads/poster/mangas/116778/main_alt_2x-e249f7d183f48f2d0c839e42a52d368d.png"
+        },
+        "description": "«Я всегда мечтал жить обычной жизнью: спать в тёплой постели, есть тосты с джемом по утрам, ходить на свидания со своей девушкой и улыбаться каждый день. Но всё изменилось со смертью отца — теперь, [character=174750]Почита[/character], мы будем убивать!» — с такими словами Дэндзи вместе со своим псом-бензопилой [character=174750]Почитой[/character] отправляется на очередной контракт, ведь они — охотники на демонов. Каждый день они убивают ради денег, которые Дэндзи должен отдать одному якудза, иначе долг покойного отца придётся отдать собственной жизнью. Но что ждёт Дэндзи, когда он вернёт весь долг: заживёт обычной жизнью или продолжит спасать мир от демонов? А может, у судьбы свои планы на участь героя?",
+        "airedOn": {
+          "date": "2018-12-03",
+          "day": 3,
+          "month": 12,
+          "year": 2018
+        },
+        "releasedOn": {
+          "date": "2026-03-25",
+          "day": 25,
+          "month": 3,
+          "year": 2026
+        },
+        "volumes": 24,
+        "chapters": 232,
+        "genres": [
+          {
+            "id": "47",
+            "name": "Shounen",
+            "kind": "demographic",
+            "russian": "Сёнен"
+          },
+          {
+            "id": "56",
+            "name": "Action",
+            "kind": "genre",
+            "russian": "Экшен"
+          },
+          {
+            "id": "126",
+            "name": "Award Winning",
+            "kind": "theme",
+            "russian": "Удостоено наград"
+          },
+          {
+            "id": "57",
+            "name": "Fantasy",
+            "kind": "genre",
+            "russian": "Фэнтези"
+          },
+          {
+            "id": "127",
+            "name": "Gore",
+            "kind": "theme",
+            "russian": "Жестокость"
+          },
+          {
+            "id": "199",
+            "name": "Urban Fantasy",
+            "kind": "theme",
+            "russian": "Городское фэнтези"
+          }
+        ],
+        "kind": "manga",
+        "isCensored": false,
+        "score": 8.62,
+        "status": "released",
+        "publishers": [
+          {
+            "id": "1209",
+            "name": "Shounen Jump+"
+          }
+        ]
+      }
+    ]
+  }
+}

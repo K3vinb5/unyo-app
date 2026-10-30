@@ -32,6 +32,9 @@ class AnimeCubit extends Cubit<AnimeState> with EffectMixin<AnimeState> {
   final ReloadNotifier _reloadNotifier;
   late StreamSubscription<User> _loggedUserSubscription;
   late StreamSubscription<ReloadType> _reloadSubscription;
+  bool _refreshInFlight = false;
+  bool _refreshQueued = false;
+  bool _queuedProviderSwitch = false;
   final Logger _logger = sl<Logger>();
 
   AnimeCubit(
@@ -81,26 +84,73 @@ class AnimeCubit extends Cubit<AnimeState> with EffectMixin<AnimeState> {
     ) async {
       emit(state.copyWith(loggedUser: loggedUser));
       if (!state.userLoaded) {
-        await _fetchRecentlyReleased(1, loggedUser);
-        await _fetchTrending(1, loggedUser);
-        await _fetchRecentlyCompleted(1, loggedUser);
-        await _fetchPopular(1, loggedUser);
-        await _fetchUpcoming(1, loggedUser);
+        await _refreshAll(isProviderSwitch: false);
         emit(state.copyWith(userLoaded: true, isLoading: false));
       }
     });
     _reloadSubscription = _reloadNotifier.reloadStream.listen((reloadType) async {
-      if (reloadType == ReloadType.newMetadataService) {
-        _logger.i("Reloading Anime Screen due to new metadata service");
-        if (!state.userLoaded) {
-          _fetchRecentlyReleased(1, state.loggedUser, ignoreCache: true);
-          _fetchTrending(1, state.loggedUser, ignoreCache: true);
-          _fetchRecentlyCompleted(1, state.loggedUser, ignoreCache: true);
-          _fetchPopular(1, state.loggedUser, ignoreCache: true);
-          _fetchUpcoming(1, state.loggedUser, ignoreCache: true);
-        }
+      if (reloadType != ReloadType.newMetadataService) {
+        return;
       }
+      _logger.i("Reloading Anime Screen due to new metadata service");
+      await _refreshAll(isProviderSwitch: true);
     });
+  }
+
+  /// The five browse lists, fetched in one place so the initial load and the
+  /// metadata-service reload cannot drift apart.
+  ///
+  /// Refreshes never drop a request: a switch that arrives while a fetch is
+  /// running is coalesced and replayed once that fetch settles, because the
+  /// running pass started for an older provider (and may even still be the
+  /// initial load). Every pass reads [AnimeState.loggedUser] as it fetches, so
+  /// the replay always runs against the newest provider.
+  Future<void> _refreshAll({required bool isProviderSwitch}) async {
+    if (_refreshInFlight) {
+      _logger.d("Queueing anime refresh: a refresh is already in flight");
+      _refreshQueued = true;
+      _queuedProviderSwitch = _queuedProviderSwitch || isProviderSwitch;
+      return;
+    }
+    _refreshInFlight = true;
+    try {
+      bool providerSwitch = isProviderSwitch;
+      do {
+        _refreshQueued = false;
+        _queuedProviderSwitch = false;
+        if (providerSwitch) {
+          // Drop the previous provider's rows before refetching: they carry
+          // that provider's entity types and must not stay openable.
+          _clearLists();
+        }
+        await _fetchAll(ignoreCache: providerSwitch);
+        providerSwitch = _queuedProviderSwitch;
+      } while (_refreshQueued);
+    } finally {
+      _refreshInFlight = false;
+    }
+  }
+
+  Future<void> _fetchAll({required bool ignoreCache}) async {
+    User loggedUser = state.loggedUser;
+    await _fetchRecentlyReleased(1, loggedUser, ignoreCache: ignoreCache);
+    await _fetchTrending(1, loggedUser, ignoreCache: ignoreCache);
+    await _fetchRecentlyCompleted(1, loggedUser, ignoreCache: ignoreCache);
+    await _fetchPopular(1, loggedUser, ignoreCache: ignoreCache);
+    await _fetchUpcoming(1, loggedUser, ignoreCache: ignoreCache);
+  }
+
+  void _clearLists() {
+    emit(
+      state.copyWith(
+        recentlyReleased: (false, []),
+        trending: (false, []),
+        recentlyCompleted: (false, []),
+        popular: (false, []),
+        upcoming: (false, []),
+        banners: [],
+      ),
+    );
   }
 
   void navigateToCalendar(BuildContext context) {

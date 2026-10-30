@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logger/logger.dart';
 // Internal dependencies
+import 'package:unyo/application/cubits/error_copy_mapper.dart';
 import 'package:unyo/application/effects/app_effects.dart';
 
 mixin EffectMixin<State> on Cubit<State> {
@@ -94,11 +95,20 @@ mixin EffectMixin<State> on Cubit<State> {
   }
 
   // Handle errors and others
+
+  /// Reports a failure to the user.
+  ///
+  /// [message] is developer detail and stays in the log, together with
+  /// [stackTrace] and [responseBody]. The banner only ever gets the classified
+  /// copy from [ErrorCopyMapper]: no exception class names, no `Bad state:`
+  /// text, no stack fragments and no dangling separators.
   void handleError(String message, {ContentType contentType = ContentType.failure, StackTrace? stackTrace, String? responseBody}) {
-    logger.e(message, stackTrace: stackTrace);
+    final String detail = responseBody == null ? message : "$message [$responseBody]";
+    logger.e(detail, stackTrace: stackTrace);
+    final ErrorCopy copy = ErrorCopyMapper.classify(message: message, responseBody: responseBody);
     showSnackBarEffect(
-      "Something went wrong",
-      message: message,
+      copy.title,
+      message: copy.message,
       contentType: contentType,
     );
   }

@@ -1,0 +1,150 @@
+{
+  "data": {
+    "animes": [
+      {
+        "id": "16498",
+        "malId": "16498",
+        "name": "Shingeki no Kyojin",
+        "english": "Attack on Titan",
+        "japanese": "進撃の巨人",
+        "russian": "Атака титанов",
+        "poster": {
+          "originalUrl": "https://shikimori.io/uploads/poster/animes/16498/7a452aa20f27318bd8d87e3d70c2ccca.jpeg",
+          "mainAlt2xUrl": "https://shikimori.io/uploads/poster/animes/16498/main_alt_2x-4a7f2177dd66d87dedf9271415452512.jpeg"
+        },
+        "description": "С давних времён человечество ведёт свою борьбу с титанами. Титаны — это огромные существа, ростом с многоэтажный дом, которые не обладают большим интеллектом, но сила их просто ужасна. Они едят людей и получают от этого удовольствие. После продолжительной борьбы остатки человечества создали стену, окружившую мир людей, через которую не пройдут даже титаны.\nС тех пор прошло сто лет. Человечество мирно живёт под защитой стены. Но в один день мальчик Эрен [エレン・イェーガー] и его приёмная сестра Микаса [ミカサ・アッカーマン] становятся свидетелями страшного события: участок стены был разрушен супертитаном, появившимся прямо из воздуха. Титаны атакуют город, и двое детей в ужасе видят, как один из монстров заживо съедает их мать.\nБрат и сестра выживают, и Эрен клянётся, что убьёт всех титанов и отомстит за всё человечество!",
+        "duration": 24,
+        "airedOn": {
+          "date": "2013-04-07",
+          "day": 7,
+          "month": 4,
+          "year": 2013
+        },
+        "releasedOn": {
+          "date": "2013-09-29",
+          "day": 29,
+          "month": 9,
+          "year": 2013
+        },
+        "episodes": 25,
+        "episodesAired": 25,
+        "nextEpisodeAt": null,
+        "genres": [
+          {
+            "id": "27",
+            "name": "Shounen",
+            "kind": "demographic",
+            "russian": "Сёнен"
+          },
+          {
+            "id": "1",
+            "name": "Action",
+            "kind": "genre",
+            "russian": "Экшен"
+          },
+          {
+            "id": "8",
+            "name": "Drama",
+            "kind": "genre",
+            "russian": "Драма"
+          },
+          {
+            "id": "117",
+            "name": "Suspense",
+            "kind": "genre",
+            "russian": "Триллер"
+          },
+          {
+            "id": "114",
+            "name": "Award Winning",
+            "kind": "theme",
+            "russian": "Удостоено наград"
+          },
+          {
+            "id": "105",
+            "name": "Gore",
+            "kind": "theme",
+            "russian": "Жестокость"
+          },
+          {
+            "id": "38",
+            "name": "Military",
+            "kind": "theme",
+            "russian": "Военное"
+          },
+          {
+            "id": "141",
+            "name": "Survival",
+            "kind": "theme",
+            "russian": "Выживание"
+          }
+        ],
+        "kind": "tv",
+        "isCensored": false,
+        "score": 8.58,
+        "season": "spring_2013",
+        "status": "released"
+      },
+      {
+        "id": "1535",
+        "malId": "1535",
+        "name": "Death Note",
+        "english": "Death Note",
+        "japanese": "デスノート",
+        "russian": "Тетрадь смерти",
+        "poster": {
+          "originalUrl": "https://shikimori.io/uploads/poster/animes/1535/a938fe8507a89332b35d71f6883b8e88.jpeg",
+          "mainAlt2xUrl": "https://shikimori.io/uploads/poster/animes/1535/main_alt_2x-3ea47ee1cd101b47b5b3d5a5ed462812.jpeg"
+        },
+        "description": "Изнывающий от скуки [[Синигами]] Рюк [リューク] бросает одну из своих Тетрадей смерти в мир людей. Просто так, потехи ради, посмотреть, что из этого выйдет.\nМежду тем, в Японии на школьной лужайке эту самую тетрадь находит Лайт Ягами [夜神月] — лучший ученик школы, сын полицейского. Заинтригованный инструкцией на обложке, он забирает тетрадь домой и пробует её в деле, вписав туда имя преступника. А вдруг сработает?\nВскоре весь мир замечает странные массовые смерти преступников, а в сети загадочного убийцу окрещают [[Кирой]].\nДля поимки Киры [夜神月] Интерпол привлекает легендарного детектива [character=71]L[/character], в одиночку раскрывавшего наиболее сложные и запутанные преступления. Кто такой [character=71]L[/character] на самом деле — не знает никто.\nОтныне в противостоянии Киры и [character=71]L[/character] предстоит победить тому, кто первым раскроет истинную личность противника и раньше оппонента нанесёт удар.",
+        "duration": 23,
+        "airedOn": {
+          "date": "2006-10-04",
+          "day": 4,
+          "month": 10,
+          "year": 2006
+        },
+        "releasedOn": {
+          "date": "2007-06-27",
+          "day": 27,
+          "month": 6,
+          "year": 2007
+        },
+        "episodes": 37,
+        "episodesAired": 0,
+        "nextEpisodeAt": null,
+        "genres": [
+          {
+            "id": "27",
+            "name": "Shounen",
+            "kind": "demographic",
+            "russian": "Сёнен"
+          },
+          {
+            "id": "37",
+            "name": "Supernatural",
+            "kind": "genre",
+            "russian": "Сверхъестественное"
+          },
+          {
+            "id": "117",
+            "name": "Suspense",
+            "kind": "genre",
+            "russian": "Триллер"
+          },
+          {
+            "id": "40",
+            "name": "Psychological",
+            "kind": "theme",
+            "russian": "Психологическое"
+          }
+        ],
+        "kind": "tv",
+        "isCensored": true,
+        "score": 8.62,
+        "season": "fall_2006",
+        "status": "released"
+      }
+    ]
+  }
+}

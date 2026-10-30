@@ -177,9 +177,11 @@ class AnimeRepositoryFactory implements AnimeRepository {
       case Service.anilist:
         _logger.i("Fetching Anilist calendar releases");
         return _animeRepositoryAnilist.getCalendarReleases(page, loggedUser);
+      case Service.shikimori:
+        _logger.i("Fetching Shikimori calendar releases");
+        return _animeRepositoryShikimori.getCalendarReleases(page, loggedUser);
       case Service.mal:
       case Service.kitsu:
-      case Service.shikimori:
       case Service.simkl:
         return {};
     }
@@ -207,8 +209,18 @@ class AnimeRepositoryFactory implements AnimeRepository {
   }
 
   @override
-  Future<Map<String, (bool, List<String>)>> getUserAnimeAdvancedSearchFilters() async {
-    return _animeRepositoryAnilist.getUserAnimeAdvancedSearchFilters();
+  Future<Map<String, (bool, List<String>)>> getUserAnimeAdvancedSearchFilters(User loggedUser) async {
+    switch (loggedUser.settings.metadataService) {
+      case Service.shikimori:
+        _logger.i("Fetching Shikimori advanced search filters");
+        return _animeRepositoryShikimori.getUserAnimeAdvancedSearchFilters(loggedUser);
+      case Service.anilist:
+      case Service.mal:
+      case Service.kitsu:
+      case Service.simkl:
+        _logger.i("Fetching Anilist advanced search filters");
+        return _animeRepositoryAnilist.getUserAnimeAdvancedSearchFilters(loggedUser);
+    }
   }
 
   @override
@@ -236,8 +248,19 @@ class AnimeRepositoryFactory implements AnimeRepository {
           page,
           loggedUser,
         );
-      case Service.mal:
       case Service.shikimori:
+        return _animeRepositoryShikimori.performAnimeAdvancedSearch(
+          query,
+          selectedGenres,
+          selectedSeason,
+          selectedFormat,
+          selectedYear,
+          selectedAiringStatus,
+          sort,
+          page,
+          loggedUser,
+        );
+      case Service.mal:
       case Service.simkl:
       case Service.kitsu:
         return [];
@@ -293,7 +316,11 @@ class AnimeRepositoryFactory implements AnimeRepository {
         return MediaListEntryModel.empty();
       case Service.shikimori:
         _logger.i("Updating Media List Entry to $newMediaListEntry on Shikimori");
-        return MediaListEntryModel.empty();
+        return _animeRepositoryShikimori.updateMediaListEntry(
+          newMediaListEntry,
+          userRecord,
+          loggedUser,
+        );
       case Service.kitsu:
         _logger.i("Updating Media List Entry to $newMediaListEntry on Kitsu");
         return MediaListEntryModel.empty();
@@ -327,7 +354,11 @@ class AnimeRepositoryFactory implements AnimeRepository {
         return MediaListEntryModel.empty();
       case Service.shikimori:
         _logger.i("Fetching User Media List Entry from Shikimori for ${selectedAnime.title.userPreferred}");
-        return MediaListEntryModel.empty();
+        return _animeRepositoryShikimori.getMediaListEntry(
+          userRecord,
+          loggedUser,
+          ignoreCache: ignoreCache,
+        );
       case Service.kitsu:
         _logger.i("Fetching User Media List Entry from Kitsu for ${selectedAnime.title.userPreferred}");
         return MediaListEntryModel.empty();

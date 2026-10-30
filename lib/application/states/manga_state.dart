@@ -18,6 +18,7 @@ abstract class MangaState with _$MangaState implements HasEffects{
     required List<Manga> banners,
     required User loggedUser,
     required bool isLoading,
+    @Default(true) bool metadataServiceSupported,
     @Default(<AppEffect>[]) List<AppEffect> effects,
     required bool userLoaded,
   }) = _MangaState;

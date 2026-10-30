@@ -1,5 +1,4 @@
 // External package dependencies
-import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,6 +8,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 // Internal package dependencies
 import 'package:unyo/application/cubits/anime_details_cubit.dart';
 import 'package:unyo/application/states/anime_details_state.dart';
+import 'package:unyo/application/states/episode_count.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
@@ -20,6 +20,7 @@ import 'package:unyo/presentation/widgets/styled/unyo_character_list.dart';
 import 'package:unyo/presentation/widgets/text/text_body_medium.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
+import 'package:unyo/presentation/widgets/text/media_title_text.dart';
 
 @RoutePage()
 class AnimeDetailsScreen extends StatelessWidget {
@@ -72,7 +73,11 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
   }
 
   List<Widget> _getEpisodeButtonsWidgets(AnimeDetailsState state) {
-    int numEpisodes = max(state.selectedAnime.episodes, state.episodesInfo.length);
+    final int numEpisodes = EpisodeCount.resolve(
+      extensionResults: state.extensionEpisodeResults.length,
+      episodesInfo: state.episodesInfo.length,
+      metadataTotal: state.selectedAnime.episodes,
+    );
     if (numEpisodes == 0) {
       return [
         Row(
@@ -89,10 +94,17 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
       ];
     }
     List<Widget> episodeButtons = [];
+    final List<int> episodeNumbers = EpisodeCount.episodeNumbers(
+      extensionEpisodeNumbers: state.extensionEpisodeResults
+          .map((episode) => episode.getEpisode_number().toInt())
+          .toList(growable: false),
+      count: numEpisodes,
+    );
     for (int i = 0; i < numEpisodes; i++) {
+      final int episodeNumber = episodeNumbers[i];
       episodeButtons.add(
         UnyoEpisodeButton(
-          mainTitle: "Episode ${i + 1}",
+          mainTitle: "Episode $episodeNumber",
           secondaryTitle:
               state.episodesInfo.length > i
                   ? (state.episodesInfo[i].title.userPreferred != ""
@@ -103,14 +115,14 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
               state.episodesInfo.length > i
                   ? (state.episodesInfo[i].image != "" ? state.episodesInfo[i].image : state.alternateImage)
                   : (state.alternateImage != "" ? state.alternateImage : state.selectedAnime.coverImage),
-          episodeNumber: i + 1,
+          episodeNumber: episodeNumber,
           progress: state.mediaListEntry.progress,
           released:
               state.selectedAnime.nextAiringEpisode.episode != 0
                   ? (state.selectedAnime.nextAiringEpisode.episode - 1)
                   : numEpisodes,
           showDivider: i != 0,
-          onPressed: () => context.read<AnimeDetailsCubit>().openAnimeServerSelectionDrawer(context, i),
+          onPressed: () => context.read<AnimeDetailsCubit>().openAnimeServerSelectionDrawer(context, episodeNumber),
         ),
       );
     }
@@ -165,7 +177,7 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                                       state.selectedAnime.coverImage != ""
                                           ? state.selectedAnime.coverImage
                                           : state.alternateImage,
-                                  title: state.selectedAnime.title.userPreferred,
+                                  title: displayMediaTitle(state.selectedAnime.title),
                                   status: state.selectedAnime.status,
                                   tag: "${state.selectedMediaList.name}-${state.selectedAnime.id}",
                                 ),

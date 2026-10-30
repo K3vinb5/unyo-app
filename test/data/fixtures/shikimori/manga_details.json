@@ -1,0 +1,257 @@
+{
+  "data": {
+    "mangas": [
+      {
+        "id": "1706",
+        "malId": "1706",
+        "name": "JoJo no Kimyou na Bouken Part 7: Steel Ball Run",
+        "english": "JoJo's Bizarre Adventure Part 7: Steel Ball Run",
+        "japanese": "ジョジョの奇妙な冒険 Part7 STEEL BALL RUN",
+        "russian": "Невероятное приключение ДжоДжо — Часть 7: Гонка «Стальной шар»",
+        "poster": {
+          "originalUrl": "https://shikimori.io/uploads/poster/mangas/1706/69b5e0e4edb47f5bbbf483da6e81fe9c.jpeg",
+          "mainAlt2xUrl": "https://shikimori.io/uploads/poster/mangas/1706/main_alt_2x-8d1ef06cb74dd06a1da4837474512a1c.jpeg"
+        },
+        "description": "На Диком Западе начинается величайшая гонка в мире. Тысячи людей выстраиваются очередями в Сан-Диего, чтобы проехать более шести тысяч километров и получить шанс выиграть главный приз в пятьдесят миллионов долларов. С окончанием эры скачек участникам разрешается использовать любой вид транспорта, который они пожелают. Участники соревнований должны будут вытерпеть изнурительные условия, путешествуя до ста километров в день через неизведанные пустоши. Гонка «Стальной шар» — действительно уникальное в своём роде событие.\nДжонни Джостар [Johnny Joestar] — юный бывший скакун, ставший инвалидом, приехал в Сан-Диего, чтобы посмотреть как начинается гонка. Там он встречает Джайро Цеппели [Gyro Zeppeli] — гонщика с двумя стальными шарами на поясе вместо пистолета. Джонни наблюдает, как Джайро использует один из своих стальных шаров, чтобы раскрыть фантастическую силу, заставляя человека стрелять в самого себя из пистолета во время дуэли. В разгар дуэли Джонни нечаянно касается стального шара и чувствует, как в его ногах нарастает сила, позволяющая ему встать впервые за два года. Пообещав найти секрет стальных шаров, Джонни решает принять участие в гонке «Стальной шар» и начинает своё странное приключение по всей Америке.",
+        "airedOn": {
+          "date": "2004-01-19",
+          "day": 19,
+          "month": 1,
+          "year": 2004
+        },
+        "releasedOn": {
+          "date": "2011-04-19",
+          "day": 19,
+          "month": 4,
+          "year": 2011
+        },
+        "volumes": 24,
+        "chapters": 96,
+        "genres": [
+          {
+            "id": "52",
+            "name": "Seinen",
+            "russian": "Сэйнэн",
+            "kind": "demographic"
+          },
+          {
+            "id": "47",
+            "name": "Shounen",
+            "russian": "Сёнен",
+            "kind": "demographic"
+          },
+          {
+            "id": "56",
+            "name": "Action",
+            "russian": "Экшен",
+            "kind": "genre"
+          },
+          {
+            "id": "68",
+            "name": "Adventure",
+            "russian": "Приключения",
+            "kind": "genre"
+          },
+          {
+            "id": "46",
+            "name": "Mystery",
+            "russian": "Тайна",
+            "kind": "genre"
+          },
+          {
+            "id": "48",
+            "name": "Supernatural",
+            "russian": "Сверхъестественное",
+            "kind": "genre"
+          },
+          {
+            "id": "69",
+            "name": "Historical",
+            "russian": "Исторический",
+            "kind": "theme"
+          }
+        ],
+        "kind": "manga",
+        "isCensored": false,
+        "score": 9.34,
+        "status": "released",
+        "publishers": [
+          {
+            "id": "25",
+            "name": "Ultra Jump"
+          }
+        ],
+        "userRate": null,
+        "characterRoles": [
+          {
+            "id": "431630906",
+            "rolesEn": [
+              "Main"
+            ],
+            "rolesRu": [
+              "Main"
+            ],
+            "character": {
+              "id": "20148",
+              "name": "Diego Brando",
+              "poster": {
+                "originalUrl": "https://shikimori.io/uploads/poster/characters/20148/18211af2ba6e75dfccbc267c670d0750.jpeg"
+              }
+            }
+          },
+          {
+            "id": "431630907",
+            "rolesEn": [
+              "Main"
+            ],
+            "rolesRu": [
+              "Main"
+            ],
+            "character": {
+              "id": "19492",
+              "name": "Johnny Joestar",
+              "poster": {
+                "originalUrl": "https://shikimori.io/uploads/poster/characters/19492/6b98ffed7a56bb262388cf0d626a3ef1.jpeg"
+              }
+            }
+          }
+        ],
+        "related": [
+          {
+            "relationKind": "prequel",
+            "relationText": "Предыстория",
+            "manga": {
+              "id": "3009",
+              "malId": "3009",
+              "name": "JoJo no Kimyou na Bouken Part 6: Stone Ocean",
+              "english": "JoJo's Bizarre Adventure Part 6: Stone Ocean",
+              "japanese": "ジョジョの奇妙な冒険 ストーンオーシャン",
+              "russian": "Невероятное приключение ДжоДжо — Часть 6: Каменный океан",
+              "poster": {
+                "originalUrl": "https://shikimori.io/uploads/poster/mangas/3009/3dfe28c5b305092615012a4acdecb992.jpeg",
+                "mainAlt2xUrl": "https://shikimori.io/uploads/poster/mangas/3009/main_alt_2x-b4d793a8466e7e46cd8cb958d7dd5bd6.jpeg"
+              },
+              "description": "Шестая часть манги «Невероятные приключения ДжоДжо», выделенная в отдельную серию, и, наверное, самая сюжетно-сложная из всех. «Каменный океан» повествует о приключениях Джолин Куджо, дочери Джотаро Куджо, в тюрьме «Green Dolphin Street» и известную как «The Aquarium». Снова стенды, снова тайны и странные события, снова главный злодей со способностью воздействовать на время и снова следы Дио Брандо...",
+              "airedOn": {
+                "date": "1999-12-07",
+                "day": 7,
+                "month": 12,
+                "year": 1999
+              },
+              "releasedOn": {
+                "date": "2003-04-08",
+                "day": 8,
+                "month": 4,
+                "year": 2003
+              },
+              "volumes": 17,
+              "chapters": 158,
+              "genres": [
+                {
+                  "id": "47",
+                  "name": "Shounen",
+                  "russian": "Сёнен",
+                  "kind": "demographic"
+                },
+                {
+                  "id": "56",
+                  "name": "Action",
+                  "russian": "Экшен",
+                  "kind": "genre"
+                },
+                {
+                  "id": "68",
+                  "name": "Adventure",
+                  "russian": "Приключения",
+                  "kind": "genre"
+                }
+              ],
+              "kind": "manga",
+              "isCensored": false,
+              "score": 8.24,
+              "status": "released"
+            }
+          },
+          {
+            "relationKind": "sequel",
+            "relationText": "Продолжение",
+            "manga": {
+              "id": "25515",
+              "malId": "25515",
+              "name": "JoJo no Kimyou na Bouken Part 8: JoJolion",
+              "english": null,
+              "japanese": "ジョジョの奇妙な冒険 Part8 ジョジョリオン",
+              "russian": "Невероятное приключение ДжоДжо — Часть 8: Джоджолион",
+              "poster": {
+                "originalUrl": "https://shikimori.io/uploads/poster/mangas/25515/c0db133419abd620c3c78d03cd1c1fd9.jpeg",
+                "mainAlt2xUrl": "https://shikimori.io/uploads/poster/mangas/25515/main_alt_2x-c4b3d2a19e24125561553044bf54ae9e.jpeg"
+              },
+              "description": "Восьмая часть «Невероятного приключения ДжоДжо» от [person=2619]Хирохико Араки[/person], прямое продолжение «[manga=1706]Гонки \"Стальной шар\"[/manga]».\n\nПосле странного землетрясения на окраине японского города Морио девушка находит голого парня, который не помнит ни откуда он, ни своего имени. Всё, что у него есть, — это матросская шапочка, родинка Джостаров в форме пятиконечной звезды и один из самых невероятных стендов.",
+              "airedOn": {
+                "date": "2011-05-19",
+                "day": 19,
+                "month": 5,
+                "year": 2011
+              },
+              "releasedOn": {
+                "date": "2021-08-19",
+                "day": 19,
+                "month": 8,
+                "year": 2021
+              },
+              "volumes": 27,
+              "chapters": 110,
+              "genres": [
+                {
+                  "id": "52",
+                  "name": "Seinen",
+                  "russian": "Сэйнэн",
+                  "kind": "demographic"
+                },
+                {
+                  "id": "56",
+                  "name": "Action",
+                  "russian": "Экшен",
+                  "kind": "genre"
+                },
+                {
+                  "id": "68",
+                  "name": "Adventure",
+                  "russian": "Приключения",
+                  "kind": "genre"
+                },
+                {
+                  "id": "126",
+                  "name": "Award Winning",
+                  "russian": "Удостоено наград",
+                  "kind": "theme"
+                },
+                {
+                  "id": "46",
+                  "name": "Mystery",
+                  "russian": "Тайна",
+                  "kind": "genre"
+                },
+                {
+                  "id": "48",
+                  "name": "Supernatural",
+                  "russian": "Сверхъестественное",
+                  "kind": "genre"
+                }
+              ],
+              "kind": "manga",
+              "isCensored": false,
+              "score": 8.49,
+              "status": "released"
+            }
+          },
+          {
+            "relationKind": "adaptation",
+            "relationText": "Адаптация",
+            "manga": null
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -21,6 +21,7 @@ class UnyoNetworkImage extends StatelessWidget {
     this.fit = BoxFit.cover,
     this.alignment = Alignment.center,
     this.borderRadius = 0,
+    this.showPlaceholder = true,
     this.fadeDuration = defaultFadeDuration,
     this.filterQuality = FilterQuality.medium,
   });
@@ -36,6 +37,14 @@ class UnyoNetworkImage extends StatelessWidget {
   final BoxFit fit;
   final Alignment alignment;
   final double borderRadius;
+
+  /// Whether the skeleton colour is painted behind the image while it loads.
+  ///
+  /// Set to `false` for artwork that carries its own shape and transparent
+  /// edge pixels (extension icons bake rounded corners into the PNG): the
+  /// skeleton colour would otherwise show through those pixels as a grey halo
+  /// around the artwork.
+  final bool showPlaceholder;
   final Duration fadeDuration;
   final FilterQuality filterQuality;
 
@@ -43,44 +52,49 @@ class UnyoNetworkImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool reduceMotion =
         MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final Widget? image =
+        url.isEmpty
+            ? null
+            : Image(
+                image: NetworkImage(url),
+                width: width,
+                height: height,
+                fit: fit,
+                alignment: alignment,
+                filterQuality: filterQuality,
+                errorBuilder:
+                    (BuildContext context, Object error, StackTrace? stack) =>
+                        const SizedBox.shrink(),
+                frameBuilder:
+                    (
+                      BuildContext context,
+                      Widget child,
+                      int? frame,
+                      bool wasSynchronouslyLoaded,
+                    ) {
+                      if (wasSynchronouslyLoaded || reduceMotion) {
+                        return child;
+                      }
+                      return AnimatedOpacity(
+                        opacity: frame == null ? 0 : 1,
+                        duration: fadeDuration,
+                        curve: fadeCurve,
+                        child: child,
+                      );
+                    },
+              );
     return SizedBox(
       width: width,
       height: height,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
-        child: ColoredBox(
-          color: SkeletonBlock.baseColor(context),
-          child: url.isEmpty
-              ? null
-              : Image(
-                  image: NetworkImage(url),
-                  width: width,
-                  height: height,
-                  fit: fit,
-                  alignment: alignment,
-                  filterQuality: filterQuality,
-                  errorBuilder:
-                      (BuildContext context, Object error, StackTrace? stack) =>
-                          const SizedBox.shrink(),
-                  frameBuilder:
-                      (
-                        BuildContext context,
-                        Widget child,
-                        int? frame,
-                        bool wasSynchronouslyLoaded,
-                      ) {
-                        if (wasSynchronouslyLoaded || reduceMotion) {
-                          return child;
-                        }
-                        return AnimatedOpacity(
-                          opacity: frame == null ? 0 : 1,
-                          duration: fadeDuration,
-                          curve: fadeCurve,
-                          child: child,
-                        );
-                      },
-                ),
-        ),
+        child:
+            showPlaceholder
+                ? ColoredBox(
+                  color: SkeletonBlock.baseColor(context),
+                  child: image,
+                )
+                : image ?? const SizedBox.shrink(),
       ),
     );
   }
