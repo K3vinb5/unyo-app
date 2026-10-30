@@ -14,6 +14,7 @@ import 'package:unyo/domain/entities/extension/track.dart' as ext;
 import 'package:unyo/domain/entities/extension/video.dart' as ext;
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/torrent/torrent_service.dart';
+import 'package:unyo/core/services/video/subtitle_offset_controller.dart';
 import 'package:unyo/domain/entities/torrent/torrent_file_stat.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -32,6 +33,7 @@ class VideoService {
   final void Function(String) _onErrorCallback;
 
   late final mdk.Player _player;
+  late final SubtitleOffsetController _subtitleOffset;
   final List<ext.Track> subtitleTracks = [];
   final List<ext.Track> audioTracks = [];
   ext.Track? _currentSubtitleTrack;
@@ -45,9 +47,11 @@ class VideoService {
   bool _isDisposed = false;
   StreamSubscription<({mdk.MediaStatus oldValue, mdk.MediaStatus newValue})>?
   _mediaStatusSubscription;
-  static const mdk.SeekFlag _seekFlags = mdk.SeekFlag(
-    mdk.SeekFlag.fromStart | mdk.SeekFlag.inCache | mdk.SeekFlag.fast,
-  );
+  // TEMP MEASUREMENT (WP #97 probe build only — revert before commit):
+  // production flags are `fromStart | inCache | fast` (keyframe seek). The
+  // residual measurement needs frame-accurate seeks, and mdk is accurate when
+  // the Fast/KeyFrame flag is absent.
+  static const mdk.SeekFlag _seekFlags = mdk.SeekFlag(mdk.SeekFlag.fromStart);
 
   VideoService({
     required ext.Video video,
@@ -61,6 +65,7 @@ class VideoService {
        _alternativeVideos = alternativeVideos,
        _onErrorCallback = onErrorCallback {
     _player = mdk.Player();
+    _subtitleOffset = SubtitleOffsetController(onChanged: _writeSubtitleDelay);
     _configureDecoder();
     _configurePlayer();
     _setPlayerHttpHeaders(_video.headers);
@@ -98,6 +103,9 @@ class VideoService {
     _episodeIndex = episodeIndex;
     _isVideoReady = false;
     _isBuffering = true;
+    // A different stream has its own start offset; drop the old delay before
+    // the new media loads (the track attach recomputes it).
+    _subtitleOffset.reset();
     try {
       final resolvedUrl = await _resolveVideoUrl(_video.videoUrl);
       _player.media = resolvedUrl;
@@ -141,6 +149,11 @@ class VideoService {
   }
 
   List<ext.Track> get subtitles => subtitleTracks;
+
+  /// Whether the selected subtitle is an external cue file. Embedded streams
+  /// share the media timeline, so they have no delay to nudge.
+  bool get hasExternalSubtitle =>
+      _currentSubtitleTrack != null && !_currentSubtitleTrack!.embedded;
 
   List<ext.Track> get audios => audioTracks;
 
@@ -203,8 +216,24 @@ class VideoService {
   }
 
   bool setSubtitleOffset(Duration duration) {
-    return false;
+    final applied = _subtitleOffset.setOffset(duration);
+    return applied == duration;
   }
+
+  /// Manual ±0.1 s subtitle nudge for the current session. Only meaningful for
+  /// external cue files: embedded (torrent/container) subtitles share the media
+  /// timeline and must stay at an offset of exactly zero.
+  bool nudgeSubtitleOffset(Duration delta) {
+    if (_currentSubtitleTrack == null || _currentSubtitleTrack!.embedded) {
+      return false;
+    }
+    _subtitleOffset.nudge(delta);
+    return true;
+  }
+
+  /// Current subtitle delay (0 unless the stream needed a correction or the user
+  /// nudged it).
+  Duration get subtitleOffset => _subtitleOffset.offset;
 
   bool resetService() {
     _player.state = mdk.PlaybackState.paused;
@@ -226,6 +255,8 @@ class VideoService {
     final position = this.position;
     _isVideoReady = false;
     _isBuffering = true;
+    // Another server/stream means another start offset: never inherit it.
+    _subtitleOffset.reset();
     try {
       final resolvedUrl = await _resolveVideoUrl(video.videoUrl);
       _player.media = resolvedUrl;
@@ -242,13 +273,23 @@ class VideoService {
   bool setSubtitle(int subtitleIndex) {
     if (subtitleIndex < 0 || subtitleIndex >= subtitleTracks.length) {
       _currentSubtitleTrack = null;
+      _subtitleOffset.reset();
       return false;
     }
     _currentSubtitleTrack = subtitleTracks[subtitleIndex];
     if (_currentSubtitleTrack != null && _currentSubtitleTrack!.embedded) {
       _player.activeSubtitleTracks = [_currentSubtitleTrack!.embeddedIndex];
+      // Embedded streams live on the container timeline: never correct them.
+      _subtitleOffset.setAutoOffset(Duration.zero);
     } else {
       _player.setMedia(_currentSubtitleTrack!.url, mdk.MediaType.subtitle);
+      // An external cue file is timed from 0, while the stream may start at a
+      // non-zero PTS (common for the HLS the non-torrent extensions serve).
+      _subtitleOffset.setAutoOffset(
+        SubtitleOffsetController.autoCorrectionForStream(
+          _player.mediaInfo.video?.firstOrNull?.startTime,
+        ),
+      );
     }
     return true;
   }
@@ -429,6 +470,11 @@ class VideoService {
       _player.setProperty('headers', formattedHeaders);
       _player.setProperty('avio.headers', formattedHeaders);
     }
+  }
+
+  /// Single writer of mdk's `sub-delay` property (seconds, positive = later).
+  void _writeSubtitleDelay(Duration offset) {
+    _player.setProperty('sub-delay', SubtitleOffsetController.toMdkSeconds(offset));
   }
 
   void _setPlayerLogsHandler() {

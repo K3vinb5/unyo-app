@@ -26,6 +26,11 @@ class UnyoVideoControls extends StatefulWidget {
 
   const UnyoVideoControls({super.key, required this.videoCubit, required this.videoService});
 
+  /// Subtitle popup entries that are not a track index: a ±0.1 s delay nudge.
+  /// Track indices are small and non-negative, so negative sentinels are free.
+  static const int subtitleDelayLater = -1;
+  static const int subtitleDelayEarlier = -2;
+
   @override
   State<UnyoVideoControls> createState() => _UnyoVideoControlsState();
 }
@@ -371,17 +376,49 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                           tooltip: "Select Subtitle Track",
                                           icon: const Icon(Icons.subtitles_rounded, size: 27),
                                           onSelected: (int index) {
-                                            _videoService.setSubtitle(index);
+                                            if (index == UnyoVideoControls.subtitleDelayLater) {
+                                              _videoService.nudgeSubtitleOffset(
+                                                const Duration(milliseconds: 100),
+                                              );
+                                            } else if (index == UnyoVideoControls.subtitleDelayEarlier) {
+                                              _videoService.nudgeSubtitleOffset(
+                                                const Duration(milliseconds: -100),
+                                              );
+                                            } else {
+                                              _videoService.setSubtitle(index);
+                                            }
                                             setState(() {});
                                           },
-                                          itemBuilder: (BuildContext context) => _videoService.subtitles
-                                              .mapIndexed(
-                                                (index, subtitle) => PopupMenuItem<int>(
-                                              value: index,
-                                              child: Text('${subtitle.lang}${subtitle.embedded ? ' - Embedded' : ''}'),
+                                          itemBuilder: (BuildContext context) => [
+                                            ..._videoService.subtitles.mapIndexed(
+                                              (index, subtitle) => PopupMenuItem<int>(
+                                                value: index,
+                                                child: Text('${subtitle.lang}${subtitle.embedded ? ' - Embedded' : ''}'),
+                                              ),
                                             ),
-                                          )
-                                              .toList(),
+                                            // A delay only exists for external cue
+                                            // files; embedded streams share the
+                                            // media timeline and must stay at 0.
+                                            if (_videoService.hasExternalSubtitle) ...[
+                                              const PopupMenuDivider(),
+                                              PopupMenuItem<int>(
+                                                value: UnyoVideoControls.subtitleDelayLater,
+                                                child: Row(
+                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                  children: [
+                                                    const Text('Subtitle delay +0.1 s'),
+                                                    Text(
+                                                      '${(_videoService.subtitleOffset.inMilliseconds / 1000).toStringAsFixed(1)} s',
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const PopupMenuItem<int>(
+                                                value: UnyoVideoControls.subtitleDelayEarlier,
+                                                child: Text('Subtitle delay -0.1 s'),
+                                              ),
+                                            ],
+                                          ],
                                         ),
                                         PopupMenuButton<int>(
                                           tooltip: "Select Video Server",
