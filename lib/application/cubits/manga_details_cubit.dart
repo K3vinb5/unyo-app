@@ -45,6 +45,15 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
   late StreamSubscription<User> _loggedUserSubscription;
   late StreamSubscription<MediaList> _selectedMediaListSubscription;
 
+  /// Extension the page was showing when a switch arrived before
+  /// [MangaDetailsState.installedExtensions] had loaded. The load callback
+  /// consumes it, so a deferred switch resolves exactly like an immediate one
+  /// (saved mapping first, then this extension, never a prompt).
+  Extension? _deferredSwitchPreviousExtension;
+
+  /// Whether a title switch is waiting for the installed extensions to load.
+  bool _hasDeferredSwitch = false;
+
   // Logger
   final Logger _logger = sl<Logger>();
 
@@ -150,7 +159,10 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
   Future<void> _resolveExtensionForSwitchedManga(Manga manga, Extension? previousExtension) async {
     if (state.installedExtensions.isEmpty) {
       // `_loadInstalledExtensions` resolves the then-selected manga once it lands,
-      // so resolving here would only fetch twice.
+      // so resolving here would only fetch twice. Remember that the pending
+      // resolution comes from a switch, so the load callback stays silent.
+      _deferredSwitchPreviousExtension = previousExtension;
+      _hasDeferredSwitch = true;
       _logger.d("Extensions are not loaded yet, leaving the resolution of manga ${manga.id} to the initial load.");
       return;
     }
@@ -258,6 +270,16 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
       );
       if (isClosed) return;
       emit(state.copyWith(installedExtensions: installedExtensions));
+      if (_hasDeferredSwitch) {
+        // A switch landed before the extensions did: resolve it the way an
+        // immediate switch would have, instead of running the initial-page path
+        // (which prompts when the title has no saved mapping).
+        _hasDeferredSwitch = false;
+        final Extension? previousExtension = _deferredSwitchPreviousExtension;
+        _deferredSwitchPreviousExtension = null;
+        await _resolveExtensionForSwitchedManga(state.selectedManga, previousExtension);
+        return;
+      }
       _setSelectedExtension(state.loggedUser, state.selectedManga);
     } catch (e, stackTrace) {
       handleError("Failed to load installed extensions $e", stackTrace: stackTrace);
@@ -265,6 +287,8 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
   }
 
   Future<void> _getMangaInfoFromSelectedExtension(Extension selectedExtension) async {
+    final Manga requestedManga = state.selectedManga;
+    final int requestedMangaId = requestedManga.id;
     try {
       if (state.installedExtensions.isEmpty) {
         _logger.w("No installed extensions available to fetch manga info.");
@@ -276,13 +300,19 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
         return;
       }
       _logger.i(
-        "Fetching Manga Info from extension ${selectedExtension.name} for ${state.selectedManga.title.userPreferred}",
+        "Fetching Manga Info from extension ${selectedExtension.name} for ${requestedManga.title.userPreferred}",
       );
       List<JSManga> mangaResults = await _extensionRepositoryAniyomi.getMangaSearchResults(
-        state.selectedManga.title.userPreferred,
+        requestedManga.title.userPreferred,
         selectedExtension,
       );
-      if (isClosed) return;
+      // The page may have been re-pointed at another title while the search
+      // ran: those results describe the old title and must not overwrite the
+      // cleared state of the title that is open now.
+      if (isClosed || state.selectedManga.id != requestedMangaId) {
+        _logger.d("Discarding extension results for manga $requestedMangaId, the page moved on.");
+        return;
+      }
       emit(state.copyWith(extensionMangaResults: mangaResults));
     } catch (e, stackTrace) {
       handleError("Error fetching Manga Info from selected extension: $e", stackTrace: stackTrace);

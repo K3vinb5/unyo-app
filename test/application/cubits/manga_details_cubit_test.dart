@@ -226,10 +226,13 @@ void main() {
       );
     }
 
-    /// Opens the details page on [firstManga] with [testMangaExtension] selected,
-    /// so the switch starts from a page that already holds the first title's
-    /// extension results.
-    Future<void> openDetailsPageWithFirstManga(Map<String, Extension> savedMappings) async {
+    /// Wires the streams/repository stubs and pushes [savedMappings] as the
+    /// logged user, leaving the page without a selected title. Pass
+    /// [pendingExtensions] to hold the installed-extension load open.
+    Future<void> startDetailsPage(
+      Map<String, Extension> savedMappings, {
+      Completer<Set<Extension>>? pendingExtensions,
+    }) async {
       await cubit.close();
       mangaStreamController = StreamController<Manga>.broadcast();
       addTearDown(mangaStreamController.close);
@@ -244,8 +247,9 @@ void main() {
           .thenAnswer((_) async => (false, <Manga>[]));
       when(() => mangaRepository.getMediaCoverImages(any())).thenAnswer((_) async => <String>[]);
       when(() => userRepository.updateUserInfo(any())).thenAnswer((_) async {});
-      when(() => extensionRepository.getInstalledMangaExtensions(any()))
-          .thenAnswer((_) async => <Extension>{testExtension});
+      when(() => extensionRepository.getInstalledMangaExtensions(any())).thenAnswer(
+        (_) => pendingExtensions?.future ?? Future.value(<Extension>{testExtension}),
+      );
       when(() => extensionRepository.getMangaSearchResults(any(), any())).thenAnswer((invocation) async {
         final String query = invocation.positionalArguments.first as String;
         searchQueries.add(query);
@@ -264,6 +268,13 @@ void main() {
       await pumpEventQueue();
       userStreamController.add(anilistUserWith(savedMappings));
       await pumpEventQueue();
+    }
+
+    /// Opens the details page on [firstManga] with [testMangaExtension] selected,
+    /// so the switch starts from a page that already holds the first title's
+    /// extension results.
+    Future<void> openDetailsPageWithFirstManga(Map<String, Extension> savedMappings) async {
+      await startDetailsPage(savedMappings);
       mangaStreamController.add(firstManga);
       await pumpEventQueue();
       await cubit.selectMangaExtension(testExtension.name);
@@ -344,6 +355,85 @@ void main() {
 
       expect(searchQueries, queriesAfterSwitch, reason: 'a same-id echo must not re-fetch from the extension');
       expect(cubit.state.extensionMangaResults, isNotEmpty, reason: 'the echo must not clear the resolved results');
+    });
+
+    test('a switch landing before the extensions load stays silent when they arrive', () async {
+      final Completer<Set<Extension>> pendingExtensions = Completer<Set<Extension>>();
+      await startDetailsPage(<String, Extension>{}, pendingExtensions: pendingExtensions);
+      mangaStreamController.add(firstManga);
+      await pumpEventQueue();
+      expect(cubit.state.installedExtensions, isEmpty, reason: 'the load is still pending');
+
+      mangaStreamController.add(secondManga);
+      await pumpEventQueue();
+      expect(cubit.state.selectedManga.id, secondManga.id);
+
+      pendingExtensions.complete(<Extension>{testExtension});
+      await pumpEventQueue();
+
+      expect(cubit.state.installedExtensions, isNotEmpty);
+      expect(cubit.state.selectedManga.id, secondManga.id);
+      expect(
+        noExtensionPrompts(),
+        0,
+        reason: 'the deferred switch must resolve like an immediate one, not like the initial page load',
+      );
+      expect(cubit.state.selectedExtension, isNull, reason: 'no saved mapping and nothing carried over to resolve with');
+      expect(searchQueries, isEmpty);
+    });
+
+    test('a switch landing before the extensions load resolves the saved mapping once they arrive', () async {
+      final Completer<Set<Extension>> pendingExtensions = Completer<Set<Extension>>();
+      await startDetailsPage(
+        <String, Extension>{secondManga.id.toString(): testExtension},
+        pendingExtensions: pendingExtensions,
+      );
+      mangaStreamController.add(firstManga);
+      await pumpEventQueue();
+
+      mangaStreamController.add(secondManga);
+      await pumpEventQueue();
+
+      pendingExtensions.complete(<Extension>{testExtension});
+      await pumpEventQueue();
+
+      expect(
+        searchQueries.last,
+        secondTitle.userPreferred,
+        reason: 'the deferred switch must search the extension for the title that is open now',
+      );
+      expect(cubit.state.selectedExtension, same(testExtension));
+      expect(cubit.state.extensionMangaResults, isNotEmpty);
+      expect(noExtensionPrompts(), 0);
+    });
+
+    test('a late search for the previous title does not overwrite the new title results', () async {
+      await openDetailsPageWithFirstManga(<String, Extension>{secondManga.id.toString(): testExtension});
+      final Completer<List<JSManga>> firstTitleSearch = Completer<List<JSManga>>();
+      final JSManga secondTitleResult = MockJSManga();
+      when(() => extensionRepository.getMangaSearchResults(any(), any())).thenAnswer((invocation) {
+        final String query = invocation.positionalArguments.first as String;
+        searchQueries.add(query);
+        if (query == firstTitle.userPreferred) return firstTitleSearch.future;
+        return Future.value(<JSManga>[secondTitleResult]);
+      });
+
+      final Future<void> firstTitleFetch = cubit.selectMangaExtension(testExtension.name);
+      await pumpEventQueue();
+
+      mangaStreamController.add(secondManga);
+      await pumpEventQueue();
+      expect(cubit.state.extensionMangaResults, <JSManga>[secondTitleResult]);
+
+      firstTitleSearch.complete(<JSManga>[MockJSManga()]);
+      await firstTitleFetch;
+      await pumpEventQueue();
+
+      expect(
+        cubit.state.extensionMangaResults,
+        <JSManga>[secondTitleResult],
+        reason: 'results fetched for the previous title must be discarded, not emitted onto the new one',
+      );
     });
   });
 }

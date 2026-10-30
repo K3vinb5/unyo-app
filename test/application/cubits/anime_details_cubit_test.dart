@@ -402,12 +402,13 @@ void main() {
       );
     }
 
-    /// Opens the details page on [firstAnime] with [testExtension] selected, so a
-    /// test starts from a page that already holds the first title's extension
-    /// results — exactly the state the switch has to invalidate.
-    Future<void> openDetailsPageWithFirstAnime(
-      Map<String, Extension> savedMappings,
-    ) async {
+    /// Wires the streams/repository stubs and pushes [savedMappings] as the
+    /// logged user, leaving the page without a selected title. Pass
+    /// [pendingExtensions] to hold the installed-extension load open.
+    Future<void> startDetailsPage(
+      Map<String, Extension> savedMappings, {
+      Completer<Set<Extension>>? pendingExtensions,
+    }) async {
       animeStreamController = StreamController<Anime>.broadcast();
       addTearDown(animeStreamController.close);
       userStreamController = StreamController<User>.broadcast();
@@ -430,8 +431,9 @@ void main() {
       when(() => extensionNotifier.updateSelectedExtension(any())).thenReturn(null);
       when(() => episodesNotifier.updateSelectedJSEpisodes(any())).thenReturn(null);
       when(() => userRepository.updateUserInfo(any())).thenAnswer((_) async {});
-      when(() => extensionRepository.getInstalledAnimeExtensions(any()))
-          .thenAnswer((_) async => <Extension>{testExtension});
+      when(() => extensionRepository.getInstalledAnimeExtensions(any())).thenAnswer(
+        (_) => pendingExtensions?.future ?? Future.value(<Extension>{testExtension}),
+      );
       when(() => extensionRepository.getAnimeSearchResults(any(), any())).thenAnswer((invocation) async {
         final String query = invocation.positionalArguments.first as String;
         searchQueries.add(query);
@@ -442,6 +444,15 @@ void main() {
       await pumpEventQueue();
       userStreamController.add(anilistUserWith(savedMappings));
       await pumpEventQueue();
+    }
+
+    /// Opens the details page on [firstAnime] with [testExtension] selected, so a
+    /// test starts from a page that already holds the first title's extension
+    /// results — exactly the state the switch has to invalidate.
+    Future<void> openDetailsPageWithFirstAnime(
+      Map<String, Extension> savedMappings,
+    ) async {
+      await startDetailsPage(savedMappings);
       animeStreamController.add(firstAnime);
       await pumpEventQueue();
       await cubit.selectAnimeExtension(testExtension.name);
@@ -537,6 +548,91 @@ void main() {
 
       expect(searchQueries, queriesAfterSwitch, reason: 'a same-id echo must not re-fetch from the extension');
       expect(cubit.state.extensionAnimeResults, isNotEmpty, reason: 'the echo must not clear the resolved results');
+    });
+
+    test('a switch landing before the extensions load stays silent when they arrive', () async {
+      final Completer<Set<Extension>> pendingExtensions = Completer<Set<Extension>>();
+      await startDetailsPage(<String, Extension>{}, pendingExtensions: pendingExtensions);
+      animeStreamController.add(firstAnime);
+      await pumpEventQueue();
+      expect(cubit.state.installedExtensions, isEmpty, reason: 'the load is still pending');
+
+      animeStreamController.add(secondAnime);
+      await pumpEventQueue();
+      expect(cubit.state.selectedAnime.id, secondAnime.id);
+
+      pendingExtensions.complete(<Extension>{testExtension});
+      await pumpEventQueue();
+
+      expect(cubit.state.installedExtensions, isNotEmpty);
+      expect(cubit.state.selectedAnime.id, secondAnime.id);
+      expect(
+        noExtensionPrompts(),
+        0,
+        reason: 'the deferred switch must resolve like an immediate one, not like the initial page load',
+      );
+      expect(cubit.state.selectedExtension, isNull, reason: 'no saved mapping and nothing carried over to resolve with');
+      expect(searchQueries, isEmpty);
+    });
+
+    test('a switch landing before the extensions load resolves the saved mapping once they arrive', () async {
+      final Completer<Set<Extension>> pendingExtensions = Completer<Set<Extension>>();
+      await startDetailsPage(
+        <String, Extension>{secondAnime.id.toString(): testExtension},
+        pendingExtensions: pendingExtensions,
+      );
+      animeStreamController.add(firstAnime);
+      await pumpEventQueue();
+
+      animeStreamController.add(secondAnime);
+      await pumpEventQueue();
+
+      pendingExtensions.complete(<Extension>{testExtension});
+      await pumpEventQueue();
+
+      expect(
+        searchQueries.last,
+        secondTitle.userPreferred,
+        reason: 'the deferred switch must search the extension for the title that is open now',
+      );
+      expect(cubit.state.selectedExtension, same(testExtension));
+      expect(cubit.state.extensionAnimeResults, isNotEmpty);
+      expect(noExtensionPrompts(), 0);
+    });
+
+    test('a late search for the previous title does not overwrite the new title results', () async {
+      await openDetailsPageWithFirstAnime(<String, Extension>{secondAnime.id.toString(): testExtension});
+      final Completer<List<JSAnime>> firstTitleSearch = Completer<List<JSAnime>>();
+      when(() => extensionRepository.getAnimeSearchResults(any(), any())).thenAnswer((invocation) {
+        final String query = invocation.positionalArguments.first as String;
+        searchQueries.add(query);
+        if (query == firstTitle.userPreferred) return firstTitleSearch.future;
+        return Future.value(<JSAnime>[jsAnimeWithTitle(query)]);
+      });
+
+      final Future<void> firstTitleFetch = cubit.selectAnimeExtension(testExtension.name);
+      await pumpEventQueue();
+
+      animeStreamController.add(secondAnime);
+      await pumpEventQueue();
+      expect(cubit.state.extensionAnimeResults.map((result) => result.getTitle().toDartString()), <String>[
+        secondTitle.userPreferred,
+      ]);
+
+      firstTitleSearch.complete(<JSAnime>[jsAnimeWithTitle('Stale result from the previous title')]);
+      await firstTitleFetch;
+      await pumpEventQueue();
+
+      expect(
+        cubit.state.extensionAnimeResults.map((result) => result.getTitle().toDartString()),
+        <String>[secondTitle.userPreferred],
+        reason: 'results fetched for the previous title must be discarded, not emitted onto the new one',
+      );
+      expect(
+        snackbarsOf(cubit.state).where((effect) => effect.message.contains('Stale result')),
+        isEmpty,
+        reason: 'a discarded fetch must not snackbar a result the page does not show',
+      );
     });
   });
 
