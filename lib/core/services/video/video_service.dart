@@ -13,13 +13,15 @@ import 'package:unyo/domain/entities/extension/headers.dart' as ext;
 import 'package:unyo/domain/entities/extension/track.dart' as ext;
 import 'package:unyo/domain/entities/extension/video.dart' as ext;
 import 'package:unyo/core/di/locator.dart';
+import 'package:unyo/core/services/media/playback_session.dart';
 import 'package:unyo/core/services/torrent/torrent_service.dart';
+import 'package:unyo/core/services/video/video_playback_commands.dart';
 import 'package:unyo/domain/entities/torrent/torrent_file_stat.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
-class VideoService {
+class VideoService implements VideoPlaybackCommands {
   // Services
   final Logger _logger = sl<Logger>();
   final TorrentService _torrentService = sl<TorrentService>();
@@ -36,6 +38,7 @@ class VideoService {
   final List<ext.Track> audioTracks = [];
   ext.Track? _currentSubtitleTrack;
   ext.Track? _currentAudioTrack;
+  int _lastSubtitleIndex = 0;
 
   late bool _initialFullscreen;
   late bool _isFullscreen;
@@ -45,6 +48,10 @@ class VideoService {
   bool _isDisposed = false;
   StreamSubscription<({mdk.MediaStatus oldValue, mdk.MediaStatus newValue})>?
   _mediaStatusSubscription;
+  /// Playback transitions for the OS media session. Broadcasts on
+  /// play/pause/seek/speed/buffer changes only — never per tick.
+  final StreamController<PlaybackSnapshot> _playbackEvents =
+      StreamController<PlaybackSnapshot>.broadcast();
   static const mdk.SeekFlag _seekFlags = mdk.SeekFlag(
     mdk.SeekFlag.fromStart | mdk.SeekFlag.inCache | mdk.SeekFlag.fast,
   );
@@ -98,6 +105,7 @@ class VideoService {
     _episodeIndex = episodeIndex;
     _isVideoReady = false;
     _isBuffering = true;
+    _emitPlaybackState();
     try {
       final resolvedUrl = await _resolveVideoUrl(_video.videoUrl);
       _player.media = resolvedUrl;
@@ -109,27 +117,40 @@ class VideoService {
   }
 
   // Getters
+  @override
   Duration get position => Duration(milliseconds: _player.position);
 
   String get formattedPosition => TextUtils.formatMilliseconds(position.inMilliseconds);
 
   ValueNotifier<int?> get textureId => _player.textureId;
 
+  @override
   Duration get duration => Duration(milliseconds: _player.mediaInfo.duration);
 
   double get percentagePlayed => (position.inMilliseconds / duration.inMilliseconds);
 
+  @override
   double get volume => _player.volume;
 
+  @override
   bool get isPlaying => _player.state == mdk.PlaybackState.playing;
 
   bool get isBuffering => _isBuffering;
 
   bool get isLoading => _isLoading;
 
+  @override
   bool get isFullscreen => _isFullscreen;
 
   bool get isVideoReady => _isVideoReady;
+
+  Stream<PlaybackSnapshot> get playbackEvents => _playbackEvents.stream;
+
+  @override
+  double get playbackSpeed => _player.playbackRate;
+
+  @override
+  bool get subtitlesEnabled => _currentSubtitleTrack != null;
 
   double get aspectRatio {
     final streams = _player.mediaInfo.video;
@@ -147,18 +168,23 @@ class VideoService {
   int get videoIndex => _videoIndex;
 
   // Setters
+  @override
   bool play() {
     if (_isBuffering) return false;
     _player.state = mdk.PlaybackState.playing;
+    _emitPlaybackState();
     return true;
   }
 
+  @override
   bool pause() {
     if (_isBuffering) return false;
     _player.state = mdk.PlaybackState.paused;
+    _emitPlaybackState();
     return true;
   }
 
+  @override
   bool togglePlay() {
     if (_isBuffering) return false;
     if (isPlaying) {
@@ -174,23 +200,26 @@ class VideoService {
     return true;
   }
 
+  @override
   bool setVolume(double volume) {
     _player.volume = volume;
     return true;
   }
 
+  @override
   bool setPlaybackSpeed(double newPlayBackSpeed) {
     _player.playbackRate = newPlayBackSpeed;
+    _emitPlaybackState();
     return true;
   }
 
+  @override
   bool seekTo(Duration newPosition) {
-    if (newPosition > duration) {
-      _player.seek(position: duration.inMilliseconds, flags: _seekFlags);
-    } else if (newPosition < Duration.zero) {
-      _player.seek(position: 0, flags: _seekFlags);
-    }
-    _player.seek(position: newPosition.inMilliseconds, flags: _seekFlags);
+    final clamped = Duration(
+      milliseconds: newPosition.inMilliseconds.clamp(0, duration.inMilliseconds),
+    );
+    _player.seek(position: clamped.inMilliseconds, flags: _seekFlags);
+    _emitPlaybackState(position: clamped);
     return true;
   }
 
@@ -212,6 +241,7 @@ class VideoService {
     _isVideoReady = false;
     _isBuffering = true;
     _isLoading = false;
+    _emitPlaybackState();
     return true;
   }
 
@@ -244,6 +274,7 @@ class VideoService {
       _currentSubtitleTrack = null;
       return false;
     }
+    _lastSubtitleIndex = subtitleIndex;
     _currentSubtitleTrack = subtitleTracks[subtitleIndex];
     if (_currentSubtitleTrack != null && _currentSubtitleTrack!.embedded) {
       _player.activeSubtitleTracks = [_currentSubtitleTrack!.embeddedIndex];
@@ -251,6 +282,15 @@ class VideoService {
       _player.setMedia(_currentSubtitleTrack!.url, mdk.MediaType.subtitle);
     }
     return true;
+  }
+
+  /// Captions toggle (`C`): off when a track is active, back to the last
+  /// picked track otherwise (first track when nothing was picked yet).
+  @override
+  bool toggleSubtitles() {
+    if (subtitleTracks.isEmpty) return false;
+    if (subtitlesEnabled) return setSubtitle(-1);
+    return setSubtitle(_lastSubtitleIndex.clamp(0, subtitleTracks.length - 1));
   }
 
   bool setAudioTrack(int audioTrackIndex) {
@@ -267,6 +307,7 @@ class VideoService {
     return true;
   }
 
+  @override
   bool setFullscreen(bool fullscreen) {
     _isFullscreen = fullscreen;
     windowManager.setFullScreen(fullscreen);
@@ -285,6 +326,8 @@ class VideoService {
 
   void dispose() {
     _isDisposed = true;
+    _emitPlaybackState();
+    _playbackEvents.close();
     _mediaStatusSubscription?.cancel();
     setFullscreen(_initialFullscreen);
     _player.dispose();
@@ -479,7 +522,25 @@ class VideoService {
       }
       return false;
     }
+    _emitPlaybackState();
     return true;
+  }
+
+  PlaybackStatus get _playbackStatus {
+    if (_isDisposed) return PlaybackStatus.stopped;
+    if (!_isVideoReady || _isBuffering) return PlaybackStatus.buffering;
+    return isPlaying ? PlaybackStatus.playing : PlaybackStatus.paused;
+  }
+
+  void _emitPlaybackState({Duration? position}) {
+    if (_playbackEvents.isClosed) return;
+    _playbackEvents.add(
+      PlaybackSnapshot(
+        status: _playbackStatus,
+        position: position ?? this.position,
+        speed: _player.playbackRate,
+      ),
+    );
   }
 
   void _initSubtitlesAndAudiotracks() {
