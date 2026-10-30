@@ -23,6 +23,7 @@ class UnyoNetworkImage extends StatelessWidget {
     this.borderRadius = 0,
     this.showPlaceholder = true,
     this.fadeDuration = defaultFadeDuration,
+    this.filterQuality = FilterQuality.medium,
   });
 
   /// 250ms is the Material default for a content image replacing a placeholder.
@@ -45,6 +46,7 @@ class UnyoNetworkImage extends StatelessWidget {
   /// around the artwork.
   final bool showPlaceholder;
   final Duration fadeDuration;
+  final FilterQuality filterQuality;
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +61,7 @@ class UnyoNetworkImage extends StatelessWidget {
                 height: height,
                 fit: fit,
                 alignment: alignment,
+                filterQuality: filterQuality,
                 errorBuilder:
                     (BuildContext context, Object error, StackTrace? stack) =>
                         const SizedBox.shrink(),
