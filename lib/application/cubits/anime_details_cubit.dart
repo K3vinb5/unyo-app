@@ -851,9 +851,12 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       );
       emit(state.copyWith(alternateImage: alternateImage));
     } on HttpServerException catch (e, stackTrace) {
-      handleError("Error fetching Alternative Image:", responseBody: e.message, stackTrace: stackTrace);
+      // Optional data (WP #92 item 3): the details page renders fine without an
+      // alternate image, so this failure is logged, not surfaced.
+      _logger.w("Error fetching Alternative Image: ${e.message}", error: e, stackTrace: stackTrace);
     } catch (e, stackTrace) {
-      handleError("Error fetching Alternative Image: $e", stackTrace: stackTrace);
+      // Optional data (WP #92 item 3): logged, never a banner.
+      _logger.w("Error fetching Alternative Image", error: e, stackTrace: stackTrace);
     }
   }
 
@@ -884,10 +887,12 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       // Mark the list as settled so the episode rows fall back to their
       // data-less rendering instead of shimmering forever.
       emit(state.copyWith(episodesLoaded: true));
-      handleError("Error fetching Episodes details:", responseBody: e.message, stackTrace: stackTrace);
+      // Optional data (WP #92 item 3): episode metadata is a nice-to-have, so a
+      // failed lookup is logged instead of bannered.
+      _logger.w("Error fetching Episodes details: ${e.message}", error: e, stackTrace: stackTrace);
     } catch (e, stackTrace) {
       emit(state.copyWith(episodesLoaded: true));
-      handleError("Error fetching Episodes Details: $e", stackTrace: stackTrace);
+      _logger.w("Error fetching Episodes Details", error: e, stackTrace: stackTrace);
     }
   }
 
