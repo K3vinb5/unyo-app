@@ -12,6 +12,7 @@ import 'package:logger/logger.dart';
 import 'package:unyo/application/cubits/effect_mixin.dart';
 import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/application/states/anime_details_state.dart';
+import 'package:unyo/application/states/episode_count.dart';
 import 'package:bloc/bloc.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/service.dart';
@@ -167,9 +168,19 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       }
     });
     _selectedAnimeSubscription = _selectedAnimeNotifier.animeStream.listen((anime) {
+      // One cubit serves every anime the user opens, so the previous record's
+      // episodes have to go before this one starts loading: they would
+      // otherwise be resolved into the new record's episode count and rendered
+      // as its rows (the no-AniZip-id path settles the gate without ever
+      // replacing them).
+      emit(state.copyWith(
+        selectedAnime: anime,
+        episodesInfo: const <EpisodeInfo>[],
+        episodesLoaded: false,
+        extensionEpisodeResults: const <JSEpisode>[],
+      ));
       _getAnimeDetails(state.loggedUser, anime);
       _getEpisodesDetails(state.loggedUser, anime);
-      emit(state.copyWith(selectedAnime: anime));
     });
     _selectedMediaListSubscription = _selectedMediaListNotifier.mediaListStream.listen((mediaList) {
       emit(state.copyWith(selectedMediaList: mediaList));
@@ -268,7 +279,7 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     showWidgetDialogEffect(dialog: AnimeDetailsMediaEntryDialog(cubit: this));
   }
 
-  Future<void> openAnimeServerSelectionDrawer(BuildContext context, int episodeIndex) async {
+  Future<void> openAnimeServerSelectionDrawer(BuildContext context, int episodeNumber) async {
     if (state.animeServerDialogLoading) return;
     Extension? selectedExtension = state.selectedExtension;
     if (selectedExtension == null) {
@@ -299,12 +310,15 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         state.extensionAnimeResults[state.selectedAnimeResultIndex],
       );
       if (!canOpenDrawer) return;
-      // Episode buttons pass the 0-based button index, the episode number is +1.
-      // The drawer indexes the extension episode list, which does not have to
-      // match the anime metadata episode list.
-      int resolvedEpisodeIndex = EpisodeIndex.resolveExtensionEpisodeIndex(state.extensionEpisodeResults, episodeIndex + 1);
+      // Episode buttons pass the episode number they are labelled with; the
+      // extension list does not have to start at 1 or be contiguous, so that
+      // number has to be resolved against it instead of used as a position.
+      int resolvedEpisodeIndex = EpisodeIndex.resolveExtensionEpisodeIndex(
+        state.extensionEpisodeResults,
+        episodeNumber,
+      );
       if (resolvedEpisodeIndex < 0) {
-        _logger.w("Episode ${episodeIndex + 1} is not part of the extension episode results.");
+        _logger.w("Episode $episodeNumber is not part of the extension episode results.");
         showSnackBarEffect(
           "${selectedExtension.name} Error",
           message: "Only ${state.extensionEpisodeResults.length} episodes were found",
@@ -352,6 +366,20 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
 
   Future<void> updateMediaListEntry(BuildContext context) async {
     MediaListEntry desiredMediaListEntry = state.newMediaListEntry;
+    // The list editor clamps progress into the resolved episode range for
+    // display and its slider never reports that clamped initial value back, so
+    // persist what the user actually saw instead of an out-of-range value.
+    final int savedProgress = EpisodeCount.progressForSave(
+      progress: desiredMediaListEntry.progress,
+      episodeCount: EpisodeCount.resolve(
+        extensionResults: state.extensionEpisodeResults.length,
+        episodesInfo: state.episodesInfo.length,
+        metadataTotal: state.selectedAnime.episodes,
+      ),
+    );
+    if (savedProgress != desiredMediaListEntry.progress) {
+      desiredMediaListEntry = (desiredMediaListEntry as MediaListEntryModel).copyWith(progress: savedProgress);
+    }
     MediaListEntry beforeUpdateMediaListEntry = state.mediaListEntry;
     try {
       _logger.i("Updating Media List Entry to $desiredMediaListEntry");
@@ -821,6 +849,9 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       final AniZipLookupIds? ids = AniZipLookupIds.forAnime(selectedAnime);
       if (ids == null) {
         _logger.w("No AniZip-addressable id for ${logTitleFor(selectedAnime.title)} (${MediaProvenance.ofAnime(selectedAnime).name} record, no MAL id)");
+        // Nothing to look up: settle the gate so the episode rows render the
+        // data we already have instead of shimmering forever.
+        emit(state.copyWith(episodesLoaded: true));
         return;
       }
       final List<EpisodeInfo> episodesInfo = await _episodeRepository.getEpisodeInfo(
