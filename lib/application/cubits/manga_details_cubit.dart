@@ -282,6 +282,17 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
   void openMangaServerSelectionDrawer(BuildContext context, int chapterIndex) {
     if (isClosed) return;
     _logger.i("Chapter ${chapterIndex + 1} pressed for ${state.selectedManga.title.userPreferred}");
+    // Nothing to pick from: point at the Extensions tab instead of asking for a
+    // selection the dropdown cannot offer.
+    if (state.installedExtensions.isEmpty) {
+      _logger.w("No installed extensions to fetch chapters.");
+      showSnackBarEffect(
+        "No Installed Extensions",
+        message: "Open the Extensions tab to install one.",
+        contentType: ContentType.warning,
+      );
+      return;
+    }
     if (state.selectedExtension == null) {
       _logger.w("No extension selected to fetch chapters.");
       showSnackBarEffect(
