@@ -119,6 +119,59 @@ class HttpService {
     return apiResponse;
   }
 
+  /// `PATCH` for write APIs (Shikimori REST v2 uses PATCH/PUT to update a list
+  /// entry). Writes are never cached and never read from the cache: a cached
+  /// write answer would report success for a request that never left the app.
+  Future<ApiResponse<T>> patch<T>(
+    String endpoint, {
+    Map<String, String>? headers,
+    Object? body,
+    required T Function(Map<String, dynamic>) fromJson,
+  }) async {
+    _logger.d("PATCH request to $endpoint attempting to return instance of $T");
+    return _request(
+      'PATCH',
+      endpoint,
+      fromJson: fromJson,
+      headers: headers,
+      body: jsonEncode(body),
+    );
+  }
+
+  /// `PUT`, the second update verb Shikimori's REST v2 accepts. Same no-cache
+  /// rule as [patch].
+  Future<ApiResponse<T>> put<T>(
+    String endpoint, {
+    Map<String, String>? headers,
+    Object? body,
+    required T Function(Map<String, dynamic>) fromJson,
+  }) async {
+    _logger.d("PUT request to $endpoint attempting to return instance of $T");
+    return _request(
+      'PUT',
+      endpoint,
+      fromJson: fromJson,
+      headers: headers,
+      body: jsonEncode(body),
+    );
+  }
+
+  /// `DELETE`. A 204 answers an empty body, which [fromJson] must tolerate
+  /// (`EmptyApiResponse.fromJson`).
+  Future<ApiResponse<T>> delete<T>(
+    String endpoint, {
+    Map<String, String>? headers,
+    required T Function(Map<String, dynamic>) fromJson,
+  }) async {
+    _logger.d("DELETE request to $endpoint attempting to return instance of $T");
+    return _request(
+      'DELETE',
+      endpoint,
+      fromJson: fromJson,
+      headers: headers,
+    );
+  }
+
   ApiResponse<T>? _getCachedResponse<T>(
     String method,
     String endpoint, {

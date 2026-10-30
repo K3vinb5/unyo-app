@@ -1,19 +1,27 @@
 import 'package:logger/logger.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
+import 'package:unyo/core/services/api/shikimori/shikimori_rate_limiter.dart';
 
 import 'graphql_response.dart';
 
 class GraphQLService {
   final HttpService _httpService;
   final String _endpoint;
+
+  /// Optional shared budget (WP #64 subpart (d)). Only the shikimori-named
+  /// instance gets one: AniList has no documented per-IP cap this app has to
+  /// respect, and a limiter there would slow the whole UI for nothing.
+  final ShikimoriRateLimiter? _rateLimiter;
   final Logger _logger = sl<Logger>();
 
   GraphQLService({
     required HttpService httpService,
     required String endpoint,
+    ShikimoriRateLimiter? rateLimiter,
   })  : _httpService = httpService,
-        _endpoint = endpoint;
+        _endpoint = endpoint,
+        _rateLimiter = rateLimiter;
 
   Future<ApiGraphQLResponse<T>> query<T>({
     required String query,
@@ -61,6 +69,7 @@ class GraphQLService {
       "variables": variables ?? {},
     };
     _logger.i("Sending GraphQL request to $_endpoint");
+    await _rateLimiter?.acquire(reason: "GraphQL $_endpoint");
     final response = await _httpService.post<ApiGraphQLResponse<T>>(
       _endpoint,
       headers: headers,

@@ -1,5 +1,4 @@
 // External dependencies
-import 'package:unyo/core/enums/service.dart';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
@@ -8,342 +7,320 @@ import 'package:logger/logger.dart';
 // Internal dependencies
 import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/core/di/locator.dart';
+import 'package:unyo/core/enums/service.dart';
+import 'package:unyo/core/services/api/dto/shikimori/manga_details_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/manga_list_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_genres_list_query_entity.dart';
+import 'package:unyo/core/services/api/graphql/graphql_response.dart';
 import 'package:unyo/core/services/api/graphql/graphql_service.dart';
+import 'package:unyo/core/services/api/graphql/queries/shikimori_queries.dart' as shikimori_queries;
+import 'package:unyo/core/services/api/graphql/queries/shikimori_search_parameters.dart';
+import 'package:unyo/core/services/api/shikimori/shikimori_user_rate_service.dart';
+import 'package:unyo/data/models/shikimori/media/shikimori_manga_details.dart';
+import 'package:unyo/data/models/shikimori/media/shikimori_manga_model.dart';
+import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/repository_mixin.dart';
+import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/media/manga_details.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/repositories/manga_repository.dart';
 
+/// Shikimori manga metadata provider (GraphQL, <https://shikimori.io/api/graphql>).
+///
+/// Mirrors [AnimeRepositoryShikimori]: one list document with server-side
+/// filters, `mangas(ids:)` for details, and advanced search over the same
+/// document. The manga genre ids differ from the anime ones, so this repository
+/// keeps its own genre map.
 class MangaRepositoryShikimori with RepositoryMixin implements MangaRepository {
+  /// Shikimori caps `limit` at 50.
+  static const int pageSize = 50;
+
   final GraphQLService _shikimoriGraphQLService = sl<GraphQLService>(
     instanceName: config.shikimoriGraphQlService,
   );
+  /// Resolved on first use: the metadata tests build this repository without a
+  /// REST list-entry service registered, and no metadata read touches it.
+  ShikimoriUserRateService get _userRateService => sl<ShikimoriUserRateService>();
   final Logger _logger = sl<Logger>();
 
+  /// Genre **name** (lower-cased) → genre id for `genres(entryType: Manga)`.
+  final Map<String, String> _genreIdsByName = <String, String>{};
+
+  /// The API bans IPs that call it without a meaningful `User-Agent`
+  /// (`/api/doc` § Requirements), so it goes on every request.
+  Map<String, String> get _requestHeaders => config.shikimoriRequestHeaders;
+
   @override
-  Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser, {Service? service}) {
-    // TODO: implement getMangaDetails
-    throw UnimplementedError();
+  Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser, {Service? service}) async {
+    _logger.i("Fetching Manga Details from Shikimori for ${selectedManga.title.userPreferred}");
+    final ApiGraphQLResponse<MangaDetailsQueryEntity> mangaDetailsQueryResponse =
+        await _shikimoriGraphQLService.query<MangaDetailsQueryEntity>(
+      query: shikimori_queries.shikimoriMangaDetailsQuery,
+      fromJson: MangaDetailsQueryEntity.fromJson,
+      headers: _requestHeaders,
+      variables: {"ids": selectedManga.id.toString(), "page": 1, "limit": 20},
+    );
+    throwIfGraphQlError(mangaDetailsQueryResponse);
+    if (mangaDetailsQueryResponse.data.mangas.isEmpty) {
+      return (false, ShikimoriMangaDetailsModel.empty());
+    }
+    final MangaDetails mangaDetails = ShikimoriMangaDetailsModel.fromMangaDetailsQuery(
+      mangaDetailsQueryResponse.data,
+    );
+    return (true, mangaDetails);
   }
 
   @override
-  Future<(bool, List<Manga>)> getPopularMangas(int page, User loggedUser, {bool ignoreCache = false}) {
-    // TODO: implement getPopularMangas
-    throw UnimplementedError();
+  Future<(bool, List<Manga>)> getPopularMangas(int page, User loggedUser, {bool ignoreCache = false}) async {
+    _logger.i("Fetching Shikimori popular mangas");
+    return _fetchMangas(page: page, order: 'popularity', loggedUser: loggedUser, ignoreCache: ignoreCache);
+  }
+
+  /// Finished manga, newest update first — no `season` filter (a series that
+  /// ended a while ago is still a recent completion).
+  @override
+  Future<(bool, List<Manga>)> getRecentlyCompletedMangas(
+    int page,
+    User loggedUser, {
+    bool ignoreCache = false,
+  }) async {
+    _logger.i("Fetching Shikimori recently completed mangas");
+    return _fetchMangas(
+      page: page,
+      order: 'updated_at_desc',
+      status: 'released',
+      loggedUser: loggedUser,
+      ignoreCache: ignoreCache,
+    );
   }
 
   @override
-  Future<(bool, List<Manga>)> getRecentlyCompletedMangas(int page, User loggedUser, {bool ignoreCache = false}) {
-    // TODO: implement getRecentlyCompletedMangas
-    throw UnimplementedError();
+  Future<(bool, List<Manga>)> getTrendingMangas(int page, User loggedUser, {bool ignoreCache = false}) async {
+    _logger.i("Fetching Shikimori trending mangas");
+    return _fetchMangas(page: page, order: 'popularity', loggedUser: loggedUser, ignoreCache: ignoreCache);
   }
 
+  /// Announced manga (`status: anons`), the manga counterpart of the anime
+  /// upcoming carousel.
   @override
-  Future<(bool, List<Manga>)> getTrendingMangas(int page, User loggedUser, {bool ignoreCache = false}) {
-    // TODO: implement getTrendingMangas
-    throw UnimplementedError();
+  Future<(bool, List<Manga>)> getUpcomingMangas(int page, User loggedUser, {bool ignoreCache = false}) async {
+    _logger.i("Fetching Shikimori upcoming mangas");
+    return _fetchMangas(
+      page: page,
+      order: 'popularity',
+      status: 'anons',
+      loggedUser: loggedUser,
+      ignoreCache: ignoreCache,
+    );
   }
 
+  /// Generated from `genres(entryType: Manga)` (PascalCase enum value) plus the
+  /// kind/status/sort dictionaries.
+  ///
+  /// `countries` stays hidden (`false`): `Manga` has no country-of-origin field
+  /// and `mangas(...)` has no origin argument, so nothing could be rendered
+  /// behind the dropdown. `sortOrders` stays hidden for the same reason as the
+  /// anime dictionary — no exposed sort option has a `_desc` literal in
+  /// `OrderEnum` — and that must never gate the sort FIELD picker, which the
+  /// screens gate independently ([AdvancedSearchSortRow]).
   @override
-  Future<(bool, List<Manga>)> getUpcomingMangas(int page, User loggedUser, {bool ignoreCache = false}) {
-    // TODO: implement getUpcomingMangas
-    throw UnimplementedError();
+  Future<Map<String, (bool, List<String>)>> getUserMangaAdvancedSearchFilters(User loggedUser) async {
+    final List<ShikimoriGenresListQueryGenres> genres = await _loadGenres(ShikimoriGenreEntryType.manga);
+    final List<String> genreNames = genres
+        .map((ShikimoriGenresListQueryGenres genre) => genre.name.trim())
+        .where((String name) => name.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    return <String, (bool, List<String>)>{
+      'genres': (true, genreNames),
+      'formats': (true, ShikimoriMangaFormatFilters.values.map((ShikimoriMangaFormatFilters value) => ShikimoriSearchParameters.label(value.name)).toList()),
+      'airingStatuses': (true, ShikimoriMangaStatusFilters.values.map((ShikimoriMangaStatusFilters value) => ShikimoriSearchParameters.label(value.name)).toList()),
+      'sortOptions': (true, ShikimoriMangaSortOptions.values.map((ShikimoriMangaSortOptions value) => ShikimoriSearchParameters.label(value.name)).toList()),
+      'countries': (false, <String>[]),
+      'sortOrders': (false, <String>[]),
+    };
   }
 
+  /// One `mangas(...)` page with every filter the manga schema accepts.
+  ///
+  /// `selectedCountry` has no counterpart: the manga type carries no
+  /// country-of-origin and `mangas(...)` has no origin argument, so the value is
+  /// dropped rather than mapped onto `publisher` (a publisher id is not a
+  /// country). The countries dropdown is hidden by
+  /// [getUserMangaAdvancedSearchFilters] for the same reason.
   @override
-  Future<Map<String, (bool, List<String>)>> getUserMangaAdvancedSearchFilters() {
-    // TODO: implement getUserMangaAdvancedSearchFilters
-    throw UnimplementedError();
+  Future<List<Manga>> performMangaAdvancedSearch(
+    String query,
+    List<String> selectedGenres,
+    String? selectedFormat,
+    String? selectedCountry,
+    String? selectedAiringStatus,
+    String sort,
+    int page,
+    User loggedUser,
+  ) async {
+    _logger.i("Performing advanced manga search on Shikimori");
+    if (selectedCountry != null && selectedCountry.trim().isNotEmpty) {
+      _logger.w("Shikimori has no manga country filter; ignoring '$selectedCountry'");
+    }
+    final String? genre = selectedGenres.isEmpty
+        ? null
+        : ShikimoriSearchParameters.genreIdsFor(selectedGenres, await _genreIds());
+    final ApiGraphQLResponse<MangaListQueryEntity> response =
+        await _shikimoriGraphQLService.query<MangaListQueryEntity>(
+      query: shikimori_queries.shikimoriMangaListQuery,
+      fromJson: MangaListQueryEntity.fromJson,
+      headers: _requestHeaders,
+      variables: <String, dynamic>{
+        'page': page,
+        'limit': pageSize,
+        'order': ShikimoriSearchParameters.orderFor(sort),
+        'kind': ShikimoriSearchParameters.choiceFor(
+          selectedFormat,
+          ShikimoriMangaFormatFilters.values.map((ShikimoriMangaFormatFilters value) => value.name),
+        ),
+        'status': ShikimoriSearchParameters.choiceFor(
+          selectedAiringStatus,
+          ShikimoriMangaStatusFilters.values.map((ShikimoriMangaStatusFilters value) => value.name),
+        ),
+        'search': query.trim().isEmpty ? null : query.trim(),
+        'genre': genre,
+        'censored': loggedUser.settings.enableNsfwContent ? null : false,
+      },
+    );
+    throwIfGraphQlError(response);
+    return response.data.mangas
+        .map((MangaListQueryMangas entry) => ShikimoriMangaModel.fromListEntry(entry))
+        .toList();
   }
 
-  @override
-  Future<List<Manga>> performMangaAdvancedSearch(String query, List<String> selectedGenres, String? selectedFormat, String? selectedCountry, String? selectedAiringStatus, String sort, int page, User loggedUser) {
-    // TODO: implement performMangaAdvancedSearch
-    throw UnimplementedError();
+  /// `genres(entryType: Manga)` — PascalCase wire value only.
+  Future<List<ShikimoriGenresListQueryGenres>> _fetchGenres(ShikimoriGenreEntryType entryType) async {
+    final ApiGraphQLResponse<ShikimoriGenresListQueryEntity> response =
+        await _shikimoriGraphQLService.query<ShikimoriGenresListQueryEntity>(
+      query: shikimori_queries.shikimoriGenresListQuery,
+      fromJson: ShikimoriGenresListQueryEntity.fromJson,
+      headers: _requestHeaders,
+      variables: <String, dynamic>{'entryType': entryType.graphqlValue},
+    );
+    throwIfGraphQlError(response);
+    return response.data.genres;
   }
 
-  // @override
-  // Future<(bool, List<Manga>)> getPopularMangas(int page, User loggedUser, {bool ignoreCache = false}) async {
-  //   _logger.i("Fetching Shikimori popular manga");
-  //   final response = await _shikimoriGraphQLService.query<ShikimoriMangaListGraphqlEntity>(
-  //     query: shikimori_queries.shikimoriMangaListQuery,
-  //     fromJson: ShikimoriMangaListGraphqlEntity.fromJson,
-  //     variables: {
-  //       "page": page,
-  //       "limit": 31,
-  //       "order": "popularity",
-  //       "censored": loggedUser.settings.enableNsfwContent ? null : false,
-  //     },
-  //     ignoreCache: ignoreCache,
-  //   );
-  //   throwIfGraphQlError(response);
-  //   final mangas = _processPaginatedResponse(response.data.mangas, 30);
-  //   return (mangas.$1, mangas.$2.map((e) => ShikimoriMangaModel.fromListEntry(e)).toList());
-  // }
-  //
-  // @override
-  // Future<(bool, List<Manga>)> getTrendingMangas(int page, User loggedUser, {bool ignoreCache = false}) async {
-  //   _logger.i("Fetching Shikimori trending manga");
-  //   final response = await _shikimoriGraphQLService.query<ShikimoriMangaListGraphqlEntity>(
-  //     query: shikimori_queries.shikimoriMangaListQuery,
-  //     fromJson: ShikimoriMangaListGraphqlEntity.fromJson,
-  //     variables: {
-  //       "page": page,
-  //       "limit": 31,
-  //       "order": "popularity",
-  //       "censored": loggedUser.settings.enableNsfwContent ? null : false,
-  //     },
-  //     ignoreCache: ignoreCache,
-  //   );
-  //   throwIfGraphQlError(response);
-  //   final mangas = _processPaginatedResponse(response.data.mangas, 30);
-  //   return (mangas.$1, mangas.$2.map((e) => ShikimoriMangaModel.fromListEntry(e)).toList());
-  // }
-  //
-  // @override
-  // Future<(bool, List<Manga>)> getRecentlyCompletedMangas(int page, User loggedUser, {bool ignoreCache = false}) async {
-  //   _logger.i("Fetching Shikimori recently completed manga");
-  //   final response = await _shikimoriGraphQLService.query<ShikimoriMangaListGraphqlEntity>(
-  //     query: shikimori_queries.shikimoriMangaListQuery,
-  //     fromJson: ShikimoriMangaListGraphqlEntity.fromJson,
-  //     variables: {
-  //       "page": page,
-  //       "limit": 31,
-  //       "order": "aired_on",
-  //       "status": "released",
-  //       "censored": loggedUser.settings.enableNsfwContent ? null : false,
-  //     },
-  //     ignoreCache: ignoreCache,
-  //   );
-  //   throwIfGraphQlError(response);
-  //   final mangas = _processPaginatedResponse(response.data.mangas, 30);
-  //   return (mangas.$1, mangas.$2.map((e) => ShikimoriMangaModel.fromListEntry(e)).toList());
-  // }
-  //
-  // @override
-  // Future<(bool, List<Manga>)> getUpcomingMangas(int page, User loggedUser, {bool ignoreCache = false}) async {
-  //   _logger.i("Fetching Shikimori upcoming manga");
-  //   final response = await _shikimoriGraphQLService.query<ShikimoriMangaListGraphqlEntity>(
-  //     query: shikimori_queries.shikimoriMangaListQuery,
-  //     fromJson: ShikimoriMangaListGraphqlEntity.fromJson,
-  //     variables: {
-  //       "page": page,
-  //       "limit": 31,
-  //       "order": "popularity",
-  //       "status": "anons",
-  //       "censored": loggedUser.settings.enableNsfwContent ? null : false,
-  //     },
-  //     ignoreCache: ignoreCache,
-  //   );
-  //   throwIfGraphQlError(response);
-  //   final mangas = _processPaginatedResponse(response.data.mangas, 30);
-  //   return (mangas.$1, mangas.$2.map((e) => ShikimoriMangaModel.fromListEntry(e)).toList());
-  // }
-  //
-  // @override
-  // Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser) async {
-  //   _logger.i("Fetching Manga Details from Shikimori for ${selectedManga.title.userPreferred}");
-  //   final response = await _shikimoriGraphQLService.query<ShikimoriMangaDetailsGraphqlEntity>(
-  //     query: shikimori_queries.shikimoriMangaDetailsQuery,
-  //     fromJson: ShikimoriMangaDetailsGraphqlEntity.fromJson,
-  //     variables: {"ids": selectedManga.id.toString()},
-  //   );
-  //   throwIfGraphQlError(response);
-  //   if (response.data.manga.isEmpty) {
-  //     return (false, MangaDetailsModel.empty());
-  //   }
-  //   final mangaDetails = ShikimoriMangaDetailsModel.fromDetailsEntry(response.data.manga.first);
-  //   return (true, mangaDetails);
-  // }
-  //
-  // @override
-  // Future<Map<String, (bool, List<String>)>> getUserMangaAdvancedSearchFilters() async {
-  //   _logger.i("Fetching Shikimori manga advanced search filters");
-  //   final filters = <String, (bool, List<String>)>{};
-  //   final genresResponse = await _shikimoriGraphQLService.query<ShikimoriGenresGraphqlEntity>(
-  //     query: shikimori_queries.shikimoriGenresListQuery,
-  //     fromJson: ShikimoriGenresGraphqlEntity.fromJson,
-  //     variables: {"entryType": "Manga"},
-  //   );
-  //   throwIfGraphQlError(genresResponse);
-  //   final genreNames = genresResponse.data.genres.map((g) => g.name).toList();
-  //   filters.addAll({
-  //     'genres': (true, TextUtils.capitalizeList(genreNames)),
-  //   });
-  //   filters.addAll({
-  //     'formats': (
-  //       true,
-  //       TextUtils.capitalizeList(
-  //         ShikimoriMangaFormatFilters.values.map((e) => e.name.replaceAll('_', ' ')).toList(),
-  //       ),
-  //     ),
-  //   });
-  //   filters.addAll({
-  //     'airingStatuses': (
-  //       true,
-  //       TextUtils.capitalizeList(
-  //         ShikimoriMangaStatusFilters.values.map((e) => e.name.replaceAll('_', ' ')).toList(),
-  //       ),
-  //     ),
-  //   });
-  //   filters.addAll({
-  //     'years': (
-  //       true,
-  //       List<String>.generate(
-  //         DateTime.now().year - 1939,
-  //         (index) => (1940 + index).toString(),
-  //       ).reversed.toList(),
-  //     ),
-  //   });
-  //   filters.addAll({
-  //     'sortOptions': (
-  //       true,
-  //       TextUtils.capitalizeList(
-  //         ShikimoriMangaSortOptions.values.map((e) => e.name.replaceAll('_', ' ')).toList(),
-  //       ),
-  //     ),
-  //   });
-  //   filters.addAll({
-  //     'sortOrders': (
-  //       true,
-  //       TextUtils.capitalizeList(
-  //         ShikimoriMangaSortOrder.values.map((e) => e.name).toList(),
-  //       ),
-  //     ),
-  //   });
-  //   return filters;
-  // }
-  //
-  // @override
-  // Future<List<Manga>> performMangaAdvancedSearch(
-  //   String query,
-  //   List<String> selectedGenres,
-  //   String? selectedFormat,
-  //   String? selectedCountry,
-  //   String? selectedAiringStatus,
-  //   String sort,
-  //   int page,
-  //   User loggedUser,
-  // ) async {
-  //   _logger.i("Performing Shikimori manga advanced search");
-  //   final genreIds = await _mapGenreNamesToIds(selectedGenres, "Manga");
-  //   final response = await _shikimoriGraphQLService.query<ShikimoriMangaListGraphqlEntity>(
-  //     query: shikimori_queries.shikimoriMangaListQuery,
-  //     fromJson: ShikimoriMangaListGraphqlEntity.fromJson,
-  //     variables: {
-  //       "page": page,
-  //       "limit": 50,
-  //       "order": _mapSortToShikimori(sort),
-  //       if (query.isNotEmpty) "search": query,
-  //       if (genreIds.isNotEmpty) "genre": genreIds.join(','),
-  //       if (selectedAiringStatus != null && selectedAiringStatus.isNotEmpty)
-  //         "status": _mapAiringStatusToShikimori(selectedAiringStatus),
-  //       if (selectedFormat != null && selectedFormat.isNotEmpty)
-  //         "kind": _mapFormatToShikimoriKind(selectedFormat),
-  //       "censored": loggedUser.settings.enableNsfwContent ? null : false,
-  //     },
-  //   );
-  //   throwIfGraphQlError(response);
-  //   return response.data.mangas.map((e) => ShikimoriMangaModel.fromListEntry(e)).toList();
-  // }
+  Future<Map<String, String>> _genreIds() async {
+    if (_genreIdsByName.isEmpty) {
+      await _loadGenres(ShikimoriGenreEntryType.manga);
+    }
+    return _genreIdsByName;
+  }
+
+  /// Fetches the manga genre dictionary and remembers the name→id map.
+  Future<List<ShikimoriGenresListQueryGenres>> _loadGenres(ShikimoriGenreEntryType entryType) async {
+    final List<ShikimoriGenresListQueryGenres> genres = await _fetchGenres(entryType);
+    _genreIdsByName
+      ..clear()
+      ..addEntries(
+        genres.map((ShikimoriGenresListQueryGenres genre) => MapEntry<String, String>(
+              genre.name.trim().toLowerCase(),
+              genre.id,
+            )),
+      );
+    return genres;
+  }
 
   @override
   Future<List<String>> getMediaCoverImages(User loggedUser, {bool ignoreCache = false}) async {
     _logger.i("Fetching Media Cover Images from Shikimori");
-    final (hasNext, mangas) = await getPopularMangas(1, loggedUser, ignoreCache: ignoreCache);
-    return mangas.map((manga) => manga.coverImage).where((coverImage) => coverImage != "").shuffled(Random()).toList();
+    final (bool hasNext, List<Manga> mangas) = await getPopularMangas(1, loggedUser, ignoreCache: ignoreCache);
+    return mangas
+        .map((Manga manga) => manga.coverImage)
+        .where((String coverImage) => coverImage != "")
+        .shuffled(Random())
+        .toList();
   }
 
-  // Helper methods
-
-  // (bool, List<ShikimoriMangaListGraphqlMangas>) _processPaginatedResponse(
-  //   List<ShikimoriMangaListGraphqlMangas> results,
-  //   int limit,
-  // ) {
-  //   final hasNextPage = results.length > limit;
-  //   final items = hasNextPage ? results.take(limit).toList() : results;
-  //   return (hasNextPage, items);
-  // }
-  //
-  // Future<List<String>> _mapGenreNamesToIds(List<String> genreNames, String entryType) async {
-  //   if (genreNames.isEmpty) return [];
-  //   final genresResponse = await _shikimoriGraphQLService.query<ShikimoriGenresGraphqlEntity>(
-  //     query: shikimori_queries.shikimoriGenresListQuery,
-  //     fromJson: ShikimoriGenresGraphqlEntity.fromJson,
-  //     variables: {"entryType": entryType},
-  //   );
-  //   throwIfGraphQlError(genresResponse);
-  //   final genreMap = <String, String>{};
-  //   for (final genre in genresResponse.data.genres) {
-  //     genreMap[genre.name.toLowerCase()] = genre.id;
-  //   }
-  //   return genreNames
-  //       .map((name) => genreMap[name.toLowerCase()])
-  //       .whereType<String>()
-  //       .toList();
-  // }
-
-  String _mapSortToShikimori(String sort) {
-    final parts = sort.toLowerCase().split('_');
-    if (parts.length < 2) return 'popularity';
-    final field = parts.first;
-    switch (field) {
-      case 'popularity':
-        return 'popularity';
-      case 'score':
-        return 'ranked';
-      case 'startdate':
-      case 'start_date':
-        return 'aired_on';
-      case 'title':
-        return 'name';
-      default:
-        return 'popularity';
-    }
+  /// One page of `mangas(...)` with only the filters the carousel asked for.
+  Future<(bool, List<Manga>)> _fetchMangas({
+    required int page,
+    required String order,
+    required User loggedUser,
+    required bool ignoreCache,
+    String? status,
+    String? season,
+  }) async {
+    final ApiGraphQLResponse<MangaListQueryEntity> mangaListQueryResponse =
+        await _shikimoriGraphQLService.query<MangaListQueryEntity>(
+      query: shikimori_queries.shikimoriMangaListQuery,
+      fromJson: MangaListQueryEntity.fromJson,
+      headers: _requestHeaders,
+      variables: {
+        "page": page,
+        "limit": pageSize,
+        "order": order,
+        "status": status,
+        "season": season,
+        "censored": loggedUser.settings.enableNsfwContent ? null : false,
+      },
+      ignoreCache: ignoreCache,
+    );
+    throwIfGraphQlError(mangaListQueryResponse);
+    final List<Manga> mangas = mangaListQueryResponse.data.mangas
+        .map((MangaListQueryMangas entry) => ShikimoriMangaModel.fromListEntry(entry))
+        .toList();
+    return (true, mangas);
   }
 
-  String _mapAiringStatusToShikimori(String status) {
-    switch (status.toLowerCase().replaceAll(' ', '_')) {
-      case 'releasing':
-        return 'ongoing';
-      case 'finished':
-        return 'released';
-      case 'not_yet_released':
-        return 'anons';
-      case 'hiatus':
-        return 'paused';
-      case 'cancelled':
-        return 'discontinued';
-      default:
-        return status.toLowerCase();
-    }
+  /// WP #64 subpart (c): the manga rate mirrors the anime one through REST v2
+  /// `user_rates`; manga progress lives in `chapters` (and `volumes` in
+  /// `volumes`), which the rate service maps.
+  ///
+  /// Deliberately **not** on [MangaRepository]: the interface has no list-entry
+  /// API yet (manga entries are not editable in the v1 UI), so this stays a
+  /// concrete capability the factory does not route to.
+  Future<MediaListEntry> updateMediaListEntry(
+    MediaListEntry newMediaListEntry,
+    Manga selectedManga,
+    User loggedUser,
+  ) async {
+    _logger.i("Updating Media List Entry to $newMediaListEntry on Shikimori");
+    final ShikimoriUserModel? account = _shikimoriAccount(loggedUser);
+    if (account == null) return MediaListEntryModel.empty();
+    return _userRateService.updateEntry(
+      user: account,
+      targetId: selectedManga.id,
+      target: ShikimoriUserRateTarget.manga,
+      entry: newMediaListEntry,
+    );
   }
 
-  String _mapFormatToShikimoriKind(String format) {
-    switch (format.toLowerCase().replaceAll(' ', '_')) {
-      case 'manga':
-        return 'manga';
-      case 'manhwa':
-        return 'manhwa';
-      case 'manhua':
-        return 'manhua';
-      case 'novel':
-        return 'light_novel';
-      case 'one_shot':
-        return 'one_shot';
-      case 'doujinshi':
-        return 'doujin';
-      default:
-        return format.toLowerCase().replaceAll(' ', '_');
-    }
+  Future<MediaListEntry> getMediaListEntry(
+    Manga selectedManga,
+    User loggedUser, {
+    bool ignoreCache = false,
+  }) async {
+    _logger.i("Fetching User Media List Entry from Shikimori for ${selectedManga.title.userPreferred}");
+    final ShikimoriUserModel? account = _shikimoriAccount(loggedUser);
+    if (account == null) return MediaListEntryModel.empty();
+    return _userRateService.getEntry(
+      user: account,
+      targetId: selectedManga.id,
+      target: ShikimoriUserRateTarget.manga,
+    );
+  }
+
+  /// Mirror of the anime repository guard: no token, no call.
+  ShikimoriUserModel? _shikimoriAccount(User loggedUser) {
+    if (loggedUser is ShikimoriUserModel) return loggedUser;
+    _logger.w("Logged user ${loggedUser.name} is not a Shikimori account, skipping the list call");
+    return null;
   }
 }
 
+/// Filter value sets consumed by the manga advanced search (WP #64 subpart (b)).
 enum ShikimoriMangaFormatFilters { manga, manhwa, manhua, light_novel, one_shot, doujin }
 
 enum ShikimoriMangaStatusFilters { ongoing, released, anons, paused, discontinued }
 
 enum ShikimoriMangaSortOptions { popularity, ranked, name, aired_on }
-
-enum ShikimoriMangaSortOrder { asc, desc }

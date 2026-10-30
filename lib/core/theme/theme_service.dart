@@ -2,6 +2,9 @@ import 'package:material_ui/material_ui.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
+import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
+import 'package:unyo/data/repositories/user_repository_shikimori.dart';
+import 'package:unyo/core/di/locator.dart' show sl;
 import 'package:unyo/data/repositories/user_repository_anilist.dart';
 import 'package:unyo/data/repositories/user_repository_local.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
@@ -64,6 +67,10 @@ class ThemeService {
       case AnilistUserModel anilistUserModel:
         AnilistUserModel updatedAnilistUserModel = anilistUserModel.copyWith(settings: updatedSettings);
         await _userRepositoryAnilist.updateUserInfo(updatedAnilistUserModel);
+        break;
+      case ShikimoriUserModel shikimoriUserModel:
+        ShikimoriUserModel updatedShikimoriUserModel = shikimoriUserModel.copyWith(settings: updatedSettings);
+        await sl<UserRepositoryShikimori>().updateUserInfo(updatedShikimoriUserModel);
         break;
       case LocalUserModel localUserModel:
         LocalUserModel updatedLocalUserModel = localUserModel.copyWith(settings: updatedSettings);

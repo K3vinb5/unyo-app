@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // Internal dependencies
 import 'package:unyo/application/cubits/settings_cubit.dart';
+import 'package:unyo/application/cubits/tabs_cubit.dart';
 import 'package:unyo/application/states/settings_state.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/episode_service.dart';
@@ -12,6 +13,7 @@ import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/core/services/media/episode_service.dart';
 import 'package:unyo/core/services/media/media_service.dart';
+import 'package:unyo/presentation/widgets/styled/shikimori_account_settings.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_category.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_dialog.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_dropdown.dart';
@@ -115,14 +117,14 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                 padding: EdgeInsets.symmetric(horizontal: 30.0.w, vertical: 20.0.h),
                 child: ListView(
                   children: [
-                    const UnyoSettingsCategory(
+                    UnyoSettingsCategory(
                       title: "Accounts",
                       description: "Manage your connected accounts",
                       icon: Icons.person_rounded,
                       alignment: "top",
                       childAlignment: "center",
                       settingsOptions: [
-                        UnyoSettingsCategory(
+                        const UnyoSettingsCategory(
                           title: "Anilist",
                           description: "Manage your Anilist connected accounts",
                           icon: Icons.format_list_bulleted_rounded,
@@ -133,7 +135,7 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                             // TODO - Anilist account settings go here
                           ],
                         ),
-                        UnyoSettingsCategory(
+                        const UnyoSettingsCategory(
                           title: "MyAnimeList",
                           description: "Manage your MyAnimeList connected accounts",
                           icon: Icons.format_list_bulleted_rounded,
@@ -152,7 +154,10 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                           childAlignment: "",
                           isChild: true,
                           settingsOptions: [
-                            // TODO - Shikimori account settings go here
+                            ShikimoriAccountSettings(
+                              loggedUser: state.loggedUser,
+                              onLogout: () => context.read<TabsCubit>().logoutUser(),
+                            ),
                           ],
                         ),
                       ],

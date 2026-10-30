@@ -21,10 +21,18 @@ import 'package:unyo/core/services/api/dto/extensions/aniyomi_repo_json_entity.d
 import 'package:unyo/core/services/api/dto/extensions/tachiyomi_repo_json_entity.dart';
 import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_details_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/anime_list_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_mapping_query_entity.dart';
-import 'package:unyo/core/services/api/dto/shikimori/anime_popular_query_entity.dart';
-import 'package:unyo/core/services/api/dto/shikimori/anime_recently_released_query_entity.dart';
-import 'package:unyo/core/services/api/dto/shikimori/anime_trending_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/manga_details_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/manga_list_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_calendar_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_genres_list_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_token_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_user_rate_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_user_rate_list_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_user_rates_anime_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_user_rates_manga_query_entity.dart';
+import 'package:unyo/core/services/api/dto/shikimori/shikimori_viewer_query_entity.dart';
 
 JsonConvert jsonConvert = JsonConvert();
 typedef JsonConvertFunction<T> = T Function(Map<String, dynamic> json);
@@ -444,6 +452,18 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		if(<AnimeDetailsQueryAnimesUserRate>[] is M){
 			return data.map<AnimeDetailsQueryAnimesUserRate>((Map<String, dynamic> e) => AnimeDetailsQueryAnimesUserRate.fromJson(e)).toList() as M;
 		}
+		if(<AnimeDetailsQueryAnimesPoster>[] is M){
+			return data.map<AnimeDetailsQueryAnimesPoster>((Map<String, dynamic> e) => AnimeDetailsQueryAnimesPoster.fromJson(e)).toList() as M;
+		}
+		if(<AnimeDetailsQueryAnimesAiredOn>[] is M){
+			return data.map<AnimeDetailsQueryAnimesAiredOn>((Map<String, dynamic> e) => AnimeDetailsQueryAnimesAiredOn.fromJson(e)).toList() as M;
+		}
+		if(<AnimeDetailsQueryAnimesReleasedOn>[] is M){
+			return data.map<AnimeDetailsQueryAnimesReleasedOn>((Map<String, dynamic> e) => AnimeDetailsQueryAnimesReleasedOn.fromJson(e)).toList() as M;
+		}
+		if(<AnimeDetailsQueryAnimesGenres>[] is M){
+			return data.map<AnimeDetailsQueryAnimesGenres>((Map<String, dynamic> e) => AnimeDetailsQueryAnimesGenres.fromJson(e)).toList() as M;
+		}
 		if(<AnimeDetailsQueryAnimesCharacterRoles>[] is M){
 			return data.map<AnimeDetailsQueryAnimesCharacterRoles>((Map<String, dynamic> e) => AnimeDetailsQueryAnimesCharacterRoles.fromJson(e)).toList() as M;
 		}
@@ -471,6 +491,24 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		if(<AnimeDetailsQueryAnimesRelatedAnimeGenres>[] is M){
 			return data.map<AnimeDetailsQueryAnimesRelatedAnimeGenres>((Map<String, dynamic> e) => AnimeDetailsQueryAnimesRelatedAnimeGenres.fromJson(e)).toList() as M;
 		}
+		if(<AnimeListQueryEntity>[] is M){
+			return data.map<AnimeListQueryEntity>((Map<String, dynamic> e) => AnimeListQueryEntity.fromJson(e)).toList() as M;
+		}
+		if(<AnimeListQueryAnimes>[] is M){
+			return data.map<AnimeListQueryAnimes>((Map<String, dynamic> e) => AnimeListQueryAnimes.fromJson(e)).toList() as M;
+		}
+		if(<AnimeListQueryAnimesPoster>[] is M){
+			return data.map<AnimeListQueryAnimesPoster>((Map<String, dynamic> e) => AnimeListQueryAnimesPoster.fromJson(e)).toList() as M;
+		}
+		if(<AnimeListQueryAnimesAiredOn>[] is M){
+			return data.map<AnimeListQueryAnimesAiredOn>((Map<String, dynamic> e) => AnimeListQueryAnimesAiredOn.fromJson(e)).toList() as M;
+		}
+		if(<AnimeListQueryAnimesReleasedOn>[] is M){
+			return data.map<AnimeListQueryAnimesReleasedOn>((Map<String, dynamic> e) => AnimeListQueryAnimesReleasedOn.fromJson(e)).toList() as M;
+		}
+		if(<AnimeListQueryAnimesGenres>[] is M){
+			return data.map<AnimeListQueryAnimesGenres>((Map<String, dynamic> e) => AnimeListQueryAnimesGenres.fromJson(e)).toList() as M;
+		}
 		if(<AnimeMappingQueryEntity>[] is M){
 			return data.map<AnimeMappingQueryEntity>((Map<String, dynamic> e) => AnimeMappingQueryEntity.fromJson(e)).toList() as M;
 		}
@@ -480,59 +518,122 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		if(<AnimeMappingQueryAnimesAiredOn>[] is M){
 			return data.map<AnimeMappingQueryAnimesAiredOn>((Map<String, dynamic> e) => AnimeMappingQueryAnimesAiredOn.fromJson(e)).toList() as M;
 		}
-		if(<AnimePopularQueryEntity>[] is M){
-			return data.map<AnimePopularQueryEntity>((Map<String, dynamic> e) => AnimePopularQueryEntity.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryEntity>[] is M){
+			return data.map<MangaDetailsQueryEntity>((Map<String, dynamic> e) => MangaDetailsQueryEntity.fromJson(e)).toList() as M;
 		}
-		if(<AnimePopularQueryAnimes>[] is M){
-			return data.map<AnimePopularQueryAnimes>((Map<String, dynamic> e) => AnimePopularQueryAnimes.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryMangas>[] is M){
+			return data.map<MangaDetailsQueryMangas>((Map<String, dynamic> e) => MangaDetailsQueryMangas.fromJson(e)).toList() as M;
 		}
-		if(<AnimePopularQueryAnimesPoster>[] is M){
-			return data.map<AnimePopularQueryAnimesPoster>((Map<String, dynamic> e) => AnimePopularQueryAnimesPoster.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryMangasUserRate>[] is M){
+			return data.map<MangaDetailsQueryMangasUserRate>((Map<String, dynamic> e) => MangaDetailsQueryMangasUserRate.fromJson(e)).toList() as M;
 		}
-		if(<AnimePopularQueryAnimesAiredOn>[] is M){
-			return data.map<AnimePopularQueryAnimesAiredOn>((Map<String, dynamic> e) => AnimePopularQueryAnimesAiredOn.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryMangasPoster>[] is M){
+			return data.map<MangaDetailsQueryMangasPoster>((Map<String, dynamic> e) => MangaDetailsQueryMangasPoster.fromJson(e)).toList() as M;
 		}
-		if(<AnimePopularQueryAnimesReleasedOn>[] is M){
-			return data.map<AnimePopularQueryAnimesReleasedOn>((Map<String, dynamic> e) => AnimePopularQueryAnimesReleasedOn.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryMangasAiredOn>[] is M){
+			return data.map<MangaDetailsQueryMangasAiredOn>((Map<String, dynamic> e) => MangaDetailsQueryMangasAiredOn.fromJson(e)).toList() as M;
 		}
-		if(<AnimePopularQueryAnimesGenres>[] is M){
-			return data.map<AnimePopularQueryAnimesGenres>((Map<String, dynamic> e) => AnimePopularQueryAnimesGenres.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryMangasReleasedOn>[] is M){
+			return data.map<MangaDetailsQueryMangasReleasedOn>((Map<String, dynamic> e) => MangaDetailsQueryMangasReleasedOn.fromJson(e)).toList() as M;
 		}
-		if(<AnimeRecentlyReleasedQueryEntity>[] is M){
-			return data.map<AnimeRecentlyReleasedQueryEntity>((Map<String, dynamic> e) => AnimeRecentlyReleasedQueryEntity.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryMangasGenres>[] is M){
+			return data.map<MangaDetailsQueryMangasGenres>((Map<String, dynamic> e) => MangaDetailsQueryMangasGenres.fromJson(e)).toList() as M;
 		}
-		if(<AnimeRecentlyReleasedQueryAnimes>[] is M){
-			return data.map<AnimeRecentlyReleasedQueryAnimes>((Map<String, dynamic> e) => AnimeRecentlyReleasedQueryAnimes.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryMangasPublishers>[] is M){
+			return data.map<MangaDetailsQueryMangasPublishers>((Map<String, dynamic> e) => MangaDetailsQueryMangasPublishers.fromJson(e)).toList() as M;
 		}
-		if(<AnimeRecentlyReleasedQueryAnimesPoster>[] is M){
-			return data.map<AnimeRecentlyReleasedQueryAnimesPoster>((Map<String, dynamic> e) => AnimeRecentlyReleasedQueryAnimesPoster.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryMangasCharacterRoles>[] is M){
+			return data.map<MangaDetailsQueryMangasCharacterRoles>((Map<String, dynamic> e) => MangaDetailsQueryMangasCharacterRoles.fromJson(e)).toList() as M;
 		}
-		if(<AnimeRecentlyReleasedQueryAnimesAiredOn>[] is M){
-			return data.map<AnimeRecentlyReleasedQueryAnimesAiredOn>((Map<String, dynamic> e) => AnimeRecentlyReleasedQueryAnimesAiredOn.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryMangasCharacterRolesCharacter>[] is M){
+			return data.map<MangaDetailsQueryMangasCharacterRolesCharacter>((Map<String, dynamic> e) => MangaDetailsQueryMangasCharacterRolesCharacter.fromJson(e)).toList() as M;
 		}
-		if(<AnimeRecentlyReleasedQueryAnimesReleasedOn>[] is M){
-			return data.map<AnimeRecentlyReleasedQueryAnimesReleasedOn>((Map<String, dynamic> e) => AnimeRecentlyReleasedQueryAnimesReleasedOn.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryMangasCharacterRolesCharacterPoster>[] is M){
+			return data.map<MangaDetailsQueryMangasCharacterRolesCharacterPoster>((Map<String, dynamic> e) => MangaDetailsQueryMangasCharacterRolesCharacterPoster.fromJson(e)).toList() as M;
 		}
-		if(<AnimeRecentlyReleasedQueryAnimesGenres>[] is M){
-			return data.map<AnimeRecentlyReleasedQueryAnimesGenres>((Map<String, dynamic> e) => AnimeRecentlyReleasedQueryAnimesGenres.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryMangasRelated>[] is M){
+			return data.map<MangaDetailsQueryMangasRelated>((Map<String, dynamic> e) => MangaDetailsQueryMangasRelated.fromJson(e)).toList() as M;
 		}
-		if(<AnimeTrendingQueryEntity>[] is M){
-			return data.map<AnimeTrendingQueryEntity>((Map<String, dynamic> e) => AnimeTrendingQueryEntity.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryMangasRelatedManga>[] is M){
+			return data.map<MangaDetailsQueryMangasRelatedManga>((Map<String, dynamic> e) => MangaDetailsQueryMangasRelatedManga.fromJson(e)).toList() as M;
 		}
-		if(<AnimeTrendingQueryAnimes>[] is M){
-			return data.map<AnimeTrendingQueryAnimes>((Map<String, dynamic> e) => AnimeTrendingQueryAnimes.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryMangasRelatedMangaPoster>[] is M){
+			return data.map<MangaDetailsQueryMangasRelatedMangaPoster>((Map<String, dynamic> e) => MangaDetailsQueryMangasRelatedMangaPoster.fromJson(e)).toList() as M;
 		}
-		if(<AnimeTrendingQueryAnimesPoster>[] is M){
-			return data.map<AnimeTrendingQueryAnimesPoster>((Map<String, dynamic> e) => AnimeTrendingQueryAnimesPoster.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryMangasRelatedMangaAiredOn>[] is M){
+			return data.map<MangaDetailsQueryMangasRelatedMangaAiredOn>((Map<String, dynamic> e) => MangaDetailsQueryMangasRelatedMangaAiredOn.fromJson(e)).toList() as M;
 		}
-		if(<AnimeTrendingQueryAnimesAiredOn>[] is M){
-			return data.map<AnimeTrendingQueryAnimesAiredOn>((Map<String, dynamic> e) => AnimeTrendingQueryAnimesAiredOn.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryMangasRelatedMangaReleasedOn>[] is M){
+			return data.map<MangaDetailsQueryMangasRelatedMangaReleasedOn>((Map<String, dynamic> e) => MangaDetailsQueryMangasRelatedMangaReleasedOn.fromJson(e)).toList() as M;
 		}
-		if(<AnimeTrendingQueryAnimesReleasedOn>[] is M){
-			return data.map<AnimeTrendingQueryAnimesReleasedOn>((Map<String, dynamic> e) => AnimeTrendingQueryAnimesReleasedOn.fromJson(e)).toList() as M;
+		if(<MangaDetailsQueryMangasRelatedMangaGenres>[] is M){
+			return data.map<MangaDetailsQueryMangasRelatedMangaGenres>((Map<String, dynamic> e) => MangaDetailsQueryMangasRelatedMangaGenres.fromJson(e)).toList() as M;
 		}
-		if(<AnimeTrendingQueryAnimesGenres>[] is M){
-			return data.map<AnimeTrendingQueryAnimesGenres>((Map<String, dynamic> e) => AnimeTrendingQueryAnimesGenres.fromJson(e)).toList() as M;
+		if(<MangaListQueryEntity>[] is M){
+			return data.map<MangaListQueryEntity>((Map<String, dynamic> e) => MangaListQueryEntity.fromJson(e)).toList() as M;
+		}
+		if(<MangaListQueryMangas>[] is M){
+			return data.map<MangaListQueryMangas>((Map<String, dynamic> e) => MangaListQueryMangas.fromJson(e)).toList() as M;
+		}
+		if(<MangaListQueryMangasPoster>[] is M){
+			return data.map<MangaListQueryMangasPoster>((Map<String, dynamic> e) => MangaListQueryMangasPoster.fromJson(e)).toList() as M;
+		}
+		if(<MangaListQueryMangasAiredOn>[] is M){
+			return data.map<MangaListQueryMangasAiredOn>((Map<String, dynamic> e) => MangaListQueryMangasAiredOn.fromJson(e)).toList() as M;
+		}
+		if(<MangaListQueryMangasReleasedOn>[] is M){
+			return data.map<MangaListQueryMangasReleasedOn>((Map<String, dynamic> e) => MangaListQueryMangasReleasedOn.fromJson(e)).toList() as M;
+		}
+		if(<MangaListQueryMangasGenres>[] is M){
+			return data.map<MangaListQueryMangasGenres>((Map<String, dynamic> e) => MangaListQueryMangasGenres.fromJson(e)).toList() as M;
+		}
+		if(<MangaListQueryMangasPublishers>[] is M){
+			return data.map<MangaListQueryMangasPublishers>((Map<String, dynamic> e) => MangaListQueryMangasPublishers.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriCalendarQueryEntity>[] is M){
+			return data.map<ShikimoriCalendarQueryEntity>((Map<String, dynamic> e) => ShikimoriCalendarQueryEntity.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriCalendarQueryList>[] is M){
+			return data.map<ShikimoriCalendarQueryList>((Map<String, dynamic> e) => ShikimoriCalendarQueryList.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriCalendarQueryListAnime>[] is M){
+			return data.map<ShikimoriCalendarQueryListAnime>((Map<String, dynamic> e) => ShikimoriCalendarQueryListAnime.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriCalendarQueryListAnimeImage>[] is M){
+			return data.map<ShikimoriCalendarQueryListAnimeImage>((Map<String, dynamic> e) => ShikimoriCalendarQueryListAnimeImage.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriGenresListQueryEntity>[] is M){
+			return data.map<ShikimoriGenresListQueryEntity>((Map<String, dynamic> e) => ShikimoriGenresListQueryEntity.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriGenresListQueryGenres>[] is M){
+			return data.map<ShikimoriGenresListQueryGenres>((Map<String, dynamic> e) => ShikimoriGenresListQueryGenres.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriTokenEntity>[] is M){
+			return data.map<ShikimoriTokenEntity>((Map<String, dynamic> e) => ShikimoriTokenEntity.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriUserRateEntity>[] is M){
+			return data.map<ShikimoriUserRateEntity>((Map<String, dynamic> e) => ShikimoriUserRateEntity.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriUserRateListEntity>[] is M){
+			return data.map<ShikimoriUserRateListEntity>((Map<String, dynamic> e) => ShikimoriUserRateListEntity.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriUserRatesAnimeQueryEntity>[] is M){
+			return data.map<ShikimoriUserRatesAnimeQueryEntity>((Map<String, dynamic> e) => ShikimoriUserRatesAnimeQueryEntity.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriUserRatesAnimeQueryUserRates>[] is M){
+			return data.map<ShikimoriUserRatesAnimeQueryUserRates>((Map<String, dynamic> e) => ShikimoriUserRatesAnimeQueryUserRates.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriUserRatesMangaQueryEntity>[] is M){
+			return data.map<ShikimoriUserRatesMangaQueryEntity>((Map<String, dynamic> e) => ShikimoriUserRatesMangaQueryEntity.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriUserRatesMangaQueryUserRates>[] is M){
+			return data.map<ShikimoriUserRatesMangaQueryUserRates>((Map<String, dynamic> e) => ShikimoriUserRatesMangaQueryUserRates.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriViewerQueryEntity>[] is M){
+			return data.map<ShikimoriViewerQueryEntity>((Map<String, dynamic> e) => ShikimoriViewerQueryEntity.fromJson(e)).toList() as M;
+		}
+		if(<ShikimoriViewerQueryEntityCurrentUser>[] is M){
+			return data.map<ShikimoriViewerQueryEntityCurrentUser>((Map<String, dynamic> e) => ShikimoriViewerQueryEntityCurrentUser.fromJson(e)).toList() as M;
 		}
 
 		debugPrint("$M not found");
@@ -652,6 +753,10 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		(AnimeDetailsQueryEntity).toString(): AnimeDetailsQueryEntity.fromJson,
 		(AnimeDetailsQueryAnimes).toString(): AnimeDetailsQueryAnimes.fromJson,
 		(AnimeDetailsQueryAnimesUserRate).toString(): AnimeDetailsQueryAnimesUserRate.fromJson,
+		(AnimeDetailsQueryAnimesPoster).toString(): AnimeDetailsQueryAnimesPoster.fromJson,
+		(AnimeDetailsQueryAnimesAiredOn).toString(): AnimeDetailsQueryAnimesAiredOn.fromJson,
+		(AnimeDetailsQueryAnimesReleasedOn).toString(): AnimeDetailsQueryAnimesReleasedOn.fromJson,
+		(AnimeDetailsQueryAnimesGenres).toString(): AnimeDetailsQueryAnimesGenres.fromJson,
 		(AnimeDetailsQueryAnimesCharacterRoles).toString(): AnimeDetailsQueryAnimesCharacterRoles.fromJson,
 		(AnimeDetailsQueryAnimesCharacterRolesCharacter).toString(): AnimeDetailsQueryAnimesCharacterRolesCharacter.fromJson,
 		(AnimeDetailsQueryAnimesCharacterRolesCharacterPoster).toString(): AnimeDetailsQueryAnimesCharacterRolesCharacterPoster.fromJson,
@@ -661,27 +766,54 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		(AnimeDetailsQueryAnimesRelatedAnimeAiredOn).toString(): AnimeDetailsQueryAnimesRelatedAnimeAiredOn.fromJson,
 		(AnimeDetailsQueryAnimesRelatedAnimeReleasedOn).toString(): AnimeDetailsQueryAnimesRelatedAnimeReleasedOn.fromJson,
 		(AnimeDetailsQueryAnimesRelatedAnimeGenres).toString(): AnimeDetailsQueryAnimesRelatedAnimeGenres.fromJson,
+		(AnimeListQueryEntity).toString(): AnimeListQueryEntity.fromJson,
+		(AnimeListQueryAnimes).toString(): AnimeListQueryAnimes.fromJson,
+		(AnimeListQueryAnimesPoster).toString(): AnimeListQueryAnimesPoster.fromJson,
+		(AnimeListQueryAnimesAiredOn).toString(): AnimeListQueryAnimesAiredOn.fromJson,
+		(AnimeListQueryAnimesReleasedOn).toString(): AnimeListQueryAnimesReleasedOn.fromJson,
+		(AnimeListQueryAnimesGenres).toString(): AnimeListQueryAnimesGenres.fromJson,
 		(AnimeMappingQueryEntity).toString(): AnimeMappingQueryEntity.fromJson,
 		(AnimeMappingQueryAnimes).toString(): AnimeMappingQueryAnimes.fromJson,
 		(AnimeMappingQueryAnimesAiredOn).toString(): AnimeMappingQueryAnimesAiredOn.fromJson,
-		(AnimePopularQueryEntity).toString(): AnimePopularQueryEntity.fromJson,
-		(AnimePopularQueryAnimes).toString(): AnimePopularQueryAnimes.fromJson,
-		(AnimePopularQueryAnimesPoster).toString(): AnimePopularQueryAnimesPoster.fromJson,
-		(AnimePopularQueryAnimesAiredOn).toString(): AnimePopularQueryAnimesAiredOn.fromJson,
-		(AnimePopularQueryAnimesReleasedOn).toString(): AnimePopularQueryAnimesReleasedOn.fromJson,
-		(AnimePopularQueryAnimesGenres).toString(): AnimePopularQueryAnimesGenres.fromJson,
-		(AnimeRecentlyReleasedQueryEntity).toString(): AnimeRecentlyReleasedQueryEntity.fromJson,
-		(AnimeRecentlyReleasedQueryAnimes).toString(): AnimeRecentlyReleasedQueryAnimes.fromJson,
-		(AnimeRecentlyReleasedQueryAnimesPoster).toString(): AnimeRecentlyReleasedQueryAnimesPoster.fromJson,
-		(AnimeRecentlyReleasedQueryAnimesAiredOn).toString(): AnimeRecentlyReleasedQueryAnimesAiredOn.fromJson,
-		(AnimeRecentlyReleasedQueryAnimesReleasedOn).toString(): AnimeRecentlyReleasedQueryAnimesReleasedOn.fromJson,
-		(AnimeRecentlyReleasedQueryAnimesGenres).toString(): AnimeRecentlyReleasedQueryAnimesGenres.fromJson,
-		(AnimeTrendingQueryEntity).toString(): AnimeTrendingQueryEntity.fromJson,
-		(AnimeTrendingQueryAnimes).toString(): AnimeTrendingQueryAnimes.fromJson,
-		(AnimeTrendingQueryAnimesPoster).toString(): AnimeTrendingQueryAnimesPoster.fromJson,
-		(AnimeTrendingQueryAnimesAiredOn).toString(): AnimeTrendingQueryAnimesAiredOn.fromJson,
-		(AnimeTrendingQueryAnimesReleasedOn).toString(): AnimeTrendingQueryAnimesReleasedOn.fromJson,
-		(AnimeTrendingQueryAnimesGenres).toString(): AnimeTrendingQueryAnimesGenres.fromJson,
+		(MangaDetailsQueryEntity).toString(): MangaDetailsQueryEntity.fromJson,
+		(MangaDetailsQueryMangas).toString(): MangaDetailsQueryMangas.fromJson,
+		(MangaDetailsQueryMangasUserRate).toString(): MangaDetailsQueryMangasUserRate.fromJson,
+		(MangaDetailsQueryMangasPoster).toString(): MangaDetailsQueryMangasPoster.fromJson,
+		(MangaDetailsQueryMangasAiredOn).toString(): MangaDetailsQueryMangasAiredOn.fromJson,
+		(MangaDetailsQueryMangasReleasedOn).toString(): MangaDetailsQueryMangasReleasedOn.fromJson,
+		(MangaDetailsQueryMangasGenres).toString(): MangaDetailsQueryMangasGenres.fromJson,
+		(MangaDetailsQueryMangasPublishers).toString(): MangaDetailsQueryMangasPublishers.fromJson,
+		(MangaDetailsQueryMangasCharacterRoles).toString(): MangaDetailsQueryMangasCharacterRoles.fromJson,
+		(MangaDetailsQueryMangasCharacterRolesCharacter).toString(): MangaDetailsQueryMangasCharacterRolesCharacter.fromJson,
+		(MangaDetailsQueryMangasCharacterRolesCharacterPoster).toString(): MangaDetailsQueryMangasCharacterRolesCharacterPoster.fromJson,
+		(MangaDetailsQueryMangasRelated).toString(): MangaDetailsQueryMangasRelated.fromJson,
+		(MangaDetailsQueryMangasRelatedManga).toString(): MangaDetailsQueryMangasRelatedManga.fromJson,
+		(MangaDetailsQueryMangasRelatedMangaPoster).toString(): MangaDetailsQueryMangasRelatedMangaPoster.fromJson,
+		(MangaDetailsQueryMangasRelatedMangaAiredOn).toString(): MangaDetailsQueryMangasRelatedMangaAiredOn.fromJson,
+		(MangaDetailsQueryMangasRelatedMangaReleasedOn).toString(): MangaDetailsQueryMangasRelatedMangaReleasedOn.fromJson,
+		(MangaDetailsQueryMangasRelatedMangaGenres).toString(): MangaDetailsQueryMangasRelatedMangaGenres.fromJson,
+		(MangaListQueryEntity).toString(): MangaListQueryEntity.fromJson,
+		(MangaListQueryMangas).toString(): MangaListQueryMangas.fromJson,
+		(MangaListQueryMangasPoster).toString(): MangaListQueryMangasPoster.fromJson,
+		(MangaListQueryMangasAiredOn).toString(): MangaListQueryMangasAiredOn.fromJson,
+		(MangaListQueryMangasReleasedOn).toString(): MangaListQueryMangasReleasedOn.fromJson,
+		(MangaListQueryMangasGenres).toString(): MangaListQueryMangasGenres.fromJson,
+		(MangaListQueryMangasPublishers).toString(): MangaListQueryMangasPublishers.fromJson,
+		(ShikimoriCalendarQueryEntity).toString(): ShikimoriCalendarQueryEntity.fromJson,
+		(ShikimoriCalendarQueryList).toString(): ShikimoriCalendarQueryList.fromJson,
+		(ShikimoriCalendarQueryListAnime).toString(): ShikimoriCalendarQueryListAnime.fromJson,
+		(ShikimoriCalendarQueryListAnimeImage).toString(): ShikimoriCalendarQueryListAnimeImage.fromJson,
+		(ShikimoriGenresListQueryEntity).toString(): ShikimoriGenresListQueryEntity.fromJson,
+		(ShikimoriGenresListQueryGenres).toString(): ShikimoriGenresListQueryGenres.fromJson,
+		(ShikimoriTokenEntity).toString(): ShikimoriTokenEntity.fromJson,
+		(ShikimoriUserRateEntity).toString(): ShikimoriUserRateEntity.fromJson,
+		(ShikimoriUserRateListEntity).toString(): ShikimoriUserRateListEntity.fromJson,
+		(ShikimoriUserRatesAnimeQueryEntity).toString(): ShikimoriUserRatesAnimeQueryEntity.fromJson,
+		(ShikimoriUserRatesAnimeQueryUserRates).toString(): ShikimoriUserRatesAnimeQueryUserRates.fromJson,
+		(ShikimoriUserRatesMangaQueryEntity).toString(): ShikimoriUserRatesMangaQueryEntity.fromJson,
+		(ShikimoriUserRatesMangaQueryUserRates).toString(): ShikimoriUserRatesMangaQueryUserRates.fromJson,
+		(ShikimoriViewerQueryEntity).toString(): ShikimoriViewerQueryEntity.fromJson,
+		(ShikimoriViewerQueryEntityCurrentUser).toString(): ShikimoriViewerQueryEntityCurrentUser.fromJson,
 	};
 bool containsKey(String type) {
 return convertFuncMap.containsKey(type);

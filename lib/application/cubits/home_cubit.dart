@@ -23,6 +23,7 @@ import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
+import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
 import 'package:unyo/domain/repositories/user_repository.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
@@ -140,12 +141,13 @@ class HomeCubit extends Cubit<HomeState> with EffectMixin<HomeState> {
   Future<void> _getUserInfo(User user, {bool ignoreCacheAnime = false, bool ignoreCacheManga = false}) async {
     try {
       switch (user) {
-        case AnilistUserModel anilistUserModel:
-          _logger.i("Fetching Anilist User lists");
+        case AnilistUserModel _:
+        case ShikimoriUserModel _:
+          _logger.i("Fetching user lists");
           List<Anime> watchingList = await _userRepository
-              .getUserWatchingList(anilistUserModel, ignoreCache: ignoreCacheAnime);
+              .getUserWatchingList(user, ignoreCache: ignoreCacheAnime);
           List<Manga> readingList = await _userRepository
-              .getUserReadingList(anilistUserModel, ignoreCache: ignoreCacheManga);
+              .getUserReadingList(user, ignoreCache: ignoreCacheManga);
           emit(
             state.copyWith(
               continueWatching: watchingList,

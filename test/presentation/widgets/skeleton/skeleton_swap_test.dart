@@ -1,5 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logger/logger.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:unyo/config/config.dart' as config;
+import 'package:unyo/core/di/locator.dart' show sl;
+import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/user/user.dart';
@@ -17,6 +21,16 @@ import 'support/widget_harness.dart';
 /// flag is false the skeleton renders, when it flips the real component takes
 /// its place and the box does not change size.
 void main() {
+  // The carousel resolves each card title through the logged-user notifier
+  // (`displayMediaTitle`), so the display seam needs the app's registration.
+  setUp(() {
+    sl.reset();
+    sl.registerSingleton<Logger>(Logger(filter: ProductionFilter()));
+    sl.registerSingleton<UserNotifier>(UserNotifier(), instanceName: config.loggedUserNotifier);
+  });
+
+  tearDown(() => sl.reset());
+
   Widget mediaCard() => MediaCard(
     title: 'Some Anime',
     score: 71,

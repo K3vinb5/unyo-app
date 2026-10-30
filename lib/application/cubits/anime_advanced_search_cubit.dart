@@ -173,7 +173,7 @@ class AnimeAdvancedSearchCubit extends Cubit<AnimeAdvancedSearchState>
 
   Future<void> _getLoggedUserServiceFilters(User loggedUser) async {
     try {
-      final filters = await _animeRepository.getUserAnimeAdvancedSearchFilters();
+      final filters = await _animeRepository.getUserAnimeAdvancedSearchFilters(loggedUser);
       emit(
         state.copyWith(
           genresFilters: (filters['genres']?.$1 ?? false, filters['genres']?.$2 ?? []),

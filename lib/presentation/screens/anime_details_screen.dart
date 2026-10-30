@@ -20,6 +20,7 @@ import 'package:unyo/presentation/widgets/styled/unyo_character_list.dart';
 import 'package:unyo/presentation/widgets/text/text_body_medium.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
+import 'package:unyo/presentation/widgets/text/media_title_text.dart';
 
 @RoutePage()
 class AnimeDetailsScreen extends StatelessWidget {
@@ -176,7 +177,7 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                                       state.selectedAnime.coverImage != ""
                                           ? state.selectedAnime.coverImage
                                           : state.alternateImage,
-                                  title: state.selectedAnime.title.userPreferred,
+                                  title: displayMediaTitle(state.selectedAnime.title),
                                   status: state.selectedAnime.status,
                                   tag: "${state.selectedMediaList.name}-${state.selectedAnime.id}",
                                 ),

@@ -2,6 +2,10 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 // Internal dependencies
+import 'package:unyo/core/services/api/dto/shikimori/manga_details_query_entity.dart';
+import 'package:unyo/data/models/shikimori/media/shikimori_manga_model.dart';
+import 'package:unyo/data/models/shikimori/media/shikimori_media_character.dart';
+import 'package:unyo/data/models/shikimori/media/shikimori_media_mapper.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/media/manga_details.dart';
@@ -33,23 +37,32 @@ abstract class ShikimoriMangaDetailsModel
   Map<String, dynamic> toJson() =>
       _$ShikimoriMangaDetailsModelToJson(this as _ShikimoriMangaDetailsModel);
 
-  // factory ShikimoriMangaDetailsModel.fromDetailsEntry(
-  //     ShikimoriMangaDetailsGraphqlManga entry,) {
-  //   final recommendedMangas = <Manga>[];
-  //   for (final related in entry.related) {
-  //     recommendedMangas.add(
-  //       ShikimoriMangaModel.fromRelatedEntry(related.anime),
-  //     );
-  //   }
-  //
-  //   final characters = entry.characterRoles
-  //       .map((role) => ShikimoriMediaCharacterModel.fromMangaCharacterRole(role))
-  //       .toList();
-  //
-  //   return ShikimoriMangaDetailsModel(
-  //     mediaListEntry: MediaListEntryModel.empty(),
-  //     recommendedMangas: recommendedMangas,
-  //     characters: characters,
-  //   );
-  // }
+  /// Maps `shikimoriMangaDetailsQuery`.
+  ///
+  /// * `related { manga { … } }` is `null` for anime adaptations, so only nodes
+  ///   with a real manga payload become recommendations — never a phantom card
+  ///   (the #78/#77 family, mirrored here).
+  /// * without an Authorization header `userRate` is `null`, which degrades to
+  ///   the "add to list" sentinel.
+  factory ShikimoriMangaDetailsModel.fromMangaDetailsQuery(MangaDetailsQueryEntity mangaDetailsQuery) {
+    final MangaDetailsQueryMangas mangaDetails = mangaDetailsQuery.mangas.firstOrNull ?? MangaDetailsQueryMangas();
+    return ShikimoriMangaDetailsModel(
+      mediaListEntry: mangaDetails.userRate.status.trim().isEmpty
+          ? MediaListEntryModel.empty()
+          : MediaListEntryModel.fromMangaDetailsQueryMangasUserRate(mangaDetails.userRate),
+      recommendedMangas: mangaDetails.related
+          .where((MangaDetailsQueryMangasRelated relatedManga) => ShikimoriMediaMapper.isRealManga(relatedManga.manga))
+          .map((MangaDetailsQueryMangasRelated relatedManga) =>
+              ShikimoriMangaModel.fromRelatedEntry(relatedManga.manga))
+          .toList(),
+      characters: mangaDetails.characterRoles
+          .where((MangaDetailsQueryMangasCharacterRoles role) => ShikimoriMediaMapper.parseId(role.character.id) > 0)
+          .map((MangaDetailsQueryMangasCharacterRoles role) => ShikimoriMediaCharacterModel.fromRole(
+                id: role.character.id,
+                name: role.character.name,
+                image: role.character.poster.originalUrl,
+              ))
+          .toList(),
+    );
+  }
 }

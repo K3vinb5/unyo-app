@@ -110,7 +110,7 @@ void main() {
   group('MangaCubit unsupported metadata provider', () {
     test('an unimplemented provider settles into the explicit unavailable state instead of an empty list', () async {
       cubit = buildCubit();
-      userStreamController.add(userWith(Service.shikimori));
+      userStreamController.add(userWith(Service.mal));
       await pumpEventQueue();
 
       expect(cubit.state.metadataServiceSupported, isFalse);
@@ -122,7 +122,7 @@ void main() {
 
     test('a reload after switching back to AniList clears the unavailable state and fetches', () async {
       cubit = buildCubit();
-      userStreamController.add(userWith(Service.shikimori));
+      userStreamController.add(userWith(Service.mal));
       await pumpEventQueue();
       expect(cubit.state.metadataServiceSupported, isFalse);
 
@@ -156,8 +156,8 @@ void main() {
       await pumpEventQueue();
       expect(cubit.state.userLoaded, isFalse, reason: 'the initial load is still awaiting its first fetch');
 
-      // Shikimori has no manga implementation, and it is picked mid-load.
-      userStreamController.add(userWith(Service.shikimori));
+      // MAL has no manga implementation, and it is picked mid-load.
+      userStreamController.add(userWith(Service.mal));
       await pumpEventQueue();
       reloadStreamController.add(ReloadType.newMetadataService);
       await pumpEventQueue();
@@ -169,7 +169,7 @@ void main() {
       expect(
         cubit.state.metadataServiceSupported,
         isFalse,
-        reason: 'the queued switch must re-run against Shikimori, not the provider the load captured',
+        reason: 'the queued switch must re-run against MAL, not the provider the load captured',
       );
       expect(cubit.state.trending.$2, isEmpty, reason: 'the previous provider\'s rows must not survive the switch');
       verifyNever(() => mangaRepository.getPopularMangas(1, any(), ignoreCache: true));

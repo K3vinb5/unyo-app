@@ -14,6 +14,7 @@ import 'package:unyo/domain/entities/list/media_list.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/media_card.dart';
 import 'package:unyo/presentation/widgets/text/texts.dart';
+import 'package:unyo/presentation/widgets/text/media_title_text.dart';
 
 @RoutePage()
 class CalendarScreen extends StatelessWidget {
@@ -183,10 +184,7 @@ class _CalendarViewState extends State<_CalendarView>
                             (context, index) => SizedBox(
                           width: 165,
                           child: MediaCard(
-                            title:
-                           entry.value[index]
-                                .title
-                                .userPreferred,
+                            title: displayMediaTitle(entry.value[index].title),
                             score:
                             entry.value[index].averageScore,
                             coverImage:

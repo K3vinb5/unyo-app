@@ -39,6 +39,9 @@ import 'package:unyo/core/services/api/graphql/graphql_service.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
 import 'package:unyo/core/services/api/http/response_cache_scope.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
+import 'package:unyo/core/services/api/shikimori/shikimori_auth_service.dart';
+import 'package:unyo/core/services/api/shikimori/shikimori_rate_limiter.dart';
+import 'package:unyo/core/services/api/shikimori/shikimori_user_rate_service.dart';
 import 'package:unyo/core/services/settings/settings_service.dart';
 import 'package:unyo/core/services/torrent/torrent_service.dart';
 import 'package:unyo/core/services/update/app_version_provider.dart';
@@ -85,10 +88,19 @@ void setupLocator() async{
     () => GraphQLService(httpService: sl<HttpService>(), endpoint: config.anilistGraphQLEndpoint),
     instanceName: config.anilistGraphQlService,
   );
+  sl.registerLazySingleton<ShikimoriRateLimiter>(() => ShikimoriRateLimiter());
   sl.registerLazySingleton<GraphQLService>(
-    () => GraphQLService(httpService: sl<HttpService>(), endpoint: config.shikimoriGraphQLEndpoint),
+    () => GraphQLService(
+      httpService: sl<HttpService>(),
+      endpoint: config.shikimoriGraphQLEndpoint,
+      // One budget instance for every Shikimori request in the app, GraphQL
+      // and REST alike (WP #64 subpart (d)).
+      rateLimiter: sl<ShikimoriRateLimiter>(),
+    ),
     instanceName: config.shikimoriGraphQlService,
   );
+  sl.registerLazySingleton<ShikimoriAuthService>(() => ShikimoriAuthService());
+  sl.registerLazySingleton<ShikimoriUserRateService>(() => ShikimoriUserRateService());
   sl.registerLazySingleton<AppEffectHandler>(() => AppEffectHandler());
   sl.registerLazySingleton<AppVersionProvider>(() => const AppVersionProvider());
   sl.registerLazySingleton<UpdateCheckerService>(
@@ -117,6 +129,12 @@ void setupLocator() async{
   sl.registerLazySingleton<UserRepositoryLocal>(() => UserRepositoryLocal());
   sl.registerLazySingleton<UserRepositoryAnilist>(
     () => UserRepositoryAnilist(
+      sl<UserNotifier>(instanceName: config.newUserNotifier),
+      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
+    ),
+  );
+  sl.registerLazySingleton<UserRepositoryShikimori>(
+    () => UserRepositoryShikimori(
       sl<UserNotifier>(instanceName: config.newUserNotifier),
       sl<UserNotifier>(instanceName: config.loggedUserNotifier),
     ),
@@ -152,6 +170,7 @@ void setupLocator() async{
       sl<UserNotifier>(instanceName: config.loggedUserNotifier),
       sl<UserNotifier>(instanceName: config.newUserNotifier),
       sl<UserRepositoryAnilist>(),
+      sl<UserRepositoryShikimori>(),
       sl<ColorImageService>(),
       sl<ThemeService>(),
     ),

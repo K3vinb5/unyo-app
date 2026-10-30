@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:unyo/application/cubits/video_cubit.dart';
 import 'package:unyo/application/states/video_state.dart';
 import 'package:unyo/core/services/video/video_service.dart';
+import 'package:unyo/presentation/widgets/text/media_title_text.dart';
 
 class UnyoVideoHeaderControls extends StatelessWidget {
   final VideoCubit cubit;
@@ -39,7 +40,7 @@ class UnyoVideoHeaderControls extends StatelessWidget {
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          "${state.selectedAnime.title.userPreferred}  -  Episode ${state.videoInfo
+                          "${displayMediaTitle(state.selectedAnime.title)}  -  Episode ${state.videoInfo
                               .playlistIndex + 1}",
                           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                         ),
