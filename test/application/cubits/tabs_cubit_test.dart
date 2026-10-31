@@ -1,4 +1,6 @@
 // External dependencies
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logger/logger.dart';
 import 'package:mocktail/mocktail.dart';
@@ -7,6 +9,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:unyo/application/cubits/tabs_cubit.dart';
 import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/core/di/locator.dart';
+import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/notification/menu_bar_notifier.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
@@ -14,8 +17,10 @@ import 'package:unyo/core/services/update/app_version_provider.dart';
 import 'package:unyo/core/services/update/update_check_result.dart';
 import 'package:unyo/core/services/update/update_checker_service.dart';
 import 'package:unyo/core/theme/theme_service.dart';
+import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/presentation/dialogs/update_available_dialog.dart';
+import 'package:unyo/presentation/dialogs/user_profile_dialog.dart';
 
 class MockThemeService extends Mock implements ThemeService {}
 
@@ -187,6 +192,38 @@ void main() {
 
       verify(() => versionProvider.currentVersion()).called(1);
       verify(() => updateCheckerService.checkForUpdate('0.8.0')).called(1);
+    });
+  });
+
+  group('TabsCubit profile dialog', () {
+    /// Signs a user in through the notifier the shell listens to.
+    Future<TabsCubit> withLoggedUser(StreamController<User> users, User user) async {
+      when(() => loggedUserNotifier.userStream).thenAnswer((_) => users.stream);
+      final TabsCubit cubit = createCubit();
+      addTearDown(cubit.close);
+      users.add(user);
+      await pumpEventQueue();
+      return cubit;
+    }
+
+    test('opens the profile card of the signed-in account', () async {
+      final StreamController<User> users = StreamController<User>.broadcast();
+      addTearDown(users.close);
+      final User user = UserModel(
+        id: '12345',
+        name: 'alice',
+        settings: SettingsModel.empty().copyWith(userService: Service.anilist),
+        avatarImage: 'https://example.test/avatar.png',
+        bannerImage: '',
+      );
+      final TabsCubit cubit = await withLoggedUser(users, user);
+
+      cubit.openUserProfileDialog();
+
+      final ShowWidgetDialogEffect effect = cubit.state.effects.single as ShowWidgetDialogEffect;
+      final UserProfileDialog dialog = effect.dialog as UserProfileDialog;
+      expect(dialog.user.name, 'alice');
+      expect(dialog.user.id, '12345');
     });
   });
 }

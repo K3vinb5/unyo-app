@@ -17,6 +17,7 @@ import 'package:unyo/core/services/update/update_checker_service.dart';
 import 'package:unyo/core/theme/theme_service.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/presentation/dialogs/update_available_dialog.dart';
+import 'package:unyo/presentation/dialogs/user_profile_dialog.dart';
 import 'package:unyo/presentation/drawers/user_options_drawer.dart' show UserOptionsDrawer;
 
 class TabsCubit extends Cubit<TabsState>
@@ -146,6 +147,14 @@ class TabsCubit extends Cubit<TabsState>
         changeRouteTabEffect(path: "/settings", context);
     }
     emit(state.copyWith(selectedMenuOption: option));
+  }
+
+  /// Opens the profile card for the signed-in account. It reads the same
+  /// [TabsState.loggedUser] the drawer was built from and carries no provider
+  /// branch: the dialog drops the slots the account does not fill.
+  void openUserProfileDialog() {
+    _logger.i("Opening the user profile dialog for ${state.loggedUser.name}");
+    showWidgetDialogEffect(dialog: UserProfileDialog(user: state.loggedUser));
   }
 
   void showUserOptionsDrawer() {
