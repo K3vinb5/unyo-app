@@ -1,14 +1,8 @@
-// External Dependencies
-import 'package:logger/logger.dart';
-
 // Internal Dependencies
-import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/domain/entities/entities.dart';
 import 'package:unyo/domain/repositories/user_repository.dart';
 
 class UserRepositoryLocal implements UserRepository {
-  final Logger _logger = sl<Logger>();
-
   @override
   Future<List<User>> fetchAllLoggedInUsers() async {
     return [];

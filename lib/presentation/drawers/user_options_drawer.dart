@@ -3,9 +3,6 @@ import 'dart:ui';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/application/cubits/tabs_cubit.dart';
-import 'package:unyo/config/config.dart' as config;
-import 'package:unyo/core/di/locator.dart';
-import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/domain/entities/user/user.dart' show User;
 import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 import 'package:unyo/presentation/widgets/styled/user_option_drawer_selection.dart';
@@ -22,8 +19,6 @@ class UserOptionsDrawer extends StatefulWidget {
 }
 
 class _UserOptionsDrawerState extends State<UserOptionsDrawer> {
-  final UserNotifier _loggedInUserNotifier = sl<UserNotifier>(instanceName: config.loggedUserNotifier);
-
   @override
   void initState() {
     super.initState();
