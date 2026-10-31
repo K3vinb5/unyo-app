@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 
 // Internal dependencies
 import 'package:unyo/presentation/dialogs/theme_color_picker_dialog.dart';
+import 'package:unyo/presentation/dialogs/unyo_dialog_theme.dart';
 
 void main() {
   /// WCAG relative luminance, used to prove text/background contrast.
@@ -22,7 +23,11 @@ void main() {
     return (light + 0.05) / (dark + 0.05);
   }
 
-  Future<void> openDialog(WidgetTester tester, {ThemeData? theme}) async {
+  Future<void> openDialog(
+    WidgetTester tester, {
+    ThemeData? theme,
+    ValueChanged<Color>? onConfirmed,
+  }) async {
     tester.view.physicalSize = const Size(1920, 1080);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -40,7 +45,7 @@ void main() {
                   context: context,
                   builder: (_) => ThemeColorPickerDialog(
                     initialColor: const Color.fromARGB(255, 146, 102, 168),
-                    onConfirmed: (_) {},
+                    onConfirmed: onConfirmed ?? (_) {},
                   ),
                 ),
                 child: const Text('open'),
@@ -54,38 +59,67 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Finder labelModeSelector() => find.byKey(const ValueKey('theme-color-picker-label-mode'));
+  Finder modeLink(String mode) => find.byKey(ValueKey('theme-color-picker-mode-$mode'));
 
   Future<void> selectLabelMode(WidgetTester tester, String mode) async {
-    await tester.tap(labelModeSelector());
-    await tester.pumpAndSettle();
-    await tester.tap(find.text(mode).last);
+    await tester.tap(modeLink(mode));
     await tester.pumpAndSettle();
   }
 
   String valueLabel(WidgetTester tester) =>
-      tester.widget<Text>(find.byKey(const ValueKey('theme-color-picker-values'))).data!;
+      tester.widget<Text>(find.byKey(ThemeColorPickerDialog.readOutKey)).data!;
+
+  /// Colour of the label inside an inline mode link.
+  Color modeColor(WidgetTester tester, String mode) => tester
+      .widget<Text>(
+        find.descendant(of: modeLink(mode), matching: find.byType(Text)),
+      )
+      .style!
+      .color!;
 
   testWidgets('the dialog keeps one size across RGB, HSV and HSL label modes', (
     tester,
   ) async {
     await openDialog(tester, theme: ThemeData.dark());
 
-    final Size rgbSize = tester.getSize(find.byType(AlertDialog));
+    final Size rgbSize = tester.getSize(find.byKey(ThemeColorPickerDialog.cardKey));
     expect(valueLabel(tester), startsWith('R '));
 
     await selectLabelMode(tester, 'HSV');
-    final Size hsvSize = tester.getSize(find.byType(AlertDialog));
+    final Size hsvSize = tester.getSize(find.byKey(ThemeColorPickerDialog.cardKey));
     expect(valueLabel(tester), startsWith('H '));
     expect(valueLabel(tester), contains('V '));
 
     await selectLabelMode(tester, 'HSL');
-    final Size hslSize = tester.getSize(find.byType(AlertDialog));
+    final Size hslSize = tester.getSize(find.byKey(ThemeColorPickerDialog.cardKey));
     expect(valueLabel(tester), startsWith('H '));
     expect(valueLabel(tester), contains('L '));
 
     expect(hsvSize, rgbSize);
     expect(hslSize, rgbSize);
+    expect(rgbSize.width, themeColorPickerDialogWidth);
+    expect(rgbSize.height, lessThanOrEqualTo(themeColorPickerDialogHeight));
+  });
+
+  testWidgets('switches the label mode inline, never through a menu', (
+    WidgetTester tester,
+  ) async {
+    await openDialog(tester, theme: ThemeData.dark());
+
+    expect(find.byType(DropdownButton<String>), findsNothing, reason: 'the mode control is text, not a dropdown');
+    expect(find.text('RGB'), findsOneWidget);
+    expect(find.text('HSV'), findsOneWidget);
+    expect(find.text('HSL'), findsOneWidget);
+
+    expect(modeColor(tester, 'RGB'), unyoDialogText, reason: 'the active mode is bright');
+    expect(modeColor(tester, 'HSV'), unyoDialogDim, reason: 'the inactive modes are dim');
+
+    await selectLabelMode(tester, 'HSV');
+
+    expect(modeColor(tester, 'HSV'), unyoDialogText);
+    expect(modeColor(tester, 'RGB'), unyoDialogDim);
+    expect(find.byType(DropdownMenuItem<String>), findsNothing);
+    expect(valueLabel(tester), startsWith('H 280°'));
   });
 
   for (final MapEntry<String, ThemeData> userTheme in <String, ThemeData>{
@@ -93,44 +127,64 @@ void main() {
     'light': ThemeData.light(),
   }.entries) {
     testWidgets(
-      'label menu and selected value stay legible on a ${userTheme.key} user theme',
+      'every label stays legible on a ${userTheme.key} user theme',
       (tester) async {
         await openDialog(tester, theme: userTheme.value);
 
-        final DropdownButton<String> selector = tester.widget<DropdownButton<String>>(
-          labelModeSelector(),
-        );
-        final Color selectedValueColor =
-            selector.style?.color ?? Theme.of(tester.element(labelModeSelector())).textTheme.titleMedium!.color!;
-        expect(
-          contrastRatio(selectedValueColor, themeColorPickerDialogSurface),
-          greaterThan(4.5),
-          reason: 'selected value $selectedValueColor on $themeColorPickerDialogSurface',
-        );
-
-        await tester.tap(labelModeSelector());
-        await tester.pumpAndSettle();
-
-        final BuildContext itemContext = tester.element(find.text('HSV').last);
-        final TextStyle itemStyle = DefaultTextStyle.of(itemContext).style;
-        final Color menuBackground = selector.dropdownColor ?? Theme.of(itemContext).canvasColor;
-        expect(itemStyle.color, isNotNull);
-        expect(
-          contrastRatio(itemStyle.color!, menuBackground),
-          greaterThan(4.5),
-          reason: 'menu item text ${itemStyle.color} on menu background $menuBackground',
-        );
-
-        final Color valueColor = tester
-            .widget<Text>(find.byKey(const ValueKey('theme-color-picker-values')))
-            .style!
-            .color!;
-        expect(
-          contrastRatio(valueColor, themeColorPickerDialogSurface),
-          greaterThan(4.5),
-          reason: 'value read-out $valueColor on $themeColorPickerDialogSurface',
-        );
+        final List<(String, Color)> pinnedText = <(String, Color)>[
+          (
+            'eyebrow',
+            tester.widget<Text>(find.byKey(ThemeColorPickerDialog.eyebrowKey)).style!.color!,
+          ),
+          (
+            'title',
+            tester.widget<Text>(find.byKey(ThemeColorPickerDialog.titleKey)).style!.color!,
+          ),
+          (
+            'read-out',
+            tester.widget<Text>(find.byKey(ThemeColorPickerDialog.readOutKey)).style!.color!,
+          ),
+          ('active mode', modeColor(tester, 'RGB')),
+          ('inactive mode', modeColor(tester, 'HSV')),
+        ];
+        for (final (String label, Color color) in pinnedText) {
+          expect(
+            contrastRatio(color, themeColorPickerDialogSurface),
+            greaterThan(4.5),
+            reason: '$label $color on $themeColorPickerDialogSurface',
+          );
+        }
       },
     );
   }
+
+  testWidgets('confirm hands back the picked colour and closes', (WidgetTester tester) async {
+    Color? confirmed;
+    await openDialog(
+      tester,
+      theme: ThemeData.dark(),
+      onConfirmed: (Color color) => confirmed = color,
+    );
+
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+
+    expect(confirmed, const Color.fromARGB(255, 146, 102, 168));
+    expect(find.byType(ThemeColorPickerDialog), findsNothing);
+  });
+
+  testWidgets('cancel closes without confirming', (WidgetTester tester) async {
+    bool confirmed = false;
+    await openDialog(
+      tester,
+      theme: ThemeData.dark(),
+      onConfirmed: (_) => confirmed = true,
+    );
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(confirmed, isFalse);
+    expect(find.byType(ThemeColorPickerDialog), findsNothing);
+  });
 }

@@ -79,6 +79,7 @@ void main() {
         find.byType(UnyoNetworkImage),
       );
       expect(portrait.url, 'https://example.test/kirito.png');
+      expect(portrait.borderRadius, 22, reason: 'the photo column keeps the family image radius');
     });
   });
 
@@ -96,17 +97,24 @@ void main() {
     });
   });
 
-  testWidgets('hides every Shikimori sentinel', (WidgetTester tester) async {
+  testWidgets('hides every Shikimori sentinel, including the fact rows', (
+    WidgetTester tester,
+  ) async {
     await withFakeImages(() async {
       await pumpDialog(tester, shikimoriCharacter());
 
       expect(find.text('Kirito'), findsOneWidget);
+      expect(find.byKey(CharacterDialog.genderChipKey), findsNothing);
+      expect(find.byKey(CharacterDialog.ageChipKey), findsNothing);
+      expect(find.text('GENDER'), findsNothing);
+      expect(find.text('AGE'), findsNothing);
+      expect(find.text('BIRTHDAY'), findsNothing);
       expect(find.text('Unknown'), findsNothing);
       expect(find.text('No description available'), findsNothing);
-      expect(find.text('Age -1'), findsNothing);
+      expect(find.byKey(CharacterDialog.descriptionKey), findsNothing);
       expect(find.textContaining('Age'), findsNothing);
-      expect(find.textContaining('Born'), findsNothing);
       expect(find.textContaining('0/0/0'), findsNothing);
+      expect(find.byKey(CharacterDialog.closeKey), findsOneWidget, reason: 'the action stays');
     });
   });
 
@@ -116,14 +124,59 @@ void main() {
     await withFakeImages(() async {
       await pumpDialog(tester, anilistCharacter());
 
-      expect(find.text('Male'), findsOneWidget);
-      expect(find.text('Age 21'), findsOneWidget);
-      expect(find.text('Born 7/10/1991'), findsOneWidget);
-      expect(find.text('Black Swordsman\nAlways solo.'), findsOneWidget);
+      expect(find.byKey(CharacterDialog.genderChipKey), findsOneWidget);
+      expect(find.byKey(CharacterDialog.ageChipKey), findsOneWidget);
+      expect(find.text('GENDER'), findsOneWidget);
+      expect(find.text('AGE'), findsOneWidget);
+      expect(find.text('BIRTHDAY'), findsOneWidget);
+      expect(find.text('Male'), findsNWidgets(2), reason: 'the chip and the fact row both say it');
+      expect(find.text('21'), findsOneWidget);
+      expect(find.text('7/10/1991'), findsOneWidget);
+      expect(find.byKey(CharacterDialog.descriptionKey), findsOneWidget);
     });
   });
 
-  testWidgets('closes when the close button is pressed', (
+  testWidgets('a long name wraps and stays clear of the chips', (
+    WidgetTester tester,
+  ) async {
+    await withFakeImages(() async {
+      await pumpDialog(
+        tester,
+        character(name: 'Alexandria Pendragon Alter Lily'),
+      );
+
+      final Text name = tester.widget<Text>(find.byKey(CharacterDialog.nameKey));
+      expect(name.maxLines, 2);
+
+      final Rect nameRect = tester.getRect(find.byKey(CharacterDialog.nameKey));
+      final Rect chipRect = tester.getRect(find.byKey(CharacterDialog.genderChipKey));
+      expect(nameRect.bottom, lessThanOrEqualTo(chipRect.top), reason: 'no overlap between name and chips');
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  testWidgets('a six-line description fits the card without overflowing', (
+    WidgetTester tester,
+  ) async {
+    await withFakeImages(() async {
+      const String longDescription =
+          'A mysterious, cute and isolated girl in her third year of middle school. '
+          'Her left eye is covered by an eye patch. The girl with a mysterious presence '
+          'and is always sketching alone. She is labeled as the one that does not exist. '
+          'Her left eye is a doll eye. It can see things that should remain unseen, '
+          "that's why she keeps it covered. It can see people close to death or that are "
+          'dead.';
+      await pumpDialog(tester, character(description: longDescription));
+
+      expect(find.byKey(CharacterDialog.descriptionKey), findsOneWidget);
+      final Size card = tester.getSize(find.byKey(CharacterDialog.cardKey));
+      expect(card.height, lessThanOrEqualTo(characterDialogMaxHeight));
+      expect(card.width, characterDialogWidth);
+      expect(tester.takeException(), isNull, reason: 'the description never overflows the card');
+    });
+  });
+
+  testWidgets('closes when the close pill is pressed', (
     WidgetTester tester,
   ) async {
     await withFakeImages(() async {
@@ -156,7 +209,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(CharacterDialog), findsOneWidget);
 
-      await tester.tap(find.byIcon(Icons.close));
+      expect(find.byIcon(Icons.close), findsOneWidget, reason: 'the pill carries the close glyph');
+      await tester.tap(find.byKey(CharacterDialog.closeKey));
       await tester.pumpAndSettle();
       expect(find.byType(CharacterDialog), findsNothing);
     });
