@@ -27,6 +27,8 @@ import 'package:unyo/core/services/api/http/api_response.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
 import 'package:unyo/core/services/media/playback_session.dart';
+import 'package:unyo/core/services/video/skip_window.dart';
+import 'package:unyo/core/services/video/up_next_window.dart';
 import 'package:unyo/core/services/video/video_service.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
 import 'package:unyo/core/services/media/media_link_exception.dart';
@@ -293,33 +295,51 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
   }
 
   String getSkipTimeText() {
-    if (state.openingSkipTimes.interval.endTime > 0 &&
-        _videoService.position.inSeconds > state.openingSkipTimes.interval.startTime &&
-        state.openingSkipTimes.interval.endTime > _videoService.position.inSeconds) {
-      return "Skip Opening";
-    } else if (state.endingSkipTimes.interval.endTime > 0 &&
-        _videoService.position.inSeconds > state.endingSkipTimes.interval.startTime &&
-        state.endingSkipTimes.interval.endTime > _videoService.position.inSeconds) {
-      return "Skip Ending";
-    } else {
-      return "+ ${state.loggedUser.settings.manualSkipTime.toString()}s";
+    switch (activeSkipWindow(position: _videoService.position, opening: state.openingSkipTimes, ending: state.endingSkipTimes)) {
+      case SkipWindowKind.opening:
+        return "Skip Opening";
+      case SkipWindowKind.ending:
+        return "Skip Ending";
+      case SkipWindowKind.none:
+        return "+ ${state.loggedUser.settings.manualSkipTime.toString()}s";
     }
   }
 
 
   void performSkipActin() {
-    if (state.openingSkipTimes.interval.endTime > 0 &&
-        _videoService.position.inSeconds > state.openingSkipTimes.interval.startTime &&
-        state.openingSkipTimes.interval.endTime > _videoService.position.inSeconds) {
-      _videoService.seekTo(Duration(seconds: state.openingSkipTimes.interval.endTime.toInt()));
-    } else if (state.endingSkipTimes.interval.endTime > 0 &&
-        _videoService.position.inSeconds > state.endingSkipTimes.interval.startTime &&
-        state.endingSkipTimes.interval.endTime > _videoService.position.inSeconds) {
-      _videoService.seekTo(Duration(seconds: state.endingSkipTimes.interval.endTime.toInt()));
-    } else {
-      _videoService.forward(Duration(seconds: state.loggedUser.settings.manualSkipTime));
+    switch (activeSkipWindow(position: _videoService.position, opening: state.openingSkipTimes, ending: state.endingSkipTimes)) {
+      case SkipWindowKind.opening:
+        _videoService.seekTo(Duration(seconds: state.openingSkipTimes.interval.endTime.toInt()));
+      case SkipWindowKind.ending:
+        _videoService.seekTo(Duration(seconds: state.endingSkipTimes.interval.endTime.toInt()));
+      case SkipWindowKind.none:
+        _videoService.forward(Duration(seconds: state.loggedUser.settings.manualSkipTime));
     }
   }
+
+  /// The skip window the playhead is in, or [SkipWindowKind.none]. The skip pill
+  /// uses it to stay on screen while the rest of the bar is auto-hidden.
+  SkipWindowKind get activeSkipWindowKind => activeSkipWindow(
+        position: _videoService.position,
+        opening: state.openingSkipTimes,
+        ending: state.endingSkipTimes,
+      );
+
+  /// True when the playlist has an episode after the one playing.
+  bool get hasNextEpisode => hasNextPlaylistEpisode(
+        playlistIndex: state.videoInfo.playlistIndex,
+        episodeCount: state.extensionEpisodeResults.length,
+      );
+
+  /// Hides the up-next card for the rest of *this* episode. Moving to another
+  /// episode re-arms it (the dismissal is stored per playlist index).
+  void dismissUpNextCard() {
+    emit(state.copyWith(upNextDismissedPlaylistIndex: state.videoInfo.playlistIndex));
+  }
+
+  /// `Dismiss` scoping: the card is hidden only when the dismissal belongs to
+  /// the episode that is playing.
+  bool get isUpNextDismissed => state.upNextDismissedPlaylistIndex == state.videoInfo.playlistIndex;
 
 
   Future<void> _getAvailableCastDevices() async {

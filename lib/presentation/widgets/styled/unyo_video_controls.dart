@@ -10,15 +10,17 @@ import 'package:unyo/application/cubits/video_cubit.dart';
 import 'package:unyo/application/states/video_state.dart';
 
 // Internal dependencies
+import 'package:unyo/core/services/video/up_next_window.dart';
 import 'package:unyo/core/services/video/video_service.dart';
 import 'package:unyo/domain/entities/extension/track.dart' as ext;
 import 'package:unyo/presentation/drawers/episode_list_drawer.dart';
 import 'package:unyo/presentation/video/video_player_interaction.dart';
-import 'package:unyo/presentation/widgets/styled/dark_unyo_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_fade_overlay.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_video_bottom_status.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_header_controls.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_list_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_volume_button.dart';
+import 'package:unyo/presentation/widgets/text/media_title_text.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
@@ -114,6 +116,13 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
   bool _isDragging = false;
   double _dragValue = 0.0;
 
+  /// Height of the bottom band (status slot + slider + control row) and of the
+  /// status slot itself. The status slot is an overlay *outside* the controls
+  /// fade now, so those two numbers reproduce the position the old in-Column
+  /// pill had (WP #113).
+  static const double _bottomBandHeight = 150;
+  static const double _statusSlotHeight = 45;
+
   /// The shared interaction path. Visibility, the 4 s auto-hide timer and the
   /// player command all live there, so a keyboard shortcut and a click on this
   /// bar produce the exact same result (WP #116). This widget only listens.
@@ -182,6 +191,64 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
     _interaction.removeListener(_onInteractionChanged);
     _refreshTimer.cancel();
     super.dispose();
+  }
+
+  /// The status slot above the seek bar. Precedence and content rules live in
+  /// [UnyoVideoBottomStatus] / [shouldShowUpNextCard]; this only collects the
+  /// data the current state actually has.
+  Widget _buildBottomStatus(BuildContext context, VideoState state) {
+    final VideoCubit cubit = widget.videoCubit;
+    final int playlistIndex = state.videoInfo.playlistIndex;
+    final int nextIndex = playlistIndex + 1;
+    final bool upNextVisible = shouldShowUpNextCard(
+      position: _videoService.position,
+      duration: _videoService.duration,
+      playlistIndex: playlistIndex,
+      episodeCount: state.extensionEpisodeResults.length,
+      dismissedPlaylistIndex: state.upNextDismissedPlaylistIndex,
+    );
+    return UnyoVideoBottomStatus(
+      controlsVisible: _interaction.controlsVisible,
+      skipKind: cubit.activeSkipWindowKind,
+      skipLabel: cubit.getSkipTimeText(),
+      upNextVisible: upNextVisible,
+      seriesTitle: displayMediaTitle(state.selectedAnime.title),
+      episodeLabel: _nextEpisodeLabel(state, nextIndex),
+      thumbnailUrl: _nextEpisodeThumbnail(state, nextIndex),
+      onSkip: () => cubit.performSkipActin(),
+      onWatchNow: () => cubit.navigateToEpisode(nextIndex),
+      onDismiss: cubit.dismissUpNextCard,
+    );
+  }
+
+  /// `"<episode title> (E<M>)"` from whatever is known: AniZip metadata when it
+  /// loaded, the extension's episode number otherwise. No season source exists
+  /// yet, so the label omits `S<N>` instead of inventing one.
+  String _nextEpisodeLabel(VideoState state, int nextIndex) {
+    final bool hasEpisodeInfo = nextIndex >= 0 && state.episodesInfo.length > nextIndex;
+    return upNextEpisodeLabel(
+      episodeTitle: hasEpisodeInfo ? state.episodesInfo[nextIndex].title.userPreferred : null,
+      episodeNumber: _nextEpisodeNumber(state, nextIndex),
+    );
+  }
+
+  int? _nextEpisodeNumber(VideoState state, int nextIndex) {
+    if (nextIndex < 0) return null;
+    if (state.episodesInfo.length > nextIndex && state.episodesInfo[nextIndex].episodeNumber > 0) {
+      return state.episodesInfo[nextIndex].episodeNumber;
+    }
+    if (state.extensionEpisodeResults.length > nextIndex) {
+      final int number = state.extensionEpisodeResults[nextIndex].getEpisode_number().toInt();
+      if (number > 0) return number;
+    }
+    return nextIndex + 1;
+  }
+
+  /// Empty when there is no thumbnail data — the card then renders without an
+  /// image instead of a broken box.
+  String _nextEpisodeThumbnail(VideoState state, int nextIndex) {
+    if (nextIndex < 0 || state.episodesInfo.length <= nextIndex) return '';
+    return state.episodesInfo[nextIndex].image;
   }
 
   @override
@@ -313,24 +380,11 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                       height: 150,
                                       child: Column(
                                         children: [
-                                          // Video Slider
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.end,
-                                            children: [
-                                              Opacity(
-                                                opacity: 0.7,
-                                                child: DarkUnyoButton(
-                                                  text: context.read<VideoCubit>().getSkipTimeText(),
-                                                  color: ColorScheme.of(context).primary,
-                                                  width: 90.w,
-                                                  maxWidth: 110,
-                                                  maxHeight: 45,
-                                                  onPressed: () => context.read<VideoCubit>().performSkipActin(),
-                                                ),
-                                              ),
-                                              SizedBox(width: 20.w),
-                                            ],
-                                          ),
+                                          // The status slot (skip pill / up-next
+                                          // card) is an overlay outside this
+                                          // fade; the Column only keeps its
+                                          // space so nothing shifts.
+                                          const SizedBox(height: _statusSlotHeight),
                                           const SizedBox(height: 15),
                                           Row(
                                             children: [
@@ -541,6 +595,16 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                               ),
                             ),
                           ),
+                        ),
+                        // Status slot: skip pill / up-next card. Deliberately
+                        // OUTSIDE the controls fade — an active skip window
+                        // must stay tappable while the bar is auto-hidden, and
+                        // the up-next card appears without any interaction
+                        // (WP #113).
+                        Positioned(
+                          right: 20.w,
+                          bottom: _bottomBandHeight - _statusSlotHeight,
+                          child: _buildBottomStatus(context, state),
                         ),
                       ],
                     ),

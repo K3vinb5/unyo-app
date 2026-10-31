@@ -28,6 +28,9 @@ abstract class VideoState with _$VideoState implements HasEffects{
     required AniskipTimesResults openingSkipTimes,
     required AniskipTimesResults endingSkipTimes,
     required bool isLoading,
+    /// Playlist index the up-next card was dismissed on (WP #113). The card is
+    /// hidden only for that episode and re-arms when the episode changes.
+    @Default(null) int? upNextDismissedPlaylistIndex,
     @Default(<AppEffect>[]) List<AppEffect> effects,
   }) = _VideoState;
 
