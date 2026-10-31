@@ -108,8 +108,15 @@ class _VideoViewState extends State<_VideoView> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Video
-            UnyoVideoTexture(videoService: _videoService),
+            // Video — the display mode (Fit/Crop/Stretch) lives in the cubit so
+            // the button's icon is derived, never mirrored (WP #114).
+            BlocBuilder<VideoCubit, VideoState>(
+              buildWhen: (previous, current) => previous.videoDisplayMode != current.videoDisplayMode,
+              builder: (context, state) => UnyoVideoTexture(
+                videoService: _videoService,
+                mode: state.videoDisplayMode,
+              ),
+            ),
             // Controls
             UnyoVideoControls(
               videoCubit: context.read<VideoCubit>(),

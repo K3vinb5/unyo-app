@@ -1,7 +1,7 @@
-/// When the end-of-episode up-next card appears (WP #113 A).
-///
-/// Pure Dart so the whole rule — window shape, playlist gating, per-episode
-/// dismissal — is unit testable without a player or a widget.
+// When the end-of-episode up-next card appears (WP #113 A).
+//
+// Pure Dart so the whole rule — window shape, playlist gating, per-episode
+// dismissal — is unit testable without a player or a widget.
 
 /// The single documented trigger constant: the card appears when
 /// `duration - position <= max(90s, duration * 4%)`, clamped to at most 180s so

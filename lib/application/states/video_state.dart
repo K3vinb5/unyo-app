@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:unyo_lib/jmodels/jsepisode.dart';
 import 'package:unyo/application/cubits/effect_mixin.dart';
 import 'package:unyo/application/effects/app_effects.dart';
+import 'package:unyo/core/enums/video_display_mode.dart';
 import 'package:unyo/core/services/api/dto/aniskip/aniskip_times_entity.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/episode_info.dart';
@@ -28,6 +29,9 @@ abstract class VideoState with _$VideoState implements HasEffects{
     required AniskipTimesResults openingSkipTimes,
     required AniskipTimesResults endingSkipTimes,
     required bool isLoading,
+    /// How the video surface fills the player area (WP #114). Mirrors the
+    /// persisted per-user setting; the controls button derives its icon from it.
+    @Default(VideoDisplayMode.fit) VideoDisplayMode videoDisplayMode,
     /// Playlist index the up-next card was dismissed on (WP #113). The card is
     /// hidden only for that episode and re-arms when the episode changes.
     @Default(null) int? upNextDismissedPlaylistIndex,

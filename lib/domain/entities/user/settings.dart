@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:unyo/core/enums/episode_service.dart';
 import 'package:unyo/core/enums/service.dart';
+import 'package:unyo/core/enums/video_display_mode.dart';
 import 'package:unyo/data/adapters/adapters_names.dart' as names;
 import 'package:unyo/data/adapters/adapters_types.dart' as types;
 import 'package:unyo/config/config.dart' as config;
@@ -41,6 +42,8 @@ abstract class Settings {
   final bool enableNsfwContent;
   final Color themeColor;
   final bool useWallpaperAsThemeColor;
+  /// How the video surface fills the player area (WP #114).
+  final VideoDisplayMode videoDisplayMode;
   // Not configurable
   final List<Extension> installedAnimeExtensions;
   final List<Extension> installedMangaExtensions;
@@ -65,6 +68,7 @@ abstract class Settings {
     required this.enableNsfwContent,
     required this.themeColor,
     required this.useWallpaperAsThemeColor,
+    required this.videoDisplayMode,
 
     required this.installedAnimeExtensions,
     required this.installedMangaExtensions,
@@ -99,6 +103,7 @@ abstract class SettingsModel with _$SettingsModel implements Settings {
     @HiveField(20) @Default([config.tachiyomiExtensionsDefaultRepositoryUrl]) List<String> tachiyomiExtensionsRepositories,
     @HiveField(21) @Default(Service.anilist) Service userService,
     @HiveField(22) @Default(Service.anilist) Service metadataService,
+    @HiveField(23) @Default(VideoDisplayMode.fit) VideoDisplayMode videoDisplayMode,
   }) = _SettingsModel;
 
   factory SettingsModel.empty() =>

@@ -27,7 +27,9 @@ import 'package:unyo/core/services/api/http/api_response.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
 import 'package:unyo/core/services/media/playback_session.dart';
+import 'package:unyo/core/enums/video_display_mode.dart';
 import 'package:unyo/core/services/video/skip_window.dart';
+import 'package:unyo/core/services/video/video_display_mode_store.dart';
 import 'package:unyo/core/services/video/up_next_window.dart';
 import 'package:unyo/core/services/video/video_service.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
@@ -49,6 +51,9 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
   // Repositories
   final ExtensionRepositoryAniyomi _extensionRepositoryAniyomi;
   final AnimeRepository _animeRepository;
+
+  /// Per-user persistence for the video display mode (WP #114).
+  final VideoDisplayModeStore _videoDisplayModeStore;
 
   // Notifiers / Subscriptions
   final UserNotifier _loggedUserNotifier;
@@ -94,6 +99,7 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
     this._extensionRepositoryAniyomi,
     this._animeRepository,
     this._reloadNotifier,
+    this._videoDisplayModeStore,
   ) : super(
         VideoState(
           loggedUser: UserModel.empty(),
@@ -147,7 +153,13 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
 
   void _init() {
     _loggedUserSubscription = _loggedUserNotifier.userStream.listen((loggedUser) {
-      emit(state.copyWith(loggedUser: loggedUser));
+      // The display mode is a per-user setting: seed it from whoever is logged
+      // in (default Fit for a new user) so the button's icon is derived, never
+      // mirrored in widget state.
+      emit(state.copyWith(
+        loggedUser: loggedUser,
+        videoDisplayMode: loggedUser.settings.videoDisplayMode,
+      ));
     });
     _videoInfoSubscription = _videoInfoNotifier.videoInfoStream.listen((videoInfo) {
       _initializeVideoService(videoInfo);
@@ -324,6 +336,19 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
         opening: state.openingSkipTimes,
         ending: state.endingSkipTimes,
       );
+
+  /// Cycles Fit -> Crop -> Stretch -> Fit (WP #114) and persists the choice for
+  /// the logged-in user. The state flips first so the icon updates on the same
+  /// frame as the tap.
+  Future<void> cycleVideoDisplayMode() async {
+    final VideoDisplayMode next = nextVideoDisplayMode(state.videoDisplayMode);
+    emit(state.copyWith(videoDisplayMode: next));
+    try {
+      await _videoDisplayModeStore.save(state.loggedUser, next);
+    } catch (e, stackTrace) {
+      _logger.w("Failed to persist the video display mode", error: e, stackTrace: stackTrace);
+    }
+  }
 
   /// True when the playlist has an episode after the one playing.
   bool get hasNextEpisode => hasNextPlaylistEpisode(

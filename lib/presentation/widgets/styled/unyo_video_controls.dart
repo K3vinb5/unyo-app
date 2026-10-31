@@ -10,6 +10,7 @@ import 'package:unyo/application/cubits/video_cubit.dart';
 import 'package:unyo/application/states/video_state.dart';
 
 // Internal dependencies
+import 'package:unyo/core/enums/video_display_mode.dart';
 import 'package:unyo/core/services/video/up_next_window.dart';
 import 'package:unyo/core/services/video/video_service.dart';
 import 'package:unyo/domain/entities/extension/track.dart' as ext;
@@ -82,6 +83,24 @@ class UnyoVideoControls extends StatefulWidget {
       ),
     ];
   }
+
+  /// Icon per display mode — three distinct glyphs, and the icon always shows
+  /// the CURRENT mode, never the next one (WP #114).
+  static IconData videoDisplayModeIcon(VideoDisplayMode mode) => switch (mode) {
+        VideoDisplayMode.fit => Icons.fit_screen_rounded,
+        VideoDisplayMode.crop => Icons.crop_rounded,
+        VideoDisplayMode.stretch => Icons.aspect_ratio_rounded,
+      };
+
+  static String videoDisplayModeLabel(VideoDisplayMode mode) => switch (mode) {
+        VideoDisplayMode.fit => 'Fit',
+        VideoDisplayMode.crop => 'Crop',
+        VideoDisplayMode.stretch => 'Stretch',
+      };
+
+  /// Names the current mode and the one a click switches to.
+  static String videoDisplayModeTooltip(VideoDisplayMode mode) =>
+      '${videoDisplayModeLabel(mode)} — click for ${videoDisplayModeLabel(nextVideoDisplayMode(mode))}';
 
   static String _trackLabel(ext.Track track) =>
       '${track.lang}${track.embedded ? ' - Embedded' : ''}';
@@ -566,6 +585,16 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                     itemBuilder: (BuildContext context) => state.availableCastDevices.map(
                                                         (device) => PopupMenuItem<CastDevice>(value: device, child: Text(device.name))
                                                     ).toList()
+                                                  ),
+                                                  Tooltip(
+                                                    message: UnyoVideoControls.videoDisplayModeTooltip(state.videoDisplayMode),
+                                                    child: IconButton(
+                                                      onPressed: () => context.read<VideoCubit>().cycleVideoDisplayMode(),
+                                                      icon: Icon(
+                                                        size: 27,
+                                                        UnyoVideoControls.videoDisplayModeIcon(state.videoDisplayMode),
+                                                      ),
+                                                    ),
                                                   ),
                                                   Tooltip(
                                                     message: "${_videoService.isFullscreen ? "Disable" : "Enable"} Fullscreen",
