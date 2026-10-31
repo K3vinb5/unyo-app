@@ -2,15 +2,9 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:unyo/presentation/dialogs/unyo_dialog_theme.dart';
+import 'package:unyo/presentation/widgets/styled/dark_unyo_button.dart';
+import 'package:unyo/presentation/widgets/styled/light_unyo_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
-
-/// Surface the picker dialog paints itself on.
-///
-/// Pinned (instead of inherited) because the dialog deliberately opts out of the
-/// user theme: the picker area is drawn with fixed art (an HSV square), so the
-/// panel around it has to stay one colour. Every colour that sits on this
-/// surface is pinned against [themeColorPickerDialogSurface] below.
-const Color themeColorPickerDialogSurface = Color(0xFF171717);
 
 /// Fixed width of the card. The content never follows the picker's intrinsic
 /// size, so switching the label mode cannot resize the dialog.
@@ -95,23 +89,26 @@ class _ThemeColorPickerDialogState extends State<ThemeColorPickerDialog> {
 
   /// Inline text mode switch: never a dropdown and never an overlay, so the
   /// card keeps one size whatever mode is showing.
-  Widget _labelModeSelector() {
+  Widget _labelModeSelector(ColorScheme scheme) {
     final List<Widget> children = <Widget>[];
     for (final String mode in _labelModes) {
       if (children.isNotEmpty) {
         children.add(
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 10),
-            child: Text('·', style: TextStyle(color: unyoDialogDim, fontSize: 13)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(
+              '·',
+              style: TextStyle(color: scheme.dialogDim, fontSize: 13),
+            ),
           ),
         );
       }
-      children.add(_modeLink(mode));
+      children.add(_modeLink(mode, scheme));
     }
     return Row(mainAxisSize: MainAxisSize.min, children: children);
   }
 
-  Widget _modeLink(String mode) {
+  Widget _modeLink(String mode, ColorScheme scheme) {
     final bool active = _labelMode == mode;
     return UnyoInkWell(
       key: ValueKey('theme-color-picker-mode-$mode'),
@@ -123,7 +120,7 @@ class _ThemeColorPickerDialogState extends State<ThemeColorPickerDialog> {
           Text(
             mode,
             style: TextStyle(
-              color: active ? unyoDialogText : unyoDialogDim,
+              color: active ? scheme.dialogText : scheme.dialogDim,
               fontSize: 13,
               fontWeight: active ? FontWeight.w700 : FontWeight.w500,
               letterSpacing: 0.78,
@@ -133,7 +130,7 @@ class _ThemeColorPickerDialogState extends State<ThemeColorPickerDialog> {
           Container(
             width: 26,
             height: 2,
-            color: active ? unyoDialogAccent : Colors.transparent,
+            color: active ? scheme.dialogAccent : Colors.transparent,
           ),
         ],
       ),
@@ -142,13 +139,14 @@ class _ThemeColorPickerDialogState extends State<ThemeColorPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme scheme = ColorScheme.of(context);
     final double maxHeight =
         MediaQuery.sizeOf(context).height * themeColorPickerDialogMaxHeightFraction;
     final double height =
         themeColorPickerDialogHeight < maxHeight ? themeColorPickerDialogHeight : maxHeight;
 
     return Dialog(
-      backgroundColor: themeColorPickerDialogSurface,
+      backgroundColor: scheme.dialogSurface,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(unyoDialogCardRadius)),
       child: SizedBox(
@@ -162,35 +160,35 @@ class _ThemeColorPickerDialogState extends State<ThemeColorPickerDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Text(
+              Text(
                 'THEME COLOR',
                 key: ThemeColorPickerDialog.eyebrowKey,
                 style: TextStyle(
-                  color: unyoDialogDim,
+                  color: scheme.dialogDim,
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
                   letterSpacing: 0.99,
                 ),
               ),
               const SizedBox(height: 9),
-              const Text(
+              Text(
                 "Pick a color to get a theme based on that color",
                 key: ThemeColorPickerDialog.titleKey,
                 style: TextStyle(
-                  color: unyoDialogText,
+                  color: scheme.dialogText,
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   height: 1.32,
                 ),
               ),
               const SizedBox(height: 14),
-              _labelModeSelector(),
+              _labelModeSelector(scheme),
               const SizedBox(height: 18),
               Text(
                 _valueLabel(_selectedColor),
                 key: ThemeColorPickerDialog.readOutKey,
-                style: const TextStyle(
-                  color: unyoDialogText,
+                style: TextStyle(
+                  color: scheme.dialogText,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 1.12,
@@ -228,16 +226,21 @@ class _ThemeColorPickerDialogState extends State<ThemeColorPickerDialog> {
                 ],
               ),
               const SizedBox(height: 16),
+              // The app-standard pair, exactly as the calendar picker draws
+              // it: filled dark Cancel + light Confirm, same height and gap
+              // (WP #117). No bespoke outline/filled pill variants.
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: <Widget>[
-                  _OutlinePill(
-                    label: 'Cancel',
+                  DarkUnyoButton(
+                    text: 'Cancel',
+                    maxHeight: 50,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
-                  const SizedBox(width: 12),
-                  _FilledPill(
-                    label: 'Confirm',
+                  const SizedBox(width: 16),
+                  LightUnyoButton(
+                    text: 'Confirm',
+                    maxHeight: 50,
                     onPressed: () {
                       widget.onConfirmed(_selectedColor);
                       Navigator.of(context).pop();
@@ -248,66 +251,6 @@ class _ThemeColorPickerDialogState extends State<ThemeColorPickerDialog> {
             ],
           ),
         ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Secondary action: 1px outline pill of the family language.
-class _OutlinePill extends StatelessWidget {
-  const _OutlinePill({required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return UnyoInkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        height: 44,
-        constraints: const BoxConstraints(minWidth: 104),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-          borderRadius: BorderRadius.circular(22),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: const TextStyle(color: unyoDialogText, fontSize: 14, fontWeight: FontWeight.w500),
-        ),
-      ),
-    );
-  }
-}
-
-/// Primary action: filled accent pill of the family language.
-class _FilledPill extends StatelessWidget {
-  const _FilledPill({required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return UnyoInkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        height: 44,
-        constraints: const BoxConstraints(minWidth: 120),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        decoration: BoxDecoration(
-          color: unyoDialogAccent,
-          borderRadius: BorderRadius.circular(22),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
     );

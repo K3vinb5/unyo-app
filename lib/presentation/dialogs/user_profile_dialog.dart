@@ -4,15 +4,9 @@ import 'package:material_ui/material_ui.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/presentation/dialogs/unyo_dialog_theme.dart';
-import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
+import 'package:unyo/presentation/widgets/styled/light_unyo_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
-
-/// Card surface at the bottom of the profile wash.
-const Color userProfileDialogSurface = Color(0xFF1E1E1E);
-
-/// Violet the card wash starts from (top edge, behind the avatar).
-const Color userProfileDialogWashTop = Color(0xFF2A2135);
 
 /// Width of the profile card, matching the "Centered monogram" artboard.
 const double userProfileDialogWidth = 460;
@@ -36,9 +30,12 @@ class UserProfileField {
 /// ACCOUNT block under its divider) simply does not render. Adding a field
 /// later is one more entry in [fieldsOf].
 ///
-/// Restyled to the "Centered monogram" artboard (WP #108 / PR #158 D2): violet
-/// to #1E1E1E wash, radial halo behind an 80px avatar, everything centred on a
-/// 24-top / 42-bottom stack, and a full-width accent pill as the only action.
+/// Restyled to the "Centered monogram" artboard (WP #108 / PR #158 D2): wash,
+/// radial halo behind an 80px avatar, everything centred on a 24-top / 42-bottom
+/// stack, and a full-width pill as the only action. The avatar sits straight on
+/// the card surface (WP #117) — the opaque white ring used to show as a bright
+/// disc behind transparent PNGs — and every colour now comes from the active
+/// [ColorScheme] so a theme swap recolours the card.
 class UserProfileDialog extends StatelessWidget {
   const UserProfileDialog({super.key, required this.user});
 
@@ -75,6 +72,7 @@ class UserProfileDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme scheme = ColorScheme.of(context);
     final List<UserProfileField> fields = visibleFields(fieldsOf(user));
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -84,11 +82,11 @@ class UserProfileDialog extends StatelessWidget {
       child: SizedBox(
         width: userProfileDialogWidth,
         child: DecoratedBox(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: <Color>[userProfileDialogWashTop, userProfileDialogSurface],
+              colors: <Color>[scheme.dialogWashTop, scheme.dialogSurface],
             ),
           ),
           child: Stack(
@@ -100,21 +98,21 @@ class UserProfileDialog extends StatelessWidget {
               // The wash is repainted over the banner so the artwork reads as a
               // texture under the card instead of competing with the avatar.
               if (user.bannerImage.isNotEmpty)
-                const Positioned.fill(
+                Positioned.fill(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: <Color>[
-                          Color(0xCC2A2135),
-                          Color(0xF21E1E1E),
+                          scheme.dialogWashTop.withValues(alpha: 0.8),
+                          scheme.dialogSurface.withValues(alpha: 0.95),
                         ],
                       ),
                     ),
                   ),
                 ),
-              const Positioned(
+              Positioned(
                 top: 0,
                 left: (userProfileDialogWidth - 220) / 2,
                 width: 220,
@@ -124,8 +122,8 @@ class UserProfileDialog extends StatelessWidget {
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: <Color>[
-                        Color(0x339266A8),
-                        Color(0x009266A8),
+                        scheme.dialogAccent.withValues(alpha: 0.20),
+                        scheme.dialogAccent.withValues(alpha: 0.0),
                       ],
                     ),
                   ),
@@ -137,15 +135,15 @@ class UserProfileDialog extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    _AvatarHalo(size: avatarSize, url: user.avatarImage),
+                    _AvatarHalo(size: avatarSize, url: user.avatarImage, scheme: scheme),
                     const SizedBox(height: 28),
                     Text(
                       user.name,
                       textAlign: TextAlign.center,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: unyoDialogText,
+                      style: TextStyle(
+                        color: scheme.dialogText,
                         fontSize: 26,
                         height: 1.18,
                         fontWeight: FontWeight.w800,
@@ -155,7 +153,7 @@ class UserProfileDialog extends StatelessWidget {
                     Text(
                       providerLabel(user),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: unyoDialogDim, fontSize: 13),
+                      style: TextStyle(color: scheme.dialogDim, fontSize: 13),
                     ),
                     if (fields.isNotEmpty) ...<Widget>[
                       const SizedBox(height: 28),
@@ -163,15 +161,15 @@ class UserProfileDialog extends StatelessWidget {
                         child: Container(
                           width: 280,
                           height: 1,
-                          color: Colors.white.withValues(alpha: 0.08),
+                          color: scheme.dialogRule,
                         ),
                       ),
                       const SizedBox(height: 11),
-                      const Text(
+                      Text(
                         'ACCOUNT',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: unyoDialogDim,
+                          color: scheme.dialogDim,
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1,
@@ -186,14 +184,14 @@ class UserProfileDialog extends StatelessWidget {
                               Text(
                                 field.label,
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(color: unyoDialogDim, fontSize: 13),
+                                style: TextStyle(color: scheme.dialogDim, fontSize: 13),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 field.value,
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: unyoDialogText,
+                                style: TextStyle(
+                                  color: scheme.dialogText,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -203,9 +201,13 @@ class UserProfileDialog extends StatelessWidget {
                         ),
                     ],
                     const SizedBox(height: 33),
-                    _DialogPill(
+                    // The family's primary action is the app-standard light
+                    // button, not a bespoke accent pill (WP #117).
+                    LightUnyoButton(
                       key: UserProfileDialog.closeKey,
-                      label: 'Close',
+                      text: 'Close',
+                      width: double.infinity,
+                      height: 44,
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -219,12 +221,18 @@ class UserProfileDialog extends StatelessWidget {
   }
 }
 
-/// The 80px avatar with a 2px ring and the soft radial halo behind it.
+/// The 80px avatar with the soft radial halo behind it.
+///
+/// No plate, ring or fill behind the image (WP #117): the avatar sits straight
+/// on the card surface, so a transparent PNG shows the themed wash through its
+/// empty pixels instead of a bright white disc. The halo is the only separation
+/// a photo avatar needs.
 class _AvatarHalo extends StatelessWidget {
-  const _AvatarHalo({required this.size, required this.url});
+  const _AvatarHalo({required this.size, required this.url, required this.scheme});
 
   final double size;
   final String url;
+  final ColorScheme scheme;
 
   @override
   Widget build(BuildContext context) {
@@ -237,62 +245,26 @@ class _AvatarHalo extends StatelessWidget {
             Container(
               width: size + 28,
               height: size + 28,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: <Color>[
-                    Color(0xB39266A8),
-                    Color(0x339266A8),
-                    Color(0x009266A8),
+                    scheme.dialogAccent.withValues(alpha: 0.7),
+                    scheme.dialogAccent.withValues(alpha: 0.2),
+                    scheme.dialogAccent.withValues(alpha: 0.0),
                   ],
-                  stops: <double>[0.0, 0.55, 1.0],
+                  stops: const <double>[0.0, 0.55, 1.0],
                 ),
               ),
             ),
-            Container(
-              padding: const EdgeInsets.all(2),
-              decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
-              child: UnyoNetworkImage(
-                key: UserProfileDialog.avatarKey,
-                url: url,
-                width: size,
-                height: size,
-                borderRadius: size / 2,
-              ),
+            UnyoNetworkImage(
+              key: UserProfileDialog.avatarKey,
+              url: url,
+              width: size,
+              height: size,
+              borderRadius: size / 2,
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// The family's primary action: a filled accent pill.
-class _DialogPill extends StatelessWidget {
-  const _DialogPill({super.key, required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return UnyoInkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        height: 44,
-        decoration: BoxDecoration(
-          color: unyoDialogAccent,
-          borderRadius: BorderRadius.circular(22),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
         ),
       ),
     );

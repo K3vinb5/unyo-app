@@ -8,6 +8,8 @@ import 'package:material_ui/material_ui.dart';
 // Internal dependencies
 import 'package:unyo/presentation/dialogs/theme_color_picker_dialog.dart';
 import 'package:unyo/presentation/dialogs/unyo_dialog_theme.dart';
+import 'package:unyo/presentation/widgets/styled/dark_unyo_button.dart';
+import 'package:unyo/presentation/widgets/styled/light_unyo_button.dart';
 
 void main() {
   /// WCAG relative luminance, used to prove text/background contrast.
@@ -17,11 +19,22 @@ void main() {
     return 0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b);
   }
 
+  /// Composite a translucent paint over its background, the way the card does.
+  Color flatten(Color color, Color background) => Color.alphaBlend(color, background);
+
   double contrastRatio(Color foreground, Color background) {
     final double light = math.max(relativeLuminance(foreground), relativeLuminance(background));
     final double dark = math.min(relativeLuminance(foreground), relativeLuminance(background));
     return (light + 0.05) / (dark + 0.05);
   }
+
+  ThemeData themeWithPrimary(Color primary) => ThemeData.dark().copyWith(
+    colorScheme: ColorScheme.dark(
+      primary: primary,
+      secondary: const Color(0xFF403252),
+      tertiary: const Color(0xFFD5BCEA),
+    ),
+  );
 
   Future<void> openDialog(
     WidgetTester tester, {
@@ -105,19 +118,20 @@ void main() {
     WidgetTester tester,
   ) async {
     await openDialog(tester, theme: ThemeData.dark());
+    final ColorScheme scheme = ThemeData.dark().colorScheme;
 
     expect(find.byType(DropdownButton<String>), findsNothing, reason: 'the mode control is text, not a dropdown');
     expect(find.text('RGB'), findsOneWidget);
     expect(find.text('HSV'), findsOneWidget);
     expect(find.text('HSL'), findsOneWidget);
 
-    expect(modeColor(tester, 'RGB'), unyoDialogText, reason: 'the active mode is bright');
-    expect(modeColor(tester, 'HSV'), unyoDialogDim, reason: 'the inactive modes are dim');
+    expect(modeColor(tester, 'RGB'), scheme.dialogText, reason: 'the active mode is bright');
+    expect(modeColor(tester, 'HSV'), scheme.dialogDim, reason: 'the inactive modes are dim');
 
     await selectLabelMode(tester, 'HSV');
 
-    expect(modeColor(tester, 'HSV'), unyoDialogText);
-    expect(modeColor(tester, 'RGB'), unyoDialogDim);
+    expect(modeColor(tester, 'HSV'), scheme.dialogText);
+    expect(modeColor(tester, 'RGB'), scheme.dialogDim);
     expect(find.byType(DropdownMenuItem<String>), findsNothing);
     expect(valueLabel(tester), startsWith('H 280°'));
   });
@@ -130,8 +144,9 @@ void main() {
       'every label stays legible on a ${userTheme.key} user theme',
       (tester) async {
         await openDialog(tester, theme: userTheme.value);
+        final Color surface = userTheme.value.colorScheme.dialogSurface;
 
-        final List<(String, Color)> pinnedText = <(String, Color)>[
+        final List<(String, Color)> cardText = <(String, Color)>[
           (
             'eyebrow',
             tester.widget<Text>(find.byKey(ThemeColorPickerDialog.eyebrowKey)).style!.color!,
@@ -147,16 +162,75 @@ void main() {
           ('active mode', modeColor(tester, 'RGB')),
           ('inactive mode', modeColor(tester, 'HSV')),
         ];
-        for (final (String label, Color color) in pinnedText) {
+        for (final (String label, Color color) in cardText) {
           expect(
-            contrastRatio(color, themeColorPickerDialogSurface),
+            contrastRatio(flatten(color, surface), surface),
             greaterThan(4.5),
-            reason: '$label $color on $themeColorPickerDialogSurface',
+            reason: '$label $color on $surface',
           );
         }
       },
     );
   }
+
+  for (final MapEntry<String, Color> preset in <String, Color>{
+    'purple': Color(0xFF9266A8),
+    'teal': Color(0xFF2E8B8B),
+  }.entries) {
+    testWidgets(
+      'the active marker follows the ${preset.key} theme colour',
+      (WidgetTester tester) async {
+        await openDialog(tester, theme: themeWithPrimary(preset.value));
+
+        final Container underline = tester.widget<Container>(
+          find.descendant(of: modeLink('RGB'), matching: find.byType(Container)),
+        );
+        expect(
+          underline.color,
+          preset.value,
+          reason: 'the marker is the scheme accent, not a baked purple',
+        );
+      },
+    );
+  }
+
+  testWidgets('confirm is the light button and cancel the filled dark one', (
+    WidgetTester tester,
+  ) async {
+    await openDialog(tester, theme: ThemeData.dark());
+
+    final Finder confirm = find.ancestor(
+      of: find.text('Confirm'),
+      matching: find.byType(LightUnyoButton),
+    );
+    final Finder cancel = find.ancestor(
+      of: find.text('Cancel'),
+      matching: find.byType(DarkUnyoButton),
+    );
+    expect(confirm, findsOneWidget);
+    expect(cancel, findsOneWidget);
+
+    final Rect confirmRect = tester.getRect(confirm);
+    final Rect cancelRect = tester.getRect(cancel);
+    expect(confirmRect.height, cancelRect.height, reason: 'the pair shares one height');
+    expect(confirmRect.top, cancelRect.top, reason: 'the pair is aligned on one row');
+    expect(cancelRect.right, lessThan(confirmRect.left), reason: 'dark cancel, light confirm');
+    expect(confirmRect.height, greaterThanOrEqualTo(40));
+
+    // No bespoke outline variant survives: nothing in the card is stroked.
+    final Iterable<Container> containers = tester.widgetList<Container>(
+      find.descendant(
+        of: find.byKey(ThemeColorPickerDialog.cardKey),
+        matching: find.byType(Container),
+      ),
+    );
+    for (final Container container in containers) {
+      final Decoration? decoration = container.decoration;
+      if (decoration is BoxDecoration) {
+        expect(decoration.border, isNull, reason: 'the only outlined pill in the app is gone');
+      }
+    }
+  });
 
   testWidgets('confirm hands back the picked colour and closes', (WidgetTester tester) async {
     Color? confirmed;

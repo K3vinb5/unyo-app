@@ -7,24 +7,14 @@ import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
 
-/// Surface the split-profile card paints on (the "Split profile" artboard).
-const Color characterDialogSurface = Color(0xFF1F1F1F);
-
-/// Body copy of the description block.
-const Color characterDialogBody = Color(0xFFB8B8B8);
-
-/// Hairline between two fact rows.
-const Color characterDialogRule = Color(0xFF2A2A2A);
-
 /// Width of the card, matching the artboard (1280×768 design canvas).
 const double characterDialogWidth = 880;
 
-/// Height the card grows to at most; shorter characters keep a shorter card.
-///
-/// The artboard draws the card at 540 with a 12px description; the family body
-/// (14px, 165%) and the bold fact values need the extra room, so the card gets
-/// 600 before the description block starts scrolling.
-const double characterDialogMaxHeight = 600;
+/// Height of the card. Fixed, not content-driven: the card used to grow with
+/// the data, so a name-only character opened a short dialog and a described one
+/// a tall one, which read as broken layout. Every section now stays present and
+/// the card always occupies this height (capped to the window).
+const double characterDialogHeight = 600;
 
 /// Width of the portrait column.
 const double characterDialogPortraitWidth = 292;
@@ -32,9 +22,8 @@ const double characterDialogPortraitWidth = 292;
 /// Measure of the description block.
 const double characterDialogDescriptionWidth = 508;
 
-/// Height the description block may occupy before it scrolls, keeping the card
-/// at the artboard height whatever the provider sends.
-const double characterDialogDescriptionMaxHeight = 171;
+/// What a slot with no data says, instead of collapsing its row.
+const String characterDialogPlaceholder = 'Not available';
 
 /// Which parts of a [MediaCharacter] are genuinely known.
 ///
@@ -77,14 +66,16 @@ extension MediaCharacterDetails on MediaCharacter {
 /// Read-only view of a character the details page already loaded.
 ///
 /// Purely presentational: no fetch, no cubit, no navigation. Portrait and name
-/// are always shown; the chips, the fact rows and the description only appear
-/// when the data is real (see [MediaCharacterDetails]). The portrait reuses the
-/// character card's Hero tag so the shared-element transition carries over from
-/// the row.
+/// are always shown, and so are the chips, the three fact rows and the
+/// description block — a slot the provider did not fill renders
+/// [characterDialogPlaceholder] instead of disappearing, so the card keeps one
+/// footprint whatever the character carries (WP #117). A long description
+/// scrolls inside its own block rather than growing the card.
 ///
 /// Restyled to the "Split profile" artboard (WP #108 / PR #159 D2): a full-bleed
 /// portrait column on the left and a 32px name, 28px chips, dim/bold fact rows
-/// and a 508-wide 160%-leading description on the right.
+/// and a 508-wide 160%-leading description on the right. Colours follow the
+/// active [ColorScheme] (WP #117).
 class CharacterDialog extends StatelessWidget {
   final MediaCharacter character;
 
@@ -93,6 +84,9 @@ class CharacterDialog extends StatelessWidget {
   /// Chip label for the gender, when the provider supplied one.
   static const Key genderChipKey = ValueKey<String>('character-dialog-chip-gender');
   static const Key ageChipKey = ValueKey<String>('character-dialog-chip-age');
+
+  /// The single chip that stands in for both facts when neither is known.
+  static const Key placeholderChipKey = ValueKey<String>('character-dialog-chip-placeholder');
   static const Key nameKey = ValueKey<String>('character-dialog-name');
   static const Key descriptionKey = ValueKey<String>('character-dialog-description');
   static const Key closeKey = ValueKey<String>('character-dialog-close');
@@ -100,89 +94,67 @@ class CharacterDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String? description = character.descriptionText;
+    final ColorScheme scheme = ColorScheme.of(context);
     final double maxHeight = MediaQuery.sizeOf(context).height * 0.9;
 
     return Dialog(
-      backgroundColor: characterDialogSurface,
+      backgroundColor: scheme.dialogSurface,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(unyoDialogCardRadius)),
       child: SizedBox(
         key: CharacterDialog.cardKey,
         width: characterDialogWidth,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: characterDialogMaxHeight < maxHeight ? characterDialogMaxHeight : maxHeight,
-          ),
-          child: Stack(
-            children: <Widget>[
-              Positioned(
-                left: 4,
-                top: 4,
-                bottom: 4,
-                width: characterDialogPortraitWidth,
-                child: Hero(
-                  tag: "${character.id}",
-                  child: UnyoNetworkImage(
-                    url: character.image,
-                    fit: BoxFit.cover,
-                    borderRadius: 22,
-                  ),
+        height: characterDialogHeight < maxHeight ? characterDialogHeight : maxHeight,
+        child: Stack(
+          children: <Widget>[
+            Positioned(
+              left: 4,
+              top: 4,
+              bottom: 4,
+              width: characterDialogPortraitWidth,
+              child: Hero(
+                tag: "${character.id}",
+                child: UnyoNetworkImage(
+                  url: character.image,
+                  fit: BoxFit.cover,
+                  borderRadius: 22,
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  characterDialogPortraitWidth + 48,
-                  32,
-                  32,
-                  28,
-                ),
-                child: IntrinsicHeight(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      _buildHeader(context),
-                      if (character.hasGender || character.hasAge) ...<Widget>[
-                        const SizedBox(height: 17),
-                        _buildChips(),
-                      ],
-                      if (character.hasGender || character.hasAge || character.hasDateOfBirth) ...<Widget>[
-                        const SizedBox(height: 24),
-                        _buildFactRows(),
-                      ],
-                      if (description != null) ...<Widget>[
-                        const SizedBox(height: 24),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(
-                            maxWidth: characterDialogDescriptionWidth,
-                            maxHeight: characterDialogDescriptionMaxHeight,
-                          ),
-                          child: SingleChildScrollView(
-                            child: Text(
-                              description,
-                              key: descriptionKey,
-                              style: const TextStyle(
-                                color: characterDialogBody,
-                                fontSize: 14,
-                                height: 1.6,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                characterDialogPortraitWidth + 48,
+                32,
+                32,
+                28,
               ),
-            ],
-          ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  _buildHeader(context, scheme),
+                  const SizedBox(height: 17),
+                  _buildChips(scheme),
+                  const SizedBox(height: 24),
+                  _buildFactRows(scheme),
+                  const SizedBox(height: 24),
+                  Expanded(
+                    child: SizedBox(
+                      width: characterDialogDescriptionWidth,
+                      child: SingleChildScrollView(
+                        child: _buildDescription(scheme),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, ColorScheme scheme) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -190,10 +162,10 @@ class CharacterDialog extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Text(
+              Text(
                 'CHARACTER',
                 style: TextStyle(
-                  color: unyoDialogAccent,
+                  color: scheme.dialogAccent,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 1.32,
@@ -205,8 +177,8 @@ class CharacterDialog extends StatelessWidget {
                 key: nameKey,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: unyoDialogText,
+                style: TextStyle(
+                  color: scheme.dialogText,
                   fontSize: 32,
                   height: 1.18,
                   fontWeight: FontWeight.w800,
@@ -216,34 +188,47 @@ class CharacterDialog extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16),
-        _ClosePill(onPressed: () => Navigator.of(context).pop()),
+        _CloseGlyph(scheme: scheme, onPressed: () => Navigator.of(context).pop()),
       ],
     );
   }
 
-  Widget _buildChips() {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 8,
-      children: <Widget>[
-        if (character.hasGender)
-          _CharacterChip(key: genderChipKey, label: character.gender.trim()),
-        if (character.hasAge)
-          _CharacterChip(key: ageChipKey, label: "Age ${character.age}"),
-      ],
-    );
+  Widget _buildChips(ColorScheme scheme) {
+    final List<Widget> chips = <Widget>[
+      if (character.hasGender)
+        _CharacterChip(
+          key: genderChipKey,
+          label: character.gender.trim(),
+          scheme: scheme,
+        ),
+      if (character.hasAge)
+        _CharacterChip(key: ageChipKey, label: "Age ${character.age}", scheme: scheme),
+    ];
+    if (chips.isEmpty) {
+      chips.add(
+        _CharacterChip(
+          key: placeholderChipKey,
+          label: characterDialogPlaceholder,
+          scheme: scheme,
+          isPlaceholder: true,
+        ),
+      );
+    }
+    return Wrap(spacing: 10, runSpacing: 8, children: chips);
   }
 
-  Widget _buildFactRows() {
-    final List<(String, String)> facts = <(String, String)>[
-      if (character.hasGender) ('GENDER', character.gender.trim()),
-      if (character.hasAge) ('AGE', '${character.age}'),
-      if (character.hasDateOfBirth) ('BIRTHDAY', character.dateOfBirth.trim()),
+  /// The three fact rows, always: a missing value renders
+  /// [characterDialogPlaceholder] rather than dropping its row.
+  Widget _buildFactRows(ColorScheme scheme) {
+    final List<(String, String?)> facts = <(String, String?)>[
+      ('GENDER', character.hasGender ? character.gender.trim() : null),
+      ('AGE', character.hasAge ? '${character.age}' : null),
+      ('BIRTHDAY', character.hasDateOfBirth ? character.dateOfBirth.trim() : null),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        for (final (String label, String value) in facts)
+        for (final (String label, String? value) in facts)
           Padding(
             padding: EdgeInsets.only(bottom: label == facts.last.$1 ? 0 : 14),
             child: Column(
@@ -251,26 +236,27 @@ class CharacterDialog extends StatelessWidget {
               children: <Widget>[
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: unyoDialogDim,
+                  style: TextStyle(
+                    color: scheme.dialogDim,
                     fontSize: 10,
                     letterSpacing: 1,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  value,
-                  style: const TextStyle(
-                    color: unyoDialogText,
+                  value ?? characterDialogPlaceholder,
+                  style: TextStyle(
+                    color: value == null ? scheme.dialogDim : scheme.dialogText,
                     fontSize: 14,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: value == null ? FontWeight.w400 : FontWeight.w700,
+                    fontStyle: value == null ? FontStyle.italic : FontStyle.normal,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Container(
                   width: characterDialogDescriptionWidth,
                   height: 1,
-                  color: characterDialogRule,
+                  color: scheme.dialogRule,
                 ),
               ],
             ),
@@ -278,13 +264,36 @@ class CharacterDialog extends StatelessWidget {
       ],
     );
   }
+
+  /// The description block, always present: the provider's text, or the
+  /// placeholder when it sent only a sentinel.
+  Widget _buildDescription(ColorScheme scheme) {
+    final String? description = character.descriptionText;
+    return Text(
+      description ?? characterDialogPlaceholder,
+      key: descriptionKey,
+      style: TextStyle(
+        color: description == null ? scheme.dialogDim : scheme.dialogBody,
+        fontSize: 14,
+        height: 1.6,
+        fontStyle: description == null ? FontStyle.italic : FontStyle.normal,
+      ),
+    );
+  }
 }
 
-/// 28px chip of the family language: translucent white fill, dim white label.
+/// 28px chip of the family language: translucent fill, dim white label.
 class _CharacterChip extends StatelessWidget {
-  const _CharacterChip({super.key, required this.label});
+  const _CharacterChip({
+    super.key,
+    required this.label,
+    required this.scheme,
+    this.isPlaceholder = false,
+  });
 
   final String label;
+  final ColorScheme scheme;
+  final bool isPlaceholder;
 
   @override
   Widget build(BuildContext context) {
@@ -292,53 +301,68 @@ class _CharacterChip extends StatelessWidget {
       height: 28,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.07),
+        color: scheme.dialogChipFill,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
         label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: unyoDialogText,
+        style: TextStyle(
+          color: isPlaceholder ? scheme.dialogDim : scheme.dialogText,
           fontSize: 11,
           fontWeight: FontWeight.w700,
+          fontStyle: isPlaceholder ? FontStyle.italic : FontStyle.normal,
         ),
       ),
     );
   }
 }
 
-/// The family's primary action: a filled accent pill.
-class _ClosePill extends StatelessWidget {
-  const _ClosePill({required this.onPressed});
+/// The dialog's only action: a low-contrast circular glyph button (WP #117).
+///
+/// 44×44 hit target, no label, tooltip and semantics for screen readers, and
+/// hover/pressed feedback from the ink well.
+class _CloseGlyph extends StatelessWidget {
+  const _CloseGlyph({required this.scheme, required this.onPressed});
 
+  final ColorScheme scheme;
   final VoidCallback onPressed;
+
+  static const double hitTarget = 44;
 
   @override
   Widget build(BuildContext context) {
-    return UnyoInkWell(
-      key: CharacterDialog.closeKey,
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        height: 44,
-        padding: const EdgeInsets.symmetric(horizontal: 18),
-        decoration: BoxDecoration(
-          color: unyoDialogAccent,
-          borderRadius: BorderRadius.circular(22),
-        ),
-        alignment: Alignment.center,
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(Icons.close, size: 16, color: Colors.white),
-            SizedBox(width: 6),
-            Text(
-              'Close',
-              style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+    return Tooltip(
+      message: 'Close',
+      excludeFromSemantics: true,
+      child: Semantics(
+        container: true,
+        label: 'Close',
+        button: true,
+        onTap: onPressed,
+        child: SizedBox(
+          width: hitTarget,
+          height: hitTarget,
+          child: UnyoInkWell(
+            key: CharacterDialog.closeKey,
+            onTap: onPressed,
+            customBorder: const CircleBorder(),
+            borderRadius: BorderRadius.circular(hitTarget / 2),
+            hoverColor: scheme.dialogText.withValues(alpha: 0.10),
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: scheme.dialogText.withValues(alpha: 0.06),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.close,
+                size: 18,
+                color: scheme.dialogDim,
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );
