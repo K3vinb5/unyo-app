@@ -87,17 +87,28 @@ void main() {
       return tester.element(find.byType(Scaffold));
     }
 
-    testWidgets('the dismiss action removes the banner', (WidgetTester tester) async {
+    // The banner carries no tappable dismiss control: the one added by #157
+    // floated below the ribbon instead of sitting in it. Auto-hide is the only
+    // way out, so the actions slot must stay inert.
+    testWidgets('the banner exposes no tappable dismiss action', (WidgetTester tester) async {
       final BuildContext context = await pumpHarness(tester);
       handler.handle(failure('first'), context);
-      // Let the banner entrance animation finish so the action is hittable;
-      // pumpAndSettle stops here because the 3 s countdown schedules no frames.
       await tester.pumpAndSettle();
       expect(find.byType(MaterialBanner), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey<String>('notification-dismiss')));
-      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey<String>('notification-dismiss')), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(MaterialBanner),
+          matching: find.byWidgetPredicate((Widget widget) => widget is TextButton || widget is IconButton),
+        ),
+        findsNothing,
+        reason: 'the ribbon must not carry an action button; auto-hide removes it',
+      );
 
+      // The banner is still gone once its own countdown expires.
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
       expect(find.byType(MaterialBanner), findsNothing);
     });
 
