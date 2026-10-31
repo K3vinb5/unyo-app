@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:audio_service_mpris/audio_service_mpris.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -23,6 +24,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
   await windowManager.ensureInitialized();
+  // audio_service ships no Linux platform implementation: this D-Bus MPRIS
+  // backend is what playerctl and the KDE media widget talk to. Registered
+  // before anything can call AudioService.init (first video screen open).
+  if (Platform.isLinux) {
+    AudioServiceMpris.registerWith();
+  }
   // Inject dependencies before running the app
   setupLocator();
   // Initialize Hive and register adapters

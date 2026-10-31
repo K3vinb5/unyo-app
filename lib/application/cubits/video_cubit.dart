@@ -26,6 +26,7 @@ import 'package:unyo/core/services/api/dto/aniskip/aniskip_times_entity.dart';
 import 'package:unyo/core/services/api/http/api_response.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
+import 'package:unyo/core/services/media/playback_session.dart';
 import 'package:unyo/core/services/video/video_service.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
 import 'package:unyo/core/services/media/media_link_exception.dart';
@@ -74,6 +75,12 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
   Timer? _videoReadyTimer;
   Timer? _updateMediaEntryTimer;
 
+  // OS media integration (MPRIS / Now Playing). One session for the whole
+  // screen lifetime; the player lifetime stays with VideoService.
+  PlaybackSession? _playbackSession;
+  StreamSubscription<PlaybackSnapshot>? _playbackSnapshotSubscription;
+  Duration? _publishedDuration;
+
   VideoCubit(
     this._loggedUserNotifier,
     this._videoInfoNotifier,
@@ -116,6 +123,10 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
 
   @override
   Future<void> close() {
+    _playbackSnapshotSubscription?.cancel();
+    _playbackSnapshotSubscription = null;
+    _playbackSession?.deactivate();
+    _playbackSession = null;
     if (_videoServiceInitialized) {
       _videoService.setPreventSleep(false);
       _videoService.dispose();
@@ -180,7 +191,74 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
     );
     _videoService.setPreventSleep(true);
     _videoServiceInitialized = true;
+    _attachPlaybackSession(videoInfo);
     emit(state.copyWith(videoInfo: videoInfo, isLoading: false));
+  }
+
+  /// Wires the OS media session (MPRIS on Linux) to the fresh VideoService.
+  Future<void> _attachPlaybackSession(VideoInfo videoInfo) async {
+    _playbackSnapshotSubscription?.cancel();
+    _playbackSnapshotSubscription = _videoService.playbackEvents.listen((snapshot) {
+      final session = _playbackSession;
+      if (session == null) return;
+      session.publishState(
+        status: snapshot.status,
+        position: snapshot.position,
+        speed: snapshot.speed,
+      );
+      // The duration is only known once the media is loaded; republish the
+      // metadata when it arrives (and again if the episode's duration differs)
+      // so mpris:length / Now Playing stay right.
+      final duration = _videoService.duration;
+      if (duration > Duration.zero && duration != _publishedDuration) {
+        _publishPlaybackMetadata(videoInfo, duration: duration);
+      }
+    });
+    if (_playbackSession == null) {
+      _playbackSession = createPlaybackSession();
+      await _playbackSession!.activate(_VideoPlaybackCommands(this));
+    }
+    _publishPlaybackMetadata(videoInfo);
+  }
+
+  void _publishPlaybackMetadata(VideoInfo videoInfo, {Duration? duration}) {
+    final session = _playbackSession;
+    if (session == null) return;
+    final animeTitle = state.selectedAnime.title.userPreferred;
+    final episode = videoInfo.playlistIndex + 1;
+    final cover = state.selectedAnime.coverImage;
+    _publishedDuration = duration;
+    session.publishMetadata(
+      PlaybackMetadata(
+        id: 'unyo-${state.selectedAnime.id}-ep$episode',
+        title: 'Episode $episode',
+        artist: animeTitle,
+        album: animeTitle,
+        artUri: cover.isEmpty ? null : Uri.tryParse(cover),
+        duration: duration,
+      ),
+    );
+  }
+
+  /// OS "next": advance one episode in the list. MPRIS hardcodes CanGoNext to
+  /// true, so the bounds check has to live here.
+  Future<void> skipToNextEpisode() async {
+    final next = state.videoInfo.playlistIndex + 1;
+    if (next >= state.extensionEpisodeResults.length) {
+      _logger.d("No next episode (index $next of ${state.extensionEpisodeResults.length})");
+      return;
+    }
+    await navigateToEpisode(next);
+  }
+
+  /// OS "previous": go back one episode in the list.
+  Future<void> skipToPreviousEpisode() async {
+    final previous = state.videoInfo.playlistIndex - 1;
+    if (previous < 0) {
+      _logger.d("No previous episode (index ${state.videoInfo.playlistIndex})");
+      return;
+    }
+    await navigateToEpisode(previous);
   }
 
   Future<void> _selectNewEpisode(VideoInfo videoInfo) async {
@@ -192,6 +270,8 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
       episodeIndex: videoInfo.playlistIndex,
     );
     emit(state.copyWith(videoInfo: videoInfo));
+    // Episode changed: new title + a duration we no longer know -> republish.
+    _attachPlaybackSession(videoInfo);
     _initVideoMetadata(videoInfo);
     _logger.i("VideoService updated for new episode.");
   }
@@ -520,4 +600,46 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
     }
     showSnackBarEffect("Episode marked as complete!", message: "This episode has been marked as completed", contentType: ContentType.success);
   }
+}
+
+/// Forwards OS media-control commands (MPRIS on Linux) to the active
+/// [VideoService] / episode list. Created and torn down with the cubit.
+class _VideoPlaybackCommands implements PlaybackCommandHandler {
+  _VideoPlaybackCommands(this._cubit);
+
+  final VideoCubit _cubit;
+
+  VideoService get _service => _cubit.videoService;
+
+  @override
+  Future<void> onPlay() async {
+    _service.play();
+  }
+
+  @override
+  Future<void> onPause() async {
+    _service.pause();
+  }
+
+  @override
+  Future<void> onTogglePlayPause() async {
+    _service.togglePlay();
+  }
+
+  @override
+  Future<void> onSeek(Duration position) async {
+    _cubit._logger.i("OS media control: seek to $position");
+    _service.seekTo(position);
+  }
+
+  @override
+  Future<void> onStop() async {
+    _service.pause();
+  }
+
+  @override
+  Future<void> onNext() => _cubit.skipToNextEpisode();
+
+  @override
+  Future<void> onPrevious() => _cubit.skipToPreviousEpisode();
 }

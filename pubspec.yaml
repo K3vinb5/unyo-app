@@ -51,6 +51,13 @@ dependencies:
   flutter_discord_rpc: ^1.1.0
   # Media
   smooth_video_progress: ^0.0.4
+  # OS media integration (MPRIS on Linux, Now Playing on macOS). Windows SMTC is
+  # a follow-up WP: audio_service has no Windows implementation.
+  audio_service: 0.18.19
+  audio_service_mpris: 0.2.1
+  # Declared explicitly: the audio_service adapter asks the platform for
+  # `StopService` on teardown (audio_service_mpris has no unregister path).
+  audio_service_platform_interface: ^0.1.3
   fvp: ^0.39.1
   video_player: ^2.14.1
   # Backend/Server

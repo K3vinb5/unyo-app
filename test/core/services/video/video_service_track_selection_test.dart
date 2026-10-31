@@ -84,6 +84,11 @@ class FakePlayer implements mdk.Player {
   @override
   int position = 0;
 
+  // The OS media session reads this on every play/pause/seek transition; the
+  // fake has to answer it or `_emitPlaybackState` would see null.
+  @override
+  double playbackRate = 1.0;
+
   @override
   Future<int> seek({
     required int position,
