@@ -10,13 +10,17 @@ import 'package:unyo/presentation/shortcuts/video_shortcut_scope.dart';
 void main() {
   late _RecordingCommands commands;
   late VideoShortcutHandler handler;
+  late DateTime now;
 
   setUp(() {
     commands = _RecordingCommands();
+    now = DateTime(2026, 10, 31, 12);
     handler = VideoShortcutHandler(
       commands: commands,
       onNextEpisode: () => commands.episodeSteps.add(1),
       onPreviousEpisode: () => commands.episodeSteps.add(-1),
+      // Controllable clock for the #116 auto-repeat guard.
+      clock: () => now,
     );
   });
 
@@ -35,6 +39,9 @@ void main() {
 
     await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
     await tester.pump();
+    // Two deliberate presses, not one held key: step past the #116
+    // auto-repeat guard between them.
+    now = now.add(VideoShortcutHandler.repeatGuard);
     await tester.sendKeyEvent(LogicalKeyboardKey.space);
     await tester.pump();
 

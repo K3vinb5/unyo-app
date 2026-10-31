@@ -13,6 +13,7 @@ void main() {
   late VideoShortcutHandler handler;
   late int nextEpisodeCalls;
   late int previousEpisodeCalls;
+  late DateTime now;
 
   setUpAll(() {
     registerFallbackValue(Duration.zero);
@@ -37,18 +38,26 @@ void main() {
     when(() => service.setPlaybackSpeed(any())).thenReturn(true);
     when(() => service.setFullscreen(any())).thenReturn(true);
     when(() => service.toggleSubtitles()).thenReturn(true);
+    now = DateTime(2026, 10, 31, 12);
     handler = VideoShortcutHandler(
       commands: service,
       onNextEpisode: () => nextEpisodeCalls++,
       onPreviousEpisode: () => previousEpisodeCalls++,
+      clock: () => now,
     );
   });
+
+  /// Spacing between two deliberate presses of the same toggle key, past the
+  /// #116 auto-repeat guard.
+  void pressAgain() => now = now.add(VideoShortcutHandler.repeatGuard);
 
   tearDown(() => handler.dispose());
 
   group('play / pause', () {
-    test('Space and K both toggle play', () {
+    test('Space and K both toggle play when pressed deliberately', () {
+      // Spaced past the auto-repeat guard (#116), i.e. two real key presses.
       expect(handler.handle(const TogglePlayIntent()), isTrue);
+      pressAgain();
       expect(handler.handle(const TogglePlayIntent()), isTrue);
       verify(() => service.togglePlay()).called(2);
     });
@@ -127,6 +136,7 @@ void main() {
       verify(() => service.setVolume(0.0)).called(1);
 
       when(() => service.volume).thenReturn(0.0);
+      pressAgain();
       handler.handle(const ToggleMuteIntent());
       verify(() => service.setVolume(0.5)).called(1);
     });
@@ -175,6 +185,7 @@ void main() {
       verify(() => service.setFullscreen(true)).called(1);
 
       when(() => service.isFullscreen).thenReturn(true);
+      pressAgain();
       handler.handle(const ToggleFullscreenIntent());
       verify(() => service.setFullscreen(false)).called(1);
     });

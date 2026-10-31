@@ -12,6 +12,7 @@ import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/video/video_service.dart';
 import 'package:unyo/presentation/shortcuts/video_shortcut_handler.dart';
 import 'package:unyo/presentation/shortcuts/video_shortcut_scope.dart';
+import 'package:unyo/presentation/video/video_player_interaction.dart';
 import 'package:unyo/presentation/views/loading_view.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_controls.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_shortcut_feedback.dart';
@@ -70,6 +71,7 @@ class _VideoView extends StatefulWidget {
 
 class _VideoViewState extends State<_VideoView> {
   late VideoService _videoService;
+  late VideoPlayerInteraction _interaction;
   late VideoShortcutHandler _shortcutHandler;
 
   @override
@@ -77,18 +79,23 @@ class _VideoViewState extends State<_VideoView> {
     super.initState();
     final cubit = context.read<VideoCubit>();
     _videoService = cubit.videoService;
+    // One shared interaction path (WP #116): the on-screen controls and the
+    // keyboard both dispatch through it, so a key press reveals the controls,
+    // re-arms the 4 s hide timer and runs the player command exactly once.
+    _interaction = VideoPlayerInteraction(commands: _videoService);
     // Keys go through the same command surface as the on-screen buttons:
     // VideoService for playback, VideoCubit for episode navigation.
     _shortcutHandler = VideoShortcutHandler(
-      commands: _videoService,
-      onNextEpisode: () => cubit.skipToNextEpisode(),
-      onPreviousEpisode: () => cubit.skipToPreviousEpisode(),
+      commands: _interaction,
+      onNextEpisode: () => _interaction.act(cubit.skipToNextEpisode),
+      onPreviousEpisode: () => _interaction.act(cubit.skipToPreviousEpisode),
     );
   }
 
   @override
   void dispose() {
     _shortcutHandler.dispose();
+    _interaction.dispose();
     super.dispose();
   }
 
@@ -104,7 +111,11 @@ class _VideoViewState extends State<_VideoView> {
             // Video
             UnyoVideoTexture(videoService: _videoService),
             // Controls
-            UnyoVideoControls(videoCubit: context.read<VideoCubit>(), videoService: _videoService),
+            UnyoVideoControls(
+              videoCubit: context.read<VideoCubit>(),
+              videoService: _videoService,
+              interaction: _interaction,
+            ),
             // Transient shortcut indicators (volume / speed / seek)
             UnyoVideoShortcutFeedback(feedback: _shortcutHandler.feedback),
           ],
