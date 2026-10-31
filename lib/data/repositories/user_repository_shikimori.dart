@@ -102,11 +102,15 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
   }
 
   @override
+  /// [ignoreCache] is forwarded to the GraphQL read: the home screen asks for a
+  /// cache-busting reload after a list entry is written (WP #110), and dropping
+  /// the flag here served the pre-write list out of `HttpService`'s 20-minute
+  /// cache — the list only appeared after a restart.
   Future<List<Anime>> getUserWatchingList(User user, {bool ignoreCache = false}) async {
     final ShikimoriUserModel account = await _authorized(user);
     final List<Anime> watching = <Anime>[];
     for (final String status in ShikimoriListStatusPolicy.shikimoriStatusesFor(ShikimoriListStatusPolicy.current)) {
-      watching.addAll(await _fetchAnimeStatus(account, status));
+      watching.addAll(await _fetchAnimeStatus(account, status, ignoreCache: ignoreCache));
     }
     return watching;
   }
@@ -116,7 +120,7 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
     final ShikimoriUserModel account = await _authorized(user);
     final List<Manga> reading = <Manga>[];
     for (final String status in ShikimoriListStatusPolicy.shikimoriStatusesFor(ShikimoriListStatusPolicy.current)) {
-      reading.addAll(await _fetchMangaStatus(account, status));
+      reading.addAll(await _fetchMangaStatus(account, status, ignoreCache: ignoreCache));
     }
     return reading;
   }
@@ -184,13 +188,14 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
     return _authService.authorizationHeaders(user.accessToken);
   }
 
-  Future<List<Anime>> _fetchAnimeStatus(ShikimoriUserModel user, String status) async {
+  Future<List<Anime>> _fetchAnimeStatus(ShikimoriUserModel user, String status, {bool ignoreCache = false}) async {
     final List<Anime> entries = <Anime>[];
     for (int page = 1; page <= maxPagesPerStatus; page++) {
       final ApiGraphQLResponse<ShikimoriUserRatesAnimeQueryEntity> response = await _queryAnimePage(
         user,
         status: status,
         page: page,
+        ignoreCache: ignoreCache,
       );
       final List<ShikimoriUserRatesAnimeQueryUserRates> rates = response.data.userRates;
       entries.addAll(rates.map((ShikimoriUserRatesAnimeQueryUserRates rate) {
@@ -201,13 +206,14 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
     return entries;
   }
 
-  Future<List<Manga>> _fetchMangaStatus(ShikimoriUserModel user, String status) async {
+  Future<List<Manga>> _fetchMangaStatus(ShikimoriUserModel user, String status, {bool ignoreCache = false}) async {
     final List<Manga> entries = <Manga>[];
     for (int page = 1; page <= maxPagesPerStatus; page++) {
       final ApiGraphQLResponse<ShikimoriUserRatesMangaQueryEntity> response = await _queryMangaPage(
         user,
         status: status,
         page: page,
+        ignoreCache: ignoreCache,
       );
       final List<ShikimoriUserRatesMangaQueryUserRates> rates = response.data.userRates;
       entries.addAll(rates.map((ShikimoriUserRatesMangaQueryUserRates rate) {
@@ -222,11 +228,13 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
     ShikimoriUserModel user, {
     required String status,
     required int page,
+    bool ignoreCache = false,
   }) async {
     final ApiGraphQLResponse<ShikimoriUserRatesAnimeQueryEntity> response =
         await _shikimoriGraphQLService.query<ShikimoriUserRatesAnimeQueryEntity>(
       query: shikimori_queries.shikimoriAnimeUserRatesQuery,
       fromJson: ShikimoriUserRatesAnimeQueryEntity.fromJson,
+      ignoreCache: ignoreCache,
       headers: _headers(user),
       variables: <String, dynamic>{
         "userId": user.id,
@@ -244,11 +252,13 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
     ShikimoriUserModel user, {
     required String status,
     required int page,
+    bool ignoreCache = false,
   }) async {
     final ApiGraphQLResponse<ShikimoriUserRatesMangaQueryEntity> response =
         await _shikimoriGraphQLService.query<ShikimoriUserRatesMangaQueryEntity>(
       query: shikimori_queries.shikimoriMangaUserRatesQuery,
       fromJson: ShikimoriUserRatesMangaQueryEntity.fromJson,
+      ignoreCache: ignoreCache,
       headers: _headers(user),
       variables: <String, dynamic>{
         "userId": user.id,

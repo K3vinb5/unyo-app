@@ -36,6 +36,8 @@ class PagedUserRatesHttpService implements HttpService {
   final List<Map<String, dynamic>> variablesLog = <Map<String, dynamic>>[];
   final List<Map<String, String>?> headersLog = <Map<String, String>?>[];
   final List<String> endpoints = <String>[];
+  /// `ignoreCache` of every read, so the cache-busting contract is asserted.
+  final List<bool> ignoreCacheLog = <bool>[];
 
   @override
   http.Client get client => throw UnimplementedError('the fake answers post() only');
@@ -69,6 +71,7 @@ class PagedUserRatesHttpService implements HttpService {
   }) async {
     endpoints.add(endpoint);
     headersLog.add(headers);
+    ignoreCacheLog.add(ignoreCache);
     final Map<String, dynamic> request = jsonDecode(jsonEncode(body)) as Map<String, dynamic>;
     final Map<String, dynamic> variables = request['variables'] as Map<String, dynamic>;
     variablesLog.add(variables);
@@ -288,6 +291,32 @@ void main() {
       expect(http.headersLog.first!['Authorization'], 'Bearer stored-access');
       expect(http.endpoints.first, config.shikimoriGraphQLEndpoint);
     });
+    test('a forced reload busts the HTTP cache for every page (WP #110 home refresh)', () async {
+      repository = await repositoryWith(<String, List<List<Map<String, dynamic>>>>{
+        'watching': <List<Map<String, dynamic>>>[
+          <Map<String, dynamic>>[animeRate(id: 1, animeId: 16001, status: 'watching')],
+        ],
+        'rewatching': <List<Map<String, dynamic>>>[
+          <Map<String, dynamic>>[animeRate(id: 2, animeId: 16002, status: 'rewatching')],
+        ],
+      });
+
+      await repository.getUserWatchingList(account(), ignoreCache: true);
+
+      expect(http.ignoreCacheLog, isNotEmpty);
+      expect(
+        http.ignoreCacheLog.every((bool value) => value),
+        isTrue,
+        reason: 'home reloads after a list write; dropping the flag served the pre-write list out of the 20-minute cache',
+      );
+
+      http.ignoreCacheLog.clear();
+      await repository.getUserWatchingList(account());
+
+      expect(http.ignoreCacheLog.every((bool value) => value), isFalse);
+      expect(http.ignoreCacheLog, hasLength(2), reason: 'a plain read still reads both current buckets');
+    });
+
 
     test('pages are read 50 at a time until a short page arrives', () async {
       final List<Map<String, dynamic>> firstPage = List<Map<String, dynamic>>.generate(

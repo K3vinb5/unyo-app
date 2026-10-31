@@ -19,6 +19,7 @@ import 'package:unyo/core/services/api/graphql/queries/shikimori_queries.dart' a
 import 'package:unyo/core/services/api/graphql/queries/shikimori_search_parameters.dart';
 import 'package:unyo/core/services/api/http/api_response.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
+import 'package:unyo/core/services/api/shikimori/shikimori_auth_service.dart';
 import 'package:unyo/core/services/api/shikimori/shikimori_rate_limiter.dart';
 import 'package:unyo/core/services/api/shikimori/shikimori_user_rate_service.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_anime_details.dart';
@@ -52,6 +53,9 @@ class AnimeRepositoryShikimori with RepositoryMixin implements AnimeRepository {
   /// Resolved on first use: the metadata tests build this repository without a
   /// REST list-entry service registered, and no metadata read touches it.
   ShikimoriUserRateService get _userRateService => sl<ShikimoriUserRateService>();
+  /// Resolved lazily for the same reason as [_userRateService]: the metadata
+  /// tests build this repository without the auth service registered.
+  ShikimoriAuthService get _authService => sl<ShikimoriAuthService>();
   final Logger _logger = sl<Logger>();
 
   /// `graphql` genre **names** (lower-cased) → genre ids, filled by
@@ -65,6 +69,26 @@ class AnimeRepositoryShikimori with RepositoryMixin implements AnimeRepository {
   /// (`/api/doc` § Requirements), so it goes on every request.
   Map<String, String> get _requestHeaders => config.shikimoriRequestHeaders;
 
+  /// Headers for a document that has to answer *as the logged-in user*.
+  ///
+  /// `shikimoriAnimeDetailsQuery` asks for `userRate`, and Shikimori nulls that
+  /// field unless the request carries a Bearer token (WP #110): sent
+  /// anonymously, every title looks like it is on no list, and the details page
+  /// renders "Add To List" for an entry the user has. A metadata-only Shikimori
+  /// configuration (AniList account) has no token to send and keeps the
+  /// anonymous headers, and an expired token is not sent either — a 401 would
+  /// take the whole details page down instead of just its list state. The token
+  /// is refreshed on the account paths that own it (`ensureFreshAccessToken`).
+  Map<String, String> _userHeaders(User loggedUser) {
+    final ShikimoriUserModel? account = _shikimoriAccount(loggedUser);
+    if (account == null || account.accessToken.isEmpty) return _requestHeaders;
+    if (_authService.isAccessTokenExpired(account)) {
+      _logger.w("Shikimori access token expired, sending the details request anonymously");
+      return _requestHeaders;
+    }
+    return _authService.authorizationHeaders(account.accessToken);
+  }
+
   @override
   Future<(bool, AnimeDetails)> getAnimeDetails(Anime selectedAnime, User loggedUser, {Service? service}) async {
     _logger.i("Fetching Anime Details from Shikimori for ${selectedAnime.title.userPreferred}");
@@ -72,7 +96,7 @@ class AnimeRepositoryShikimori with RepositoryMixin implements AnimeRepository {
         await _shikimoriGraphQLService.query<AnimeDetailsQueryEntity>(
       query: shikimori_queries.shikimoriAnimeDetailsQuery,
       fromJson: AnimeDetailsQueryEntity.fromJson,
-      headers: _requestHeaders,
+      headers: _userHeaders(loggedUser),
       variables: {"ids": selectedAnime.id.toString(), "page": 1, "limit": 20},
     );
     throwIfGraphQlError(animeDetailsQueryResponse);

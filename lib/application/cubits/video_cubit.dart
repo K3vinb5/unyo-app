@@ -589,6 +589,9 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
       );
       emit(state.copyWith(mediaListEntry: savedMediaListEntry));
       _reloadNotifier.emitReload(ReloadType.videoMediaListEntryUpdated);
+      // Watching an episode is a progress-only edit: home shows that progress in
+      // Continue Watching, so it has to reload too (WP #110).
+      _reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated);
     } on MediaLinkUnresolvedException catch (e, stackTrace) {
       // No verified user-provider entry: the progress write was skipped, so do
       // not claim success either.
