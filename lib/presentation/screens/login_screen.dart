@@ -124,7 +124,7 @@ class _LoginViewState extends State<_LoginView> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     const TextHeadlineSmall(text: "Unyo revamped! by K3vinb5"),
-                    Image.asset("assets/logo.png", scale: 2.5),
+                    const BrandMark(),
                   ],
                 ),
               ),

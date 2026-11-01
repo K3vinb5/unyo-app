@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The brand mark, compiled into the runner binary (see linux/runner/CMakeLists.txt).
+  `logo.png` is resolved inside the source dir the runner passes to
+  glib-compile-resources: packaging/icons/linux/hicolor/512x512/apps, i.e. a
+  file generated from packaging/icons/source/unyo_1024.png. Embedding it means
+  the GTK window/taskbar icon never depends on the working directory or on the
+  install prefix (WP #84: the old code pointed at a nonexistent
+  assets/images/logo_1.png relative to the CWD).
+-->
+<gresources>
+  <gresource prefix="/dev/k3vinb5/unyo">
+    <file alias="icons/unyo.png">logo.png</file>
+  </gresource>
+</gresources>

@@ -37,10 +37,21 @@ static void my_application_activate(GApplication* application) {
     }
   }
 #endif
+  // Window/taskbar icon. The brand mark is compiled into this binary as a
+  // GResource (linux/runner/CMakeLists.txt), so it loads no matter the working
+  // directory or whether the app runs from build/ or an install prefix.
+  g_autoptr(GdkPixbuf) app_icon =
+      gdk_pixbuf_new_from_resource("/dev/k3vinb5/unyo/icons/unyo.png", nullptr);
+  if (app_icon != nullptr) {
+    gtk_window_set_icon(window, app_icon);
+    gtk_window_set_default_icon(app_icon);
+  } else {
+    g_warning("Could not load the bundled app icon resource");
+  }
+
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_window_set_icon_from_file(GTK_WINDOW(window),"assets/images/logo_1.png",NULL);
     gtk_header_bar_set_title(header_bar, "unyo");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));

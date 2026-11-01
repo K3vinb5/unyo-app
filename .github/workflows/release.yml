@@ -264,6 +264,12 @@ jobs:
       - name: Generate code
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
+      # Every shipped icon is derived from packaging/icons/source/unyo_1024.png.
+      # The check fails the release if a committed icon drifted from the master
+      # (WP #84: nothing compared platform icons against the brand before).
+      - name: Verify brand icons match the master
+        run: python3 packaging/icons/generate.py --check
+
       - name: Build
         run: >-
           flutter build linux --release
@@ -298,12 +304,14 @@ jobs:
           version="${{ steps.ver.outputs.version }}"
           root="dist/deb-root"
           mkdir -p "$root/DEBIAN" "$root/usr/lib/unyo" "$root/usr/bin" \
-                   "$root/usr/share/applications" "$root/usr/share/icons/hicolor/512x512/apps"
+                   "$root/usr/share/applications" "$root/usr/share/icons"
           cp -r build/linux/x64/release/bundle/. "$root/usr/lib/unyo/"
           ln -s /usr/lib/unyo/unyo "$root/usr/bin/unyo"
           cp linux-appimage/Unyo.AppDir/Unyo.desktop "$root/usr/share/applications/unyo.desktop"
-          # Unyo.desktop refers to Icon=logo
-          cp linux-appimage/logo.png "$root/usr/share/icons/hicolor/512x512/apps/logo.png"
+          # Unyo.desktop refers to Icon=logo. Ship every hicolor size generated
+          # from the master (16..512) instead of one 100px file dropped into the
+          # 512x512 bucket, which is what WP #84 found.
+          cp -r packaging/icons/linux/hicolor "$root/usr/share/icons/hicolor"
           {
             echo "Package: unyo"
             echo "Version: $version"

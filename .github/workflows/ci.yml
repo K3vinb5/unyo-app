@@ -10,6 +10,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Brand icons are generated from one master (WP #84). A drifted export cannot
+  # fail a build otherwise: nothing else compares a platform icon to the brand.
+  icons:
+    name: Brand icons match the master
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ImageMagick
+        run: |
+          for i in 1 2 3; do
+            if sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update \
+              && sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y imagemagick; then
+              exit 0
+            fi
+            echo "apt attempt $i failed; retrying in $((i*10))s"; sleep $((i*10))
+          done
+          echo "apt-get failed after 3 attempts"; exit 1
+
+      - name: Check generated icons
+        run: python3 packaging/icons/generate.py --check
+
   test:
     name: Analyze & test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
