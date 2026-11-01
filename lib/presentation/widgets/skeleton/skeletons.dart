@@ -9,6 +9,7 @@ library;
 export 'banner_carousel_skeleton.dart';
 export 'date_tab_row_skeleton.dart';
 export 'detail_header_skeleton.dart';
+export 'detail_meta_skeleton.dart';
 export 'episode_row_skeleton.dart';
 export 'extension_row_skeleton.dart';
 export 'list_tile_skeleton.dart';

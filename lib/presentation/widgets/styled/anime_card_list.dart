@@ -6,6 +6,7 @@ import 'package:unyo/core/enums/media_type.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/list/media_list.dart';
 import 'package:unyo/presentation/widgets/styled/media_card.dart';
+import 'package:unyo/presentation/widgets/styled/card_row_frame.dart';
 import 'package:unyo/presentation/widgets/styled/media_list_arrows.dart';
 import 'package:unyo/presentation/widgets/text/media_title_text.dart';
 
@@ -31,7 +32,7 @@ class AnimeCardList extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 1.sw - 140,
+          width: double.infinity,
           child: Row(
             mainAxisSize: MainAxisSize.max,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -55,7 +56,8 @@ class AnimeCardList extends StatelessWidget {
               const Spacer(),
               MediaListArrows(
                 controller: controller,
-                visible: animeList.length * 144 > (1.sw - 140),
+                visible:
+                    animeList.length * 144 > CardRowFrame.browseStripWidth(),
               ),
             ],
           ),
@@ -63,7 +65,7 @@ class AnimeCardList extends StatelessWidget {
         SizedBox(height: 10.h),
         SizedBox(
           height: CardRowMetrics.rowHeight,
-          width: 1.sw - 140,
+          width: double.infinity,
           child: ListView(
             scrollDirection: Axis.horizontal,
             controller: controller,

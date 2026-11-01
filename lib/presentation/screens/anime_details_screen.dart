@@ -184,7 +184,9 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                                 SizedBox(height: 16.h),
                                 Padding(
                                   padding: EdgeInsets.symmetric(horizontal: 40.0.w),
-                                  child: Column(
+                                  child: state.selectedAnime.id == 0
+                                      ? const DetailMetaBlockSkeleton()
+                                      : Column(
                                     mainAxisAlignment: MainAxisAlignment.start,
                                     children: [
                                       Row(
@@ -302,23 +304,27 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                                 ),
                                 SizedBox(height: 20.h),
                                 state.characters.$1
-                                    ? UnyoCharacterList(
-                                      characters: state.characters.$2,
-                                      controller: charactersListController,
-                                      onCharacterPressed:
-                                          context.read<AnimeDetailsCubit>().openCharacterDialog,
+                                    ? CardRowFrame.details(
+                                      child: UnyoCharacterList(
+                                        characters: state.characters.$2,
+                                        controller: charactersListController,
+                                        onCharacterPressed:
+                                            context.read<AnimeDetailsCubit>().openCharacterDialog,
+                                      ),
                                     )
-                                    : const CardRowSkeleton(),
+                                    : const CardRowFrame.details(child: CardRowSkeleton()),
                                 SizedBox(height: 20.h),
                                 state.recommendations.$1
-                                    ? AnimeRecommendationCardList(
-                                      onPressed: context.read<AnimeDetailsCubit>().navigateToAnimeDetails,
-                                      listTitle: "Recommended Animes",
-                                      animeList: state.recommendations.$2,
-                                      controller: recommendedAnimesController,
-                                      loadMore: false,
+                                    ? CardRowFrame.details(
+                                      child: AnimeRecommendationCardList(
+                                        onPressed: context.read<AnimeDetailsCubit>().navigateToAnimeDetails,
+                                        listTitle: "Recommended Animes",
+                                        animeList: state.recommendations.$2,
+                                        controller: recommendedAnimesController,
+                                        loadMore: false,
+                                      ),
                                     )
-                                    : const CardRowSkeleton(),
+                                    : const CardRowFrame.details(child: CardRowSkeleton()),
                               ],
                             ),
                           ),

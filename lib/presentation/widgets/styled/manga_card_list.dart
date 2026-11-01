@@ -30,7 +30,7 @@ class MangaCardList extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 1.sw - 140,
+          width: double.infinity,
           child: Row(
             mainAxisSize: MainAxisSize.max,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -54,7 +54,8 @@ class MangaCardList extends StatelessWidget {
               const Spacer(),
               MediaListArrows(
                 controller: controller,
-                visible: mangaList.length * 144 > (1.sw - 140),
+                visible:
+                    mangaList.length * 144 > CardRowFrame.browseStripWidth(),
               ),
             ],
           ),
@@ -62,7 +63,7 @@ class MangaCardList extends StatelessWidget {
         SizedBox(height: 10.h,),
         SizedBox(
           height: CardRowMetrics.rowHeight,
-          width: 1.sw - 140,
+          width: double.infinity,
           child: ListView(
             scrollDirection: Axis.horizontal,
             controller: controller,

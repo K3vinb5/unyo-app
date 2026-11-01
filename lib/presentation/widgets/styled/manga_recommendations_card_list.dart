@@ -27,67 +27,64 @@ class MangaRecommendationCardList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 35.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 0.75.sw,
-            child: Row(
-              mainAxisSize: MainAxisSize.max,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  listTitle,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: ColorScheme.of(context).tertiary,
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 0.75.sw,
+          child: Row(
+            mainAxisSize: MainAxisSize.max,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                listTitle,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: ColorScheme.of(context).tertiary,
                 ),
-                Text(
-                  "  ${mangaList.length.toString()} ${context.tr("entries")}",
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.normal,
-                    color: Colors.grey,
-                  ),
+              ),
+              Text(
+                "  ${mangaList.length.toString()} ${context.tr("entries")}",
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.normal,
+                  color: Colors.grey,
                 ),
-                const Spacer(),
-                MediaListArrows(
-                  controller: controller,
-                  visible: mangaList.length * 144 > 0.75.sw,
-                ),
-              ],
-            ),
+              ),
+              const Spacer(),
+              MediaListArrows(
+                controller: controller,
+                visible: mangaList.length * 144 > 0.75.sw,
+              ),
+            ],
           ),
-          SizedBox(height: 10.h,),
-          SizedBox(
-            height: CardRowMetrics.rowHeight,
-            width: 1.sw - 140,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              controller: controller,
-              children: [
-                ...mangaList.map(
-                      (manga) => MediaCard(
-                    title: displayMediaTitle(manga.title),
-                    score: manga.averageScore,
-                    coverImage: manga.coverImage,
-                    onPressed: () => onPressed(manga, MediaListModel(name: listTitle, mediaType: MediaType.manga)),
-                    status: manga.status,
-                    year: manga.startDate,
-                    format: manga.format,
-                    tag: "$listTitle-${manga.id}",
-                  ),
+        ),
+        SizedBox(height: 10.h,),
+        SizedBox(
+          height: CardRowMetrics.rowHeight,
+          width: double.infinity,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            controller: controller,
+            children: [
+              ...mangaList.map(
+                    (manga) => MediaCard(
+                  title: displayMediaTitle(manga.title),
+                  score: manga.averageScore,
+                  coverImage: manga.coverImage,
+                  onPressed: () => onPressed(manga, MediaListModel(name: listTitle, mediaType: MediaType.manga)),
+                  status: manga.status,
+                  year: manga.startDate,
+                  format: manga.format,
+                  tag: "$listTitle-${manga.id}",
                 ),
-                // TODO loadMore Widget
-              ],
-            ),
+              ),
+              // TODO loadMore Widget
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

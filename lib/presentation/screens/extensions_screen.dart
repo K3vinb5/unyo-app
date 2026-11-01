@@ -205,103 +205,135 @@ class _ExtensionsViewState extends State<_ExtensionsView> with TickerProviderSta
                 child: TabBarView(
                   controller: tabController,
                   children: [
-                    ListView(
-                      scrollDirection: Axis.vertical,
-                      children: [
-                        if (!state.extensionsLoaded)
-                          ...List.generate(
-                            8,
-                            (index) => const ExtensionRowSkeleton(),
-                          )
-                        else
-                        ..._filter(state.availableAnimeExtensions).map(
-                          (extension) => UnyoExtensionButton(
-                            iconUrl: extension.icon,
-                            name: extension.name,
-                            lang: extension.lang,
-                            version: extension.version,
-                            nsfw: extension.nsfw,
-                            repoUrl: extension.repositoryUrl,
-                            onDownloadPressed: () =>
-                                context.read<ExtensionsCubit>().downloadExtension(extension),
-                          ),
-                        ),
-                      ],
+                    LayoutBuilder(
+                      builder: (BuildContext context, BoxConstraints constraints) {
+                        // Fill the tab viewport instead of a hard-coded eight rows.
+                        final int rows = ExtensionRowSkeleton.rowsForHeight(
+                          constraints.maxHeight,
+                        );
+                        return ListView(
+                          scrollDirection: Axis.vertical,
+                          children: [
+                            if (!state.extensionsLoaded)
+                              ...List.generate(
+                                rows,
+                                (index) => const ExtensionRowSkeleton(),
+                              )
+                            else
+                            ..._filter(state.availableAnimeExtensions).map(
+                              (extension) => UnyoExtensionButton(
+                                iconUrl: extension.icon,
+                                name: extension.name,
+                                lang: extension.lang,
+                                version: extension.version,
+                                nsfw: extension.nsfw,
+                                repoUrl: extension.repositoryUrl,
+                                onDownloadPressed: () =>
+                                    context.read<ExtensionsCubit>().downloadExtension(extension),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
-                    ListView(
-                      scrollDirection: Axis.vertical,
-                      children: [
-                        if (!state.extensionsLoaded)
-                          ...List.generate(
-                            8,
-                            (index) => const ExtensionRowSkeleton(),
-                          )
-                        else
-                        ..._filter(state.availableMangaExtensions).map(
-                          (extension) => UnyoExtensionButton(
-                            iconUrl: extension.icon,
-                            name: extension.name,
-                            lang: extension.lang,
-                            version: extension.version,
-                            nsfw: extension.nsfw,
-                            repoUrl: extension.repositoryUrl,
-                            onDownloadPressed: () =>
-                                context.read<ExtensionsCubit>().downloadExtension(extension),
-                          ),
-                        ),
-                      ],
+                    LayoutBuilder(
+                      builder: (BuildContext context, BoxConstraints constraints) {
+                        // Fill the tab viewport instead of a hard-coded eight rows.
+                        final int rows = ExtensionRowSkeleton.rowsForHeight(
+                          constraints.maxHeight,
+                        );
+                        return ListView(
+                          scrollDirection: Axis.vertical,
+                          children: [
+                            if (!state.extensionsLoaded)
+                              ...List.generate(
+                                rows,
+                                (index) => const ExtensionRowSkeleton(),
+                              )
+                            else
+                            ..._filter(state.availableMangaExtensions).map(
+                              (extension) => UnyoExtensionButton(
+                                iconUrl: extension.icon,
+                                name: extension.name,
+                                lang: extension.lang,
+                                version: extension.version,
+                                nsfw: extension.nsfw,
+                                repoUrl: extension.repositoryUrl,
+                                onDownloadPressed: () =>
+                                    context.read<ExtensionsCubit>().downloadExtension(extension),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
-                    ListView(
-                      scrollDirection: Axis.vertical,
-                      children: [
-                        if (!state.extensionsLoaded)
-                          ...List.generate(
-                            8,
-                            (index) => const ExtensionRowSkeleton(),
-                          )
-                        else
-                        ..._filter(state.installedAnimeExtensions).map(
-                          (extension) => UnyoExtensionButton(
-                            iconUrl: extension.icon,
-                            name: extension.name,
-                            lang: extension.lang,
-                            version: extension.version,
-                            nsfw: extension.nsfw,
-                            repoUrl: extension.repositoryUrl,
-                            onUpdatePressed: state.animeExtensionUpdates.containsKey(extension.pkg)
-                                ? () => context.read<ExtensionsCubit>().updateExtension(extension)
-                                : null,
-                            onDeletePressed: () => context.read<ExtensionsCubit>().removeExtension(extension),
-                            onSettingsPressed: () => context.read<ExtensionsCubit>().openExtensionPreferences(extension),
-                          ),
-                        ),
-                      ],
+                    LayoutBuilder(
+                      builder: (BuildContext context, BoxConstraints constraints) {
+                        // Fill the tab viewport instead of a hard-coded eight rows.
+                        final int rows = ExtensionRowSkeleton.rowsForHeight(
+                          constraints.maxHeight,
+                        );
+                        return ListView(
+                          scrollDirection: Axis.vertical,
+                          children: [
+                            if (!state.extensionsLoaded)
+                              ...List.generate(
+                                rows,
+                                (index) => const ExtensionRowSkeleton(),
+                              )
+                            else
+                            ..._filter(state.installedAnimeExtensions).map(
+                              (extension) => UnyoExtensionButton(
+                                iconUrl: extension.icon,
+                                name: extension.name,
+                                lang: extension.lang,
+                                version: extension.version,
+                                nsfw: extension.nsfw,
+                                repoUrl: extension.repositoryUrl,
+                                onUpdatePressed: state.animeExtensionUpdates.containsKey(extension.pkg)
+                                    ? () => context.read<ExtensionsCubit>().updateExtension(extension)
+                                    : null,
+                                onDeletePressed: () => context.read<ExtensionsCubit>().removeExtension(extension),
+                                onSettingsPressed: () => context.read<ExtensionsCubit>().openExtensionPreferences(extension),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
-                    ListView(
-                      scrollDirection: Axis.vertical,
-                      children: [
-                        if (!state.extensionsLoaded)
-                          ...List.generate(
-                            8,
-                            (index) => const ExtensionRowSkeleton(),
-                          )
-                        else
-                        ..._filter(state.installedMangaExtensions).map(
-                          (extension) => UnyoExtensionButton(
-                            iconUrl: extension.icon,
-                            name: extension.name,
-                            lang: extension.lang,
-                            version: extension.version,
-                            nsfw: extension.nsfw,
-                            repoUrl: extension.repositoryUrl,
-                            onUpdatePressed: state.mangaExtensionUpdates.containsKey(extension.pkg)
-                                ? () => context.read<ExtensionsCubit>().updateExtension(extension)
-                                : null,
-                            onDeletePressed: () => context.read<ExtensionsCubit>().removeExtension(extension),
-                            onSettingsPressed: () => context.read<ExtensionsCubit>().openExtensionPreferences(extension),
-                          ),
-                        ),
-                      ],
+                    LayoutBuilder(
+                      builder: (BuildContext context, BoxConstraints constraints) {
+                        // Fill the tab viewport instead of a hard-coded eight rows.
+                        final int rows = ExtensionRowSkeleton.rowsForHeight(
+                          constraints.maxHeight,
+                        );
+                        return ListView(
+                          scrollDirection: Axis.vertical,
+                          children: [
+                            if (!state.extensionsLoaded)
+                              ...List.generate(
+                                rows,
+                                (index) => const ExtensionRowSkeleton(),
+                              )
+                            else
+                            ..._filter(state.installedMangaExtensions).map(
+                              (extension) => UnyoExtensionButton(
+                                iconUrl: extension.icon,
+                                name: extension.name,
+                                lang: extension.lang,
+                                version: extension.version,
+                                nsfw: extension.nsfw,
+                                repoUrl: extension.repositoryUrl,
+                                onUpdatePressed: state.mangaExtensionUpdates.containsKey(extension.pkg)
+                                    ? () => context.read<ExtensionsCubit>().updateExtension(extension)
+                                    : null,
+                                onDeletePressed: () => context.read<ExtensionsCubit>().removeExtension(extension),
+                                onSettingsPressed: () => context.read<ExtensionsCubit>().openExtensionPreferences(extension),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),

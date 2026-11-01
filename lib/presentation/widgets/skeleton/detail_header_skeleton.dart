@@ -1,9 +1,11 @@
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_block.dart';
 
 /// Mirrors the details header (`widgets/styled/unyo_media_banner.dart` +
 /// `widgets/styled/image_card.dart`): banner, 140x200.5 cover, title and meta
-/// block.
+/// block. The `.h` / `.w` units are the banner's own, so the band keeps its
+/// height when the window is not at the design size.
 ///
 /// Shown on the details screens while the selected media has not arrived yet.
 class DetailHeaderSkeleton extends StatelessWidget {
@@ -23,14 +25,14 @@ class DetailHeaderSkeleton extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: SizedBox(
-        height: height,
+        height: height.h,
         width: double.infinity,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            SkeletonBlock(height: height, borderRadius: 20),
+            SkeletonBlock(height: height.h, borderRadius: 20),
             Padding(
-              padding: const EdgeInsets.only(left: 24, bottom: 16),
+              padding: EdgeInsets.only(left: 24.w, bottom: 16.h),
               child: Align(
                 alignment: Alignment.bottomLeft,
                 child: Row(
@@ -42,9 +44,10 @@ class DetailHeaderSkeleton extends StatelessWidget {
                       borderRadius: 20,
                     ),
                     const SizedBox(width: 20),
-                    const SizedBox(
+                    SizedBox(
                       height: 120,
-                      child: Column(
+                      width: 350.w,
+                      child: const Column(
                         mainAxisAlignment: MainAxisAlignment.end,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
