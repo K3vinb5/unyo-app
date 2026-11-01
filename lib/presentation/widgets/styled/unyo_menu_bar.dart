@@ -49,8 +49,8 @@ class UnyoMenuBar extends StatelessWidget {
                          child: SizedBox(
                            width: 54,
                            height: 54,
-                           child: UnyoNetworkImage(
-                             url: avatarImage,
+                           child: UserAvatarImage(
+                             avatarImage: avatarImage,
                              fit: BoxFit.cover,
                              borderRadius: 27,
                            ),

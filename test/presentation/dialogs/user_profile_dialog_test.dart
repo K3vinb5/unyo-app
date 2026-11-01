@@ -9,6 +9,7 @@ import 'package:unyo/data/models/local/user/local_user_model.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/presentation/dialogs/user_profile_dialog.dart';
+import 'package:unyo/presentation/widgets/styled/user_avatar_image.dart';
 import 'package:unyo/presentation/widgets/styled/light_unyo_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 
@@ -92,10 +93,10 @@ void main() {
       expect(find.text('alice'), findsOneWidget);
       expect(find.text('Anilist account'), findsOneWidget);
 
-      final UnyoNetworkImage avatar = tester.widget<UnyoNetworkImage>(
+      final UserAvatarImage avatar = tester.widget<UserAvatarImage>(
         find.byKey(UserProfileDialog.avatarKey),
       );
-      expect(avatar.url, 'https://example.test/avatar.png');
+      expect(avatar.avatarImage, 'https://example.test/avatar.png');
       expect(avatar.width, UserProfileDialog.avatarSize, reason: 'the monogram avatar is 80px');
       expect(avatar.borderRadius, greaterThan(0), reason: 'the avatar is rounded, not a square');
     });

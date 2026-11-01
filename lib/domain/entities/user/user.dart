@@ -27,7 +27,10 @@ abstract class UserModel with _$UserModel implements User {
     id: '',
     name: '',
     settings: SettingsModel.empty(),
-    avatarImage: 'https://i.imgur.com/EKtChtm.png',
+    // Empty = no picture: the UI renders the bundled default avatar
+    // (WP #102). Never a third-party URL — a local account must not
+    // depend on a remote image host for its placeholder.
+    avatarImage: '',
     bannerImage: '',
   );
 }

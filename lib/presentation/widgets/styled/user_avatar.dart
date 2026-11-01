@@ -6,7 +6,7 @@ import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/presentation/widgets/styled/hover_animated_container.dart';
 import 'package:unyo/presentation/widgets/text/text_headline_large.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
-import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
+import 'package:unyo/presentation/widgets/styled/user_avatar_image.dart';
 
 class UserAvatar extends StatelessWidget {
   final User user;
@@ -40,8 +40,8 @@ class UserAvatar extends StatelessWidget {
               child: SizedBox(
                 width: 180.h,
                 height: 180.h,
-                child: UnyoNetworkImage(
-                  url: user.avatarImage,
+                child: UserAvatarImage(
+                  avatarImage: user.avatarImage,
                   fit: BoxFit.cover,
                   borderRadius: 90.h,
                 ),
