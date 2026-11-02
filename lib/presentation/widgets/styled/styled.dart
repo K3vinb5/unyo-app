@@ -1,4 +1,5 @@
 export 'hover_animated_container.dart';
+export 'service_badge.dart';
 export 'user_avatar.dart';
 export 'add_user_avatar.dart';
 export 'dark_unyo_button.dart';

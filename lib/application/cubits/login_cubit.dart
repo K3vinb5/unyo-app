@@ -94,7 +94,24 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
   }
 
   void initiateAccountCreation(BuildContext context) async {
-    showWidgetDialogEffect(dialog: AccountCreationDialog(context, cubit: this));
+    // The dialog itself is presentational (WP #111); this is the only place it
+    // is wired to the cubit.
+    showWidgetDialogEffect(
+      dialog: BlocProvider.value(
+        value: this,
+        child: BlocBuilder<LoginCubit, LoginState>(
+          builder: (dialogContext, state) => AccountCreationDialog(
+            selectedType: state.selectedLoginCard,
+            onSelect: (LoginCardType type) =>
+                dialogContext.read<LoginCubit>().selectLoginType(type),
+            onCancel: () =>
+                dialogContext.read<LoginCubit>().closeDialogEffect(dialogContext),
+            onConfirm: () =>
+                dialogContext.read<LoginCubit>().attemptToCreateUser(dialogContext),
+          ),
+        ),
+      ),
+    );
   }
 
   void selectLoginType(LoginCardType type) async {
