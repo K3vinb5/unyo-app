@@ -15,9 +15,6 @@ enum VideoDisplayMode {
   @HiveField(0) fit,
   @HiveField(1) crop,
   @HiveField(2) stretch;
-
-  /// Cycle order is Fit -> Crop -> Stretch -> Fit.
-  VideoDisplayMode get next => nextVideoDisplayMode(this);
 }
 
 /// The mode after [mode] in the button's cycle.

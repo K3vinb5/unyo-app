@@ -606,27 +606,6 @@ class VideoService implements VideoPlaybackCommands {
     }
   }
 
-  void _setPlayerLogsHandler() {
-    mdk.setLogHandler((mdk.LogLevel level, String message) {
-      if (!message.contains("unloaded media's position")) {
-        switch (level) {
-          case mdk.LogLevel.debug:
-          // _logger.d("MDK Log: $message");
-          case mdk.LogLevel.info:
-          // _logger.i("MDK Log: $message");
-          case mdk.LogLevel.warning:
-          // _logger.w("MDK Log: $message");
-          case mdk.LogLevel.error:
-            _logger.e("MDK Log: $message");
-          case mdk.LogLevel.off:
-            break;
-          case mdk.LogLevel.all:
-            break;
-        }
-      }
-    });
-  }
-
   bool _onMediaStatusInit(mdk.MediaStatus oldStatus, mdk.MediaStatus newStatus) {
     if (_isDisposed) return false;
 

@@ -39,7 +39,6 @@ class MediaCard extends StatelessWidget {
         children: [
           UnyoInkWell(
             onTap: onPressed,
-            // TODO maybe Stack over HoverAnimatedContainer
             child: Stack(
               alignment: Alignment.bottomRight,
               children: [
@@ -135,7 +134,6 @@ class MediaCard extends StatelessWidget {
                                 )
                               : const SizedBox.shrink(),
                           SizedBox(
-                            // width: 128.w,
                             child: Padding(
                               padding: const EdgeInsets.only(
                                 bottom: 5.0,

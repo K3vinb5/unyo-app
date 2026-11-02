@@ -142,6 +142,10 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
   static const double _bottomBandHeight = 150;
   static const double _statusSlotHeight = 45;
 
+  /// The three large centre controls (back 30, play/pause, forward 30) size
+  /// their button and their glyph identically.
+  double get _centreIconSize => 80.w.clamp(80, 100);
+
   /// The shared interaction path. Visibility, the 4 s auto-hide timer and the
   /// player command all live there, so a keyboard shortcut and a click on this
   /// bar produce the exact same result (WP #116). This widget only listens.
@@ -332,12 +336,12 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                 );
                                                 setState(() {});
                                               },
-                                              iconSize: 80.w.clamp(80, 100),
+                                              iconSize: _centreIconSize,
                                               icon: Tooltip(
                                                 waitDuration: const Duration(milliseconds: 2000),
                                                 textAlign: TextAlign.center,
                                                 message: "Reverse 30s",
-                                                child: Icon(Icons.fast_rewind_rounded, color: Colors.white, size: 80.w.clamp(80, 100)),
+                                                child: Icon(Icons.fast_rewind_rounded, color: Colors.white, size: _centreIconSize),
                                               ),
                                             ),
                                             SizedBox(width: 20.w),
@@ -349,7 +353,6 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                 message: "Resume Play",
                                                 child: UnyoInkWell(
                                                   onTap: () => playVideo(),
-                                                  // highlightColor: Colors.white12,
                                                   hoverColor: Colors.white10,
                                                   splashColor: Colors.white12,
                                                   borderRadius: BorderRadius.circular(60.w),
@@ -368,14 +371,14 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                               textAlign: TextAlign.center,
                                               message: "Forward 30s",
                                               child: IconButton(
-                                                iconSize: 80.w.clamp(80, 100),
+                                                iconSize: _centreIconSize,
                                                 onPressed: () {
                                                   _interaction.act(
                                                     () => _videoService.forward(const Duration(seconds: 30)),
                                                   );
                                                   setState(() {});
                                                 },
-                                                icon: Icon(Icons.fast_forward_rounded, color: Colors.white, size: 80.w.clamp(80, 100)),
+                                                icon: Icon(Icons.fast_forward_rounded, color: Colors.white, size: _centreIconSize),
                                               ),
                                             ),
                                           ],
@@ -402,7 +405,7 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                   Align(
                                     alignment: Alignment.bottomCenter,
                                     child: SizedBox(
-                                      height: 150,
+                                      height: _bottomBandHeight,
                                       child: Column(
                                         children: [
                                           // The status slot (skip pill / up-next
