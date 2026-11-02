@@ -23,6 +23,22 @@ class EpisodeRowSkeleton extends StatelessWidget {
   /// is landscape, never the square-ish block the placeholder used to be.
   static const double thumbnailAspectRatio = 16 / 9;
 
+  /// Distance between two rows in a filling column: the 70-high row plus its
+  /// 12 bottom padding (`.h` units, like the real button).
+  static const double rowPitch = rowHeight + 12;
+
+  /// How many rows fill a column of [maxHeight] while the data is unknown.
+  static int rowsForHeight(
+    double maxHeight, {
+    int minRows = 1,
+    int maxRows = 12,
+  }) {
+    if (!maxHeight.isFinite) {
+      return minRows;
+    }
+    return (maxHeight / rowPitch.h).ceil().clamp(minRows, maxRows);
+  }
+
   final bool showDivider;
 
   @override

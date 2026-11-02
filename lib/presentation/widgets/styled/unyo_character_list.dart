@@ -6,6 +6,10 @@ import 'package:unyo/domain/entities/media/media_character.dart' show MediaChara
 import 'package:unyo/presentation/widgets/styled/media_list_arrows.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_character.dart';
 
+/// The characters row of the details screens.
+///
+/// The `35.w` details inset and the strip width live in `CardRowFrame.details`,
+/// which the screen wraps around this list and around its placeholder.
 class UnyoCharacterList extends StatelessWidget {
   final List<MediaCharacter> characters;
   final ScrollController controller;
@@ -20,64 +24,61 @@ class UnyoCharacterList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 35.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 0.75.sw,
-            child: Row(
-              mainAxisSize: MainAxisSize.max,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  "Characters",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: ColorScheme.of(context).tertiary,
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 0.75.sw,
+          child: Row(
+            mainAxisSize: MainAxisSize.max,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                "Characters",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: ColorScheme.of(context).tertiary,
                 ),
-                Text(
-                  "  ${characters.length.toString()} ${context.tr("entries")}",
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.normal,
-                    color: Colors.grey,
-                  ),
+              ),
+              Text(
+                "  ${characters.length.toString()} ${context.tr("entries")}",
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.normal,
+                  color: Colors.grey,
                 ),
-                const Spacer(),
-                MediaListArrows(
-                  controller: controller,
-                  visible: characters.length * 144 > (0.75.sw),
-                ),
-              ],
-            ),
+              ),
+              const Spacer(),
+              MediaListArrows(
+                controller: controller,
+                visible: characters.length * 144 > (0.75.sw),
+              ),
+            ],
           ),
-          SizedBox(height: 10.h),
-          SizedBox(
-            height: CardRowMetrics.rowHeight,
-            width: 1.sw - 140,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              controller: controller,
-              children: [
-                ...characters.map(
-                  (character) => UnyoCharacter(
-                    tag: "${character.id}",
-                    onPressed: onCharacterPressed == null
-                        ? null
-                        : () => onCharacterPressed!(character),
-                    image: character.image,
-                    name: character.name,
-                  ),
+        ),
+        SizedBox(height: 10.h),
+        SizedBox(
+          height: CardRowMetrics.rowHeight,
+          width: double.infinity,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            controller: controller,
+            children: [
+              ...characters.map(
+                (character) => UnyoCharacter(
+                  tag: "${character.id}",
+                  onPressed: onCharacterPressed == null
+                      ? null
+                      : () => onCharacterPressed!(character),
+                  image: character.image,
+                  name: character.name,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

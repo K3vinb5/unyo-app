@@ -149,7 +149,7 @@ void main() {
       );
     });
 
-    testWidgets('defaults to the eight cards the loaded strip fits', (
+    testWidgets('derives the card count from the strip width', (
       tester,
     ) async {
       await pumpSkeletonHarness(tester, const CardRowSkeleton());
@@ -157,7 +157,14 @@ void main() {
       final SliverChildBuilderDelegate delegate =
           tester.widget<ListView>(find.byType(ListView)).childrenDelegate
               as SliverChildBuilderDelegate;
-      expect(delegate.childCount, 8);
+      expect(
+        delegate.childCount,
+        9,
+        reason:
+            'the harness strip is 1200 wide: (1200 / 152.5).ceil() + 1 = 9, '
+            'the eight-card default used to guess wrong',
+      );
+      expect(delegate.childCount, CardRowSkeleton.cardsForWidth(harnessWidth));
 
       // Cards butt together: the pitch is exactly the real card width.
       final List<MediaCardSkeleton> cards = tester
@@ -167,6 +174,21 @@ void main() {
       final Rect first = tester.getRect(find.byType(MediaCardSkeleton).first);
       final Rect second = tester.getRect(find.byType(MediaCardSkeleton).at(1));
       expect(second.left - first.left, MediaCardMetrics.width);
+    });
+
+    testWidgets('an explicit cardCount keeps the old fixed-count behaviour', (
+      tester,
+    ) async {
+      await pumpSkeletonHarness(tester, const CardRowSkeleton(cardCount: 8));
+
+      final SliverChildBuilderDelegate delegate =
+          tester.widget<ListView>(find.byType(ListView)).childrenDelegate
+              as SliverChildBuilderDelegate;
+      expect(
+        delegate.childCount,
+        8,
+        reason: 'a caller that passes a count keeps byte-for-byte behaviour',
+      );
     });
 
     testWidgets('can drop the header, the arrows and the extra cards', (
@@ -181,6 +203,37 @@ void main() {
       expect(
         tester.getSize(find.byType(CardRowSkeleton)).height,
         CardRowMetrics.rowHeight,
+      );
+    });
+  });
+
+  group('CardRowSkeleton.cardsForWidth', () {
+    test('follows the width: 5 / 9 / 17 cards at 600 / 1200 / 2400', () {
+      expect(CardRowSkeleton.cardsForWidth(600), 5);
+      expect(CardRowSkeleton.cardsForWidth(1200), 9);
+      expect(CardRowSkeleton.cardsForWidth(2400), 17);
+
+      for (final double width in <double>[600, 1200, 2400]) {
+        expect(
+          CardRowSkeleton.cardsForWidth(width),
+          (width / MediaCardMetrics.width).ceil() + 1,
+        );
+      }
+    });
+
+    test('clamps to 2..24 so an absurd window cannot flood the tree', () {
+      expect(CardRowSkeleton.cardsForWidth(200), 3);
+      expect(CardRowSkeleton.cardsForWidth(0), 2);
+      expect(
+        CardRowSkeleton.cardsForWidth(4000),
+        CardRowSkeleton.maxCardCount,
+      );
+    });
+
+    test('falls back to the historical eight when the width is unbounded', () {
+      expect(
+        CardRowSkeleton.cardsForWidth(double.infinity),
+        CardRowSkeleton.fallbackCardCount,
       );
     });
   });
@@ -215,6 +268,106 @@ void main() {
         tester.getSize(poster).height,
         greaterThan(tester.getSize(poster).width),
         reason: 'a poster is portrait, never a square or a text slab',
+      );
+    });
+
+    testWidgets('fills the viewport instead of painting sixteen cells', (
+      tester,
+    ) async {
+      await pumpSkeletonHarness(
+        tester,
+        const SizedBox(height: 700, child: MediaGridSkeleton()),
+      );
+
+      final SliverGridDelegateWithMaxCrossAxisExtent delegate =
+          mediaGridDelegate;
+      final int columns =
+          (harnessWidth / (delegate.maxCrossAxisExtent + delegate.crossAxisSpacing))
+              .ceil();
+      final int rows =
+          (700 / (delegate.mainAxisExtent! + delegate.mainAxisSpacing)).ceil();
+      final SliverChildBuilderDelegate children =
+          tester.widget<GridView>(find.byType(GridView)).childrenDelegate
+              as SliverChildBuilderDelegate;
+      expect(children.childCount, columns * rows);
+      expect(
+        children.childCount,
+        greaterThan(16),
+        reason: 'the fixed sixteen cells used to leave the viewport empty',
+      );
+    });
+
+    testWidgets('an explicit itemCount still wins', (tester) async {
+      await pumpSkeletonHarness(
+        tester,
+        const SizedBox(height: 700, child: MediaGridSkeleton(itemCount: 6)),
+      );
+
+      final SliverChildBuilderDelegate children =
+          tester.widget<GridView>(find.byType(GridView)).childrenDelegate
+              as SliverChildBuilderDelegate;
+      expect(children.childCount, 6);
+    });
+  });
+
+  group('MediaGridSkeleton.cellsForSize', () {
+    test('columns x rows cover the viewport, like the real grid', () {
+      // cols = (w / 170).ceil(), rows = (h / 275).ceil()
+      expect(MediaGridSkeleton.cellsForSize(const Size(600, 400)), 8);
+      expect(MediaGridSkeleton.cellsForSize(const Size(1200, 700)), 24);
+      expect(
+        MediaGridSkeleton.cellsForSize(const Size(1790, 930)),
+        MediaGridSkeleton.maxCellCount,
+        reason: 'the media-list grid at 1920x1080 is 11 x 4 = 44 -> 40',
+      );
+    });
+
+    test('clamps to 1..40 and falls back to sixteen when unbounded', () {
+      expect(MediaGridSkeleton.cellsForSize(const Size(200, 200)), 2);
+      expect(
+        MediaGridSkeleton.cellsForSize(const Size(4000, 4000)),
+        MediaGridSkeleton.maxCellCount,
+      );
+      expect(
+        MediaGridSkeleton.cellsForSize(const Size(double.infinity, 400)),
+        MediaGridSkeleton.fallbackCellCount,
+      );
+    });
+  });
+
+  group('DetailMetaBlockSkeleton', () {
+    testWidgets('reserves the pill row and the description lines', (
+      tester,
+    ) async {
+      await pumpSkeletonHarness(tester, const DetailMetaBlockSkeleton());
+
+      expect(
+        block(
+          width: DetailMetaBlockSkeleton.iconWidth,
+          height: DetailMetaBlockSkeleton.iconHeight,
+        ),
+        findsNWidgets(3),
+        reason: 'duration, year and score pills',
+      );
+      expect(
+        block(
+          width: DetailMetaBlockSkeleton.entryButtonWidth,
+          height: DetailMetaBlockSkeleton.entryButtonHeight,
+        ),
+        findsOneWidget,
+        reason: 'the media list status button on the right',
+      );
+      expect(
+        block(height: DetailMetaBlockSkeleton.lineHeight),
+        findsNWidgets(3),
+        reason: 'the description lines that used to push the page down',
+      );
+      expect(
+        tester.getSize(find.byType(DetailMetaBlockSkeleton)).height,
+        greaterThan(
+          DetailMetaBlockSkeleton.entryButtonHeight,
+        ),
+        reason: 'the placeholder reserves the description space too',
       );
     });
   });
@@ -331,6 +484,24 @@ void main() {
         reason: 'the reserved icon slot keeps the text at the loaded offset',
       );
       expect(block(width: 45, height: 45), findsOneWidget);
+    });
+  });
+
+  group('ExtensionRowSkeleton.rowsForHeight', () {
+    test('fills the tab viewport and clamps to 4..25', () {
+      expect(ExtensionRowSkeleton.rowsForHeight(945), 13);
+      expect(ExtensionRowSkeleton.rowsForHeight(100), 4);
+      expect(ExtensionRowSkeleton.rowsForHeight(6000), 25);
+      expect(ExtensionRowSkeleton.rowsForHeight(double.infinity), 4);
+    });
+  });
+
+  group('EpisodeRowSkeleton.rowsForHeight', () {
+    test('fills the episode column and clamps to 1..12', () {
+      expect(EpisodeRowSkeleton.rowsForHeight(900), 11);
+      expect(EpisodeRowSkeleton.rowsForHeight(10), 1);
+      expect(EpisodeRowSkeleton.rowsForHeight(6000), 12);
+      expect(EpisodeRowSkeleton.rowsForHeight(double.infinity), 1);
     });
   });
 

@@ -183,16 +183,25 @@ class MangaAdvancedSearchCubit extends Cubit<MangaAdvancedSearchState>
   }
 
   Future<void> _performMangaAdvancedSearch() async {
-    List<Manga> searchResults = await _mangaRepository.performMangaAdvancedSearch(
-      state.searchQuery,
-      state.selectedGenres,
-      state.selectedFormat,
-      state.selectedCountry,
-      state.selectedAiringStatus,
-      "${state.selectedSearchSortOption.toUpperCase().replaceAll(" ", "_")}_${state.selectedSearchOrder.toUpperCase()}",
-      1,
-      state.loggedUser
-    );
-    emit(state.copyWith(searchResults: searchResults));
+    if (isClosed) return;
+    emit(state.copyWith(isSearching: true));
+    try {
+      List<Manga> searchResults = await _mangaRepository.performMangaAdvancedSearch(
+        state.searchQuery,
+        state.selectedGenres,
+        state.selectedFormat,
+        state.selectedCountry,
+        state.selectedAiringStatus,
+        "${state.selectedSearchSortOption.toUpperCase().replaceAll(" ", "_")}_${state.selectedSearchOrder.toUpperCase()}",
+        1,
+        state.loggedUser
+      );
+      if (isClosed) return;
+      emit(state.copyWith(searchResults: searchResults, isSearching: false));
+    } finally {
+      if (!isClosed && state.isSearching) {
+        emit(state.copyWith(isSearching: false));
+      }
+    }
   }
 }

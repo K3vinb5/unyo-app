@@ -10,6 +10,7 @@ import 'package:unyo/application/states/manga_state.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
+import 'package:unyo/presentation/widgets/styled/card_row_frame.dart';
 import 'package:unyo/presentation/widgets/styled/manga_card_list.dart';
 import 'package:unyo/presentation/widgets/styled/media_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_banner_carousel.dart';
@@ -137,44 +138,52 @@ class _MangaViewState extends State<_MangaView> {
               ),
               const SizedBox(height: 40),
               state.trending.$1
-                  ? MangaCardList(
-                    listTitle: "Trending Mangas",
-                    mangaList: state.trending.$2,
-                    controller: trendingController,
-                    onPressed: context.read<MangaCubit>().navigateToMangaDetails,
-                    loadMore: false,
+                  ? CardRowFrame.browse(
+                    child: MangaCardList(
+                      listTitle: "Trending Mangas",
+                      mangaList: state.trending.$2,
+                      controller: trendingController,
+                      onPressed: context.read<MangaCubit>().navigateToMangaDetails,
+                      loadMore: false,
+                    ),
                   )
-                  : const CardRowSkeleton(),
+                  : const CardRowFrame.browse(child: CardRowSkeleton()),
               const SizedBox(height: 30),
               state.recentlyCompleted.$1
-                  ? MangaCardList(
-                    listTitle: "Recently Completed Mangas",
-                    mangaList: state.recentlyCompleted.$2,
-                    controller: recentlyCompletedController,
-                    onPressed: context.read<MangaCubit>().navigateToMangaDetails,
-                    loadMore: false,
+                  ? CardRowFrame.browse(
+                    child: MangaCardList(
+                      listTitle: "Recently Completed Mangas",
+                      mangaList: state.recentlyCompleted.$2,
+                      controller: recentlyCompletedController,
+                      onPressed: context.read<MangaCubit>().navigateToMangaDetails,
+                      loadMore: false,
+                    ),
                   )
-                  : const CardRowSkeleton(),
+                  : const CardRowFrame.browse(child: CardRowSkeleton()),
               const SizedBox(height: 30),
               state.popular.$1
-                  ? MangaCardList(
-                    listTitle: "Popular Mangas",
-                    mangaList: state.popular.$2,
-                    controller: popularController,
-                    onPressed: context.read<MangaCubit>().navigateToMangaDetails,
-                    loadMore: false,
+                  ? CardRowFrame.browse(
+                    child: MangaCardList(
+                      listTitle: "Popular Mangas",
+                      mangaList: state.popular.$2,
+                      controller: popularController,
+                      onPressed: context.read<MangaCubit>().navigateToMangaDetails,
+                      loadMore: false,
+                    ),
                   )
-                  : const CardRowSkeleton(),
+                  : const CardRowFrame.browse(child: CardRowSkeleton()),
               const SizedBox(height: 30),
               state.upcoming.$1
-                  ? MangaCardList(
-                    listTitle: "Upcoming Mangas",
-                    mangaList: state.upcoming.$2,
-                    controller: upcomingController,
-                    onPressed: context.read<MangaCubit>().navigateToMangaDetails,
-                    loadMore: false,
+                  ? CardRowFrame.browse(
+                    child: MangaCardList(
+                      listTitle: "Upcoming Mangas",
+                      mangaList: state.upcoming.$2,
+                      controller: upcomingController,
+                      onPressed: context.read<MangaCubit>().navigateToMangaDetails,
+                      loadMore: false,
+                    ),
                   )
-                  : const CardRowSkeleton(),
+                  : const CardRowFrame.browse(child: CardRowSkeleton()),
             ],
           ),
         );

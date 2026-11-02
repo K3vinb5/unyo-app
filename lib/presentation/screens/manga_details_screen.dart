@@ -160,7 +160,9 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
                                 SizedBox(height: 16.h),
                                 Padding(
                                   padding: EdgeInsets.symmetric(horizontal: 40.0.w),
-                                  child: Column(
+                                  child: state.selectedManga.id == 0
+                                      ? const DetailMetaBlockSkeleton()
+                                      : Column(
                                     mainAxisAlignment: MainAxisAlignment.start,
                                     children: [
                                       Row(
@@ -238,23 +240,27 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
                                 ),
                                 SizedBox(height: 20.h),
                                 state.characters.$1
-                                    ? UnyoCharacterList(
-                                  characters: state.characters.$2,
-                                  controller: charactersListController,
-                                  onCharacterPressed:
-                                      context.read<MangaDetailsCubit>().openCharacterDialog,
+                                    ? CardRowFrame.details(
+                                  child: UnyoCharacterList(
+                                    characters: state.characters.$2,
+                                    controller: charactersListController,
+                                    onCharacterPressed:
+                                        context.read<MangaDetailsCubit>().openCharacterDialog,
+                                  ),
                                 )
-                                    : const CardRowSkeleton(),
+                                    : const CardRowFrame.details(child: CardRowSkeleton()),
                                 SizedBox(height: 20.h),
                                 state.recommendations.$1
-                                    ? MangaRecommendationCardList(
-                                  onPressed: context.read<MangaDetailsCubit>().navigateToMangaDetails,
-                                  listTitle: "Recommended Mangas",
-                                  mangaList: state.recommendations.$2,
-                                  controller: recommendedMangasController,
-                                  loadMore: false,
+                                    ? CardRowFrame.details(
+                                  child: MangaRecommendationCardList(
+                                    onPressed: context.read<MangaDetailsCubit>().navigateToMangaDetails,
+                                    listTitle: "Recommended Mangas",
+                                    mangaList: state.recommendations.$2,
+                                    controller: recommendedMangasController,
+                                    loadMore: false,
+                                  ),
                                 )
-                                    : const CardRowSkeleton(),
+                                    : const CardRowFrame.details(child: CardRowSkeleton()),
                               ],
                             ),
                           ),
@@ -293,7 +299,25 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
                             ),
                           ),
                           SizedBox(height: 15.h),
-                          Expanded(child: ListView(children: [..._getEpisodeButtonsWidgets(state)])),
+                          Expanded(
+                            child: LayoutBuilder(
+                              builder: (BuildContext context, BoxConstraints constraints) =>
+                                  ListView(
+                                children: [
+                                  // `MangaDetailsState` has no episodes flag: the manga
+                                  // arrives whole (`chapters` is a count on the entity),
+                                  // so `id == 0` is the loading gate the banner uses too.
+                                  if (state.selectedManga.id == 0)
+                                    ...List.generate(
+                                      EpisodeRowSkeleton.rowsForHeight(constraints.maxHeight),
+                                      (index) => EpisodeRowSkeleton(showDivider: index != 0),
+                                    )
+                                  else
+                                    ..._getEpisodeButtonsWidgets(state),
+                                ],
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
