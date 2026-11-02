@@ -8,10 +8,16 @@ import 'package:unyo/presentation/shortcuts/video_shortcut_handler.dart';
 import 'package:unyo/presentation/shortcuts/video_shortcuts.dart';
 import 'package:unyo/presentation/video/video_player_interaction.dart';
 
-/// Minimal [VideoPlaybackCommands] stand-in: records calls, lets the test flip
-/// the playback state.
+/// Minimal [VideoPlaybackCommands] stand-in: records calls and owns the
+/// playback state, exactly like `VideoService` does for the real screen
+/// ([VideoService.playing] is a [ValueNotifier<bool>]).
 class FakePlaybackCommands implements VideoPlaybackCommands {
-  bool playing = true;
+  FakePlaybackCommands({bool playing = true}) : playing = ValueNotifier<bool>(playing);
+
+  /// The live player state. [VideoService] exposes the same thing as a
+  /// listenable, which is what the screen animates from.
+  final ValueNotifier<bool> playing;
+
   int playCalls = 0;
   int pauseCalls = 0;
   int togglePlayCalls = 0;
@@ -19,8 +25,12 @@ class FakePlaybackCommands implements VideoPlaybackCommands {
   int fullscreenCalls = 0;
   Duration lastSeek = Duration.zero;
 
+  /// A state change the app itself did not raise: MPRIS/audio_service, the end
+  /// of the media, anything outside the interaction.
+  void setPlayingExternally(bool value) => playing.value = value;
+
   @override
-  bool get isPlaying => playing;
+  bool get isPlaying => playing.value;
 
   @override
   double get volume => 0.5;
@@ -43,19 +53,19 @@ class FakePlaybackCommands implements VideoPlaybackCommands {
   @override
   void play() {
     playCalls++;
-    playing = true;
+    playing.value = true;
   }
 
   @override
   void pause() {
     pauseCalls++;
-    playing = false;
+    playing.value = false;
   }
 
   @override
   void togglePlay() {
     togglePlayCalls++;
-    playing = !playing;
+    playing.value = !playing.value;
   }
 
   @override
@@ -88,9 +98,9 @@ void main() {
   /// at construction, and timers created in `setUp` land outside the
   /// `testWidgets` fake-async zone, so `tester.pump(duration)` could never
   /// advance them.
-  VideoPlayerInteraction start() {
-    commands = FakePlaybackCommands();
-    return VideoPlayerInteraction(commands: commands);
+  VideoPlayerInteraction start({bool playing = true}) {
+    commands = FakePlaybackCommands(playing: playing);
+    return VideoPlayerInteraction(commands: commands, playing: commands.playing);
   }
 
   /// Cancels the pending hide timer so `testWidgets` does not complain about
@@ -110,7 +120,7 @@ void main() {
 
   testWidgets('paused playback never auto-hides', (tester) async {
     final interaction = start();
-    commands.playing = false;
+    commands.setPlayingExternally(false);
     interaction.reveal();
     await tester.pump(VideoPlayerInteraction.hideDelay * 2);
     expect(interaction.controlsVisible, isTrue);
@@ -156,7 +166,7 @@ void main() {
       handler.handle(const TogglePlayIntent());
       // The fake flips playback state on toggle; keep it playing so the
       // auto-hide countdown is the thing under test.
-      commands.playing = true;
+      commands.setPlayingExternally(true);
       expect(interaction.controlsVisible, isTrue);
 
       // The old timer would have fired 100 ms later; the re-armed one not yet.
@@ -182,7 +192,7 @@ void main() {
       expect(interaction.controlsVisible, isTrue);
 
       // Resuming re-arms the countdown through the same path.
-      commands.playing = true;
+      commands.setPlayingExternally(true);
       interaction.reveal();
       await tester.pump(VideoPlayerInteraction.hideDelay + const Duration(milliseconds: 1));
       expect(interaction.controlsVisible, isFalse);
@@ -224,6 +234,113 @@ void main() {
 
       expect(nextCalls, 1);
       expect(interaction.controlsVisible, isTrue);
+      stopTimer(interaction);
+    });
+  });
+
+  group('surface click (WP #119)', () {
+    testWidgets('while playing: pauses and reveals the bar in the same click', (tester) async {
+      final interaction = start();
+      // Four seconds of no interaction: the bar is gone.
+      await tester.pump(VideoPlayerInteraction.hideDelay + const Duration(milliseconds: 1));
+      expect(interaction.controlsVisible, isFalse);
+
+      interaction.handleSurfaceTap();
+
+      expect(commands.pauseCalls, 1, reason: 'the click pauses playback');
+      expect(commands.togglePlayCalls, 0, reason: 'exactly one pause, no toggle dance');
+      expect(interaction.isPlaying, isFalse);
+      expect(interaction.controlsVisible, isTrue, reason: 'the pause also counts as an interaction');
+
+      // Paused: the bar stays up, the hide countdown must not fire.
+      await tester.pump(VideoPlayerInteraction.hideDelay * 3);
+      expect(interaction.controlsVisible, isTrue);
+      stopTimer(interaction);
+    });
+
+    testWidgets('while paused: nothing at all happens — never resumes, never reveals', (tester) async {
+      final interaction = start(playing: false);
+      interaction.hide();
+      expect(interaction.controlsVisible, isFalse);
+
+      interaction.handleSurfaceTap();
+
+      expect(
+        commands.playCalls + commands.pauseCalls + commands.togglePlayCalls,
+        0,
+        reason: 'resuming is the centre glyph / play button job only',
+      );
+      expect(interaction.isPlaying, isFalse);
+      expect(interaction.controlsVisible, isFalse, reason: 'not even the bar comes back');
+    });
+
+    testWidgets('the decision reads the player state, not a local mirror', (tester) async {
+      // MPRIS paused it, no interaction went through this object: the next
+      // click must be a no-op, not a second pause and not a resume.
+      final interaction = start();
+      commands.setPlayingExternally(false);
+
+      interaction.handleSurfaceTap();
+
+      expect(commands.pauseCalls, 0);
+      expect(commands.playCalls, 0);
+      stopTimer(interaction);
+    });
+  });
+
+  group('the chrome animates from the state change itself (WP #119)', () {
+    testWidgets('every trigger path flips the one listenable the glyph animates from', (tester) async {
+      final interaction = start();
+      final List<bool> seen = <bool>[];
+      interaction.playing.addListener(() => seen.add(interaction.playing.value));
+      addTearDown(interaction.dispose);
+
+      // Mouse: play/pause button, then the surface click (a no-op while paused).
+      interaction.togglePlay();
+      interaction.handleSurfaceTap();
+      interaction.play();
+      // Keyboard: the handler dispatches onto the same command surface.
+      final handler = VideoShortcutHandler(
+        commands: interaction,
+        onNextEpisode: () {},
+        onPreviousEpisode: () {},
+      );
+      addTearDown(handler.dispose);
+      handler.handle(const TogglePlayIntent());
+      // MPRIS / audio_service: the player changes, no widget is involved.
+      commands.setPlayingExternally(true);
+      // End of the media / anything else raised outside the screen.
+      commands.setPlayingExternally(false);
+
+      expect(seen, <bool>[false, true, false, true, false]);
+      expect(interaction.isPlaying, isFalse);
+      stopTimer(interaction);
+    });
+
+    testWidgets('an external pause puts the bar back up and keeps it there', (tester) async {
+      final interaction = start();
+      await tester.pump(VideoPlayerInteraction.hideDelay + const Duration(milliseconds: 1));
+      expect(interaction.controlsVisible, isFalse);
+
+      // MPRIS / audio_service / end of the media: no widget, no interaction call.
+      commands.setPlayingExternally(false);
+
+      expect(interaction.controlsVisible, isTrue, reason: 'a pause is an interaction');
+      await tester.pump(VideoPlayerInteraction.hideDelay * 2);
+      expect(interaction.controlsVisible, isTrue, reason: 'paused never auto-hides');
+      stopTimer(interaction);
+    });
+
+    testWidgets('a pause the screen never raised still reaches the listeners', (tester) async {
+      final interaction = start();
+      var notifies = 0;
+      interaction.playing.addListener(() => notifies++);
+      addTearDown(interaction.dispose);
+
+      commands.setPlayingExternally(false);
+
+      expect(notifies, 1);
+      expect(interaction.isPlaying, isFalse);
       stopTimer(interaction);
     });
   });

@@ -147,6 +147,12 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
   /// bar produce the exact same result (WP #116). This widget only listens.
   VideoPlayerInteraction get _interaction => widget.interaction;
 
+  /// The pause glyph's progress: 1 = pause bars, 0 = play triangle. It is
+  /// retargeted only from [_onPlaybackChanged], i.e. from the player's own
+  /// state change — never from the method that raised it — so every trigger
+  /// path (mouse, keyboard, MPRIS/audio_service, end of media) animates.
+  bool get _isPlaying => _interaction.isPlaying;
+
   @override
   void initState() {
     super.initState();
@@ -154,13 +160,22 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
       vsync: this,
       duration: const Duration(milliseconds: 400), // Adjust the duration as needed
     );
-    _controller.animateTo(1.0);
+    // No morph on mount: the glyph starts on the state the player is in.
+    _controller.value = _isPlaying ? 1.0 : 0.0;
     _videoService = widget.videoService;
     _refreshTimer = _progressTimer();
     _interaction.addListener(_onInteractionChanged);
+    _interaction.playing.addListener(_onPlaybackChanged);
   }
 
   void _onInteractionChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// The one reaction to a playback-state change, whatever caused it.
+  void _onPlaybackChanged() {
+    _controller.animateTo(_interaction.playing.value ? 1.0 : 0.0);
+    _restartProgressTimer();
     if (mounted) setState(() {});
   }
 
@@ -173,41 +188,30 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
     }
   });
 
-  void playVideo() {
-    if (_videoService.isPlaying) return;
-    _interaction.play();
-    _syncPlaybackChrome();
-  }
-
-  void pauseVideo() {
-    if (!_videoService.isPlaying) return;
-    _interaction.pause();
-    _syncPlaybackChrome();
-  }
-
-  void togglePlayPause() {
-    _interaction.togglePlay();
-    _syncPlaybackChrome();
-  }
-
-  /// Restarts the progress tick and the centre play/pause glyph for the new
-  /// playback state. Controls visibility is intentionally NOT touched here.
-  void _syncPlaybackChrome() {
+  /// Tick rate follows playback: 100 ms while the position advances, 1 s while
+  /// paused (nothing to repaint, no reason to burn frames).
+  void _restartProgressTimer() {
     _refreshTimer.cancel();
-    _refreshTimer = _videoService.isPlaying
+    _refreshTimer = _isPlaying
         ? _progressTimer()
-        : Timer.periodic(const Duration(milliseconds: 1000), (_) {
+        : Timer.periodic(const Duration(seconds: 1), (_) {
             if (mounted && _videoService.isPlaying) {
               setState(() {});
             }
           });
-    _controller.animateTo(_videoService.isPlaying ? 1.0 : 0.0);
-    if (mounted) setState(() {});
   }
+
+  void playVideo() {
+    if (_isPlaying) return;
+    _interaction.play();
+  }
+
+  void togglePlayPause() => _interaction.togglePlay();
 
   @override
   void dispose() {
     _interaction.removeListener(_onInteractionChanged);
+    _interaction.playing.removeListener(_onPlaybackChanged);
     _refreshTimer.cancel();
     super.dispose();
   }
@@ -284,12 +288,14 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                     cursor: _interaction.controlsVisible ? SystemMouseCursors.basic : SystemMouseCursors.none,
                     child: Stack(
                       children: [
-                        // Screen Gestures — a tap on the video surface toggles the
-                        // bar; it never falls through to a hidden control.
+                        // Screen Gestures — a click on the picture pauses and
+                        // reveals the bar while playing, and does nothing at
+                        // all while paused (resuming is the centre glyph's or
+                        // the play button's job, WP #119).
                         Positioned.fill(
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onTap: _interaction.toggleControls,
+                            onTap: _interaction.handleSurfaceTap,
                           ),
                         ),
                         // Everything that fades with the bar. Hit testing is
@@ -311,11 +317,11 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                   // Video Controls Overlay
                                   AnimatedOpacity(
                                     duration: const Duration(milliseconds: 500),
-                                    opacity: _videoService.isPlaying ? 0 : 1,
+                                    opacity: _isPlaying ? 0 : 1,
                                     child: Align(
                                       alignment: Alignment.center,
                                       child: IgnorePointer(
-                                        ignoring: _videoService.isPlaying,
+                                        ignoring: _isPlaying,
                                         child: Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
@@ -479,12 +485,12 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                 children: [
                                                   SizedBox(width: 10.w),
                                                   Tooltip(
-                                                    message: "${_videoService.isPlaying ? "Pause" : "Play"} Video",
+                                                    message: "${_isPlaying ? "Pause" : "Play"} Video",
                                                     child: IconButton(
                                                       onPressed: () => togglePlayPause(),
                                                       icon: Icon(
                                                         size: 27,
-                                                        _videoService.isPlaying
+                                                        _isPlaying
                                                             ? Icons.pause_rounded
                                                             : Icons.play_arrow_rounded,
                                                       ),

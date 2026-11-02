@@ -89,6 +89,11 @@ class FakePlayer implements mdk.Player {
   @override
   double playbackRate = 1.0;
 
+  // Same for the player state behind `VideoService.playing` (WP #119): the
+  // listenable the video screen animates from reads it on every transition.
+  @override
+  mdk.PlaybackState state = mdk.PlaybackState.paused;
+
   @override
   Future<int> seek({
     required int position,

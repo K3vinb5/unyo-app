@@ -82,7 +82,13 @@ class _VideoViewState extends State<_VideoView> {
     // One shared interaction path (WP #116): the on-screen controls and the
     // keyboard both dispatch through it, so a key press reveals the controls,
     // re-arms the 4 s hide timer and runs the player command exactly once.
-    _interaction = VideoPlayerInteraction(commands: _videoService);
+    _interaction = VideoPlayerInteraction(
+      commands: _videoService,
+      // Playback state is observed from the player, not from whichever widget
+      // raised the change: that is what makes the pause glyph animate for a
+      // click, a shortcut, MPRIS and the end of the episode alike (WP #119).
+      playing: _videoService.playing,
+    );
     // Keys go through the same command surface as the on-screen buttons:
     // VideoService for playback, VideoCubit for episode navigation.
     _shortcutHandler = VideoShortcutHandler(
