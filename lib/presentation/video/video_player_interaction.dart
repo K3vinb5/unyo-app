@@ -87,8 +87,8 @@ class VideoPlayerInteraction extends ChangeNotifier implements VideoPlaybackComm
   /// player is running and is inert while paused, because resuming is reserved
   /// for the centre glyph and the play button (WP #119).
   ///
-  /// The surface cursor is derived from this too, so the pointer never
-  /// advertises a click the surface will swallow.
+  /// This is the behaviour only — the surface cursor does NOT follow it: the
+  /// video canvas never advertises a click (design choice, WP #119).
   bool get surfaceTapActs => isPlaying;
 
   /// A click on the video picture.

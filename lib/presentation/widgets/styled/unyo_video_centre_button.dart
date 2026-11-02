@@ -44,6 +44,9 @@ class UnyoVideoCentreButton extends StatelessWidget {
           onTap: onPressed,
           // No focus, therefore no focus ring (see the class comment).
           canRequestFocus: false,
+          // The canvas never advertises a click (design choice, WP #119): the
+          // glyph is clickable but the pointer stays the default arrow.
+          mouseCursor: SystemMouseCursors.basic,
           focusColor: Colors.transparent,
           hoverColor: Colors.white10,
           splashColor: Colors.white12,

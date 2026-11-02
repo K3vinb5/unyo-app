@@ -8,30 +8,23 @@ import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_centre_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_controls.dart';
 
-/// WP #119 follow-up: the paused screen must not advertise a click that does
-/// nothing, and the centre pause/resume button must not look selected.
+/// WP #119 follow-up: the video canvas never advertises a click (design
+/// choice), and the centre pause/resume button must not look selected.
 void main() {
   group('surface cursor', () {
-    test('advertises the pause click only while playing', () {
-      // Playing + bar up: a click on the picture pauses, so the hand is honest.
-      expect(
-        UnyoVideoControls.surfaceCursor(controlsVisible: true, playing: true),
-        SystemMouseCursors.click,
+    test('never shows a click cursor on the video canvas', () {
+      // The user's design call: the picture may be clicked to pause while
+      // playing, but the pointer stays the default arrow — no hidden
+      // affordance is advertised, in any playback state.
+      final MouseCursor cursor = UnyoVideoControls.surfaceCursor(
+        controlsVisible: true,
       );
-      // Paused + bar up: the surface click is inert, so no click cursor.
-      expect(
-        UnyoVideoControls.surfaceCursor(controlsVisible: true, playing: false),
-        SystemMouseCursors.basic,
-      );
+      expect(cursor, SystemMouseCursors.basic);
     });
 
     test('hides the pointer with the bar', () {
       expect(
-        UnyoVideoControls.surfaceCursor(controlsVisible: false, playing: true),
-        SystemMouseCursors.none,
-      );
-      expect(
-        UnyoVideoControls.surfaceCursor(controlsVisible: false, playing: false),
+        UnyoVideoControls.surfaceCursor(controlsVisible: false),
         SystemMouseCursors.none,
       );
     });
@@ -61,7 +54,9 @@ void main() {
       );
     }
 
-    testWidgets('paints no focus highlight and cannot take focus', (tester) async {
+    testWidgets('paints no focus highlight, cannot take focus, shows the arrow', (
+      tester,
+    ) async {
       await pumpButton(tester, onPressed: () {});
 
       final UnyoInkWell ink = tester.widget<UnyoInkWell>(find.byType(UnyoInkWell));
@@ -71,6 +66,13 @@ void main() {
         reason: 'a focusable InkWell keeps its focusColor painted while paused',
       );
       expect(ink.focusColor, Colors.transparent);
+      expect(
+        ink.mouseCursor,
+        SystemMouseCursors.basic,
+        reason:
+            'the video canvas never shows a click/hand cursor, even though the '
+            'glyph resumes the frame (design choice, WP #119)',
+      );
     });
 
     testWidgets('a click resumes without leaving the keyboard on the button', (tester) async {

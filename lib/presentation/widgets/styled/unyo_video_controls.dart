@@ -104,15 +104,15 @@ class UnyoVideoControls extends StatefulWidget {
 
   /// The pointer the picture area advertises.
   ///
-  /// A pointer only promises a click where a click does something: while
-  /// playing, a surface click pauses the frame, so the hand is correct; while
-  /// paused the surface click is inert by design (resuming belongs to the
-  /// centre glyph and the play button), so the surface keeps the plain arrow
-  /// instead of advertising an action that will not happen (WP #119). While
-  /// the bar is hidden the pointer is hidden with it.
-  static MouseCursor surfaceCursor({required bool controlsVisible, required bool playing}) {
+  /// The video canvas never shows a click cursor: a surface click is a hidden
+  /// affordance, not something the pointer should promise (the user's design
+  /// call). While playing a surface click still pauses the frame, but the
+  /// cursor stays the default arrow instead of turning into a hand, exactly
+  /// like while paused (WP #119). While the bar is hidden the pointer is
+  /// hidden with it.
+  static MouseCursor surfaceCursor({required bool controlsVisible}) {
     if (!controlsVisible) return SystemMouseCursors.none;
-    return playing ? SystemMouseCursors.click : SystemMouseCursors.basic;
+    return SystemMouseCursors.basic;
   }
 
   static String _trackLabel(ext.Track track) =>
@@ -300,7 +300,6 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                     onHover: (event) => _interaction.reveal(),
                     cursor: UnyoVideoControls.surfaceCursor(
                       controlsVisible: _interaction.controlsVisible,
-                      playing: _isPlaying,
                     ),
                     child: Stack(
                       children: [
