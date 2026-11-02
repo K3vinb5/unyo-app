@@ -83,6 +83,14 @@ class VideoPlayerInteraction extends ChangeNotifier implements VideoPlaybackComm
     }
   }
 
+  /// Whether a click on the picture would do anything: it pauses while the
+  /// player is running and is inert while paused, because resuming is reserved
+  /// for the centre glyph and the play button (WP #119).
+  ///
+  /// The surface cursor is derived from this too, so the pointer never
+  /// advertises a click the surface will swallow.
+  bool get surfaceTapActs => isPlaying;
+
   /// A click on the video picture.
   ///
   /// While playing it pauses and reveals the bar in the same click; while
@@ -90,7 +98,7 @@ class VideoPlayerInteraction extends ChangeNotifier implements VideoPlaybackComm
   /// glyph and the play button, so a stray click on a paused frame can never
   /// start playback (WP #119).
   void handleSurfaceTap() {
-    if (!isPlaying) return;
+    if (!surfaceTapActs) return;
     pause();
   }
 
@@ -122,14 +130,9 @@ class VideoPlayerInteraction extends ChangeNotifier implements VideoPlaybackComm
   /// media). Idempotent through [reveal], so it cannot fight a click.
   void _onPlayingChanged() => reveal();
 
-  void _afterInteraction() {
-    _hideTimer?.cancel();
-    if (!_controlsVisible) {
-      _controlsVisible = true;
-      notifyListeners();
-    }
-    _armHideTimer();
-  }
+  /// Every player command ends here: same reveal + countdown as a pointer or
+  /// keyboard interaction, because it is literally [reveal].
+  void _afterInteraction() => reveal();
 
   void _armHideTimer() {
     _hideTimer?.cancel();

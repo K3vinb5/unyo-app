@@ -241,6 +241,8 @@ void main() {
   group('surface click (WP #119)', () {
     testWidgets('while playing: pauses and reveals the bar in the same click', (tester) async {
       final interaction = start();
+      // The surface advertises a click exactly because the click acts.
+      expect(interaction.surfaceTapActs, isTrue);
       // Four seconds of no interaction: the bar is gone.
       await tester.pump(VideoPlayerInteraction.hideDelay + const Duration(milliseconds: 1));
       expect(interaction.controlsVisible, isFalse);
@@ -260,6 +262,8 @@ void main() {
 
     testWidgets('while paused: nothing at all happens — never resumes, never reveals', (tester) async {
       final interaction = start(playing: false);
+      // An inert surface must not advertise a click (the cursor reads this).
+      expect(interaction.surfaceTapActs, isFalse);
       interaction.hide();
       expect(interaction.controlsVisible, isFalse);
 
