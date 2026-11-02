@@ -117,10 +117,11 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                   : (state.alternateImage != "" ? state.alternateImage : state.selectedAnime.coverImage),
           episodeNumber: episodeNumber,
           progress: state.mediaListEntry.progress,
-          released:
-              state.selectedAnime.nextAiringEpisode.episode != 0
-                  ? (state.selectedAnime.nextAiringEpisode.episode - 1)
-                  : numEpisodes,
+          released: EpisodeRelease.releasedThrough(
+            nextAiringEpisode: state.selectedAnime.nextAiringEpisode,
+            airingStatus: state.selectedAnime.status,
+            episodeCount: numEpisodes,
+          ),
           showDivider: i != 0,
           onPressed: () => context.read<AnimeDetailsCubit>().openAnimeServerSelectionDrawer(context, episodeNumber),
         ),

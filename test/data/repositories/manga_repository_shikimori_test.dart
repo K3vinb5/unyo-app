@@ -12,7 +12,9 @@ import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/services/api/dto/shikimori/manga_details_query_entity.dart';
 import 'package:unyo/core/services/api/graphql/graphql_service.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
+import 'package:unyo/core/services/api/shikimori/shikimori_auth_service.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
+import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/manga_repository_shikimori.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
@@ -45,6 +47,23 @@ void main() {
       accessCode: '',
       accessToken: '',
       refreshToken: '',
+    );
+  }
+
+  ShikimoriUserModel shikimoriUser({String expiresAt = '2099-01-01T00:00:00.000'}) {
+    return ShikimoriUserModel(
+      id: '1819521',
+      name: 'test',
+      settings: SettingsModel.empty().copyWith(
+        userService: Service.shikimori,
+        metadataService: Service.shikimori,
+      ),
+      avatarImage: '',
+      bannerImage: '',
+      accessToken: 'stored-access',
+      refreshToken: 'stored-refresh',
+      accessTokenExpiresAt: expiresAt,
+      profileUrl: '',
     );
   }
 
@@ -198,6 +217,32 @@ void main() {
       expect(ok, isFalse);
       expect(details.recommendedMangas, isEmpty);
       expect(details.characters, isEmpty);
+    });
+
+    test('a Shikimori account sends its Bearer token so userRate is not null (WP #110)', () async {
+      final MangaRepositoryShikimori repository = repositoryWith(<String, dynamic>{
+        'data': <String, dynamic>{'mangas': <dynamic>[]},
+      });
+      sl.registerSingleton<ShikimoriAuthService>(ShikimoriAuthService());
+
+      await repository.getMangaDetails(MangaModel.empty(), shikimoriUser());
+
+      expect(
+        http.lastHeaders!['Authorization'],
+        'Bearer stored-access',
+        reason: 'manga has no other list-entry reader, so an anonymous details call always reads "Add To List"',
+      );
+    });
+
+    test('a metadata-only Shikimori configuration keeps the details request anonymous', () async {
+      final MangaRepositoryShikimori repository = repositoryWith(<String, dynamic>{
+        'data': <String, dynamic>{'mangas': <dynamic>[]},
+      });
+
+      await repository.getMangaDetails(MangaModel.empty(), loggedUser());
+
+      expect(http.lastHeaders!.containsKey('Authorization'), isFalse);
+      expect(http.lastHeaders!['User-Agent'], contains('unyo'));
     });
   });
 

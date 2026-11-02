@@ -642,6 +642,85 @@ void main() {
     });
   });
 
+  group('AnimeDetailsCubit home reload after a list write (WP #110)', () {
+    late StreamController<Anime> animeStreamController;
+    late MockBuildContext buildContext;
+
+    Future<AnimeDetailsCubit> cubitFor(MediaListEntry initialEntry) async {
+      animeStreamController = StreamController<Anime>.broadcast();
+      addTearDown(animeStreamController.close);
+      when(() => animeNotifier.animeStream).thenAnswer((_) => animeStreamController.stream);
+      // The details document seeds the editor when metadata and user provider are
+      // the same service, so the existing entry is carried by the details payload.
+      when(() => animeRepository.getAnimeDetails(any(), any(), service: any(named: 'service')))
+          .thenAnswer((_) async => (true, AnimeDetailsModel.empty().copyWith(mediaListEntry: initialEntry)));
+      when(() => animeRepository.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (false, <Anime>[]));
+      when(() => animeRepository.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => <String>[]);
+      when(() => animeRepository.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => initialEntry);
+      when(() => animeRepository.updateMediaListEntry(any(), any(), any()))
+          .thenAnswer((_) async => initialEntry);
+      when(() => episodeRepository.getEpisodeInfo(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => <EpisodeInfo>[]);
+      when(() => episodeRepository.getAlternativeImage(malId: any(named: 'malId'), anilistId: any(named: 'anilistId')))
+          .thenAnswer((_) async => '');
+      when(() => mediaListEntryNotifier.updateSelectedMediaListEntry(any())).thenReturn(null);
+      when(() => episodesInfoNotifier.updateSelectedEpisodeInfo(any())).thenReturn(null);
+      when(() => extensionRepository.getInstalledAnimeExtensions(any())).thenAnswer((_) async => <Extension>{});
+      buildContext = MockBuildContext();
+      when(() => buildContext.mounted).thenReturn(false);
+      final AnimeDetailsCubit built = buildCubit();
+      await pumpEventQueue();
+      animeStreamController.add(
+        AnimeModel.empty().copyWith(
+          id: 3,
+          idMal: 58514,
+          episodes: 12,
+          title: const TitleModel(romaji: 'Twelve', english: 'Twelve', nativeTitle: 'Twelve', userPreferred: 'Twelve'),
+        ),
+      );
+      await pumpEventQueue();
+      return built;
+    }
+
+    test('a new entry reloads home so it appears without a restart', () async {
+      cubit = await cubitFor(MediaListEntryModel.empty());
+      await cubit.updateMediaListEntryStatus('CURRENT');
+
+      await cubit.updateMediaListEntry(buildContext);
+
+      verify(() => reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated)).called(1);
+      verify(() => reloadNotifier.emitReload(ReloadType.animeMediaListEntryUpdated)).called(1);
+    });
+
+    test('a progress-only edit reloads home too, not just the details page', () async {
+      final MediaListEntry current = MediaListEntryModel(
+        progress: 2,
+        progressVolumes: 0,
+        score: 8,
+        repeat: 0,
+        status: 'CURRENT',
+        startedAt: const <String>['~', '~', '~'],
+        completedAt: const <String>['~', '~', '~'],
+      );
+      cubit = await cubitFor(current);
+      await cubit.updateMediaListEntryProgress(3);
+
+      await cubit.updateMediaListEntry(buildContext);
+
+      verify(
+        () => reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated),
+      ).called(1);
+      expect(
+        cubit.state.newMediaListEntry.status,
+        'CURRENT',
+        reason: 'the status did not change, which used to suppress the home reload entirely',
+      );
+    });
+  });
+
   group('AnimeDetailsCubit.episodesLoaded', () {
     test('settles the episode gate for a Shikimori record with no MAL id and no episode total', () async {
       final StreamController<Anime> animeStreamController = StreamController<Anime>.broadcast();
