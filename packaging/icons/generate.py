@@ -80,10 +80,26 @@ def _im_convert() -> list[str]:
     sys.exit("ImageMagick is required: `magick` (v7) or `convert` (v6)")
 
 
-def _decoded_rgba(path: Path) -> bytes:
-    """Raw 8-bit RGBA pixels of `path`, whichever IM CLI is installed."""
+def _flat_rgb(path: Path) -> bytes:
+    """8-bit RGB pixels of `path` composited on white.
+
+    Compositing matters: transparent pixels carry whatever RGB the encoder
+    left there, and IM6/IM7 disagree about it — comparing raw RGBA reported
+    worst=255 for two renders of the *same* picture. On white, the same pair
+    measures worst<=11, mean<=0.54 (IM 6.9.12 vs IM 7, all 13 outputs).
+    """
     proc = subprocess.run(
-        [*_im_convert(), str(path), "-alpha", "on", "-depth", "8", "rgba:-"],
+        [
+            *_im_convert(),
+            str(path),
+            "-background",
+            "white",
+            "-alpha",
+            "remove",
+            "-depth",
+            "8",
+            "rgb:-",
+        ],
         capture_output=True,
         check=True,
     )
@@ -96,15 +112,17 @@ def _same_icon(fresh: Path, committed: Path) -> bool:
     Fast path: byte equality (holds between runs with the same encoder).
     Cross-path: ImageMagick 6 (Ubuntu apt) and 7 (dev machine) encode PNGs
     differently, so bytes never match across them even when the picture does.
-    Decode both to raw 8-bit RGBA and compare pixels instead: pass while every
-    channel is within 3/255 and the mean error is under 1/255 (resampler
-    rounding between IM6/IM7), fail for anything a human could see — a
-    hand-replaced export differs in thousands of pixels and many channels.
+    Compare white-composited pixels instead, with a tolerance that absorbs
+    resampler rounding between IM versions but not a human-visible change.
+
+    Measured (IM 6.9.12-98 fresh vs committed IM 7): same picture worst<=11,
+    mean<=0.54; real drift — old logo export worst=228 mean=36.9, wrong
+    picture worst=255 mean=160. The bounds below sit in that gap.
     """
     if filecmp.cmp(fresh, committed, shallow=False):
         return True
-    a = _decoded_rgba(fresh)
-    b = _decoded_rgba(committed)
+    a = _flat_rgb(fresh)
+    b = _flat_rgb(committed)
     if len(a) != len(b) or not a:
         return False
     total = 0
@@ -114,7 +132,7 @@ def _same_icon(fresh: Path, committed: Path) -> bool:
         total += d
         if d > worst:
             worst = d
-    return worst <= 3 and total / len(a) <= 1.0
+    return worst <= 32 and total / len(a) <= 2.0
 
 
 def render(size: int, destination: Path) -> None:
