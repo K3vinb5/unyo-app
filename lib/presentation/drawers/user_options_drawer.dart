@@ -4,7 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/application/cubits/tabs_cubit.dart';
 import 'package:unyo/domain/entities/user/user.dart' show User;
-import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
+import 'package:unyo/presentation/widgets/styled/user_avatar_image.dart';
 import 'package:unyo/presentation/widgets/styled/user_option_drawer_selection.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
 
@@ -53,8 +53,8 @@ class _UserOptionsDrawerState extends State<UserOptionsDrawer> {
                       SizedBox(
                         width: 54,
                         height: 54,
-                        child: UnyoNetworkImage(
-                          url: widget.loggedUser.avatarImage,
+                        child: UserAvatarImage(
+                          avatarImage: widget.loggedUser.avatarImage,
                           fit: BoxFit.cover,
                           borderRadius: 27,
                         ),

@@ -1,6 +1,8 @@
 # Project-level configuration.
 cmake_minimum_required(VERSION 3.13)
-project(runner LANGUAGES CXX)
+# C is required in addition to CXX: the brand-icon GResource is compiled to a C
+# source by glib-compile-resources (see runner/CMakeLists.txt).
+project(runner LANGUAGES C CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
@@ -144,3 +146,13 @@ if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endif()
+
+# Brand icon theme files (16..512), generated from
+# packaging/icons/source/unyo_1024.png by packaging/icons/generate.py. The
+# window icon itself is embedded in the binary (see runner/CMakeLists.txt);
+# these are what a desktop picks up for menus, docks and file associations of
+# the unpacked bundle.
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/../packaging/icons/linux/hicolor"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/share/icons"
+  COMPONENT Runtime)
+

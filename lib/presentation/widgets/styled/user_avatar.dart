@@ -7,7 +7,7 @@ import 'package:unyo/presentation/widgets/styled/hover_animated_container.dart';
 import 'package:unyo/presentation/widgets/styled/service_badge.dart';
 import 'package:unyo/presentation/widgets/text/text_headline_large.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
-import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
+import 'package:unyo/presentation/widgets/styled/user_avatar_image.dart';
 
 /// One account tile on the "Who's watching?" screen: the avatar circle, the
 /// service badge in its bottom-right, and the display name.
@@ -58,8 +58,11 @@ class UserAvatar extends StatelessWidget {
                   child: SizedBox(
                     width: 180.h,
                     height: 180.h,
-                    child: UnyoNetworkImage(
-                      url: user.avatarImage,
+                    // The resolver decides the source (bundled default for
+                    // empty/legacy values, Image.asset for bundled paths,
+                    // UnyoNetworkImage for real URLs) — WP #102.
+                    child: UserAvatarImage(
+                      avatarImage: user.avatarImage,
                       fit: BoxFit.cover,
                       borderRadius: 90.h,
                     ),

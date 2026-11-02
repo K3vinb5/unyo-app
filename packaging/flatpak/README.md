@@ -8,7 +8,7 @@ submitted yet** — submission is WP 71 section B; this only prepares the files.
 | `dev.unyo.Unyo.metainfo.xml` | AppStream metadata (id, description, releases) |
 | `dev.unyo.Unyo.yml` | flatpak manifest skeleton |
 | `dev.unyo.Unyo.desktop` | flatpak-flavoured desktop entry (icon renamed to the app-id) |
-| `logo.png` | 100x100 icon copied from `linux-appimage/logo.png`; replace with a 512x512 export before submitting |
+| `logo.png` | 512x512 icon generated from `packaging/icons/source/unyo_1024.png` by `packaging/icons/generate.py` (installed to `hicolor/512x512/apps/dev.unyo.Unyo.png`) |
 | `render.sh` | fills the extra-data URL/digest/size and the AppStream release entry |
 
 The committed files hold placeholders (`0.0.0`, `1970-01-01`, all-zero digest,

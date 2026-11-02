@@ -6,6 +6,7 @@ import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/presentation/dialogs/unyo_dialog_theme.dart';
 import 'package:unyo/presentation/widgets/styled/light_unyo_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
+import 'package:unyo/presentation/widgets/styled/user_avatar_image.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
 
 /// Width of the profile card, matching the "Centered monogram" artboard.
@@ -257,9 +258,9 @@ class _AvatarHalo extends StatelessWidget {
                 ),
               ),
             ),
-            UnyoNetworkImage(
+            UserAvatarImage(
               key: UserProfileDialog.avatarKey,
-              url: url,
+              avatarImage: url,
               width: size,
               height: size,
               borderRadius: size / 2,

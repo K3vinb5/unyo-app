@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 // Internal dependencies
+import 'package:unyo/config/assets.dart';
 import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
@@ -12,6 +13,7 @@ import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/add_user_avatar.dart';
 import 'package:unyo/presentation/widgets/styled/hover_animated_container.dart';
 import 'package:unyo/presentation/widgets/styled/service_badge.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 import 'package:unyo/presentation/widgets/styled/user_avatar.dart';
 
 import '../../../support/localized_app.dart';
@@ -148,6 +150,20 @@ void main() {
         expect(avatar.contains(badge.topLeft), isTrue);
         expect(avatar.contains(badge.bottomRight - const Offset(0.01, 0.01)), isTrue);
       });
+    });
+
+    // Merge of WP #112 (badge) with WP #102 (bundled avatar): the resolver picks
+    // the image source, the badge overlay still sits on top of it.
+    testWidgets('an account without a picture gets the bundled default under its badge', (
+      WidgetTester tester,
+    ) async {
+      final User user = UserModel.empty().copyWith(id: '7', name: 'offline');
+      await pumpTile(tester, UserAvatar(user: user, onPressed: () {}));
+
+      expect(find.byType(UnyoNetworkImage), findsNothing, reason: 'an empty avatar is bundled art, never a request');
+      final Image image = tester.widget<Image>(find.byType(Image));
+      expect((image.image as AssetImage).assetName, AppAssets.defaultAvatar);
+      expect(find.byKey(UserAvatar.badgeKeyFor(user)), findsOneWidget);
     });
 
     testWidgets('loading placeholders and the add-account tile carry no badge', (WidgetTester tester) async {

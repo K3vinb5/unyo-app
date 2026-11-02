@@ -68,5 +68,3 @@ const Set<String> cacheIgnoredHeaders = <String>{
 // Extensions condiguration
 const String aniyomiExtensionsDefaultRepositoryUrl = 'https://gitea.k3vinb5.dev/Backups/kohi-den-extensions/raw/branch/main/index.min.json';
 const String tachiyomiExtensionsDefaultRepositoryUrl = 'https://gitea.k3vinb5.dev/Backups/keiyoushi-extensions/raw/branch/repo/index.min.json';
-// TODO move to an asset
-const plusImageUrl = "https://i.ibb.co/Kj8CQZH/cross.png";

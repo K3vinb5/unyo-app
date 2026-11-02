@@ -1,10 +1,12 @@
 export 'hover_animated_container.dart';
 export 'service_badge.dart';
 export 'user_avatar.dart';
+export 'user_avatar_image.dart';
 export 'add_user_avatar.dart';
 export 'dark_unyo_button.dart';
 export 'light_unyo_button.dart';
 export 'login_card.dart';
+export 'brand_mark.dart';
 export 'unyo_menu_bar.dart';
 export 'unyo_menu_icon.dart';
 export 'media_button.dart';

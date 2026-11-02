@@ -6,3 +6,7 @@ Icon=logo
 Terminal=false
 Type=Application
 Categories=AudioVideo;Video;
+# Match the GTK application id (linux/CMakeLists.txt APPLICATION_ID) so the
+# window manager associates the window with this entry and thus with
+# Icon=logo (WP #84: the Linux taskbar icon was never applied).
+StartupWMClass=dev.k3vinb5.unyo
