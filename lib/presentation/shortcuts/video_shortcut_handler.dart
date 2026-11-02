@@ -30,14 +30,26 @@ class VideoShortcutHandler {
     required this.commands,
     required this.onNextEpisode,
     required this.onPreviousEpisode,
-  });
+    DateTime Function()? clock,
+  }) : _now = clock ?? DateTime.now;
 
   static const double volumeStep = 0.05;
   static const double speedStep = 0.25;
   static const double minSpeed = 0.25;
   static const double maxSpeed = 2.0;
 
+  /// Minimum spacing between two dispatches of the same *toggle* intent.
+  ///
+  /// A held key auto-repeats every ~30 ms (WP #116). Without this, holding
+  /// Space would flip playback — and the controls fade — dozens of times a
+  /// second. Directional intents (seek / volume / speed) are deliberately not
+  /// guarded: repeating those is the expected behaviour.
+  static const Duration repeatGuard = Duration(milliseconds: 250);
+
   final VideoPlaybackCommands commands;
+
+  final DateTime Function() _now;
+  final Map<Type, DateTime> _lastGuardedDispatch = {};
 
   /// Episode navigation lives on `VideoCubit`, not on the player: these advance
   /// the episode list, they do not touch the streaming server.
@@ -53,6 +65,7 @@ class VideoShortcutHandler {
   bool handle(VideoIntent intent) {
     switch (intent) {
       case TogglePlayIntent():
+        if (!_acceptFirstInRepeatWindow(intent)) return false;
         commands.togglePlay();
         return true;
       case SeekByIntent(:final offset):
@@ -67,6 +80,7 @@ class VideoShortcutHandler {
         _setVolume(commands.volume + delta);
         return true;
       case ToggleMuteIntent():
+        if (!_acceptFirstInRepeatWindow(intent)) return false;
         if (commands.volume > 0) {
           _lastAudibleVolume = commands.volume;
           _setVolume(0);
@@ -75,6 +89,7 @@ class VideoShortcutHandler {
         }
         return true;
       case ToggleFullscreenIntent():
+        if (!_acceptFirstInRepeatWindow(intent)) return false;
         commands.setFullscreen(!commands.isFullscreen);
         return true;
       case ExitFullscreenIntent():
@@ -82,17 +97,30 @@ class VideoShortcutHandler {
         commands.setFullscreen(false);
         return true;
       case ToggleCaptionsIntent():
+        if (!_acceptFirstInRepeatWindow(intent)) return false;
         return commands.toggleSubtitles();
       case AdjustSpeedIntent(:final delta):
         _setSpeed(commands.playbackSpeed + delta);
         return true;
       case NextEpisodeIntent():
+        if (!_acceptFirstInRepeatWindow(intent)) return false;
         onNextEpisode();
         return true;
       case PreviousEpisodeIntent():
+        if (!_acceptFirstInRepeatWindow(intent)) return false;
         onPreviousEpisode();
         return true;
     }
+  }
+
+  /// Coalesces keyboard auto-repeat for toggle intents: the first event in a
+  /// [repeatGuard] window wins, later repeats of the same intent are dropped.
+  bool _acceptFirstInRepeatWindow(VideoIntent intent) {
+    final now = _now();
+    final last = _lastGuardedDispatch[intent.runtimeType];
+    if (last != null && now.difference(last) < repeatGuard) return false;
+    _lastGuardedDispatch[intent.runtimeType] = now;
+    return true;
   }
 
   void _seekTo(Duration target) {

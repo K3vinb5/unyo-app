@@ -62,13 +62,16 @@ class SettingsModelAdapter extends TypeAdapter<SettingsModel> {
       metadataService: fields[22] == null
           ? Service.anilist
           : fields[22] as Service,
+      videoDisplayMode: fields[23] == null
+          ? VideoDisplayMode.fit
+          : fields[23] as VideoDisplayMode,
     );
   }
 
   @override
   void write(BinaryWriter writer, SettingsModel obj) {
     writer
-      ..writeByte(21)
+      ..writeByte(22)
       ..writeByte(0)
       ..write(obj.language)
       ..writeByte(1)
@@ -110,7 +113,9 @@ class SettingsModelAdapter extends TypeAdapter<SettingsModel> {
       ..writeByte(21)
       ..write(obj.userService)
       ..writeByte(22)
-      ..write(obj.metadataService);
+      ..write(obj.metadataService)
+      ..writeByte(23)
+      ..write(obj.videoDisplayMode);
   }
 
   @override
@@ -191,6 +196,12 @@ _SettingsModel _$SettingsModelFromJson(
   metadataService:
       $enumDecodeNullable(_$ServiceEnumMap, json['metadataService']) ??
       Service.anilist,
+  videoDisplayMode:
+      $enumDecodeNullable(
+        _$VideoDisplayModeEnumMap,
+        json['videoDisplayMode'],
+      ) ??
+      VideoDisplayMode.fit,
 );
 
 Map<String, dynamic> _$SettingsModelToJson(
@@ -223,6 +234,7 @@ Map<String, dynamic> _$SettingsModelToJson(
   'tachiyomiExtensionsRepositories': instance.tachiyomiExtensionsRepositories,
   'userService': _$ServiceEnumMap[instance.userService]!,
   'metadataService': _$ServiceEnumMap[instance.metadataService]!,
+  'videoDisplayMode': _$VideoDisplayModeEnumMap[instance.videoDisplayMode]!,
 };
 
 const _$ServiceEnumMap = {
@@ -236,4 +248,10 @@ const _$ServiceEnumMap = {
 const _$EpisodeServiceEnumMap = {
   EpisodeService.anizip: 'anizip',
   EpisodeService.kitsu: 'kitsu',
+};
+
+const _$VideoDisplayModeEnumMap = {
+  VideoDisplayMode.fit: 'fit',
+  VideoDisplayMode.crop: 'crop',
+  VideoDisplayMode.stretch: 'stretch',
 };
