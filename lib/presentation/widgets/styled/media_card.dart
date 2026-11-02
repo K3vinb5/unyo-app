@@ -61,89 +61,100 @@ class MediaCard extends StatelessWidget {
                         MediaCardMetrics.coverRadius,
                       ),
                     ),
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: UnyoNetworkImage(
-                            url: coverImage,
-                            fit: BoxFit.fill,
-                            borderRadius: MediaCardMetrics.coverRadius,
+                    // Clipped to the cover silhouette: the score badge (and
+                    // anything else painted in the cover stack) must not
+                    // paint over the area the 20-radius corner cuts away.
+                    // The skeleton clips its cover identically.
+                    child: ClipRRect(
+                      borderRadius: MediaCardMetrics.coverBorderRadius,
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: UnyoNetworkImage(
+                              url: coverImage,
+                              fit: BoxFit.fill,
+                              borderRadius: MediaCardMetrics.coverRadius,
+                            ),
                           ),
-                        ),
-                        score != 0
-                            ? Align(
-                              alignment: Alignment.bottomRight,
-                              child: Opacity(
-                                opacity: 0.8,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: ColorScheme.of(context).primary,
-                                    borderRadius:
-                                        MediaCardMetrics.badgeBorderRadius,
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6.0,
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          "  ${(score / 10)}",
-                                          style: TextStyle(
-                                            color:
-                                                ColorScheme.of(context).primary
+                          score != 0
+                              ? Align(
+                                  alignment: Alignment.bottomRight,
+                                  child: Opacity(
+                                    opacity: 0.8,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: ColorScheme.of(context).primary,
+                                        borderRadius:
+                                            MediaCardMetrics.badgeBorderRadius,
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6.0,
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              "  ${(score / 10)}",
+                                              style: TextStyle(
+                                                color:
+                                                    ColorScheme.of(context)
+                                                            .primary
                                                             .computeLuminance() >
                                                         0.2
-                                                    ? Colors.black.withValues(alpha:
-                                                0.8,
-                                                )
-                                                    : Colors.white.withValues(alpha:
-                                                0.8,
-                                                ),
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        Icon(
-                                          Icons.star,
-                                          color:
-                                              ColorScheme.of(context).primary
+                                                    ? Colors.black.withValues(
+                                                        alpha: 0.8,
+                                                      )
+                                                    : Colors.white.withValues(
+                                                        alpha: 0.8,
+                                                      ),
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Icon(
+                                              Icons.star,
+                                              color:
+                                                  ColorScheme.of(context)
+                                                          .primary
                                                           .computeLuminance() >
                                                       0.2
-                                                  ? Colors.black.withValues(alpha:
-                                                    0.8,
+                                                  ? Colors.black.withValues(
+                                                      alpha: 0.8,
                                                     )
-                                                  : Colors.white.withValues(alpha:
-                                                    0.8,
+                                                  : Colors.white.withValues(
+                                                      alpha: 0.8,
                                                     ),
-                                          size: 15,
+                                              size: 15,
+                                            ),
+                                          ],
                                         ),
-                                      ],
+                                      ),
                                     ),
                                   ),
-                                ),
+                                )
+                              : const SizedBox.shrink(),
+                          SizedBox(
+                            // width: 128.w,
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: 5.0,
+                                left: 5.0,
                               ),
-                            )
-                            : const SizedBox.shrink(),
-                        SizedBox(
-                          // width: 128.w,
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 5.0, left: 5.0),
-                            child: Align(
-                              alignment: Alignment.bottomLeft,
-                              child: CircleAvatar(
-                                backgroundColor:
-                                    status == "RELEASING"
-                                        ? Colors.green
-                                        : status == "NOT_YET_RELEASED"
-                                        ? Colors.amber
-                                        : Colors.transparent,
-                                maxRadius: 6,
+                              child: Align(
+                                alignment: Alignment.bottomLeft,
+                                child: CircleAvatar(
+                                  backgroundColor: status == "RELEASING"
+                                      ? Colors.green
+                                      : status == "NOT_YET_RELEASED"
+                                      ? Colors.amber
+                                      : Colors.transparent,
+                                  maxRadius: 6,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -179,7 +190,9 @@ class MediaCard extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.calendar_today,
-                    color: ColorScheme.of(context).tertiary.withValues(alpha: 0.8),
+                    color: ColorScheme.of(
+                      context,
+                    ).tertiary.withValues(alpha: 0.8),
                     size: 17,
                   ),
                   Text(
@@ -202,20 +215,22 @@ class MediaCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       fontSize:
                           format == "TV_SHORT" ||
-                                  format == "SPECIAL" ||
-                                  format == "MANGA" ||
-                                  format == "ONE_SHOT" ||
-                                  format == "MOVIE" ||
-                                  format == "NOVEL" ||
-                                  format == "ONE_SHOT" ||
-                                  format == "MUSIC"
-                              ? 8
-                              : 14,
+                              format == "SPECIAL" ||
+                              format == "MANGA" ||
+                              format == "ONE_SHOT" ||
+                              format == "MOVIE" ||
+                              format == "NOVEL" ||
+                              format == "ONE_SHOT" ||
+                              format == "MUSIC"
+                          ? 8
+                          : 14,
                     ),
                   ),
                   Icon(
                     format != 'MANGA' ? Icons.tv_rounded : Icons.book_rounded,
-                    color: ColorScheme.of(context).tertiary.withValues(alpha: 0.8),
+                    color: ColorScheme.of(
+                      context,
+                    ).tertiary.withValues(alpha: 0.8),
                     size: 17,
                   ),
                 ],
