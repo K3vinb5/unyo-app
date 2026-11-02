@@ -41,10 +41,18 @@ class MediaCardSkeleton extends StatelessWidget {
                   height: MediaCardMetrics.coverHeight,
                   borderRadius: 0,
                 ),
-                SkeletonBlock(
-                  width: MediaCardMetrics.badgeWidth,
-                  height: MediaCardMetrics.badgeHeight,
-                  shape: MediaCardMetrics.badgeBorderRadius,
+                Align(
+                  alignment: Alignment.bottomRight,
+                  // Same float as the loaded card: the capsule clears the
+                  // cover's 20-radius corner instead of being carved by it.
+                  child: Padding(
+                    padding: EdgeInsets.all(MediaCardMetrics.badgeInset),
+                    child: SkeletonBlock(
+                      width: MediaCardMetrics.badgeWidth,
+                      height: MediaCardMetrics.badgeHeight,
+                      shape: MediaCardMetrics.badgeBorderRadius,
+                    ),
+                  ),
                 ),
               ],
             ),

@@ -41,8 +41,8 @@ void main() {
       expect(badge, findsOneWidget);
       final Rect coverRect = tester.getRect(find.byType(SkeletonBlock).first);
       final Rect badgeRect = tester.getRect(badge);
-      expect(badgeRect.right, coverRect.right);
-      expect(badgeRect.bottom, coverRect.bottom);
+      expect(coverRect.right - badgeRect.right, MediaCardMetrics.badgeInset);
+      expect(coverRect.bottom - badgeRect.bottom, MediaCardMetrics.badgeInset);
 
       // The text placeholders are lines, not full-width slabs.
       expect(
@@ -106,7 +106,7 @@ void main() {
       expect(
         tester.widget<SkeletonBlock>(badge).shape,
         MediaCardMetrics.badgeBorderRadius,
-        reason: 'the placeholder badge is the leaf shape, not a uniform radius',
+        reason: 'the placeholder badge is the same stadium capsule as the card',
       );
     });
   });

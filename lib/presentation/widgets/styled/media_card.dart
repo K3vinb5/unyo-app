@@ -73,11 +73,10 @@ class MediaCard extends StatelessWidget {
                       ),
                     ),
                     // The cover silhouette (one clip, shared with the
-                    // skeleton): the score badge (and anything else painted in
-                    // the cover stack) must not paint over the area the
-                    // 20-radius corner cuts away, and its right edge must stay
-                    // flush with it — see MediaCardMetrics.badgeBorderRadius
-                    // (WP #109, #119).
+                    // skeleton): nothing painted in the cover stack may spill
+                    // over the area the 20-radius corner cuts away. The score
+                    // badge floats inside it by `badgeInset`, so its stadium
+                    // ends are never carved by that corner (WP #109, #119).
                     child: MediaCoverSilhouette(
                       child: Stack(
                         children: [
@@ -90,9 +89,16 @@ class MediaCard extends StatelessWidget {
                           score != 0
                               ? Align(
                                   alignment: Alignment.bottomRight,
-                                  child: Opacity(
-                                    opacity: 0.8,
-                                    child: Container(
+                                  // Floats clear of the cover's 20-radius
+                                  // corner, so neither capsule end is carved by
+                                  // the silhouette (see badgeInset).
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(
+                                      MediaCardMetrics.badgeInset,
+                                    ),
+                                    child: Opacity(
+                                      opacity: 0.8,
+                                      child: Container(
                                       decoration: BoxDecoration(
                                         color: ColorScheme.of(context).primary,
                                         borderRadius:
@@ -142,7 +148,8 @@ class MediaCard extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-                                )
+                                ),
+                              )
                               : const SizedBox.shrink(),
                           // Release-status dot, bottom-left of the cover.
                           Padding(

@@ -31,23 +31,28 @@ abstract final class MediaCardMetrics {
   static const double badgeWidth = 46;
   static const double badgeHeight = 18;
 
-  /// Radius of the badge's two left corners — half of [badgeHeight], i.e. the
-  /// stadium cap that makes the left end read as one smooth quarter-round from
-  /// top-left round to bottom-left (the pre-#119 look).
+  /// Radius of the badge's four corners — half of [badgeHeight], so each end is
+  /// a full semicircle (a stadium capsule, the look of the pre-#119 badge).
   ///
-  /// The two right corners are deliberately square: the bottom-right edge is
-  /// the cover's own 20-radius arc. A second, differently-curved corner inside
-  /// it can never align with the silhouette, so the two antialiased edges left
-  /// a visible step/seam in the corner of every rated card (WP #119). The
-  /// shared cover silhouette (`MediaCoverSilhouette`) carves that edge now.
+  /// Both ends must be mirror images: a square right end (the #119 follow-up)
+  /// was not a stylistic choice, it read as a clipped/glitched pill next to the
+  /// round left cap.
   static const double badgeCornerRadius = badgeHeight / 2;
 
-  /// A stadium end on the left, flush with the cover on the right: both left
-  /// corners at [badgeCornerRadius], both right corners square (the bottom-right
-  /// is carved by the cover silhouette).
-  static const BorderRadius badgeBorderRadius = BorderRadius.horizontal(
-    left: Radius.circular(badgeCornerRadius),
+  /// One continuous stadium capsule: every corner at [badgeCornerRadius], so
+  /// the left and right ends are identical semicircles. Loaded card and
+  /// skeleton both paint the badge with this, so they cannot diverge.
+  static const BorderRadius badgeBorderRadius = BorderRadius.all(
+    Radius.circular(badgeCornerRadius),
   );
+
+  /// How far the badge floats from the cover's right and bottom edges.
+  ///
+  /// The pill no longer butts into the cover's 20-radius corner: a capsule
+  /// touching both edges would be carved by the cover silhouette and read as a
+  /// square step on its right end. At 6 the whole capsule sits inside the arc
+  /// (its right end centre is 16.07 < 20 from the corner's centre).
+  static const double badgeInset = 6;
 
   /// `widgets/styled/media_card.dart` - the single text line painted inside
   /// [titleRowHeight] and [metaRowHeight]; a pill the size of the whole row

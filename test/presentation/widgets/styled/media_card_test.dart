@@ -56,14 +56,14 @@ void main() {
       MediaCardMetrics.coverBorderRadius,
     );
 
-    // The clip is the cover itself, not a smaller inner box: the badge stays
-    // flush with the cover's bottom-right edge and is cut by the same corner.
+    // The clip is the cover itself, not a smaller inner box: the badge floats
+    // `badgeInset` inside the cover's bottom-right edge, clear of the corner.
     final Rect coverRect = tester.getRect(clip);
     expect(coverRect.width, MediaCardMetrics.coverWidth);
     expect(coverRect.height, MediaCardMetrics.coverHeight);
     final Rect badgeRect = tester.getRect(badge);
-    expect(badgeRect.right, coverRect.right);
-    expect(badgeRect.bottom, coverRect.bottom);
+    expect(coverRect.right - badgeRect.right, MediaCardMetrics.badgeInset);
+    expect(coverRect.bottom - badgeRect.bottom, MediaCardMetrics.badgeInset);
   });
 
   testWidgets('paints no badge for an unrated card, silhouette unchanged', (
@@ -79,36 +79,50 @@ void main() {
     );
   });
 
-  testWidgets('the badge brings no corner of its own into the silhouette', (
+  testWidgets('the badge is a full stadium capsule, not a half-round pill', (
     tester,
   ) async {
     await pumpSkeletonHarness(tester, card());
 
-    // The badge's bottom-right edge IS the cover's 20-radius arc. A radius of
-    // its own can never line up with it, and the two antialiased edges left a
-    // visible step in the corner of every rated card (WP #119).
+    // Both ends are semicircles of the badge's half-height: the left end was
+    // already right, the square right end read as a clipped/glitched pill.
     final BoxDecoration decoration =
         tester.widget<Container>(badge).decoration! as BoxDecoration;
     final BorderRadius radius = decoration.borderRadius! as BorderRadius;
-    expect(radius.bottomRight, Radius.zero);
-    expect(MediaCardMetrics.badgeBorderRadius.bottomRight, Radius.zero);
-    // Its own curve is the left end: top-left AND bottom-left, so the pill
-    // reads as one stadium cap instead of a small scoop over a square corner.
-    expect(radius.topLeft, const Radius.circular(MediaCardMetrics.badgeCornerRadius));
-    expect(radius.bottomLeft, radius.topLeft);
+    final Radius cap = const Radius.circular(MediaCardMetrics.badgeCornerRadius);
+    expect(radius.topLeft, cap);
+    expect(radius.topRight, cap);
+    expect(radius.bottomLeft, cap);
+    expect(radius.bottomRight, cap);
+    // Radius = half the height, so each end spans the full pill height — a
+    // true capsule, and therefore mirror-symmetric end to end.
+    expect(MediaCardMetrics.badgeCornerRadius * 2, MediaCardMetrics.badgeHeight);
+    expect(MediaCardMetrics.badgeBorderRadius, BorderRadius.all(cap));
   });
 
-  testWidgets('the badge left end is a full-height stadium cap', (tester) async {
+  testWidgets('the capsule floats clear of the cover corner', (tester) async {
     await pumpSkeletonHarness(tester, card());
 
-    // Two left radii of half the badge height meet in the middle of the edge:
-    // the left end is a semicircle with no straight segment, which is what the
-    // pre-#119 `topLeft: 50` (clamped to 9) read as (WP #119 follow-up).
+    // A capsule butting into the 20-radius corner would be carved by the cover
+    // silhouette and show a square step on its right end again. Its right end
+    // circle must fit inside the corner arc: distance between the two centres
+    // plus the capsule radius stays within the cover radius.
+    final double cornerRadius = MediaCardMetrics.coverRadius;
+    final double fromEdge =
+        MediaCardMetrics.badgeInset + MediaCardMetrics.badgeCornerRadius;
+    final Offset capsuleEndCentre = Offset(fromEdge, fromEdge);
+    final Offset cornerArcCentre = Offset(cornerRadius, cornerRadius);
     expect(
-      MediaCardMetrics.badgeCornerRadius * 2,
-      MediaCardMetrics.badgeHeight,
+      (capsuleEndCentre - cornerArcCentre).distance +
+          MediaCardMetrics.badgeCornerRadius,
+      lessThan(cornerRadius),
+      reason: 'the whole capsule has to fit inside the cover corner arc',
     );
-    expect(MediaCardMetrics.badgeBorderRadius.topRight, Radius.zero);
+    expect(
+      find.descendant(of: coverClip, matching: badge),
+      findsOneWidget,
+      reason: 'the badge is still painted inside the silhouette',
+    );
   });
 
   testWidgets('the cover is clipped exactly once', (tester) async {
