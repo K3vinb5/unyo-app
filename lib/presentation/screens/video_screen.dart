@@ -70,9 +70,9 @@ class _VideoView extends StatefulWidget {
 }
 
 class _VideoViewState extends State<_VideoView> {
-  late VideoService _videoService;
-  late VideoPlayerInteraction _interaction;
-  late VideoShortcutHandler _shortcutHandler;
+  late final VideoService _videoService;
+  late final VideoPlayerInteraction _interaction;
+  late final VideoShortcutHandler _shortcutHandler;
 
   @override
   void initState() {

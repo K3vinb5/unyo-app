@@ -5,6 +5,17 @@ import 'package:unyo/presentation/widgets/styled/media_cover_silhouette.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 
+/// Format labels too long for the meta row at its normal size.
+const Set<String> _compactFormatLabels = <String>{
+  "TV_SHORT",
+  "SPECIAL",
+  "MANGA",
+  "ONE_SHOT",
+  "MOVIE",
+  "NOVEL",
+  "MUSIC",
+};
+
 class MediaCard extends StatelessWidget {
   final String title;
   final int score;
@@ -64,8 +75,8 @@ class MediaCard extends StatelessWidget {
                     // The cover silhouette (one clip, shared with the
                     // skeleton): the score badge (and anything else painted in
                     // the cover stack) must not paint over the area the
-                    // 20-radius corner cuts away, and it must not bring a
-                    // corner of its own — see MediaCardMetrics.badgeBorderRadius
+                    // 20-radius corner cuts away, and its right edge must stay
+                    // flush with it — see MediaCardMetrics.badgeBorderRadius
                     // (WP #109, #119).
                     child: MediaCoverSilhouette(
                       child: Stack(
@@ -133,22 +144,21 @@ class MediaCard extends StatelessWidget {
                                   ),
                                 )
                               : const SizedBox.shrink(),
-                          SizedBox(
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: 5.0,
-                                left: 5.0,
-                              ),
-                              child: Align(
-                                alignment: Alignment.bottomLeft,
-                                child: CircleAvatar(
-                                  backgroundColor: status == "RELEASING"
-                                      ? Colors.green
-                                      : status == "NOT_YET_RELEASED"
-                                      ? Colors.amber
-                                      : Colors.transparent,
-                                  maxRadius: 6,
-                                ),
+                          // Release-status dot, bottom-left of the cover.
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: 5.0,
+                              left: 5.0,
+                            ),
+                            child: Align(
+                              alignment: Alignment.bottomLeft,
+                              child: CircleAvatar(
+                                backgroundColor: status == "RELEASING"
+                                    ? Colors.green
+                                    : status == "NOT_YET_RELEASED"
+                                    ? Colors.amber
+                                    : Colors.transparent,
+                                maxRadius: 6,
                               ),
                             ),
                           ),
@@ -212,17 +222,7 @@ class MediaCard extends StatelessWidget {
                         context,
                       ).tertiary.withValues(alpha: 0.8),
                       overflow: TextOverflow.ellipsis,
-                      fontSize:
-                          format == "TV_SHORT" ||
-                              format == "SPECIAL" ||
-                              format == "MANGA" ||
-                              format == "ONE_SHOT" ||
-                              format == "MOVIE" ||
-                              format == "NOVEL" ||
-                              format == "ONE_SHOT" ||
-                              format == "MUSIC"
-                          ? 8
-                          : 14,
+                      fontSize: _compactFormatLabels.contains(format) ? 8 : 14,
                     ),
                   ),
                   Icon(

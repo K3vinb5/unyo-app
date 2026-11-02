@@ -33,7 +33,7 @@ class VideoShortcutScope extends StatefulWidget {
 }
 
 class _VideoShortcutScopeState extends State<VideoShortcutScope> {
-  late Map<ShortcutActivator, Intent> _shortcuts;
+  late final Map<ShortcutActivator, Intent> _shortcuts;
   late Map<Type, Action<Intent>> _actions;
 
   /// Owned here (instead of an implicit node) so focus loss can be repaired.
