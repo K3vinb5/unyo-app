@@ -251,7 +251,7 @@ jobs:
         run: |
           for i in 1 2 3; do
             if sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update \
-              && sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libfuse2; then
+              && sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libfuse2 imagemagick; then
               exit 0
             fi
             echo "apt attempt $i failed; retrying in $((i*10))s"; sleep $((i*10))

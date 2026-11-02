@@ -67,22 +67,72 @@ def _targets() -> list[tuple[Path, int]]:
     return targets
 
 
+def _im_convert() -> list[str]:
+    """CLI prefix for image writes: IMv7 `magick`, else IMv6 `convert`.
+
+    Ubuntu apt (noble) ships ImageMagick 6.9 without a `magick` binary, which
+    is what GitHub's ubuntu runners install, so both CLIs must work.
+    """
+    if shutil.which("magick"):
+        return ["magick"]
+    if shutil.which("convert"):
+        return ["convert"]
+    sys.exit("ImageMagick is required: `magick` (v7) or `convert` (v6)")
+
+
+def _decoded_rgba(path: Path) -> bytes:
+    """Raw 8-bit RGBA pixels of `path`, whichever IM CLI is installed."""
+    proc = subprocess.run(
+        [*_im_convert(), str(path), "-alpha", "on", "-depth", "8", "rgba:-"],
+        capture_output=True,
+        check=True,
+    )
+    return proc.stdout
+
+
+def _same_icon(fresh: Path, committed: Path) -> bool:
+    """True when the committed icon is what the master renders to.
+
+    Fast path: byte equality (holds between runs with the same encoder).
+    Cross-path: ImageMagick 6 (Ubuntu apt) and 7 (dev machine) encode PNGs
+    differently, so bytes never match across them even when the picture does.
+    Decode both to raw 8-bit RGBA and compare pixels instead: pass while every
+    channel is within 3/255 and the mean error is under 1/255 (resampler
+    rounding between IM6/IM7), fail for anything a human could see — a
+    hand-replaced export differs in thousands of pixels and many channels.
+    """
+    if filecmp.cmp(fresh, committed, shallow=False):
+        return True
+    a = _decoded_rgba(fresh)
+    b = _decoded_rgba(committed)
+    if len(a) != len(b) or not a:
+        return False
+    total = 0
+    worst = 0
+    for x, y in zip(a, b):
+        d = x - y if x > y else y - x
+        total += d
+        if d > worst:
+            worst = d
+    return worst <= 3 and total / len(a) <= 1.0
+
+
 def render(size: int, destination: Path) -> None:
     """Resize the master to `size` and write it to `destination`."""
-    if shutil.which("magick") is None:
-        sys.exit("ImageMagick 7 (`magick`) is required to generate the icons")
     destination.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
         [
-            "magick",
+            *_im_convert(),
             str(MASTER),
             "-filter",
             "Lanczos",
             "-resize",
             f"{size}x{size}",
             "-strip",
-            # Keep the PNG byte-identical between runs so --check compares
-            # pixels+encoder output, not timestamps.
+            # Keep the PNG byte-stable between runs with the SAME encoder so
+            # same-machine --check is an exact byte compare. Across ImageMagick
+            # builds (v6 CI vs v7 dev) the encoder output differs no matter what
+            # the pixels look like, so --check falls back to a pixel compare.
             "-define",
             "png:exclude-chunks=date,time",
             f"PNG32:{destination}",
@@ -116,7 +166,7 @@ def main() -> int:
             render(size, fresh)
             if not path.is_file():
                 drift.append(f"missing: {path.relative_to(REPO_ROOT)}")
-            elif not filecmp.cmp(fresh, path, shallow=False):
+            elif not _same_icon(fresh, path):
                 drift.append(f"stale:   {path.relative_to(REPO_ROOT)}")
 
     if drift:
