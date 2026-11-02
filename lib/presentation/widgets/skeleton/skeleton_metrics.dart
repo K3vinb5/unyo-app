@@ -31,20 +31,22 @@ abstract final class MediaCardMetrics {
   static const double badgeWidth = 46;
   static const double badgeHeight = 18;
 
-  /// The scoop on the badge's top-left corner — half of [badgeHeight], i.e. a
-  /// true quarter-round that spans the badge's whole height.
+  /// Radius of the badge's two left corners — half of [badgeHeight], i.e. the
+  /// stadium cap that makes the left end read as one smooth quarter-round from
+  /// top-left round to bottom-left (the pre-#119 look).
   ///
-  /// The bottom-right corner is deliberately NOT rounded here: that edge is the
-  /// cover's own 20-radius arc. A second, differently-curved corner inside it
-  /// can never align with the silhouette, so the two antialiased edges left a
-  /// visible step/seam in the corner of every rated card (WP #119). The shared
-  /// cover silhouette (`MediaCoverSilhouette`) carves that edge now.
-  static const double badgeCornerRadius = 9;
+  /// The two right corners are deliberately square: the bottom-right edge is
+  /// the cover's own 20-radius arc. A second, differently-curved corner inside
+  /// it can never align with the silhouette, so the two antialiased edges left
+  /// a visible step/seam in the corner of every rated card (WP #119). The
+  /// shared cover silhouette (`MediaCoverSilhouette`) carves that edge now.
+  static const double badgeCornerRadius = badgeHeight / 2;
 
-  /// The badge is a leaf, not a pill: one corner is cut away and the other
-  /// three are square (the bottom-right is carved by the cover silhouette).
-  static const BorderRadius badgeBorderRadius = BorderRadius.only(
-    topLeft: Radius.circular(badgeCornerRadius),
+  /// A stadium end on the left, flush with the cover on the right: both left
+  /// corners at [badgeCornerRadius], both right corners square (the bottom-right
+  /// is carved by the cover silhouette).
+  static const BorderRadius badgeBorderRadius = BorderRadius.horizontal(
+    left: Radius.circular(badgeCornerRadius),
   );
 
   /// `widgets/styled/media_card.dart` - the single text line painted inside

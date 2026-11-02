@@ -92,8 +92,23 @@ void main() {
     final BorderRadius radius = decoration.borderRadius! as BorderRadius;
     expect(radius.bottomRight, Radius.zero);
     expect(MediaCardMetrics.badgeBorderRadius.bottomRight, Radius.zero);
-    // Its own scoop is still there, unchanged, on the top-left only.
+    // Its own curve is the left end: top-left AND bottom-left, so the pill
+    // reads as one stadium cap instead of a small scoop over a square corner.
     expect(radius.topLeft, const Radius.circular(MediaCardMetrics.badgeCornerRadius));
+    expect(radius.bottomLeft, radius.topLeft);
+  });
+
+  testWidgets('the badge left end is a full-height stadium cap', (tester) async {
+    await pumpSkeletonHarness(tester, card());
+
+    // Two left radii of half the badge height meet in the middle of the edge:
+    // the left end is a semicircle with no straight segment, which is what the
+    // pre-#119 `topLeft: 50` (clamped to 9) read as (WP #119 follow-up).
+    expect(
+      MediaCardMetrics.badgeCornerRadius * 2,
+      MediaCardMetrics.badgeHeight,
+    );
+    expect(MediaCardMetrics.badgeBorderRadius.topRight, Radius.zero);
   });
 
   testWidgets('the cover is clipped exactly once', (tester) async {
