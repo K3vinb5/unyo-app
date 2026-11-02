@@ -27,6 +27,10 @@ import 'package:unyo/core/services/api/http/api_response.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
 import 'package:unyo/core/services/media/playback_session.dart';
+import 'package:unyo/core/enums/video_display_mode.dart';
+import 'package:unyo/core/services/video/skip_window.dart';
+import 'package:unyo/core/services/video/video_display_mode_store.dart';
+import 'package:unyo/core/services/video/up_next_window.dart';
 import 'package:unyo/core/services/video/video_service.dart';
 import 'package:unyo/domain/repositories/anime_repository.dart';
 import 'package:unyo/core/services/media/media_link_exception.dart';
@@ -47,6 +51,9 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
   // Repositories
   final ExtensionRepositoryAniyomi _extensionRepositoryAniyomi;
   final AnimeRepository _animeRepository;
+
+  /// Per-user persistence for the video display mode (WP #114).
+  final VideoDisplayModeStore _videoDisplayModeStore;
 
   // Notifiers / Subscriptions
   final UserNotifier _loggedUserNotifier;
@@ -92,6 +99,7 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
     this._extensionRepositoryAniyomi,
     this._animeRepository,
     this._reloadNotifier,
+    this._videoDisplayModeStore,
   ) : super(
         VideoState(
           loggedUser: UserModel.empty(),
@@ -145,7 +153,13 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
 
   void _init() {
     _loggedUserSubscription = _loggedUserNotifier.userStream.listen((loggedUser) {
-      emit(state.copyWith(loggedUser: loggedUser));
+      // The display mode is a per-user setting: seed it from whoever is logged
+      // in (default Fit for a new user) so the button's icon is derived, never
+      // mirrored in widget state.
+      emit(state.copyWith(
+        loggedUser: loggedUser,
+        videoDisplayMode: loggedUser.settings.videoDisplayMode,
+      ));
     });
     _videoInfoSubscription = _videoInfoNotifier.videoInfoStream.listen((videoInfo) {
       _initializeVideoService(videoInfo);
@@ -293,33 +307,64 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
   }
 
   String getSkipTimeText() {
-    if (state.openingSkipTimes.interval.endTime > 0 &&
-        _videoService.position.inSeconds > state.openingSkipTimes.interval.startTime &&
-        state.openingSkipTimes.interval.endTime > _videoService.position.inSeconds) {
-      return "Skip Opening";
-    } else if (state.endingSkipTimes.interval.endTime > 0 &&
-        _videoService.position.inSeconds > state.endingSkipTimes.interval.startTime &&
-        state.endingSkipTimes.interval.endTime > _videoService.position.inSeconds) {
-      return "Skip Ending";
-    } else {
-      return "+ ${state.loggedUser.settings.manualSkipTime.toString()}s";
+    switch (activeSkipWindow(position: _videoService.position, opening: state.openingSkipTimes, ending: state.endingSkipTimes)) {
+      case SkipWindowKind.opening:
+        return "Skip Opening";
+      case SkipWindowKind.ending:
+        return "Skip Ending";
+      case SkipWindowKind.none:
+        return "+ ${state.loggedUser.settings.manualSkipTime.toString()}s";
     }
   }
 
 
   void performSkipActin() {
-    if (state.openingSkipTimes.interval.endTime > 0 &&
-        _videoService.position.inSeconds > state.openingSkipTimes.interval.startTime &&
-        state.openingSkipTimes.interval.endTime > _videoService.position.inSeconds) {
-      _videoService.seekTo(Duration(seconds: state.openingSkipTimes.interval.endTime.toInt()));
-    } else if (state.endingSkipTimes.interval.endTime > 0 &&
-        _videoService.position.inSeconds > state.endingSkipTimes.interval.startTime &&
-        state.endingSkipTimes.interval.endTime > _videoService.position.inSeconds) {
-      _videoService.seekTo(Duration(seconds: state.endingSkipTimes.interval.endTime.toInt()));
-    } else {
-      _videoService.forward(Duration(seconds: state.loggedUser.settings.manualSkipTime));
+    switch (activeSkipWindow(position: _videoService.position, opening: state.openingSkipTimes, ending: state.endingSkipTimes)) {
+      case SkipWindowKind.opening:
+        _videoService.seekTo(Duration(seconds: state.openingSkipTimes.interval.endTime.toInt()));
+      case SkipWindowKind.ending:
+        _videoService.seekTo(Duration(seconds: state.endingSkipTimes.interval.endTime.toInt()));
+      case SkipWindowKind.none:
+        _videoService.forward(Duration(seconds: state.loggedUser.settings.manualSkipTime));
     }
   }
+
+  /// The skip window the playhead is in, or [SkipWindowKind.none]. The skip pill
+  /// uses it to stay on screen while the rest of the bar is auto-hidden.
+  SkipWindowKind get activeSkipWindowKind => activeSkipWindow(
+        position: _videoService.position,
+        opening: state.openingSkipTimes,
+        ending: state.endingSkipTimes,
+      );
+
+  /// Cycles Fit -> Crop -> Stretch -> Fit (WP #114) and persists the choice for
+  /// the logged-in user. The state flips first so the icon updates on the same
+  /// frame as the tap.
+  Future<void> cycleVideoDisplayMode() async {
+    final VideoDisplayMode next = nextVideoDisplayMode(state.videoDisplayMode);
+    emit(state.copyWith(videoDisplayMode: next));
+    try {
+      await _videoDisplayModeStore.save(state.loggedUser, next);
+    } catch (e, stackTrace) {
+      _logger.w("Failed to persist the video display mode", error: e, stackTrace: stackTrace);
+    }
+  }
+
+  /// True when the playlist has an episode after the one playing.
+  bool get hasNextEpisode => hasNextPlaylistEpisode(
+        playlistIndex: state.videoInfo.playlistIndex,
+        episodeCount: state.extensionEpisodeResults.length,
+      );
+
+  /// Hides the up-next card for the rest of *this* episode. Moving to another
+  /// episode re-arms it (the dismissal is stored per playlist index).
+  void dismissUpNextCard() {
+    emit(state.copyWith(upNextDismissedPlaylistIndex: state.videoInfo.playlistIndex));
+  }
+
+  /// `Dismiss` scoping: the card is hidden only when the dismissal belongs to
+  /// the episode that is playing.
+  bool get isUpNextDismissed => state.upNextDismissedPlaylistIndex == state.videoInfo.playlistIndex;
 
 
   Future<void> _getAvailableCastDevices() async {
@@ -468,6 +513,12 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
   }
 
   Future<void> navigateToEpisode(int episodeIndex) async {
+    if (episodeIndex < 0 || episodeIndex >= state.extensionEpisodeResults.length) {
+      // Rendered rows can outnumber the extension list (extra metadata rows,
+      // WP #115); a row without an extension episode has nothing to play.
+      _logger.w("Episode index $episodeIndex is outside the extension list (${state.extensionEpisodeResults.length} episodes)");
+      return;
+    }
     try {
       _logger.i("Navigating to episode index: $episodeIndex");
       _videoService.resetService();
@@ -583,6 +634,9 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
       );
       emit(state.copyWith(mediaListEntry: savedMediaListEntry));
       _reloadNotifier.emitReload(ReloadType.videoMediaListEntryUpdated);
+      // Watching an episode is a progress-only edit: home shows that progress in
+      // Continue Watching, so it has to reload too (WP #110).
+      _reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated);
     } on MediaLinkUnresolvedException catch (e, stackTrace) {
       // No verified user-provider entry: the progress write was skipped, so do
       // not claim success either.

@@ -24,6 +24,9 @@ abstract class AnimeAdvancedSearchState with _$AnimeAdvancedSearchState implemen
     @Default(null) String? selectedFormat,
     @Default(null) String? selectedAiringStatus,
     @Default([]) List<Anime> searchResults,
+    /// True while the results request is in flight, so the screen can paint
+    /// the grid placeholder instead of an empty area.
+    @Default(false) bool isSearching,
     @Default('Desc') String selectedSearchOrder,
     @Default('Popularity') String selectedSearchSortOption,
     @Default(<AppEffect>[]) List<AppEffect> effects,

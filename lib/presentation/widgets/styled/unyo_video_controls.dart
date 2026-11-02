@@ -10,14 +10,18 @@ import 'package:unyo/application/cubits/video_cubit.dart';
 import 'package:unyo/application/states/video_state.dart';
 
 // Internal dependencies
+import 'package:unyo/core/enums/video_display_mode.dart';
+import 'package:unyo/core/services/video/up_next_window.dart';
 import 'package:unyo/core/services/video/video_service.dart';
 import 'package:unyo/domain/entities/extension/track.dart' as ext;
 import 'package:unyo/presentation/drawers/episode_list_drawer.dart';
-import 'package:unyo/presentation/widgets/styled/dark_unyo_button.dart';
+import 'package:unyo/presentation/video/video_player_interaction.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_fade_overlay.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_video_bottom_status.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_header_controls.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_list_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_volume_button.dart';
+import 'package:unyo/presentation/widgets/text/media_title_text.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
@@ -25,7 +29,16 @@ class UnyoVideoControls extends StatefulWidget {
   final VideoCubit videoCubit;
   final VideoService videoService;
 
-  const UnyoVideoControls({super.key, required this.videoCubit, required this.videoService});
+  /// The shared player-interaction path (visibility + hide timer + commands).
+  /// Both this widget and the keyboard shortcut handler drive it.
+  final VideoPlayerInteraction interaction;
+
+  const UnyoVideoControls({
+    super.key,
+    required this.videoCubit,
+    required this.videoService,
+    required this.interaction,
+  });
 
   /// Audio entries. With at most one source there is nothing to choose, so the
   /// menu offers a single "Default audio" entry (index -1) instead of an empty
@@ -71,6 +84,24 @@ class UnyoVideoControls extends StatefulWidget {
     ];
   }
 
+  /// Icon per display mode — three distinct glyphs, and the icon always shows
+  /// the CURRENT mode, never the next one (WP #114).
+  static IconData videoDisplayModeIcon(VideoDisplayMode mode) => switch (mode) {
+        VideoDisplayMode.fit => Icons.fit_screen_rounded,
+        VideoDisplayMode.crop => Icons.crop_rounded,
+        VideoDisplayMode.stretch => Icons.aspect_ratio_rounded,
+      };
+
+  static String videoDisplayModeLabel(VideoDisplayMode mode) => switch (mode) {
+        VideoDisplayMode.fit => 'Fit',
+        VideoDisplayMode.crop => 'Crop',
+        VideoDisplayMode.stretch => 'Stretch',
+      };
+
+  /// Names the current mode and the one a click switches to.
+  static String videoDisplayModeTooltip(VideoDisplayMode mode) =>
+      '${videoDisplayModeLabel(mode)} — click for ${videoDisplayModeLabel(nextVideoDisplayMode(mode))}';
+
   static String _trackLabel(ext.Track track) =>
       '${track.lang}${track.embedded ? ' - Embedded' : ''}';
 
@@ -100,11 +131,21 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
   late AnimationController _controller;
   late Timer _refreshTimer;
   late VideoService _videoService;
-  late Timer _hideControlsTimer;
 
-  bool _controlsVisible = true;
   bool _isDragging = false;
   double _dragValue = 0.0;
+
+  /// Height of the bottom band (status slot + slider + control row) and of the
+  /// status slot itself. The status slot is an overlay *outside* the controls
+  /// fade now, so those two numbers reproduce the position the old in-Column
+  /// pill had (WP #113).
+  static const double _bottomBandHeight = 150;
+  static const double _statusSlotHeight = 45;
+
+  /// The shared interaction path. Visibility, the 4 s auto-hide timer and the
+  /// player command all live there, so a keyboard shortcut and a click on this
+  /// bar produce the exact same result (WP #116). This widget only listens.
+  VideoPlayerInteraction get _interaction => widget.interaction;
 
   @override
   void initState() {
@@ -115,65 +156,118 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
     );
     _controller.animateTo(1.0);
     _videoService = widget.videoService;
-    _refreshTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-      if (mounted && _videoService.isPlaying) {
-        setState(() {});
-      }
-    });
-    _hideControlsTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted && _videoService.isPlaying) {
-        _controlsVisible = false;
-      }
-    });
+    _refreshTimer = _progressTimer();
+    _interaction.addListener(_onInteractionChanged);
   }
 
-  void playVideo() {
-    if (!_videoService.isPlaying) {
-      _videoService.play();
+  void _onInteractionChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Repaints the position/duration labels and the drag state. Deliberately not
+  /// part of the visibility path: the fade is driven by the interaction's own
+  /// listener, so this 100 ms tick can never delay it (WP #116).
+  Timer _progressTimer() => Timer.periodic(const Duration(milliseconds: 100), (_) {
+    if (mounted && _videoService.isPlaying) {
       setState(() {});
-      _refreshTimer.cancel();
-      _refreshTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-        if (mounted && _videoService.isPlaying) {
-          setState(() {});
-        }
-      });
-      _hideControlsTimer = Timer(const Duration(seconds: 4), () {
-        if (mounted && _videoService.isPlaying) {
-          _controlsVisible = false;
-        }
-      });
-      _controller.animateTo(1.0);
     }
+  });
+
+  void playVideo() {
+    if (_videoService.isPlaying) return;
+    _interaction.play();
+    _syncPlaybackChrome();
   }
 
   void pauseVideo() {
-    if (_videoService.isPlaying) {
-      _refreshTimer.cancel();
-      _refreshTimer = Timer.periodic(const Duration(milliseconds: 1000), (_) {
-        if (mounted && _videoService.isPlaying) {
-          setState(() {});
-        }
-      });
-      _videoService.pause();
-      _controlsVisible = true;
-      setState(() {});
-      _controller.animateTo(0.0);
-    }
+    if (!_videoService.isPlaying) return;
+    _interaction.pause();
+    _syncPlaybackChrome();
   }
 
   void togglePlayPause() {
-    if (_videoService.isPlaying) {
-      pauseVideo();
-    } else {
-      playVideo();
-    }
+    _interaction.togglePlay();
+    _syncPlaybackChrome();
+  }
+
+  /// Restarts the progress tick and the centre play/pause glyph for the new
+  /// playback state. Controls visibility is intentionally NOT touched here.
+  void _syncPlaybackChrome() {
+    _refreshTimer.cancel();
+    _refreshTimer = _videoService.isPlaying
+        ? _progressTimer()
+        : Timer.periodic(const Duration(milliseconds: 1000), (_) {
+            if (mounted && _videoService.isPlaying) {
+              setState(() {});
+            }
+          });
+    _controller.animateTo(_videoService.isPlaying ? 1.0 : 0.0);
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _interaction.removeListener(_onInteractionChanged);
     _refreshTimer.cancel();
-    _hideControlsTimer.cancel();
     super.dispose();
+  }
+
+  /// The status slot above the seek bar. Precedence and content rules live in
+  /// [UnyoVideoBottomStatus] / [shouldShowUpNextCard]; this only collects the
+  /// data the current state actually has.
+  Widget _buildBottomStatus(BuildContext context, VideoState state) {
+    final VideoCubit cubit = widget.videoCubit;
+    final int playlistIndex = state.videoInfo.playlistIndex;
+    final int nextIndex = playlistIndex + 1;
+    final bool upNextVisible = shouldShowUpNextCard(
+      position: _videoService.position,
+      duration: _videoService.duration,
+      playlistIndex: playlistIndex,
+      episodeCount: state.extensionEpisodeResults.length,
+      dismissedPlaylistIndex: state.upNextDismissedPlaylistIndex,
+    );
+    return UnyoVideoBottomStatus(
+      controlsVisible: _interaction.controlsVisible,
+      skipKind: cubit.activeSkipWindowKind,
+      skipLabel: cubit.getSkipTimeText(),
+      upNextVisible: upNextVisible,
+      seriesTitle: displayMediaTitle(state.selectedAnime.title),
+      episodeLabel: _nextEpisodeLabel(state, nextIndex),
+      thumbnailUrl: _nextEpisodeThumbnail(state, nextIndex),
+      onSkip: () => cubit.performSkipActin(),
+      onWatchNow: () => cubit.navigateToEpisode(nextIndex),
+      onDismiss: cubit.dismissUpNextCard,
+    );
+  }
+
+  /// `"<episode title> (E<M>)"` from whatever is known: AniZip metadata when it
+  /// loaded, the extension's episode number otherwise. No season source exists
+  /// yet, so the label omits `S<N>` instead of inventing one.
+  String _nextEpisodeLabel(VideoState state, int nextIndex) {
+    final bool hasEpisodeInfo = nextIndex >= 0 && state.episodesInfo.length > nextIndex;
+    return upNextEpisodeLabel(
+      episodeTitle: hasEpisodeInfo ? state.episodesInfo[nextIndex].title.userPreferred : null,
+      episodeNumber: _nextEpisodeNumber(state, nextIndex),
+    );
+  }
+
+  int? _nextEpisodeNumber(VideoState state, int nextIndex) {
+    if (nextIndex < 0) return null;
+    if (state.episodesInfo.length > nextIndex && state.episodesInfo[nextIndex].episodeNumber > 0) {
+      return state.episodesInfo[nextIndex].episodeNumber;
+    }
+    if (state.extensionEpisodeResults.length > nextIndex) {
+      final int number = state.extensionEpisodeResults[nextIndex].getEpisode_number().toInt();
+      if (number > 0) return number;
+    }
+    return nextIndex + 1;
+  }
+
+  /// Empty when there is no thumbnail data — the card then renders without an
+  /// image instead of a broken box.
+  String _nextEpisodeThumbnail(VideoState state, int nextIndex) {
+    if (nextIndex < 0 || state.episodesInfo.length <= nextIndex) return '';
+    return state.episodesInfo[nextIndex].image;
   }
 
   @override
@@ -183,89 +277,347 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
       child: BlocBuilder<VideoCubit, VideoState>(
         builder: (context, state) {
           return !_videoService.isBuffering
-              ? MouseRegion(
-                  onHover: (event) {
-                    _hideControlsTimer.cancel();
-                    _controlsVisible = true;
-                    setState(() {});
-                    _hideControlsTimer = Timer(const Duration(seconds: 4), () {
-                      if (mounted && _videoService.isPlaying) {
-                        _controlsVisible = false;
-                        setState(() {});
-                      }
-                    });
-                  },
-                  cursor: _controlsVisible ? SystemMouseCursors.basic : SystemMouseCursors.none,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 300),
-                    opacity: _controlsVisible ? 1 : 0,
+              ? ListenableBuilder(
+                  listenable: _interaction,
+                  builder: (context, _) => MouseRegion(
+                    onHover: (event) => _interaction.reveal(),
+                    cursor: _interaction.controlsVisible ? SystemMouseCursors.basic : SystemMouseCursors.none,
                     child: Stack(
                       children: [
-                        // Screen Gestures
-                        GestureDetector(onTap: () => pauseVideo()),
-                        // Top and Bottom Fade Overlays
-                        const UnyoFadeOverlay(isTop: true),
-                        const UnyoFadeOverlay(isTop: false),
-                        // Video Header Controls
-                        UnyoVideoHeaderControls(cubit: widget.videoCubit, videoService: _videoService),
-                        // Video Controls Overlay
-                        AnimatedOpacity(
-                          duration: const Duration(milliseconds: 500),
-                          opacity: _videoService.isPlaying ? 0 : 1,
-                          child: Align(
-                            alignment: Alignment.center,
+                        // Screen Gestures — a tap on the video surface toggles the
+                        // bar; it never falls through to a hidden control.
+                        Positioned.fill(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: _interaction.toggleControls,
+                          ),
+                        ),
+                        // Everything that fades with the bar. Hit testing is
+                        // disabled while hidden, so an invisible button can never
+                        // swallow a click meant for the video surface.
+                        Positioned.fill(
+                          child: AnimatedOpacity(
+                            duration: VideoPlayerInteraction.fadeDuration,
+                            opacity: _interaction.controlsVisible ? 1 : 0,
                             child: IgnorePointer(
-                              ignoring: _videoService.isPlaying,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                              ignoring: !_interaction.controlsVisible,
+                              child: Stack(
                                 children: [
-                                  IconButton(
-                                    onPressed: () {
-                                      _videoService.reverse(const Duration(seconds: 30));
-                                      setState(() {});
-                                    },
-                                    iconSize: 80.w.clamp(80, 100),
-                                    icon: Tooltip(
-                                      waitDuration: const Duration(milliseconds: 2000),
-                                      textAlign: TextAlign.center,
-                                      message: "Reverse 30s",
-                                      child: Icon(Icons.fast_rewind_rounded, color: Colors.white, size: 80.w.clamp(80, 100)),
-                                    ),
-                                  ),
-                                  SizedBox(width: 20.w),
-                                  Material(
-                                    color: Colors.transparent,
-                                    child: Tooltip(
-                                      waitDuration: const Duration(milliseconds: 2000),
-                                      textAlign: TextAlign.center,
-                                      message: "Resume Play",
-                                      child: UnyoInkWell(
-                                        onTap: () => playVideo(),
-                                        // highlightColor: Colors.white12,
-                                        hoverColor: Colors.white10,
-                                        splashColor: Colors.white12,
-                                        borderRadius: BorderRadius.circular(60.w),
-                                        child: AnimatedIcon(
-                                          icon: AnimatedIcons.play_pause,
-                                          size: 85.w.clamp(85, 110),
-                                          color: Colors.white,
-                                          progress: _controller,
+                                  // Top and Bottom Fade Overlays
+                                  const UnyoFadeOverlay(isTop: true),
+                                  const UnyoFadeOverlay(isTop: false),
+                                  // Video Header Controls
+                                  UnyoVideoHeaderControls(cubit: widget.videoCubit, videoService: _videoService),
+                                  // Video Controls Overlay
+                                  AnimatedOpacity(
+                                    duration: const Duration(milliseconds: 500),
+                                    opacity: _videoService.isPlaying ? 0 : 1,
+                                    child: Align(
+                                      alignment: Alignment.center,
+                                      child: IgnorePointer(
+                                        ignoring: _videoService.isPlaying,
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            IconButton(
+                                              onPressed: () {
+                                                _interaction.act(
+                                                  () => _videoService.reverse(const Duration(seconds: 30)),
+                                                );
+                                                setState(() {});
+                                              },
+                                              iconSize: 80.w.clamp(80, 100),
+                                              icon: Tooltip(
+                                                waitDuration: const Duration(milliseconds: 2000),
+                                                textAlign: TextAlign.center,
+                                                message: "Reverse 30s",
+                                                child: Icon(Icons.fast_rewind_rounded, color: Colors.white, size: 80.w.clamp(80, 100)),
+                                              ),
+                                            ),
+                                            SizedBox(width: 20.w),
+                                            Material(
+                                              color: Colors.transparent,
+                                              child: Tooltip(
+                                                waitDuration: const Duration(milliseconds: 2000),
+                                                textAlign: TextAlign.center,
+                                                message: "Resume Play",
+                                                child: UnyoInkWell(
+                                                  onTap: () => playVideo(),
+                                                  // highlightColor: Colors.white12,
+                                                  hoverColor: Colors.white10,
+                                                  splashColor: Colors.white12,
+                                                  borderRadius: BorderRadius.circular(60.w),
+                                                  child: AnimatedIcon(
+                                                    icon: AnimatedIcons.play_pause,
+                                                    size: 85.w.clamp(85, 110),
+                                                    color: Colors.white,
+                                                    progress: _controller,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(width: 20.w),
+                                            Tooltip(
+                                              waitDuration: const Duration(milliseconds: 2000),
+                                              textAlign: TextAlign.center,
+                                              message: "Forward 30s",
+                                              child: IconButton(
+                                                iconSize: 80.w.clamp(80, 100),
+                                                onPressed: () {
+                                                  _interaction.act(
+                                                    () => _videoService.forward(const Duration(seconds: 30)),
+                                                  );
+                                                  setState(() {});
+                                                },
+                                                icon: Icon(Icons.fast_forward_rounded, color: Colors.white, size: 80.w.clamp(80, 100)),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
                                   ),
-                                  SizedBox(width: 20.w),
-                                  Tooltip(
-                                    waitDuration: const Duration(milliseconds: 2000),
-                                    textAlign: TextAlign.center,
-                                    message: "Forward 30s",
-                                    child: IconButton(
-                                      iconSize: 80.w.clamp(80, 100),
+                                  // Side Video List
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: UnyoVideoListButton(
+                                      tooltip: "Open Episode List",
                                       onPressed: () {
-                                        _videoService.forward(const Duration(seconds: 30));
-                                        setState(() {});
+                                        _interaction.hide();
+                                        context.read<VideoCubit>().showDrawerDialogEffect(
+                                            drawerDialog:EpisodeListDrawer(cubit: widget.videoCubit),
+                                            backgroundColor: Colors.black.withValues(alpha: 0.5),
+                                            startPosition: AxisDirection.right
+                                        );
                                       },
-                                      icon: Icon(Icons.fast_forward_rounded, color: Colors.white, size: 80.w.clamp(80, 100)),
+                                    ),
+                                  ),
+                                  // Video Slider And Controls
+                                  Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: SizedBox(
+                                      height: 150,
+                                      child: Column(
+                                        children: [
+                                          // The status slot (skip pill / up-next
+                                          // card) is an overlay outside this
+                                          // fade; the Column only keeps its
+                                          // space so nothing shifts.
+                                          const SizedBox(height: _statusSlotHeight),
+                                          const SizedBox(height: 15),
+                                          Row(
+                                            children: [
+                                              SizedBox(width: 20.w),
+                                              SizedBox(
+                                                width: 75,
+                                                child: Text(
+                                                  _isDragging
+                                                      ? Duration(milliseconds: _dragValue.toInt()).toString().substring(0, 7)
+                                                      : _videoService.position.toString().substring(0, 7),
+                                                  textAlign: TextAlign.center,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w400,
+                                                  ),
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: SizedBox(
+                                                  height: 40,
+                                                  child: Slider(
+                                                    min: 0,
+                                                    max: _videoService.duration.inMilliseconds.toDouble(),
+                                                    value: _isDragging
+                                                        ? _dragValue
+                                                        : _videoService.position.inMilliseconds.toDouble(),
+                                                    label: _isDragging
+                                                        ? TextUtils.formatMilliseconds(_dragValue.toInt())
+                                                        : _videoService.formattedPosition,
+                                                    divisions: _videoService.duration.inMilliseconds.toDouble() > 0
+                                                        ? _videoService.duration.inMilliseconds
+                                                        : null,
+                                                    onChanged: (value) {
+                                                      // Dragging is a hold: the bar
+                                                      // stays up, the countdown is
+                                                      // stopped until the drag ends.
+                                                      _interaction.hold();
+                                                      _isDragging = true;
+                                                      _dragValue = value;
+                                                      setState(() {});
+                                                    },
+                                                    onChangeEnd: (value) {
+                                                      _isDragging = false;
+                                                      _interaction.seekTo(Duration(milliseconds: value.toInt()));
+                                                      _interaction.release();
+                                                      setState(() {});
+                                                    },
+                                                  ),
+                                                ),
+                                              ),
+                                              SizedBox(
+                                                width: 75,
+                                                child: Text(
+                                                  _videoService.duration.toString().substring(0, 7),
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w400,
+                                                  ),
+                                                ),
+                                              ),
+                                              SizedBox(width: 15.w),
+                                            ],
+                                          ),
+                                          // Video Controls
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              // Left Aligned
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.start,
+                                                children: [
+                                                  SizedBox(width: 10.w),
+                                                  Tooltip(
+                                                    message: "${_videoService.isPlaying ? "Pause" : "Play"} Video",
+                                                    child: IconButton(
+                                                      onPressed: () => togglePlayPause(),
+                                                      icon: Icon(
+                                                        size: 27,
+                                                        _videoService.isPlaying
+                                                            ? Icons.pause_rounded
+                                                            : Icons.play_arrow_rounded,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  UnyoVolumeButton(videoService: _videoService),
+                                                ],
+                                              ),
+                                              // Right Aligned
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.end,
+                                                children: [
+                                                  PopupMenuButton<int>(
+                                                    tooltip: "Select Audio Track",
+                                                    icon: const Icon(Icons.audiotrack_rounded, size: 27),
+                                                    onSelected: (int index) {
+                                                      _videoService.setAudioTrack(index);
+                                                      _interaction.reveal();
+                                                      setState(() {});
+                                                    },
+                                                    itemBuilder: (BuildContext context) => UnyoVideoControls.buildAudioMenuItems(
+                                                      audios: _videoService.audios,
+                                                      activeIndex: _videoService.audioIndex,
+                                                    ),
+                                                  ),
+                                                  PopupMenuButton<int>(
+                                                    tooltip: "Select Subtitle Track",
+                                                    icon: const Icon(Icons.subtitles_rounded, size: 27),
+                                                    onSelected: (int index) {
+                                                      _videoService.setSubtitle(index);
+                                                      _interaction.reveal();
+                                                      setState(() {});
+                                                    },
+                                                    itemBuilder: (BuildContext context) => UnyoVideoControls.buildSubtitleMenuItems(
+                                                      subtitles: _videoService.subtitles,
+                                                      activeIndex: _videoService.subtitleIndex,
+                                                    ),
+                                                  ),
+                                                  PopupMenuButton<int>(
+                                                    tooltip: "Select Video Server",
+                                                    icon: const Icon(Icons.dns_rounded, size: 27),
+                                                    onSelected: (int index) {
+                                                      _videoService.swapVideoUrl(index);
+                                                      _interaction.reveal();
+                                                      setState(() {});
+                                                    },
+                                                    itemBuilder: (BuildContext context) => state
+                                                        .videoInfo
+                                                        .alternativeVideos
+                                                        .mapIndexed(
+                                                          (index, video) => PopupMenuItem<int>(
+                                                        value: index,
+                                                        child: Row(
+                                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                          children: [
+                                                            Expanded(
+                                                              child: Text(
+                                                                video.quality,
+                                                                maxLines: 3,
+                                                                softWrap: true,
+                                                                overflow: TextOverflow.ellipsis,
+                                                              ),
+                                                            ),
+                                                            _videoService.videoIndex == index
+                                                                ? const Padding(
+                                                                  padding: EdgeInsets.only(left: 12.0),
+                                                                  child: Icon(Icons.check_rounded, size: 16),
+                                                                )
+                                                                : const SizedBox.shrink(),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    )
+                                                        .toList(),
+                                                  ),
+                                                  PopupMenuButton<double>(
+                                                    tooltip: "Adjust Playback Speed",
+                                                    icon: const Icon(Icons.speed_rounded, size: 27),
+                                                    onSelected: (double speed) {
+                                                      _interaction.setPlaybackSpeed(speed);
+                                                      setState(() {});
+                                                    },
+                                                    itemBuilder: (BuildContext context) => <PopupMenuEntry<double>>[
+                                                      const PopupMenuItem<double>(value: 0.5, child: Text('0.5x')),
+                                                      const PopupMenuItem<double>(value: 0.75, child: Text('0.75x')),
+                                                      const PopupMenuItem<double>(value: 1.0, child: Text('1.0x')),
+                                                      const PopupMenuItem<double>(value: 1.25, child: Text('1.25x')),
+                                                      const PopupMenuItem<double>(value: 1.5, child: Text('1.5x')),
+                                                      const PopupMenuItem<double>(value: 2.0, child: Text('2.0x')),
+                                                    ],
+                                                  ),
+                                                  PopupMenuButton<CastDevice>(
+                                                    tooltip: "Cast to Device",
+                                                    icon: const Icon(Icons.cast_rounded, size: 22),
+                                                    onSelected: (CastDevice device) {
+                                                      context.read<VideoCubit>().castToDevice(device);
+                                                    },
+                                                    itemBuilder: (BuildContext context) => state.availableCastDevices.map(
+                                                        (device) => PopupMenuItem<CastDevice>(value: device, child: Text(device.name))
+                                                    ).toList()
+                                                  ),
+                                                  Tooltip(
+                                                    message: UnyoVideoControls.videoDisplayModeTooltip(state.videoDisplayMode),
+                                                    child: IconButton(
+                                                      onPressed: () => context.read<VideoCubit>().cycleVideoDisplayMode(),
+                                                      icon: Icon(
+                                                        size: 27,
+                                                        UnyoVideoControls.videoDisplayModeIcon(state.videoDisplayMode),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Tooltip(
+                                                    message: "${_videoService.isFullscreen ? "Disable" : "Enable"} Fullscreen",
+                                                    child: IconButton(
+                                                      onPressed: () {
+                                                        _interaction.setFullscreen(!_videoService.isFullscreen);
+                                                        setState(() {});
+                                                      },
+                                                      icon: Icon(
+                                                        size: 27,
+                                                        _videoService.isFullscreen
+                                                            ? Icons.fullscreen_exit_rounded
+                                                            : Icons.fullscreen_rounded,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 10.w),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -273,259 +625,15 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                             ),
                           ),
                         ),
-                        // Side Video List
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: UnyoVideoListButton(
-                            tooltip: "Open Episode List",
-                            onPressed: () {
-                              _hideControlsTimer.cancel();
-                              _controlsVisible = false;
-                              setState(() {});
-                              _hideControlsTimer = Timer(const Duration(seconds: 4), () {
-                                if (mounted && _videoService.isPlaying) {
-                                  _controlsVisible = false;
-                                  setState(() {});
-                                }
-                              });
-                              context.read<VideoCubit>().showDrawerDialogEffect(
-                                  drawerDialog:EpisodeListDrawer(cubit: widget.videoCubit),
-                                  backgroundColor: Colors.black.withValues(alpha: 0.5),
-                                  startPosition: AxisDirection.right
-                              );
-                            },
-                          ),
-                        ),
-                        // Video Slider And Controls
-                        Align(
-                          alignment: Alignment.bottomCenter,
-                          child: SizedBox(
-                            height: 150,
-                            child: Column(
-                              children: [
-                                // Video Slider
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    Opacity(
-                                      opacity: 0.7,
-                                      child: DarkUnyoButton(
-                                        text: context.read<VideoCubit>().getSkipTimeText(),
-                                        color: ColorScheme.of(context).primary,
-                                        width: 90.w,
-                                        maxWidth: 110,
-                                        maxHeight: 45,
-                                        onPressed: () => context.read<VideoCubit>().performSkipActin(),
-                                      ),
-                                    ),
-                                    SizedBox(width: 20.w),
-                                  ],
-                                ),
-                                const SizedBox(height: 15),
-                                Row(
-                                  children: [
-                                    SizedBox(width: 20.w),
-                                    SizedBox(
-                                      width: 75,
-                                      child: Text(
-                                        _isDragging
-                                            ? Duration(milliseconds: _dragValue.toInt()).toString().substring(0, 7)
-                                            : _videoService.position.toString().substring(0, 7),
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: SizedBox(
-                                        height: 40,
-                                        child: Slider(
-                                          min: 0,
-                                          max: _videoService.duration.inMilliseconds.toDouble(),
-                                          value: _isDragging
-                                              ? _dragValue
-                                              : _videoService.position.inMilliseconds.toDouble(),
-                                          label: _isDragging
-                                              ? TextUtils.formatMilliseconds(_dragValue.toInt())
-                                              : _videoService.formattedPosition,
-                                          divisions: _videoService.duration.inMilliseconds.toDouble() > 0
-                                              ? _videoService.duration.inMilliseconds
-                                              : null,
-                                          onChanged: (value) {
-                                            _isDragging = true;
-                                            _dragValue = value;
-                                            _hideControlsTimer.cancel();
-                                            _controlsVisible = true;
-                                            setState(() {});
-                                          },
-                                          onChangeEnd: (value) {
-                                            _isDragging = false;
-                                            _videoService.seekTo(Duration(milliseconds: value.toInt()));
-                                            _hideControlsTimer = Timer(const Duration(seconds: 4), () {
-                                              if (mounted && _videoService.isPlaying) {
-                                                _controlsVisible = false;
-                                                setState(() {});
-                                              }
-                                            });
-                                            setState(() {});
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: 75,
-                                      child: Text(
-                                        _videoService.duration.toString().substring(0, 7),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(width: 15.w),
-                                  ],
-                                ),
-                                // Video Controls
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    // Left Aligned
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.start,
-                                      children: [
-                                        SizedBox(width: 10.w),
-                                        Tooltip(
-                                          message: "${_videoService.isPlaying ? "Pause" : "Play"} Video",
-                                          child: IconButton(
-                                            onPressed: () => togglePlayPause(),
-                                            icon: Icon(
-                                              size: 27,
-                                              _videoService.isPlaying
-                                                  ? Icons.pause_rounded
-                                                  : Icons.play_arrow_rounded,
-                                            ),
-                                          ),
-                                        ),
-                                        UnyoVolumeButton(videoService: _videoService),
-                                      ],
-                                    ),
-                                    // Right Aligned
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        PopupMenuButton<int>(
-                                          tooltip: "Select Audio Track",
-                                          icon: const Icon(Icons.audiotrack_rounded, size: 27),
-                                          onSelected: (int index) {
-                                            _videoService.setAudioTrack(index);
-                                            setState(() {});
-                                          },
-                                          itemBuilder: (BuildContext context) => UnyoVideoControls.buildAudioMenuItems(
-                                            audios: _videoService.audios,
-                                            activeIndex: _videoService.audioIndex,
-                                          ),
-                                        ),
-                                        PopupMenuButton<int>(
-                                          tooltip: "Select Subtitle Track",
-                                          icon: const Icon(Icons.subtitles_rounded, size: 27),
-                                          onSelected: (int index) {
-                                            _videoService.setSubtitle(index);
-                                            setState(() {});
-                                          },
-                                          itemBuilder: (BuildContext context) => UnyoVideoControls.buildSubtitleMenuItems(
-                                            subtitles: _videoService.subtitles,
-                                            activeIndex: _videoService.subtitleIndex,
-                                          ),
-                                        ),
-                                        PopupMenuButton<int>(
-                                          tooltip: "Select Video Server",
-                                          icon: const Icon(Icons.dns_rounded, size: 27),
-                                          onSelected: (int index) {
-                                            _videoService.swapVideoUrl(index);
-                                            setState(() {});
-                                          },
-                                          itemBuilder: (BuildContext context) => state
-                                              .videoInfo
-                                              .alternativeVideos
-                                              .mapIndexed(
-                                                (index, video) => PopupMenuItem<int>(
-                                              value: index,
-                                              child: Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      video.quality,
-                                                      maxLines: 3,
-                                                      softWrap: true,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
-                                                  _videoService.videoIndex == index
-                                                      ? const Padding(
-                                                        padding: EdgeInsets.only(left: 12.0),
-                                                        child: Icon(Icons.check_rounded, size: 16),
-                                                      )
-                                                      : const SizedBox.shrink(),
-                                                ],
-                                              ),
-                                            ),
-                                          )
-                                              .toList(),
-                                        ),
-                                        PopupMenuButton<double>(
-                                          tooltip: "Adjust Playback Speed",
-                                          icon: const Icon(Icons.speed_rounded, size: 27),
-                                          onSelected: (double speed) {
-                                            _videoService.setPlaybackSpeed(speed);
-                                            setState(() {});
-                                          },
-                                          itemBuilder: (BuildContext context) => <PopupMenuEntry<double>>[
-                                            const PopupMenuItem<double>(value: 0.5, child: Text('0.5x')),
-                                            const PopupMenuItem<double>(value: 0.75, child: Text('0.75x')),
-                                            const PopupMenuItem<double>(value: 1.0, child: Text('1.0x')),
-                                            const PopupMenuItem<double>(value: 1.25, child: Text('1.25x')),
-                                            const PopupMenuItem<double>(value: 1.5, child: Text('1.5x')),
-                                            const PopupMenuItem<double>(value: 2.0, child: Text('2.0x')),
-                                          ],
-                                        ),
-                                        PopupMenuButton<CastDevice>(
-                                          tooltip: "Cast to Device",
-                                          icon: const Icon(Icons.cast_rounded, size: 22),
-                                          onSelected: (CastDevice device) {
-                                            context.read<VideoCubit>().castToDevice(device);
-                                          },
-                                          itemBuilder: (BuildContext context) => state.availableCastDevices.map(
-                                              (device) => PopupMenuItem<CastDevice>(value: device, child: Text(device.name))
-                                          ).toList()
-                                        ),
-                                        Tooltip(
-                                          message: "${_videoService.isFullscreen ? "Disable" : "Enable"} Fullscreen",
-                                          child: IconButton(
-                                            onPressed: () {
-                                              _videoService.setFullscreen(!_videoService.isFullscreen);
-                                              setState(() {});
-                                            },
-                                            icon: Icon(
-                                              size: 27,
-                                              _videoService.isFullscreen
-                                                  ? Icons.fullscreen_exit_rounded
-                                                  : Icons.fullscreen_rounded,
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(width: 10.w),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
+                        // Status slot: skip pill / up-next card. Deliberately
+                        // OUTSIDE the controls fade — an active skip window
+                        // must stay tappable while the bar is auto-hidden, and
+                        // the up-next card appears without any interaction
+                        // (WP #113).
+                        Positioned(
+                          right: 20.w,
+                          bottom: _bottomBandHeight - _statusSlotHeight,
+                          child: _buildBottomStatus(context, state),
                         ),
                       ],
                     ),

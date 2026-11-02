@@ -9,6 +9,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/application/cubits/video_cubit.dart';
 import 'package:unyo/application/states/episode_count.dart';
 import 'package:unyo/application/states/video_state.dart';
+import 'package:unyo/domain/utils/episode_index.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_episode_button.dart';
 
@@ -62,13 +63,24 @@ class EpisodeListDrawer extends StatelessWidget {
               : state.selectedAnime.coverImage,
           episodeNumber: episodeNumber,
           progress: state.mediaListEntry.progress,
-          released: state.selectedAnime.nextAiringEpisode.episode != 0
-              ? (state.selectedAnime.nextAiringEpisode.episode - 1)
-              : numEpisodes,
+          released: EpisodeRelease.releasedThrough(
+            nextAiringEpisode: state.selectedAnime.nextAiringEpisode,
+            airingStatus: state.selectedAnime.status,
+            episodeCount: numEpisodes,
+          ),
           showDivider: i != 0,
           onPressed: ()
           {
-            context.read<VideoCubit>().navigateToEpisode(i);
+            // Extra metadata rows (WP #115) can outnumber the extension list, and
+            // an extension list does not have to start at 1, so the row position
+            // is never the playlist index: it is resolved from the label, exactly
+            // like the details screen does.
+            final int episodeIndex = EpisodeIndex.resolveExtensionEpisodeIndex(
+              state.extensionEpisodeResults,
+              episodeNumber,
+            );
+            if (episodeIndex < 0) return;
+            context.read<VideoCubit>().navigateToEpisode(episodeIndex);
           }
         ),
       );

@@ -137,23 +137,27 @@ class _HomeViewState extends State<_HomeView> {
                 ),
                 const SizedBox(height: 40),
                 state.isLoading
-                    ? const CardRowSkeleton()
-                    : AnimeCardList(
-                      listTitle: "Continue Watching",
-                      animeList: state.continueWatching,
-                      controller: continueWatchingController,
-                      onPressed: context.read<HomeCubit>().navigateToAnimeDetails,
-                      loadMore: false,
+                    ? const CardRowFrame.browse(child: CardRowSkeleton())
+                    : CardRowFrame.browse(
+                      child: AnimeCardList(
+                        listTitle: "Continue Watching",
+                        animeList: state.continueWatching,
+                        controller: continueWatchingController,
+                        onPressed: context.read<HomeCubit>().navigateToAnimeDetails,
+                        loadMore: false,
+                      ),
                     ),
                 const SizedBox(height: 30),
                 state.isLoading
-                    ? const CardRowSkeleton()
-                    : MangaCardList(
-                      listTitle: "Continue Reading",
-                      mangaList: state.continueReading,
-                      controller: continueReadingController,
-                      loadMore: false,
-                      onPressed: context.read<HomeCubit>().navigateToMangaDetails,
+                    ? const CardRowFrame.browse(child: CardRowSkeleton())
+                    : CardRowFrame.browse(
+                      child: MangaCardList(
+                        listTitle: "Continue Reading",
+                        mangaList: state.continueReading,
+                        controller: continueReadingController,
+                        loadMore: false,
+                        onPressed: context.read<HomeCubit>().navigateToMangaDetails,
+                      ),
                     ),
               ],
             ),

@@ -127,6 +127,31 @@ void main() {
     });
   });
 
+  testWidgets('renders a Markdown description as plain text', (
+    WidgetTester tester,
+  ) async {
+    await withFakeImages(() async {
+      await pumpDialog(
+        tester,
+        character(
+          description: '**Occupation**: Middle School Student<br>'
+              '**Grade**: 3rd year<br>See [the wiki](https://example.test/dn).',
+        ),
+      );
+
+      expect(
+        find.text(
+          'Occupation: Middle School Student\n'
+          'Grade: 3rd year\n'
+          'See the wiki.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('**'), findsNothing);
+      expect(find.textContaining(']('), findsNothing);
+    });
+  });
+
   testWidgets('a character without data shows an explicit placeholder per slot', (
     WidgetTester tester,
   ) async {

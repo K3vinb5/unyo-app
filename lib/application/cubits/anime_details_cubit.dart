@@ -487,7 +487,6 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     if (savedProgress != desiredMediaListEntry.progress) {
       desiredMediaListEntry = (desiredMediaListEntry as MediaListEntryModel).copyWith(progress: savedProgress);
     }
-    MediaListEntry beforeUpdateMediaListEntry = state.mediaListEntry;
     try {
       _logger.i("Updating Media List Entry to $desiredMediaListEntry");
       await _animeRepository.updateMediaListEntry(
@@ -496,9 +495,11 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         state.loggedUser,
       );
       _reloadNotifier.emitReload(ReloadType.animeMediaListEntryUpdated);
-      if (desiredMediaListEntry.status != beforeUpdateMediaListEntry.status) {
-        _reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated);
-      }
+      // Home renders the user's current list (and its progress), so *every*
+      // successful write has to reload it — a new entry, a status change and a
+      // progress-only edit alike (WP #110). Emitting only on a status change left
+      // a progress bump invisible until the app restarted.
+      _reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated);
     } on MediaLinkUnresolvedException catch (e, stackTrace) {
       // Writing to a guessed id would corrupt another entry: nothing was sent.
       _logger.w("Skipped the list update, no verified user-provider entry: $e", stackTrace: stackTrace);

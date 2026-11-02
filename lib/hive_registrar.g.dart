@@ -5,6 +5,7 @@
 import 'package:hive_ce/hive_ce.dart';
 import 'package:unyo/core/enums/episode_service.dart';
 import 'package:unyo/core/enums/service.dart';
+import 'package:unyo/core/enums/video_display_mode.dart';
 import 'package:unyo/data/models/anilist/media/anilist_anime_details.dart';
 import 'package:unyo/data/models/anilist/media/anilist_manga_details.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
@@ -28,6 +29,7 @@ extension HiveRegistrar on HiveInterface {
     registerAdapter(ServiceEnumAdapter());
     registerAdapter(SettingsModelAdapter());
     registerAdapter(ShikimoriUserModelAdapter());
+    registerAdapter(VideoDisplayModeAdapter());
   }
 }
 
@@ -44,5 +46,6 @@ extension IsolatedHiveRegistrar on IsolatedHiveInterface {
     registerAdapter(ServiceEnumAdapter());
     registerAdapter(SettingsModelAdapter());
     registerAdapter(ShikimoriUserModelAdapter());
+    registerAdapter(VideoDisplayModeAdapter());
   }
 }

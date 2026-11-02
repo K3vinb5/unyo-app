@@ -14,7 +14,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$MangaAdvancedSearchState {
 
- User get loggedUser; (bool, List<String>) get genresFilters; (bool, List<String>) get formatFilters; (bool, List<String>) get countryFilters; (bool, List<String>) get airingStatusFilters; (bool, List<String>) get searchSortOptions; (bool, List<String>) get searchSortOrder; String get searchQuery; List<String> get selectedGenres; String? get selectedFormat; String? get selectedCountry; String? get selectedAiringStatus; List<Manga> get searchResults; String get selectedSearchOrder; String get selectedSearchSortOption; List<AppEffect> get effects;
+ User get loggedUser; (bool, List<String>) get genresFilters; (bool, List<String>) get formatFilters; (bool, List<String>) get countryFilters; (bool, List<String>) get airingStatusFilters; (bool, List<String>) get searchSortOptions; (bool, List<String>) get searchSortOrder; String get searchQuery; List<String> get selectedGenres; String? get selectedFormat; String? get selectedCountry; String? get selectedAiringStatus; List<Manga> get searchResults;/// True while the results request is in flight, so the screen can paint
+/// the grid placeholder instead of an empty area.
+ bool get isSearching; String get selectedSearchOrder; String get selectedSearchSortOption; List<AppEffect> get effects;
 /// Create a copy of MangaAdvancedSearchState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +27,16 @@ $MangaAdvancedSearchStateCopyWith<MangaAdvancedSearchState> get copyWith => _$Ma
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MangaAdvancedSearchState&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&(identical(other.genresFilters, genresFilters) || other.genresFilters == genresFilters)&&(identical(other.formatFilters, formatFilters) || other.formatFilters == formatFilters)&&(identical(other.countryFilters, countryFilters) || other.countryFilters == countryFilters)&&(identical(other.airingStatusFilters, airingStatusFilters) || other.airingStatusFilters == airingStatusFilters)&&(identical(other.searchSortOptions, searchSortOptions) || other.searchSortOptions == searchSortOptions)&&(identical(other.searchSortOrder, searchSortOrder) || other.searchSortOrder == searchSortOrder)&&(identical(other.searchQuery, searchQuery) || other.searchQuery == searchQuery)&&const DeepCollectionEquality().equals(other.selectedGenres, selectedGenres)&&(identical(other.selectedFormat, selectedFormat) || other.selectedFormat == selectedFormat)&&(identical(other.selectedCountry, selectedCountry) || other.selectedCountry == selectedCountry)&&(identical(other.selectedAiringStatus, selectedAiringStatus) || other.selectedAiringStatus == selectedAiringStatus)&&const DeepCollectionEquality().equals(other.searchResults, searchResults)&&(identical(other.selectedSearchOrder, selectedSearchOrder) || other.selectedSearchOrder == selectedSearchOrder)&&(identical(other.selectedSearchSortOption, selectedSearchSortOption) || other.selectedSearchSortOption == selectedSearchSortOption)&&const DeepCollectionEquality().equals(other.effects, effects));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MangaAdvancedSearchState&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&(identical(other.genresFilters, genresFilters) || other.genresFilters == genresFilters)&&(identical(other.formatFilters, formatFilters) || other.formatFilters == formatFilters)&&(identical(other.countryFilters, countryFilters) || other.countryFilters == countryFilters)&&(identical(other.airingStatusFilters, airingStatusFilters) || other.airingStatusFilters == airingStatusFilters)&&(identical(other.searchSortOptions, searchSortOptions) || other.searchSortOptions == searchSortOptions)&&(identical(other.searchSortOrder, searchSortOrder) || other.searchSortOrder == searchSortOrder)&&(identical(other.searchQuery, searchQuery) || other.searchQuery == searchQuery)&&const DeepCollectionEquality().equals(other.selectedGenres, selectedGenres)&&(identical(other.selectedFormat, selectedFormat) || other.selectedFormat == selectedFormat)&&(identical(other.selectedCountry, selectedCountry) || other.selectedCountry == selectedCountry)&&(identical(other.selectedAiringStatus, selectedAiringStatus) || other.selectedAiringStatus == selectedAiringStatus)&&const DeepCollectionEquality().equals(other.searchResults, searchResults)&&(identical(other.isSearching, isSearching) || other.isSearching == isSearching)&&(identical(other.selectedSearchOrder, selectedSearchOrder) || other.selectedSearchOrder == selectedSearchOrder)&&(identical(other.selectedSearchSortOption, selectedSearchSortOption) || other.selectedSearchSortOption == selectedSearchSortOption)&&const DeepCollectionEquality().equals(other.effects, effects));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,loggedUser,genresFilters,formatFilters,countryFilters,airingStatusFilters,searchSortOptions,searchSortOrder,searchQuery,const DeepCollectionEquality().hash(selectedGenres),selectedFormat,selectedCountry,selectedAiringStatus,const DeepCollectionEquality().hash(searchResults),selectedSearchOrder,selectedSearchSortOption,const DeepCollectionEquality().hash(effects));
+int get hashCode => Object.hash(runtimeType,loggedUser,genresFilters,formatFilters,countryFilters,airingStatusFilters,searchSortOptions,searchSortOrder,searchQuery,const DeepCollectionEquality().hash(selectedGenres),selectedFormat,selectedCountry,selectedAiringStatus,const DeepCollectionEquality().hash(searchResults),isSearching,selectedSearchOrder,selectedSearchSortOption,const DeepCollectionEquality().hash(effects));
 
 @override
 String toString() {
-  return 'MangaAdvancedSearchState(loggedUser: $loggedUser, genresFilters: $genresFilters, formatFilters: $formatFilters, countryFilters: $countryFilters, airingStatusFilters: $airingStatusFilters, searchSortOptions: $searchSortOptions, searchSortOrder: $searchSortOrder, searchQuery: $searchQuery, selectedGenres: $selectedGenres, selectedFormat: $selectedFormat, selectedCountry: $selectedCountry, selectedAiringStatus: $selectedAiringStatus, searchResults: $searchResults, selectedSearchOrder: $selectedSearchOrder, selectedSearchSortOption: $selectedSearchSortOption, effects: $effects)';
+  return 'MangaAdvancedSearchState(loggedUser: $loggedUser, genresFilters: $genresFilters, formatFilters: $formatFilters, countryFilters: $countryFilters, airingStatusFilters: $airingStatusFilters, searchSortOptions: $searchSortOptions, searchSortOrder: $searchSortOrder, searchQuery: $searchQuery, selectedGenres: $selectedGenres, selectedFormat: $selectedFormat, selectedCountry: $selectedCountry, selectedAiringStatus: $selectedAiringStatus, searchResults: $searchResults, isSearching: $isSearching, selectedSearchOrder: $selectedSearchOrder, selectedSearchSortOption: $selectedSearchSortOption, effects: $effects)';
 }
 
 
@@ -45,7 +47,7 @@ abstract mixin class $MangaAdvancedSearchStateCopyWith<$Res>  {
   factory $MangaAdvancedSearchStateCopyWith(MangaAdvancedSearchState value, $Res Function(MangaAdvancedSearchState) _then) = _$MangaAdvancedSearchStateCopyWithImpl;
 @useResult
 $Res call({
- User loggedUser, (bool, List<String>) genresFilters, (bool, List<String>) formatFilters, (bool, List<String>) countryFilters, (bool, List<String>) airingStatusFilters, (bool, List<String>) searchSortOptions, (bool, List<String>) searchSortOrder, String searchQuery, List<String> selectedGenres, String? selectedFormat, String? selectedCountry, String? selectedAiringStatus, List<Manga> searchResults, String selectedSearchOrder, String selectedSearchSortOption, List<AppEffect> effects
+ User loggedUser, (bool, List<String>) genresFilters, (bool, List<String>) formatFilters, (bool, List<String>) countryFilters, (bool, List<String>) airingStatusFilters, (bool, List<String>) searchSortOptions, (bool, List<String>) searchSortOrder, String searchQuery, List<String> selectedGenres, String? selectedFormat, String? selectedCountry, String? selectedAiringStatus, List<Manga> searchResults, bool isSearching, String selectedSearchOrder, String selectedSearchSortOption, List<AppEffect> effects
 });
 
 
@@ -62,7 +64,7 @@ class _$MangaAdvancedSearchStateCopyWithImpl<$Res>
 
 /// Create a copy of MangaAdvancedSearchState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? loggedUser = null,Object? genresFilters = null,Object? formatFilters = null,Object? countryFilters = null,Object? airingStatusFilters = null,Object? searchSortOptions = null,Object? searchSortOrder = null,Object? searchQuery = null,Object? selectedGenres = null,Object? selectedFormat = freezed,Object? selectedCountry = freezed,Object? selectedAiringStatus = freezed,Object? searchResults = null,Object? selectedSearchOrder = null,Object? selectedSearchSortOption = null,Object? effects = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? loggedUser = null,Object? genresFilters = null,Object? formatFilters = null,Object? countryFilters = null,Object? airingStatusFilters = null,Object? searchSortOptions = null,Object? searchSortOrder = null,Object? searchQuery = null,Object? selectedGenres = null,Object? selectedFormat = freezed,Object? selectedCountry = freezed,Object? selectedAiringStatus = freezed,Object? searchResults = null,Object? isSearching = null,Object? selectedSearchOrder = null,Object? selectedSearchSortOption = null,Object? effects = null,}) {
   return _then(_self.copyWith(
 loggedUser: null == loggedUser ? _self.loggedUser : loggedUser // ignore: cast_nullable_to_non_nullable
 as User,genresFilters: null == genresFilters ? _self.genresFilters : genresFilters // ignore: cast_nullable_to_non_nullable
@@ -77,7 +79,8 @@ as List<String>,selectedFormat: freezed == selectedFormat ? _self.selectedFormat
 as String?,selectedCountry: freezed == selectedCountry ? _self.selectedCountry : selectedCountry // ignore: cast_nullable_to_non_nullable
 as String?,selectedAiringStatus: freezed == selectedAiringStatus ? _self.selectedAiringStatus : selectedAiringStatus // ignore: cast_nullable_to_non_nullable
 as String?,searchResults: null == searchResults ? _self.searchResults : searchResults // ignore: cast_nullable_to_non_nullable
-as List<Manga>,selectedSearchOrder: null == selectedSearchOrder ? _self.selectedSearchOrder : selectedSearchOrder // ignore: cast_nullable_to_non_nullable
+as List<Manga>,isSearching: null == isSearching ? _self.isSearching : isSearching // ignore: cast_nullable_to_non_nullable
+as bool,selectedSearchOrder: null == selectedSearchOrder ? _self.selectedSearchOrder : selectedSearchOrder // ignore: cast_nullable_to_non_nullable
 as String,selectedSearchSortOption: null == selectedSearchSortOption ? _self.selectedSearchSortOption : selectedSearchSortOption // ignore: cast_nullable_to_non_nullable
 as String,effects: null == effects ? _self.effects : effects // ignore: cast_nullable_to_non_nullable
 as List<AppEffect>,
@@ -165,10 +168,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( User loggedUser,  (bool, List<String>) genresFilters,  (bool, List<String>) formatFilters,  (bool, List<String>) countryFilters,  (bool, List<String>) airingStatusFilters,  (bool, List<String>) searchSortOptions,  (bool, List<String>) searchSortOrder,  String searchQuery,  List<String> selectedGenres,  String? selectedFormat,  String? selectedCountry,  String? selectedAiringStatus,  List<Manga> searchResults,  String selectedSearchOrder,  String selectedSearchSortOption,  List<AppEffect> effects)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( User loggedUser,  (bool, List<String>) genresFilters,  (bool, List<String>) formatFilters,  (bool, List<String>) countryFilters,  (bool, List<String>) airingStatusFilters,  (bool, List<String>) searchSortOptions,  (bool, List<String>) searchSortOrder,  String searchQuery,  List<String> selectedGenres,  String? selectedFormat,  String? selectedCountry,  String? selectedAiringStatus,  List<Manga> searchResults,  bool isSearching,  String selectedSearchOrder,  String selectedSearchSortOption,  List<AppEffect> effects)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MangaAdvancedSearchState() when $default != null:
-return $default(_that.loggedUser,_that.genresFilters,_that.formatFilters,_that.countryFilters,_that.airingStatusFilters,_that.searchSortOptions,_that.searchSortOrder,_that.searchQuery,_that.selectedGenres,_that.selectedFormat,_that.selectedCountry,_that.selectedAiringStatus,_that.searchResults,_that.selectedSearchOrder,_that.selectedSearchSortOption,_that.effects);case _:
+return $default(_that.loggedUser,_that.genresFilters,_that.formatFilters,_that.countryFilters,_that.airingStatusFilters,_that.searchSortOptions,_that.searchSortOrder,_that.searchQuery,_that.selectedGenres,_that.selectedFormat,_that.selectedCountry,_that.selectedAiringStatus,_that.searchResults,_that.isSearching,_that.selectedSearchOrder,_that.selectedSearchSortOption,_that.effects);case _:
   return orElse();
 
 }
@@ -186,10 +189,10 @@ return $default(_that.loggedUser,_that.genresFilters,_that.formatFilters,_that.c
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( User loggedUser,  (bool, List<String>) genresFilters,  (bool, List<String>) formatFilters,  (bool, List<String>) countryFilters,  (bool, List<String>) airingStatusFilters,  (bool, List<String>) searchSortOptions,  (bool, List<String>) searchSortOrder,  String searchQuery,  List<String> selectedGenres,  String? selectedFormat,  String? selectedCountry,  String? selectedAiringStatus,  List<Manga> searchResults,  String selectedSearchOrder,  String selectedSearchSortOption,  List<AppEffect> effects)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( User loggedUser,  (bool, List<String>) genresFilters,  (bool, List<String>) formatFilters,  (bool, List<String>) countryFilters,  (bool, List<String>) airingStatusFilters,  (bool, List<String>) searchSortOptions,  (bool, List<String>) searchSortOrder,  String searchQuery,  List<String> selectedGenres,  String? selectedFormat,  String? selectedCountry,  String? selectedAiringStatus,  List<Manga> searchResults,  bool isSearching,  String selectedSearchOrder,  String selectedSearchSortOption,  List<AppEffect> effects)  $default,) {final _that = this;
 switch (_that) {
 case _MangaAdvancedSearchState():
-return $default(_that.loggedUser,_that.genresFilters,_that.formatFilters,_that.countryFilters,_that.airingStatusFilters,_that.searchSortOptions,_that.searchSortOrder,_that.searchQuery,_that.selectedGenres,_that.selectedFormat,_that.selectedCountry,_that.selectedAiringStatus,_that.searchResults,_that.selectedSearchOrder,_that.selectedSearchSortOption,_that.effects);case _:
+return $default(_that.loggedUser,_that.genresFilters,_that.formatFilters,_that.countryFilters,_that.airingStatusFilters,_that.searchSortOptions,_that.searchSortOrder,_that.searchQuery,_that.selectedGenres,_that.selectedFormat,_that.selectedCountry,_that.selectedAiringStatus,_that.searchResults,_that.isSearching,_that.selectedSearchOrder,_that.selectedSearchSortOption,_that.effects);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -206,10 +209,10 @@ return $default(_that.loggedUser,_that.genresFilters,_that.formatFilters,_that.c
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( User loggedUser,  (bool, List<String>) genresFilters,  (bool, List<String>) formatFilters,  (bool, List<String>) countryFilters,  (bool, List<String>) airingStatusFilters,  (bool, List<String>) searchSortOptions,  (bool, List<String>) searchSortOrder,  String searchQuery,  List<String> selectedGenres,  String? selectedFormat,  String? selectedCountry,  String? selectedAiringStatus,  List<Manga> searchResults,  String selectedSearchOrder,  String selectedSearchSortOption,  List<AppEffect> effects)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( User loggedUser,  (bool, List<String>) genresFilters,  (bool, List<String>) formatFilters,  (bool, List<String>) countryFilters,  (bool, List<String>) airingStatusFilters,  (bool, List<String>) searchSortOptions,  (bool, List<String>) searchSortOrder,  String searchQuery,  List<String> selectedGenres,  String? selectedFormat,  String? selectedCountry,  String? selectedAiringStatus,  List<Manga> searchResults,  bool isSearching,  String selectedSearchOrder,  String selectedSearchSortOption,  List<AppEffect> effects)?  $default,) {final _that = this;
 switch (_that) {
 case _MangaAdvancedSearchState() when $default != null:
-return $default(_that.loggedUser,_that.genresFilters,_that.formatFilters,_that.countryFilters,_that.airingStatusFilters,_that.searchSortOptions,_that.searchSortOrder,_that.searchQuery,_that.selectedGenres,_that.selectedFormat,_that.selectedCountry,_that.selectedAiringStatus,_that.searchResults,_that.selectedSearchOrder,_that.selectedSearchSortOption,_that.effects);case _:
+return $default(_that.loggedUser,_that.genresFilters,_that.formatFilters,_that.countryFilters,_that.airingStatusFilters,_that.searchSortOptions,_that.searchSortOrder,_that.searchQuery,_that.selectedGenres,_that.selectedFormat,_that.selectedCountry,_that.selectedAiringStatus,_that.searchResults,_that.isSearching,_that.selectedSearchOrder,_that.selectedSearchSortOption,_that.effects);case _:
   return null;
 
 }
@@ -221,7 +224,7 @@ return $default(_that.loggedUser,_that.genresFilters,_that.formatFilters,_that.c
 
 
 class _MangaAdvancedSearchState extends MangaAdvancedSearchState {
-  const _MangaAdvancedSearchState({required this.loggedUser, this.genresFilters = const (false, <String>[]), this.formatFilters = const (false, <String>[]), this.countryFilters = const (false, <String>[]), this.airingStatusFilters = const (false, <String>[]), this.searchSortOptions = const (false, <String>[]), this.searchSortOrder = const (false, <String>[]), this.searchQuery = '', final  List<String> selectedGenres = const <String>[], this.selectedFormat = null, this.selectedCountry = null, this.selectedAiringStatus = null, final  List<Manga> searchResults = const [], this.selectedSearchOrder = 'Desc', this.selectedSearchSortOption = 'Popularity', final  List<AppEffect> effects = const <AppEffect>[]}): _selectedGenres = selectedGenres,_searchResults = searchResults,_effects = effects,super._();
+  const _MangaAdvancedSearchState({required this.loggedUser, this.genresFilters = const (false, <String>[]), this.formatFilters = const (false, <String>[]), this.countryFilters = const (false, <String>[]), this.airingStatusFilters = const (false, <String>[]), this.searchSortOptions = const (false, <String>[]), this.searchSortOrder = const (false, <String>[]), this.searchQuery = '', final  List<String> selectedGenres = const <String>[], this.selectedFormat = null, this.selectedCountry = null, this.selectedAiringStatus = null, final  List<Manga> searchResults = const [], this.isSearching = false, this.selectedSearchOrder = 'Desc', this.selectedSearchSortOption = 'Popularity', final  List<AppEffect> effects = const <AppEffect>[]}): _selectedGenres = selectedGenres,_searchResults = searchResults,_effects = effects,super._();
   
 
 @override final  User loggedUser;
@@ -249,6 +252,9 @@ class _MangaAdvancedSearchState extends MangaAdvancedSearchState {
   return EqualUnmodifiableListView(_searchResults);
 }
 
+/// True while the results request is in flight, so the screen can paint
+/// the grid placeholder instead of an empty area.
+@override@JsonKey() final  bool isSearching;
 @override@JsonKey() final  String selectedSearchOrder;
 @override@JsonKey() final  String selectedSearchSortOption;
  final  List<AppEffect> _effects;
@@ -269,16 +275,16 @@ _$MangaAdvancedSearchStateCopyWith<_MangaAdvancedSearchState> get copyWith => __
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MangaAdvancedSearchState&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&(identical(other.genresFilters, genresFilters) || other.genresFilters == genresFilters)&&(identical(other.formatFilters, formatFilters) || other.formatFilters == formatFilters)&&(identical(other.countryFilters, countryFilters) || other.countryFilters == countryFilters)&&(identical(other.airingStatusFilters, airingStatusFilters) || other.airingStatusFilters == airingStatusFilters)&&(identical(other.searchSortOptions, searchSortOptions) || other.searchSortOptions == searchSortOptions)&&(identical(other.searchSortOrder, searchSortOrder) || other.searchSortOrder == searchSortOrder)&&(identical(other.searchQuery, searchQuery) || other.searchQuery == searchQuery)&&const DeepCollectionEquality().equals(other._selectedGenres, _selectedGenres)&&(identical(other.selectedFormat, selectedFormat) || other.selectedFormat == selectedFormat)&&(identical(other.selectedCountry, selectedCountry) || other.selectedCountry == selectedCountry)&&(identical(other.selectedAiringStatus, selectedAiringStatus) || other.selectedAiringStatus == selectedAiringStatus)&&const DeepCollectionEquality().equals(other._searchResults, _searchResults)&&(identical(other.selectedSearchOrder, selectedSearchOrder) || other.selectedSearchOrder == selectedSearchOrder)&&(identical(other.selectedSearchSortOption, selectedSearchSortOption) || other.selectedSearchSortOption == selectedSearchSortOption)&&const DeepCollectionEquality().equals(other._effects, _effects));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MangaAdvancedSearchState&&(identical(other.loggedUser, loggedUser) || other.loggedUser == loggedUser)&&(identical(other.genresFilters, genresFilters) || other.genresFilters == genresFilters)&&(identical(other.formatFilters, formatFilters) || other.formatFilters == formatFilters)&&(identical(other.countryFilters, countryFilters) || other.countryFilters == countryFilters)&&(identical(other.airingStatusFilters, airingStatusFilters) || other.airingStatusFilters == airingStatusFilters)&&(identical(other.searchSortOptions, searchSortOptions) || other.searchSortOptions == searchSortOptions)&&(identical(other.searchSortOrder, searchSortOrder) || other.searchSortOrder == searchSortOrder)&&(identical(other.searchQuery, searchQuery) || other.searchQuery == searchQuery)&&const DeepCollectionEquality().equals(other._selectedGenres, _selectedGenres)&&(identical(other.selectedFormat, selectedFormat) || other.selectedFormat == selectedFormat)&&(identical(other.selectedCountry, selectedCountry) || other.selectedCountry == selectedCountry)&&(identical(other.selectedAiringStatus, selectedAiringStatus) || other.selectedAiringStatus == selectedAiringStatus)&&const DeepCollectionEquality().equals(other._searchResults, _searchResults)&&(identical(other.isSearching, isSearching) || other.isSearching == isSearching)&&(identical(other.selectedSearchOrder, selectedSearchOrder) || other.selectedSearchOrder == selectedSearchOrder)&&(identical(other.selectedSearchSortOption, selectedSearchSortOption) || other.selectedSearchSortOption == selectedSearchSortOption)&&const DeepCollectionEquality().equals(other._effects, _effects));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,loggedUser,genresFilters,formatFilters,countryFilters,airingStatusFilters,searchSortOptions,searchSortOrder,searchQuery,const DeepCollectionEquality().hash(_selectedGenres),selectedFormat,selectedCountry,selectedAiringStatus,const DeepCollectionEquality().hash(_searchResults),selectedSearchOrder,selectedSearchSortOption,const DeepCollectionEquality().hash(_effects));
+int get hashCode => Object.hash(runtimeType,loggedUser,genresFilters,formatFilters,countryFilters,airingStatusFilters,searchSortOptions,searchSortOrder,searchQuery,const DeepCollectionEquality().hash(_selectedGenres),selectedFormat,selectedCountry,selectedAiringStatus,const DeepCollectionEquality().hash(_searchResults),isSearching,selectedSearchOrder,selectedSearchSortOption,const DeepCollectionEquality().hash(_effects));
 
 @override
 String toString() {
-  return 'MangaAdvancedSearchState(loggedUser: $loggedUser, genresFilters: $genresFilters, formatFilters: $formatFilters, countryFilters: $countryFilters, airingStatusFilters: $airingStatusFilters, searchSortOptions: $searchSortOptions, searchSortOrder: $searchSortOrder, searchQuery: $searchQuery, selectedGenres: $selectedGenres, selectedFormat: $selectedFormat, selectedCountry: $selectedCountry, selectedAiringStatus: $selectedAiringStatus, searchResults: $searchResults, selectedSearchOrder: $selectedSearchOrder, selectedSearchSortOption: $selectedSearchSortOption, effects: $effects)';
+  return 'MangaAdvancedSearchState(loggedUser: $loggedUser, genresFilters: $genresFilters, formatFilters: $formatFilters, countryFilters: $countryFilters, airingStatusFilters: $airingStatusFilters, searchSortOptions: $searchSortOptions, searchSortOrder: $searchSortOrder, searchQuery: $searchQuery, selectedGenres: $selectedGenres, selectedFormat: $selectedFormat, selectedCountry: $selectedCountry, selectedAiringStatus: $selectedAiringStatus, searchResults: $searchResults, isSearching: $isSearching, selectedSearchOrder: $selectedSearchOrder, selectedSearchSortOption: $selectedSearchSortOption, effects: $effects)';
 }
 
 
@@ -289,7 +295,7 @@ abstract mixin class _$MangaAdvancedSearchStateCopyWith<$Res> implements $MangaA
   factory _$MangaAdvancedSearchStateCopyWith(_MangaAdvancedSearchState value, $Res Function(_MangaAdvancedSearchState) _then) = __$MangaAdvancedSearchStateCopyWithImpl;
 @override @useResult
 $Res call({
- User loggedUser, (bool, List<String>) genresFilters, (bool, List<String>) formatFilters, (bool, List<String>) countryFilters, (bool, List<String>) airingStatusFilters, (bool, List<String>) searchSortOptions, (bool, List<String>) searchSortOrder, String searchQuery, List<String> selectedGenres, String? selectedFormat, String? selectedCountry, String? selectedAiringStatus, List<Manga> searchResults, String selectedSearchOrder, String selectedSearchSortOption, List<AppEffect> effects
+ User loggedUser, (bool, List<String>) genresFilters, (bool, List<String>) formatFilters, (bool, List<String>) countryFilters, (bool, List<String>) airingStatusFilters, (bool, List<String>) searchSortOptions, (bool, List<String>) searchSortOrder, String searchQuery, List<String> selectedGenres, String? selectedFormat, String? selectedCountry, String? selectedAiringStatus, List<Manga> searchResults, bool isSearching, String selectedSearchOrder, String selectedSearchSortOption, List<AppEffect> effects
 });
 
 
@@ -306,7 +312,7 @@ class __$MangaAdvancedSearchStateCopyWithImpl<$Res>
 
 /// Create a copy of MangaAdvancedSearchState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? loggedUser = null,Object? genresFilters = null,Object? formatFilters = null,Object? countryFilters = null,Object? airingStatusFilters = null,Object? searchSortOptions = null,Object? searchSortOrder = null,Object? searchQuery = null,Object? selectedGenres = null,Object? selectedFormat = freezed,Object? selectedCountry = freezed,Object? selectedAiringStatus = freezed,Object? searchResults = null,Object? selectedSearchOrder = null,Object? selectedSearchSortOption = null,Object? effects = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? loggedUser = null,Object? genresFilters = null,Object? formatFilters = null,Object? countryFilters = null,Object? airingStatusFilters = null,Object? searchSortOptions = null,Object? searchSortOrder = null,Object? searchQuery = null,Object? selectedGenres = null,Object? selectedFormat = freezed,Object? selectedCountry = freezed,Object? selectedAiringStatus = freezed,Object? searchResults = null,Object? isSearching = null,Object? selectedSearchOrder = null,Object? selectedSearchSortOption = null,Object? effects = null,}) {
   return _then(_MangaAdvancedSearchState(
 loggedUser: null == loggedUser ? _self.loggedUser : loggedUser // ignore: cast_nullable_to_non_nullable
 as User,genresFilters: null == genresFilters ? _self.genresFilters : genresFilters // ignore: cast_nullable_to_non_nullable
@@ -321,7 +327,8 @@ as List<String>,selectedFormat: freezed == selectedFormat ? _self.selectedFormat
 as String?,selectedCountry: freezed == selectedCountry ? _self.selectedCountry : selectedCountry // ignore: cast_nullable_to_non_nullable
 as String?,selectedAiringStatus: freezed == selectedAiringStatus ? _self.selectedAiringStatus : selectedAiringStatus // ignore: cast_nullable_to_non_nullable
 as String?,searchResults: null == searchResults ? _self._searchResults : searchResults // ignore: cast_nullable_to_non_nullable
-as List<Manga>,selectedSearchOrder: null == selectedSearchOrder ? _self.selectedSearchOrder : selectedSearchOrder // ignore: cast_nullable_to_non_nullable
+as List<Manga>,isSearching: null == isSearching ? _self.isSearching : isSearching // ignore: cast_nullable_to_non_nullable
+as bool,selectedSearchOrder: null == selectedSearchOrder ? _self.selectedSearchOrder : selectedSearchOrder // ignore: cast_nullable_to_non_nullable
 as String,selectedSearchSortOption: null == selectedSearchSortOption ? _self.selectedSearchSortOption : selectedSearchSortOption // ignore: cast_nullable_to_non_nullable
 as String,effects: null == effects ? _self._effects : effects // ignore: cast_nullable_to_non_nullable
 as List<AppEffect>,

@@ -21,6 +21,24 @@ class ExtensionRowSkeleton extends StatelessWidget {
   /// `unyo_extension_button.dart` - rounded-square icon slot edge (52px).
   static const double iconSlotSize = 52;
 
+  /// `unyo_extension_button.dart` - the row is 78 high in the list: the
+  /// 70-high body plus its 8 bottom padding.
+  static const double rowPitch = rowHeight + 8;
+
+  /// How many rows fill [maxHeight]: the skeleton mirrors the list, so it
+  /// covers the viewport instead of guessing a fixed eight. Clamped so a tiny
+  /// or huge window still reads as a list.
+  static int rowsForHeight(
+    double maxHeight, {
+    int minRows = 4,
+    int maxRows = 25,
+  }) {
+    if (!maxHeight.isFinite) {
+      return minRows;
+    }
+    return (maxHeight / rowPitch.h).ceil().clamp(minRows, maxRows);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(

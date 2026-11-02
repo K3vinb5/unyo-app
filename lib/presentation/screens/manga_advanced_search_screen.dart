@@ -8,6 +8,7 @@ import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/media_type.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/domain/entities/list/media_list.dart';
+import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/media_card.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_dropdown.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_multi_select_dropdown.dart';
@@ -189,35 +190,35 @@ class _MangaAdvancedSearchViewState extends State<_MangaAdvancedSearchView> {
             Expanded(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 15.w),
-                child: GridView.builder(
-                  scrollDirection: Axis.vertical,
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 165,
-                    mainAxisExtent: 260,
-                    crossAxisSpacing: 5,
-                    mainAxisSpacing: 15,
+                child: state.isSearching
+                    ? const MediaGridSkeleton()
+                    : GridView.builder(
+                        scrollDirection: Axis.vertical,
+                        // The same delegate the skeleton cells are sized by, so
+                        // a result can never be a different size than its
+                        // placeholder.
+                        gridDelegate: mediaGridDelegate,
+                        itemCount: state.searchResults.length,
+                      itemBuilder:
+                          (context, index) => SizedBox(
+                            width: 165,
+                            child: MediaCard(
+                              title: displayMediaTitle(state.searchResults[index].title),
+                              score: state.searchResults[index].averageScore,
+                              coverImage: state.searchResults[index].coverImage,
+                              onPressed:
+                                  () => context.read<MangaAdvancedSearchCubit>().navigateToMangaDetails(
+                                    context,
+                                    state.searchResults[index],
+                                    const MediaListModel(name: "MangaAdvancedSearch", mediaType: MediaType.manga),
+                                  ),
+                              status: state.searchResults[index].status,
+                              year: state.searchResults[index].startDate,
+                              format: state.searchResults[index].format,
+                              tag: "MangaAdvancedSearch-${state.searchResults[index].id}",
+                            ),
+                          ),
                   ),
-                  itemCount: state.searchResults.length,
-                  itemBuilder:
-                      (context, index) => SizedBox(
-                        width: 165,
-                        child: MediaCard(
-                          title: displayMediaTitle(state.searchResults[index].title),
-                          score: state.searchResults[index].averageScore,
-                          coverImage: state.searchResults[index].coverImage,
-                          onPressed:
-                              () => context.read<MangaAdvancedSearchCubit>().navigateToMangaDetails(
-                                context,
-                                state.searchResults[index],
-                                const MediaListModel(name: "MangaAdvancedSearch", mediaType: MediaType.manga),
-                              ),
-                          status: state.searchResults[index].status,
-                          year: state.searchResults[index].startDate,
-                          format: state.searchResults[index].format,
-                          tag: "MangaAdvancedSearch-${state.searchResults[index].id}",
-                        ),
-                      ),
-                ),
               ),
             ),
           ],

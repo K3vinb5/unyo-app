@@ -9,6 +9,10 @@ import 'package:unyo/presentation/widgets/styled/media_card.dart';
 import 'package:unyo/presentation/widgets/styled/media_list_arrows.dart';
 import 'package:unyo/presentation/widgets/text/media_title_text.dart';
 
+/// The recommendations row of the anime details screen.
+///
+/// The `35.w` details inset and the strip width live in `CardRowFrame.details`,
+/// which the screen wraps around this list and around its placeholder.
 class AnimeRecommendationCardList extends StatelessWidget {
   final void Function(Anime, MediaList) onPressed;
   final String listTitle;
@@ -27,67 +31,64 @@ class AnimeRecommendationCardList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 35.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 0.75.sw,
-            child: Row(
-              mainAxisSize: MainAxisSize.max,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  listTitle,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: ColorScheme.of(context).tertiary,
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 0.75.sw,
+          child: Row(
+            mainAxisSize: MainAxisSize.max,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                listTitle,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: ColorScheme.of(context).tertiary,
                 ),
-                Text(
-                  "  ${animeList.length.toString()} ${context.tr("entries")}",
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.normal,
-                    color: Colors.grey,
-                  ),
+              ),
+              Text(
+                "  ${animeList.length.toString()} ${context.tr("entries")}",
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.normal,
+                  color: Colors.grey,
                 ),
-                const Spacer(),
-                MediaListArrows(
-                  controller: controller,
-                  visible: animeList.length * 144 > 0.75.sw,
-                ),
-              ],
-            ),
+              ),
+              const Spacer(),
+              MediaListArrows(
+                controller: controller,
+                visible: animeList.length * 144 > 0.75.sw,
+              ),
+            ],
           ),
-          SizedBox(height: 10.h,),
-          SizedBox(
-            height: CardRowMetrics.rowHeight,
-            width: 1.sw - 140,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              controller: controller,
-              children: [
-                ...animeList.map(
-                  (anime) => MediaCard(
-                    title: displayMediaTitle(anime.title),
-                    score: anime.averageScore,
-                    coverImage: anime.coverImage,
-                    onPressed: () => onPressed(anime, MediaListModel(name: listTitle, mediaType: MediaType.anime)),
-                    status: anime.status,
-                    year: anime.startDate,
-                    format: anime.format,
-                    tag: "$listTitle-${anime.id}",
-                  ),
+        ),
+        SizedBox(height: 10.h,),
+        SizedBox(
+          height: CardRowMetrics.rowHeight,
+          width: double.infinity,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            controller: controller,
+            children: [
+              ...animeList.map(
+                (anime) => MediaCard(
+                  title: displayMediaTitle(anime.title),
+                  score: anime.averageScore,
+                  coverImage: anime.coverImage,
+                  onPressed: () => onPressed(anime, MediaListModel(name: listTitle, mediaType: MediaType.anime)),
+                  status: anime.status,
+                  year: anime.startDate,
+                  format: anime.format,
+                  tag: "$listTitle-${anime.id}",
                 ),
-                // TODO loadMore Widget
-              ],
-            ),
+              ),
+              // TODO loadMore Widget
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

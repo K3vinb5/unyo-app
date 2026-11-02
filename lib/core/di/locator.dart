@@ -66,6 +66,7 @@ import 'package:unyo/domain/repositories/manga_repository.dart';
 import 'package:unyo/domain/repositories/user_repository.dart';
 import 'package:unyo/domain/repositories/media_id_cache.dart';
 import 'package:unyo/core/services/media/media_id_service.dart';
+import 'package:unyo/core/services/video/video_display_mode_store.dart';
 import 'package:unyo/application/cubits/home_cubit.dart';
 
 final sl = GetIt.instance;
@@ -143,6 +144,12 @@ void setupLocator() async{
     sl<UserRepositoryAnilist>(),
     sl<UserRepositoryLocal>(),
   ));
+  sl.registerLazySingleton<VideoDisplayModeStore>(
+    () => VideoDisplayModeStore(
+      sl<UserRepositoryAnilist>(),
+      sl<UserRepositoryLocal>(),
+    ),
+  );
   sl.registerLazySingleton<AnimeRepositoryAnilist>(() => AnimeRepositoryAnilist());
   sl.registerLazySingleton<MangaRepositoryAnilist>(() => MangaRepositoryAnilist());
   sl.registerLazySingleton<AnimeRepositoryShikimori>(() => AnimeRepositoryShikimori());
@@ -309,6 +316,7 @@ void setupLocator() async{
       sl<ExtensionRepositoryAniyomi>(),
       sl<AnimeRepository>(),
       sl<ReloadNotifier>(),
+      sl<VideoDisplayModeStore>(),
     )
   );
 }

@@ -15,6 +15,7 @@ import 'package:unyo/core/services/api/graphql/graphql_response.dart';
 import 'package:unyo/core/services/api/graphql/graphql_service.dart';
 import 'package:unyo/core/services/api/graphql/queries/shikimori_queries.dart' as shikimori_queries;
 import 'package:unyo/core/services/api/graphql/queries/shikimori_search_parameters.dart';
+import 'package:unyo/core/services/api/shikimori/shikimori_auth_service.dart';
 import 'package:unyo/core/services/api/shikimori/shikimori_user_rate_service.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_manga_details.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_manga_model.dart';
@@ -42,6 +43,9 @@ class MangaRepositoryShikimori with RepositoryMixin implements MangaRepository {
   /// Resolved on first use: the metadata tests build this repository without a
   /// REST list-entry service registered, and no metadata read touches it.
   ShikimoriUserRateService get _userRateService => sl<ShikimoriUserRateService>();
+  /// Resolved lazily: the metadata tests build this repository without the auth
+  /// service registered, and no anonymous read touches it.
+  ShikimoriAuthService get _authService => sl<ShikimoriAuthService>();
   final Logger _logger = sl<Logger>();
 
   /// Genre **name** (lower-cased) → genre id for `genres(entryType: Manga)`.
@@ -51,6 +55,23 @@ class MangaRepositoryShikimori with RepositoryMixin implements MangaRepository {
   /// (`/api/doc` § Requirements), so it goes on every request.
   Map<String, String> get _requestHeaders => config.shikimoriRequestHeaders;
 
+  /// Headers for a document that has to answer *as the logged-in user*.
+  ///
+  /// `shikimoriMangaDetailsQuery` asks for `userRate`, which Shikimori nulls
+  /// without a Bearer token (WP #110). Manga has no other list-entry reader, so
+  /// an anonymous details call is why a manga on the user's list rendered "Add
+  /// To List". Same token policy as the anime repository: send it only when it
+  /// is present and not expired, otherwise keep the anonymous headers so the
+  /// details page still renders.
+  Map<String, String> _userHeaders(User loggedUser) {
+    if (loggedUser is! ShikimoriUserModel || loggedUser.accessToken.isEmpty) return _requestHeaders;
+    if (_authService.isAccessTokenExpired(loggedUser)) {
+      _logger.w("Shikimori access token expired, sending the manga details request anonymously");
+      return _requestHeaders;
+    }
+    return _authService.authorizationHeaders(loggedUser.accessToken);
+  }
+
   @override
   Future<(bool, MangaDetails)> getMangaDetails(Manga selectedManga, User loggedUser, {Service? service}) async {
     _logger.i("Fetching Manga Details from Shikimori for ${selectedManga.title.userPreferred}");
@@ -58,7 +79,7 @@ class MangaRepositoryShikimori with RepositoryMixin implements MangaRepository {
         await _shikimoriGraphQLService.query<MangaDetailsQueryEntity>(
       query: shikimori_queries.shikimoriMangaDetailsQuery,
       fromJson: MangaDetailsQueryEntity.fromJson,
-      headers: _requestHeaders,
+      headers: _userHeaders(loggedUser),
       variables: {"ids": selectedManga.id.toString(), "page": 1, "limit": 20},
     );
     throwIfGraphQlError(mangaDetailsQueryResponse);

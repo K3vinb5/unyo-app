@@ -1,4 +1,5 @@
 export 'hover_animated_container.dart';
+export 'service_badge.dart';
 export 'user_avatar.dart';
 export 'user_avatar_image.dart';
 export 'add_user_avatar.dart';
@@ -12,6 +13,7 @@ export 'media_button.dart';
 export 'media_card.dart';
 export 'anime_card_list.dart';
 export 'manga_card_list.dart';
+export 'card_row_frame.dart';
 export 'media_list_arrows.dart';
 export 'unyo_banner_carousel.dart';
 export 'unyo_episode_button.dart';
