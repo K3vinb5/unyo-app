@@ -15,8 +15,9 @@ abstract final class MediaCardMetrics {
   static const double coverHeight = 200.5;
   static const double coverRadius = 20;
 
-  /// [coverRadius] as a [BorderRadius], so a skeleton can clip its cover stack
-  /// in a `const` tree.
+  /// [coverRadius] as a [BorderRadius] — the value
+  /// `MediaCoverSilhouette` (the one clip shared by the loaded card and its
+  /// skeleton) is built from.
   static const BorderRadius coverBorderRadius = BorderRadius.all(
     Radius.circular(coverRadius),
   );
@@ -30,12 +31,20 @@ abstract final class MediaCardMetrics {
   static const double badgeWidth = 46;
   static const double badgeHeight = 18;
 
-  /// `widgets/styled/media_card.dart` - the badge is a leaf, not a pill: its
-  /// bottom-right corner (50) follows the cover and its top-left corner (50)
-  /// is cut away, so no single uniform radius describes it.
+  /// The scoop on the badge's top-left corner — half of [badgeHeight], i.e. a
+  /// true quarter-round that spans the badge's whole height.
+  ///
+  /// The bottom-right corner is deliberately NOT rounded here: that edge is the
+  /// cover's own 20-radius arc. A second, differently-curved corner inside it
+  /// can never align with the silhouette, so the two antialiased edges left a
+  /// visible step/seam in the corner of every rated card (WP #119). The shared
+  /// cover silhouette (`MediaCoverSilhouette`) carves that edge now.
+  static const double badgeCornerRadius = 9;
+
+  /// The badge is a leaf, not a pill: one corner is cut away and the other
+  /// three are square (the bottom-right is carved by the cover silhouette).
   static const BorderRadius badgeBorderRadius = BorderRadius.only(
-    bottomRight: Radius.circular(50),
-    topLeft: Radius.circular(50),
+    topLeft: Radius.circular(badgeCornerRadius),
   );
 
   /// `widgets/styled/media_card.dart` - the single text line painted inside

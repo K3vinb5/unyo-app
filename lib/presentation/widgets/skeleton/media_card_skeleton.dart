@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_block.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_metrics.dart';
+import 'package:unyo/presentation/widgets/styled/media_cover_silhouette.dart';
 
 /// Mirrors `widgets/styled/media_card.dart` ([MediaCard]): cover, the score
 /// badge on its bottom-right corner, title row and meta row, sized with the
@@ -25,18 +26,20 @@ class MediaCardSkeleton extends StatelessWidget {
         mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Clipped to the cover radius: nothing in the placeholder may paint
-          // outside the loaded cover's silhouette (the score badge used to
-          // poke past its rounded corner).
-          ClipRRect(
-            borderRadius: MediaCardMetrics.coverBorderRadius,
+          // The same single silhouette the loaded card uses: nothing in the
+          // placeholder may paint outside the cover's rounded rectangle (the
+          // score badge used to poke past its corner).
+          MediaCoverSilhouette(
             child: Stack(
               alignment: Alignment.bottomRight,
               children: [
+                // Square on purpose: the silhouette above is the shape. A
+                // second rounded block inside it would antialias the same
+                // edge twice (the #103/#119 drift guard).
                 SkeletonBlock(
                   width: MediaCardMetrics.coverWidth,
                   height: MediaCardMetrics.coverHeight,
-                  borderRadius: MediaCardMetrics.coverRadius,
+                  borderRadius: 0,
                 ),
                 SkeletonBlock(
                   width: MediaCardMetrics.badgeWidth,

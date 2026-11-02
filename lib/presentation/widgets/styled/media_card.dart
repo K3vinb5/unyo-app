@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_metrics.dart';
 import 'package:unyo/presentation/widgets/styled/hover_animated_container.dart';
+import 'package:unyo/presentation/widgets/styled/media_cover_silhouette.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 
@@ -61,19 +62,19 @@ class MediaCard extends StatelessWidget {
                         MediaCardMetrics.coverRadius,
                       ),
                     ),
-                    // Clipped to the cover silhouette: the score badge (and
-                    // anything else painted in the cover stack) must not
-                    // paint over the area the 20-radius corner cuts away.
-                    // The skeleton clips its cover identically.
-                    child: ClipRRect(
-                      borderRadius: MediaCardMetrics.coverBorderRadius,
+                    // The cover silhouette (one clip, shared with the
+                    // skeleton): the score badge (and anything else painted in
+                    // the cover stack) must not paint over the area the
+                    // 20-radius corner cuts away, and it must not bring a
+                    // corner of its own — see MediaCardMetrics.badgeBorderRadius
+                    // (WP #109, #119).
+                    child: MediaCoverSilhouette(
                       child: Stack(
                         children: [
                           Positioned.fill(
                             child: UnyoNetworkImage(
                               url: coverImage,
                               fit: BoxFit.fill,
-                              borderRadius: MediaCardMetrics.coverRadius,
                             ),
                           ),
                           score != 0

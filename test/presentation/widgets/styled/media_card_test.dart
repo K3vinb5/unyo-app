@@ -79,6 +79,35 @@ void main() {
     );
   });
 
+  testWidgets('the badge brings no corner of its own into the silhouette', (
+    tester,
+  ) async {
+    await pumpSkeletonHarness(tester, card());
+
+    // The badge's bottom-right edge IS the cover's 20-radius arc. A radius of
+    // its own can never line up with it, and the two antialiased edges left a
+    // visible step in the corner of every rated card (WP #119).
+    final BoxDecoration decoration =
+        tester.widget<Container>(badge).decoration! as BoxDecoration;
+    final BorderRadius radius = decoration.borderRadius! as BorderRadius;
+    expect(radius.bottomRight, Radius.zero);
+    expect(MediaCardMetrics.badgeBorderRadius.bottomRight, Radius.zero);
+    // Its own scoop is still there, unchanged, on the top-left only.
+    expect(radius.topLeft, const Radius.circular(MediaCardMetrics.badgeCornerRadius));
+  });
+
+  testWidgets('the cover is clipped exactly once', (tester) async {
+    await pumpSkeletonHarness(tester, card());
+
+    // Nested clips at the same radius antialias the arc twice and soften it
+    // into "straight, then a bend" — one silhouette, one clip (WP #119).
+    expect(
+      find.descendant(of: coverClip, matching: coverClip),
+      findsNothing,
+      reason: 'the cover stack must not clip itself a second time',
+    );
+  });
+
   testWidgets('skeleton and card agree on the silhouette', (tester) async {
     await pumpSkeletonHarness(tester, card(score: 0));
     final BorderRadiusGeometry cardRadius = tester
