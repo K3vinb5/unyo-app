@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_block.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_metrics.dart';
+import 'package:unyo/presentation/widgets/styled/media_cover_silhouette.dart';
 
 /// Mirrors `widgets/styled/media_card.dart` ([MediaCard]): cover, the score
 /// badge on its bottom-right corner, title row and meta row, sized with the
@@ -25,25 +26,49 @@ class MediaCardSkeleton extends StatelessWidget {
         mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Clipped to the cover radius: nothing in the placeholder may paint
-          // outside the loaded cover's silhouette (the score badge used to
-          // poke past its rounded corner).
-          ClipRRect(
-            borderRadius: MediaCardMetrics.coverBorderRadius,
-            child: Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                SkeletonBlock(
-                  width: MediaCardMetrics.coverWidth,
-                  height: MediaCardMetrics.coverHeight,
-                  borderRadius: MediaCardMetrics.coverRadius,
-                ),
-                SkeletonBlock(
-                  width: MediaCardMetrics.badgeWidth,
-                  height: MediaCardMetrics.badgeHeight,
-                  shape: MediaCardMetrics.badgeBorderRadius,
-                ),
-              ],
+          // The same single silhouette the loaded card uses: nothing in the
+          // placeholder may paint outside the cover's rounded rectangle (the
+          // score badge used to poke past its corner).
+          //
+          // Pinned to the cover box. Left to the Column's loose constraints,
+          // the badge `Align` below fills the whole card width (152.5), so this
+          // clip came out 12.5 wider than the cover and right-aligned the
+          // square 140-wide block inside it: the right corners followed the
+          // 20-radius arc while the left ones stayed square, and the body sat
+          // 6.25 to the right of the real cover (WP #119 round 6).
+          SizedBox(
+            width: MediaCardMetrics.coverWidth,
+            height: MediaCardMetrics.coverHeight,
+            child: MediaCoverSilhouette(
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  // Square on purpose: the silhouette above is the shape. A
+                  // second rounded block inside it would antialias the same
+                  // edge twice (the #103/#119 drift guard).
+                  SkeletonBlock(
+                    width: MediaCardMetrics.coverWidth,
+                    height: MediaCardMetrics.coverHeight,
+                    borderRadius: 0,
+                  ),
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    // The same flush leaf as the loaded card's pill, in one block:
+                    // the shared `MediaBadgeClipper` fillet merges an opaque badge
+                    // into the cover's arc, but on a flat placeholder it carves a
+                    // notch out of the cover's own outline. The silhouette above
+                    // is the only shape the placeholder needs (WP #119).
+                    child: Padding(
+                      padding: EdgeInsets.all(MediaCardMetrics.badgeInset),
+                      child: SkeletonBlock(
+                        width: MediaCardMetrics.badgeWidth,
+                        height: MediaCardMetrics.badgeHeight,
+                        shape: MediaCardMetrics.badgeBorderRadius,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           SizedBox(
@@ -227,13 +252,15 @@ class MediaGridSkeleton extends StatelessWidget {
   }) {
     final double maxCrossAxisExtent = delegate.maxCrossAxisExtent;
     final double? mainAxisExtent = delegate.mainAxisExtent;
-    if (!size.width.isFinite || !size.height.isFinite || mainAxisExtent == null) {
+    if (!size.width.isFinite ||
+        !size.height.isFinite ||
+        mainAxisExtent == null) {
       return fallbackCellCount;
     }
     final int columns =
         (size.width / (maxCrossAxisExtent + delegate.crossAxisSpacing)).ceil();
-    final int rows =
-        (size.height / (mainAxisExtent + delegate.mainAxisSpacing)).ceil();
+    final int rows = (size.height / (mainAxisExtent + delegate.mainAxisSpacing))
+        .ceil();
     return (columns * rows).clamp(minCellCount, maxCellCount);
   }
 
@@ -243,9 +270,7 @@ class MediaGridSkeleton extends StatelessWidget {
       builder: (BuildContext context, BoxConstraints constraints) {
         final int count =
             itemCount ??
-            cellsForSize(
-              Size(constraints.maxWidth, constraints.maxHeight),
-            );
+            cellsForSize(Size(constraints.maxWidth, constraints.maxHeight));
         return GridView.builder(
           padding: EdgeInsets.zero,
           physics: const NeverScrollableScrollPhysics(),

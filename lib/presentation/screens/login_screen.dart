@@ -91,6 +91,13 @@ class _LoginViewState extends State<_LoginView> {
                   mainAxisSize: MainAxisSize.max,
                   children: [
                     if (state.isLoading)
+                      // Three placeholders, deliberately not one per user: the
+                      // avatar row is exactly the user list, and that list only
+                      // exists inside the three user sources (two Hive boxes
+                      // opened by the fetch itself, plus a stubbed local repo).
+                      // There is no count to read before the fetch settles, so
+                      // the placeholder keeps the shape of a small account list
+                      // instead of guessing a number (WP #119 round 4).
                       ...List.generate(
                         3,
                         // Mirrors UserAvatar: 160.h circle + name, inside the

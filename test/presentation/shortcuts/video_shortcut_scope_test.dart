@@ -100,6 +100,58 @@ void main() {
     expect(commands.togglePlayCalls, 0);
   });
 
+  testWidgets('a click that orphans the keyboard does not kill the shortcuts (WP #119)', (
+    tester,
+  ) async {
+    await pumpScope(tester, const SizedBox.expand());
+    expect(
+      FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<VideoShortcutScope>(),
+      isNotNull,
+      reason: 'the video screen owns the keyboard on entry',
+    );
+
+    // What pointer interaction did on the real screen (WP #116 proof): the
+    // primary focus ends up back on the root scope — a control took it, was
+    // rebuilt away, or the click never gave it to anyone.
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump();
+    expect(
+      FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<VideoShortcutScope>(),
+      isNotNull,
+      reason: 'the screen takes an orphaned keyboard back',
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
+    await tester.pump();
+    expect(commands.togglePlayCalls, 1);
+  });
+
+  testWidgets('reclaimed keyboard still leaves a dialog alone', (tester) async {
+    await pumpScope(
+      tester,
+      Builder(
+        builder: (context) => GestureDetector(
+          key: const ValueKey('open-dialog'),
+          behavior: HitTestBehavior.opaque,
+          onTap: () => showDialog<void>(
+            context: context,
+            builder: (_) => const AlertDialog(title: Text('blocking dialog')),
+          ),
+          child: const SizedBox.expand(),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('open-dialog')));
+    await tester.pumpAndSettle();
+
+    // The dialog's scope is a legitimate owner: never stolen back.
+    expect(
+      FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<VideoShortcutScope>(),
+      isNull,
+    );
+  });
+
   testWidgets('the handler is not consulted outside the scope', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(home: Scaffold(body: SizedBox.expand())),

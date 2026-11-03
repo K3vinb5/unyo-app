@@ -1,8 +1,21 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:unyo/presentation/widgets/skeleton/media_badge_clipper.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_metrics.dart';
 import 'package:unyo/presentation/widgets/styled/hover_animated_container.dart';
+import 'package:unyo/presentation/widgets/styled/media_cover_silhouette.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
+
+/// Format labels too long for the meta row at its normal size.
+const Set<String> _compactFormatLabels = <String>{
+  "TV_SHORT",
+  "SPECIAL",
+  "MANGA",
+  "ONE_SHOT",
+  "MOVIE",
+  "NOVEL",
+  "MUSIC",
+};
 
 class MediaCard extends StatelessWidget {
   final String title;
@@ -38,7 +51,6 @@ class MediaCard extends StatelessWidget {
         children: [
           UnyoInkWell(
             onTap: onPressed,
-            // TODO maybe Stack over HoverAnimatedContainer
             child: Stack(
               alignment: Alignment.bottomRight,
               children: [
@@ -61,95 +73,105 @@ class MediaCard extends StatelessWidget {
                         MediaCardMetrics.coverRadius,
                       ),
                     ),
-                    // Clipped to the cover silhouette: the score badge (and
-                    // anything else painted in the cover stack) must not
-                    // paint over the area the 20-radius corner cuts away.
-                    // The skeleton clips its cover identically.
-                    child: ClipRRect(
-                      borderRadius: MediaCardMetrics.coverBorderRadius,
+                    // The cover silhouette (one clip, shared with the
+                    // skeleton): nothing painted in the cover stack may spill
+                    // over the area the 20-radius corner cuts away. The score
+                    // badge floats inside it by `badgeInset`, so its stadium
+                    // ends are never carved by that corner (WP #109, #119).
+                    child: MediaCoverSilhouette(
                       child: Stack(
                         children: [
                           Positioned.fill(
                             child: UnyoNetworkImage(
                               url: coverImage,
                               fit: BoxFit.fill,
-                              borderRadius: MediaCardMetrics.coverRadius,
                             ),
                           ),
                           score != 0
                               ? Align(
                                   alignment: Alignment.bottomRight,
-                                  child: Opacity(
-                                    opacity: 0.8,
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: ColorScheme.of(context).primary,
-                                        borderRadius:
-                                            MediaCardMetrics.badgeBorderRadius,
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6.0,
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              "  ${(score / 10)}",
-                                              style: TextStyle(
-                                                color:
-                                                    ColorScheme.of(context)
-                                                            .primary
-                                                            .computeLuminance() >
-                                                        0.2
-                                                    ? Colors.black.withValues(
-                                                        alpha: 0.8,
-                                                      )
-                                                    : Colors.white.withValues(
-                                                        alpha: 0.8,
-                                                      ),
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                  // Flush in the cover's bottom-right corner,
+                                  // like the original leaf: MediaBadgeClipper
+                                  // hands the badge's right end over to the
+                                  // cover's own 20-radius arc, so nothing is
+                                  // carved into a square step (WP #119).
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(
+                                      MediaCardMetrics.badgeInset,
+                                    ),
+                                    child: Opacity(
+                                      opacity: 0.8,
+                                      child: ClipPath(
+                                        clipper: const MediaBadgeClipper(),
+                                        child: ColoredBox(
+                                          color: ColorScheme.of(
+                                            context,
+                                          ).primary,
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6.0,
                                             ),
-                                            Icon(
-                                              Icons.star,
-                                              color:
-                                                  ColorScheme.of(context)
-                                                          .primary
-                                                          .computeLuminance() >
-                                                      0.2
-                                                  ? Colors.black.withValues(
-                                                      alpha: 0.8,
-                                                    )
-                                                  : Colors.white.withValues(
-                                                      alpha: 0.8,
-                                                    ),
-                                              size: 15,
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  "  ${(score / 10)}",
+                                                  style: TextStyle(
+                                                    color:
+                                                        ColorScheme.of(context)
+                                                                .primary
+                                                                .computeLuminance() >
+                                                            0.2
+                                                        ? Colors.black
+                                                              .withValues(
+                                                                alpha: 0.8,
+                                                              )
+                                                        : Colors.white
+                                                              .withValues(
+                                                                alpha: 0.8,
+                                                              ),
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                Icon(
+                                                  Icons.star,
+                                                  color:
+                                                      ColorScheme.of(context)
+                                                              .primary
+                                                              .computeLuminance() >
+                                                          0.2
+                                                      ? Colors.black.withValues(
+                                                          alpha: 0.8,
+                                                        )
+                                                      : Colors.white.withValues(
+                                                          alpha: 0.8,
+                                                        ),
+                                                  size: 15,
+                                                ),
+                                              ],
                                             ),
-                                          ],
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
                                 )
                               : const SizedBox.shrink(),
-                          SizedBox(
-                            // width: 128.w,
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: 5.0,
-                                left: 5.0,
-                              ),
-                              child: Align(
-                                alignment: Alignment.bottomLeft,
-                                child: CircleAvatar(
-                                  backgroundColor: status == "RELEASING"
-                                      ? Colors.green
-                                      : status == "NOT_YET_RELEASED"
-                                      ? Colors.amber
-                                      : Colors.transparent,
-                                  maxRadius: 6,
-                                ),
+                          // Release-status dot, bottom-left of the cover.
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: 5.0,
+                              left: 5.0,
+                            ),
+                            child: Align(
+                              alignment: Alignment.bottomLeft,
+                              child: CircleAvatar(
+                                backgroundColor: status == "RELEASING"
+                                    ? Colors.green
+                                    : status == "NOT_YET_RELEASED"
+                                    ? Colors.amber
+                                    : Colors.transparent,
+                                maxRadius: 6,
                               ),
                             ),
                           ),
@@ -213,17 +235,7 @@ class MediaCard extends StatelessWidget {
                         context,
                       ).tertiary.withValues(alpha: 0.8),
                       overflow: TextOverflow.ellipsis,
-                      fontSize:
-                          format == "TV_SHORT" ||
-                              format == "SPECIAL" ||
-                              format == "MANGA" ||
-                              format == "ONE_SHOT" ||
-                              format == "MOVIE" ||
-                              format == "NOVEL" ||
-                              format == "ONE_SHOT" ||
-                              format == "MUSIC"
-                          ? 8
-                          : 14,
+                      fontSize: _compactFormatLabels.contains(format) ? 8 : 14,
                     ),
                   ),
                   Icon(

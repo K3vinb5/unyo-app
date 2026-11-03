@@ -15,8 +15,9 @@ abstract final class MediaCardMetrics {
   static const double coverHeight = 200.5;
   static const double coverRadius = 20;
 
-  /// [coverRadius] as a [BorderRadius], so a skeleton can clip its cover stack
-  /// in a `const` tree.
+  /// [coverRadius] as a [BorderRadius] — the value
+  /// `MediaCoverSilhouette` (the one clip shared by the loaded card and its
+  /// skeleton) is built from.
   static const BorderRadius coverBorderRadius = BorderRadius.all(
     Radius.circular(coverRadius),
   );
@@ -30,13 +31,36 @@ abstract final class MediaCardMetrics {
   static const double badgeWidth = 46;
   static const double badgeHeight = 18;
 
-  /// `widgets/styled/media_card.dart` - the badge is a leaf, not a pill: its
-  /// bottom-right corner (50) follows the cover and its top-left corner (50)
-  /// is cut away, so no single uniform radius describes it.
+  /// Radius of the badge's leaf corners — the original pre-#119 value.
+  ///
+  /// Far larger than [badgeHeight] on purpose: the renderer clamps it to the
+  /// box, so the top-left corner becomes one generous sweep from the top edge
+  /// down to the bottom-left point. The bottom-right corner is the same radius,
+  /// i.e. big enough to follow the cover's own corner arc.
+  static const double badgeCornerRadius = 50;
+
+  /// The leaf: [badgeCornerRadius] top-left and bottom-right, square
+  /// bottom-left. The top-right is deliberately *not* stated here — it has to
+  /// line up with the cover's arc, which depends on where the badge sits, so
+  /// `MediaBadgeClipper` builds the whole outline instead.
   static const BorderRadius badgeBorderRadius = BorderRadius.only(
-    bottomRight: Radius.circular(50),
-    topLeft: Radius.circular(50),
+    topLeft: Radius.circular(badgeCornerRadius),
+    bottomRight: Radius.circular(badgeCornerRadius),
   );
+
+  /// Radius of the fillet that hands the badge's top edge over to the cover's
+  /// [coverRadius] bottom-right arc.
+  ///
+  /// The badge is flush in the corner (no inset) so it reads as part of the
+  /// card, but a square top-right then ends in a step where the flat top edge
+  /// meets the near-vertical arc — the pre-#119 glitch. The fillet is tangent
+  /// to both the top edge and the arc, so the outline is one continuous curve
+  /// ending on the cover's corner.
+  static const double badgeMergeRadius = 4;
+
+  /// The badge sits flush at the cover's bottom-right corner: the original
+  /// leaf placement, restored after the round-3 floating capsule.
+  static const double badgeInset = 0;
 
   /// `widgets/styled/media_card.dart` - the single text line painted inside
   /// [titleRowHeight] and [metaRowHeight]; a pill the size of the whole row

@@ -18,12 +18,12 @@ import 'package:unyo/presentation/drawers/episode_list_drawer.dart';
 import 'package:unyo/presentation/video/video_player_interaction.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_fade_overlay.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_bottom_status.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_video_centre_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_header_controls.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_list_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_volume_button.dart';
 import 'package:unyo/presentation/widgets/text/media_title_text.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
-import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 
 class UnyoVideoControls extends StatefulWidget {
   final VideoCubit videoCubit;
@@ -102,6 +102,19 @@ class UnyoVideoControls extends StatefulWidget {
   static String videoDisplayModeTooltip(VideoDisplayMode mode) =>
       '${videoDisplayModeLabel(mode)} — click for ${videoDisplayModeLabel(nextVideoDisplayMode(mode))}';
 
+  /// The pointer the picture area advertises.
+  ///
+  /// The video canvas never shows a click cursor: a surface click is a hidden
+  /// affordance, not something the pointer should promise (the user's design
+  /// call). While playing a surface click still pauses the frame, but the
+  /// cursor stays the default arrow instead of turning into a hand, exactly
+  /// like while paused (WP #119). While the bar is hidden the pointer is
+  /// hidden with it.
+  static MouseCursor surfaceCursor({required bool controlsVisible}) {
+    if (!controlsVisible) return SystemMouseCursors.none;
+    return SystemMouseCursors.basic;
+  }
+
   static String _trackLabel(ext.Track track) =>
       '${track.lang}${track.embedded ? ' - Embedded' : ''}';
 
@@ -130,7 +143,6 @@ class UnyoVideoControls extends StatefulWidget {
 class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProviderStateMixin {
   late AnimationController _controller;
   late Timer _refreshTimer;
-  late VideoService _videoService;
 
   bool _isDragging = false;
   double _dragValue = 0.0;
@@ -142,25 +154,46 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
   static const double _bottomBandHeight = 150;
   static const double _statusSlotHeight = 45;
 
+  /// How long the pause glyph takes to morph between play and pause.
+  static const Duration _glyphMorphDuration = Duration(milliseconds: 400);
+
+  /// The three large centre controls (back 30, play/pause, forward 30) size
+  /// their button and their glyph identically.
+  double get _centreIconSize => 80.w.clamp(80, 100);
+
   /// The shared interaction path. Visibility, the 4 s auto-hide timer and the
   /// player command all live there, so a keyboard shortcut and a click on this
   /// bar produce the exact same result (WP #116). This widget only listens.
   VideoPlayerInteraction get _interaction => widget.interaction;
+
+  /// The pause glyph's progress: 1 = pause bars, 0 = play triangle. It is
+  /// retargeted only from [_onPlaybackChanged], i.e. from the player's own
+  /// state change — never from the method that raised it — so every trigger
+  /// path (mouse, keyboard, MPRIS/audio_service, end of media) animates.
+  bool get _isPlaying => _interaction.isPlaying;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400), // Adjust the duration as needed
+      duration: _glyphMorphDuration,
     );
-    _controller.animateTo(1.0);
-    _videoService = widget.videoService;
+    // No morph on mount: the glyph starts on the state the player is in.
+    _controller.value = _isPlaying ? 1.0 : 0.0;
     _refreshTimer = _progressTimer();
     _interaction.addListener(_onInteractionChanged);
+    _interaction.playing.addListener(_onPlaybackChanged);
   }
 
   void _onInteractionChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// The one reaction to a playback-state change, whatever caused it.
+  void _onPlaybackChanged() {
+    _controller.animateTo(_interaction.playing.value ? 1.0 : 0.0);
+    _restartProgressTimer();
     if (mounted) setState(() {});
   }
 
@@ -168,46 +201,30 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
   /// part of the visibility path: the fade is driven by the interaction's own
   /// listener, so this 100 ms tick can never delay it (WP #116).
   Timer _progressTimer() => Timer.periodic(const Duration(milliseconds: 100), (_) {
-    if (mounted && _videoService.isPlaying) {
+    if (mounted && widget.videoService.isPlaying) {
       setState(() {});
     }
   });
 
-  void playVideo() {
-    if (_videoService.isPlaying) return;
-    _interaction.play();
-    _syncPlaybackChrome();
-  }
-
-  void pauseVideo() {
-    if (!_videoService.isPlaying) return;
-    _interaction.pause();
-    _syncPlaybackChrome();
-  }
-
-  void togglePlayPause() {
-    _interaction.togglePlay();
-    _syncPlaybackChrome();
-  }
-
-  /// Restarts the progress tick and the centre play/pause glyph for the new
-  /// playback state. Controls visibility is intentionally NOT touched here.
-  void _syncPlaybackChrome() {
+  /// Tick rate follows playback: the position advances only while playing, so
+  /// that is the only state that needs the 100 ms repaint (a seek repaints
+  /// through its own `setState`).
+  void _restartProgressTimer() {
     _refreshTimer.cancel();
-    _refreshTimer = _videoService.isPlaying
-        ? _progressTimer()
-        : Timer.periodic(const Duration(milliseconds: 1000), (_) {
-            if (mounted && _videoService.isPlaying) {
-              setState(() {});
-            }
-          });
-    _controller.animateTo(_videoService.isPlaying ? 1.0 : 0.0);
-    if (mounted) setState(() {});
+    if (_isPlaying) _refreshTimer = _progressTimer();
   }
+
+  void playVideo() {
+    if (_isPlaying) return;
+    _interaction.play();
+  }
+
+  void togglePlayPause() => _interaction.togglePlay();
 
   @override
   void dispose() {
     _interaction.removeListener(_onInteractionChanged);
+    _interaction.playing.removeListener(_onPlaybackChanged);
     _refreshTimer.cancel();
     super.dispose();
   }
@@ -220,8 +237,8 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
     final int playlistIndex = state.videoInfo.playlistIndex;
     final int nextIndex = playlistIndex + 1;
     final bool upNextVisible = shouldShowUpNextCard(
-      position: _videoService.position,
-      duration: _videoService.duration,
+      position: widget.videoService.position,
+      duration: widget.videoService.duration,
       playlistIndex: playlistIndex,
       episodeCount: state.extensionEpisodeResults.length,
       dismissedPlaylistIndex: state.upNextDismissedPlaylistIndex,
@@ -276,20 +293,24 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
       value: widget.videoCubit,
       child: BlocBuilder<VideoCubit, VideoState>(
         builder: (context, state) {
-          return !_videoService.isBuffering
+          return !widget.videoService.isBuffering
               ? ListenableBuilder(
                   listenable: _interaction,
                   builder: (context, _) => MouseRegion(
                     onHover: (event) => _interaction.reveal(),
-                    cursor: _interaction.controlsVisible ? SystemMouseCursors.basic : SystemMouseCursors.none,
+                    cursor: UnyoVideoControls.surfaceCursor(
+                      controlsVisible: _interaction.controlsVisible,
+                    ),
                     child: Stack(
                       children: [
-                        // Screen Gestures — a tap on the video surface toggles the
-                        // bar; it never falls through to a hidden control.
+                        // Screen Gestures — a click on the picture pauses and
+                        // reveals the bar while playing, and does nothing at
+                        // all while paused (resuming is the centre glyph's or
+                        // the play button's job, WP #119).
                         Positioned.fill(
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
-                            onTap: _interaction.toggleControls,
+                            onTap: _interaction.handleSurfaceTap,
                           ),
                         ),
                         // Everything that fades with the bar. Hit testing is
@@ -307,54 +328,37 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                   const UnyoFadeOverlay(isTop: true),
                                   const UnyoFadeOverlay(isTop: false),
                                   // Video Header Controls
-                                  UnyoVideoHeaderControls(cubit: widget.videoCubit, videoService: _videoService),
+                                  UnyoVideoHeaderControls(cubit: widget.videoCubit, videoService: widget.videoService),
                                   // Video Controls Overlay
                                   AnimatedOpacity(
                                     duration: const Duration(milliseconds: 500),
-                                    opacity: _videoService.isPlaying ? 0 : 1,
+                                    opacity: _isPlaying ? 0 : 1,
                                     child: Align(
                                       alignment: Alignment.center,
                                       child: IgnorePointer(
-                                        ignoring: _videoService.isPlaying,
+                                        ignoring: _isPlaying,
                                         child: Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
                                             IconButton(
                                               onPressed: () {
                                                 _interaction.act(
-                                                  () => _videoService.reverse(const Duration(seconds: 30)),
+                                                  () => widget.videoService.reverse(const Duration(seconds: 30)),
                                                 );
                                                 setState(() {});
                                               },
-                                              iconSize: 80.w.clamp(80, 100),
+                                              iconSize: _centreIconSize,
                                               icon: Tooltip(
                                                 waitDuration: const Duration(milliseconds: 2000),
                                                 textAlign: TextAlign.center,
                                                 message: "Reverse 30s",
-                                                child: Icon(Icons.fast_rewind_rounded, color: Colors.white, size: 80.w.clamp(80, 100)),
+                                                child: Icon(Icons.fast_rewind_rounded, color: Colors.white, size: _centreIconSize),
                                               ),
                                             ),
                                             SizedBox(width: 20.w),
-                                            Material(
-                                              color: Colors.transparent,
-                                              child: Tooltip(
-                                                waitDuration: const Duration(milliseconds: 2000),
-                                                textAlign: TextAlign.center,
-                                                message: "Resume Play",
-                                                child: UnyoInkWell(
-                                                  onTap: () => playVideo(),
-                                                  // highlightColor: Colors.white12,
-                                                  hoverColor: Colors.white10,
-                                                  splashColor: Colors.white12,
-                                                  borderRadius: BorderRadius.circular(60.w),
-                                                  child: AnimatedIcon(
-                                                    icon: AnimatedIcons.play_pause,
-                                                    size: 85.w.clamp(85, 110),
-                                                    color: Colors.white,
-                                                    progress: _controller,
-                                                  ),
-                                                ),
-                                              ),
+                                            UnyoVideoCentreButton(
+                                              onPressed: playVideo,
+                                              progress: _controller,
                                             ),
                                             SizedBox(width: 20.w),
                                             Tooltip(
@@ -362,14 +366,14 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                               textAlign: TextAlign.center,
                                               message: "Forward 30s",
                                               child: IconButton(
-                                                iconSize: 80.w.clamp(80, 100),
+                                                iconSize: _centreIconSize,
                                                 onPressed: () {
                                                   _interaction.act(
-                                                    () => _videoService.forward(const Duration(seconds: 30)),
+                                                    () => widget.videoService.forward(const Duration(seconds: 30)),
                                                   );
                                                   setState(() {});
                                                 },
-                                                icon: Icon(Icons.fast_forward_rounded, color: Colors.white, size: 80.w.clamp(80, 100)),
+                                                icon: Icon(Icons.fast_forward_rounded, color: Colors.white, size: _centreIconSize),
                                               ),
                                             ),
                                           ],
@@ -396,7 +400,7 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                   Align(
                                     alignment: Alignment.bottomCenter,
                                     child: SizedBox(
-                                      height: 150,
+                                      height: _bottomBandHeight,
                                       child: Column(
                                         children: [
                                           // The status slot (skip pill / up-next
@@ -413,7 +417,7 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                 child: Text(
                                                   _isDragging
                                                       ? Duration(milliseconds: _dragValue.toInt()).toString().substring(0, 7)
-                                                      : _videoService.position.toString().substring(0, 7),
+                                                      : widget.videoService.position.toString().substring(0, 7),
                                                   textAlign: TextAlign.center,
                                                   style: const TextStyle(
                                                     color: Colors.white,
@@ -427,15 +431,15 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                   height: 40,
                                                   child: Slider(
                                                     min: 0,
-                                                    max: _videoService.duration.inMilliseconds.toDouble(),
+                                                    max: widget.videoService.duration.inMilliseconds.toDouble(),
                                                     value: _isDragging
                                                         ? _dragValue
-                                                        : _videoService.position.inMilliseconds.toDouble(),
+                                                        : widget.videoService.position.inMilliseconds.toDouble(),
                                                     label: _isDragging
                                                         ? TextUtils.formatMilliseconds(_dragValue.toInt())
-                                                        : _videoService.formattedPosition,
-                                                    divisions: _videoService.duration.inMilliseconds.toDouble() > 0
-                                                        ? _videoService.duration.inMilliseconds
+                                                        : widget.videoService.formattedPosition,
+                                                    divisions: widget.videoService.duration.inMilliseconds.toDouble() > 0
+                                                        ? widget.videoService.duration.inMilliseconds
                                                         : null,
                                                     onChanged: (value) {
                                                       // Dragging is a hold: the bar
@@ -458,7 +462,7 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                               SizedBox(
                                                 width: 75,
                                                 child: Text(
-                                                  _videoService.duration.toString().substring(0, 7),
+                                                  widget.videoService.duration.toString().substring(0, 7),
                                                   style: const TextStyle(
                                                     color: Colors.white,
                                                     fontSize: 16,
@@ -479,18 +483,18 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                 children: [
                                                   SizedBox(width: 10.w),
                                                   Tooltip(
-                                                    message: "${_videoService.isPlaying ? "Pause" : "Play"} Video",
+                                                    message: "${_isPlaying ? "Pause" : "Play"} Video",
                                                     child: IconButton(
                                                       onPressed: () => togglePlayPause(),
                                                       icon: Icon(
                                                         size: 27,
-                                                        _videoService.isPlaying
+                                                        _isPlaying
                                                             ? Icons.pause_rounded
                                                             : Icons.play_arrow_rounded,
                                                       ),
                                                     ),
                                                   ),
-                                                  UnyoVolumeButton(videoService: _videoService),
+                                                  UnyoVolumeButton(videoService: widget.videoService),
                                                 ],
                                               ),
                                               // Right Aligned
@@ -501,33 +505,33 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                     tooltip: "Select Audio Track",
                                                     icon: const Icon(Icons.audiotrack_rounded, size: 27),
                                                     onSelected: (int index) {
-                                                      _videoService.setAudioTrack(index);
+                                                      widget.videoService.setAudioTrack(index);
                                                       _interaction.reveal();
                                                       setState(() {});
                                                     },
                                                     itemBuilder: (BuildContext context) => UnyoVideoControls.buildAudioMenuItems(
-                                                      audios: _videoService.audios,
-                                                      activeIndex: _videoService.audioIndex,
+                                                      audios: widget.videoService.audios,
+                                                      activeIndex: widget.videoService.audioIndex,
                                                     ),
                                                   ),
                                                   PopupMenuButton<int>(
                                                     tooltip: "Select Subtitle Track",
                                                     icon: const Icon(Icons.subtitles_rounded, size: 27),
                                                     onSelected: (int index) {
-                                                      _videoService.setSubtitle(index);
+                                                      widget.videoService.setSubtitle(index);
                                                       _interaction.reveal();
                                                       setState(() {});
                                                     },
                                                     itemBuilder: (BuildContext context) => UnyoVideoControls.buildSubtitleMenuItems(
-                                                      subtitles: _videoService.subtitles,
-                                                      activeIndex: _videoService.subtitleIndex,
+                                                      subtitles: widget.videoService.subtitles,
+                                                      activeIndex: widget.videoService.subtitleIndex,
                                                     ),
                                                   ),
                                                   PopupMenuButton<int>(
                                                     tooltip: "Select Video Server",
                                                     icon: const Icon(Icons.dns_rounded, size: 27),
                                                     onSelected: (int index) {
-                                                      _videoService.swapVideoUrl(index);
+                                                      widget.videoService.swapVideoUrl(index);
                                                       _interaction.reveal();
                                                       setState(() {});
                                                     },
@@ -548,7 +552,7 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                                 overflow: TextOverflow.ellipsis,
                                                               ),
                                                             ),
-                                                            _videoService.videoIndex == index
+                                                            widget.videoService.videoIndex == index
                                                                 ? const Padding(
                                                                   padding: EdgeInsets.only(left: 12.0),
                                                                   child: Icon(Icons.check_rounded, size: 16),
@@ -597,15 +601,15 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                     ),
                                                   ),
                                                   Tooltip(
-                                                    message: "${_videoService.isFullscreen ? "Disable" : "Enable"} Fullscreen",
+                                                    message: "${widget.videoService.isFullscreen ? "Disable" : "Enable"} Fullscreen",
                                                     child: IconButton(
                                                       onPressed: () {
-                                                        _interaction.setFullscreen(!_videoService.isFullscreen);
+                                                        _interaction.setFullscreen(!widget.videoService.isFullscreen);
                                                         setState(() {});
                                                       },
                                                       icon: Icon(
                                                         size: 27,
-                                                        _videoService.isFullscreen
+                                                        widget.videoService.isFullscreen
                                                             ? Icons.fullscreen_exit_rounded
                                                             : Icons.fullscreen_rounded,
                                                       ),
@@ -641,7 +645,7 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                 )
               : Stack(
                   children: [
-                    UnyoVideoHeaderControls(cubit: widget.videoCubit, videoService: _videoService),
+                    UnyoVideoHeaderControls(cubit: widget.videoCubit, videoService: widget.videoService),
                     Align(
                       alignment: Alignment.center,
                       child: Center(

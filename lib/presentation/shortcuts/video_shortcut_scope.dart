@@ -13,7 +13,9 @@ import 'package:unyo/presentation/shortcuts/video_shortcuts.dart';
 ///   event chain only while the video route is the active one;
 /// - a modal route above the video screen (any dialog, including the episode
 ///   drawer) or a focused text field [EditableText] short-circuits every intent;
-/// - [enabled] is false while the loading/error overlay is up.
+/// - [enabled] is false while the loading/error overlay is up;
+/// - the screen takes the keyboard back when it is left with nobody holding it
+///   (WP #119, defect #119) — see [_VideoShortcutScopeState._reclaimKeyboard].
 class VideoShortcutScope extends StatefulWidget {
   const VideoShortcutScope({
     super.key,
@@ -31,8 +33,11 @@ class VideoShortcutScope extends StatefulWidget {
 }
 
 class _VideoShortcutScopeState extends State<VideoShortcutScope> {
-  late Map<ShortcutActivator, Intent> _shortcuts;
+  late final Map<ShortcutActivator, Intent> _shortcuts;
   late Map<Type, Action<Intent>> _actions;
+
+  /// Owned here (instead of an implicit node) so focus loss can be repaired.
+  final FocusNode _focusNode = FocusNode(debugLabel: 'video shortcut scope');
 
   @override
   void initState() {
@@ -42,6 +47,57 @@ class _VideoShortcutScopeState extends State<VideoShortcutScope> {
       if (!_canHandle()) return false;
       return widget.handler.handle(intent);
     });
+    FocusManager.instance.addListener(_reclaimKeyboard);
+  }
+
+  @override
+  void dispose() {
+    FocusManager.instance.removeListener(_reclaimKeyboard);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  /// Takes the keyboard back whenever nothing in this screen — and nothing
+  /// above it — owns it.
+  ///
+  /// Autofocus fires once per node, so before this anything that moved the
+  /// primary focus away from the video screen took the shortcuts with it for
+  /// the rest of the route's life: a click that focused a control, a control
+  /// that was then unmounted by a rebuild, or any path that handed the focus
+  /// back to the route/root scope (measured in the WP #116 proof,
+  /// `research/unyo-116-video-shortcuts-proof/logs/player-states.txt`: after a
+  /// few pointer clicks `ext.unyo.focus` reported `debugLabel: "Root Focus
+  /// Scope", inScope: false` and Space/K were dropped from then on).
+  ///
+  /// "Orphaned" is precise: the primary focus sits on an element that
+  /// *encloses* this screen (the route's modal scope, the root scope) or on
+  /// nothing at all. A dialog, the episode drawer, another route or a focused
+  /// text field lives in a different subtree and keeps what it took, and the
+  /// loading/error overlay ([enabled] == false) or a non-current route is never
+  /// fought.
+  void _reclaimKeyboard() {
+    if (!mounted || !widget.enabled) return;
+    final FocusManager manager = FocusManager.instance;
+    final BuildContext? primary = manager.primaryFocus?.context;
+    if (primary != null && !_isAncestorOfScreen(primary)) return;
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) return;
+    if (_focusNode.hasPrimaryFocus) return;
+    _focusNode.requestFocus();
+  }
+
+  /// True when [candidate] is an ancestor of this screen in the element tree.
+  bool _isAncestorOfScreen(BuildContext candidate) {
+    if (candidate == context) return true;
+    var found = false;
+    context.visitAncestorElements((Element element) {
+      if (element == candidate) {
+        found = true;
+        return false;
+      }
+      return true;
+    });
+    return found;
   }
 
   @override
@@ -96,7 +152,7 @@ class _VideoShortcutScopeState extends State<VideoShortcutScope> {
       shortcuts: _shortcuts,
       child: Actions(
         actions: _actions,
-        child: Focus(autofocus: true, child: widget.child),
+        child: Focus(focusNode: _focusNode, autofocus: true, child: widget.child),
       ),
     );
   }

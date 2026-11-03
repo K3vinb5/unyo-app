@@ -63,6 +63,16 @@ class VideoService implements VideoPlaybackCommands {
     mdk.SeekFlag.fromStart | mdk.SeekFlag.inCache | mdk.SeekFlag.fast,
   );
 
+  /// Playback state as a listenable, refreshed at the end of every
+  /// [PlaybackSnapshot] emit — the one place a state change is published.
+  ///
+  /// The video screen drives its pause-glyph animation and its bar countdown
+  /// from this instead of from the widget that raised the change, so a pause
+  /// that arrives from *any* path (mouse, keyboard, MPRIS/audio_service, end of
+  /// media) animates identically, without those paths knowing a widget exists
+  /// (WP #119). Only notifies on an actual flip, never per tick.
+  final ValueNotifier<bool> playing = ValueNotifier<bool>(false);
+
   VideoService({
     required ext.Video video,
     required List<ext.Video> alternativeVideos,
@@ -449,6 +459,7 @@ class VideoService implements VideoPlaybackCommands {
     _isDisposed = true;
     _emitPlaybackState();
     _playbackEvents.close();
+    playing.dispose();
     _mediaStatusSubscription?.cancel();
     setFullscreen(_initialFullscreen);
     _player.dispose();
@@ -595,27 +606,6 @@ class VideoService implements VideoPlaybackCommands {
     }
   }
 
-  void _setPlayerLogsHandler() {
-    mdk.setLogHandler((mdk.LogLevel level, String message) {
-      if (!message.contains("unloaded media's position")) {
-        switch (level) {
-          case mdk.LogLevel.debug:
-          // _logger.d("MDK Log: $message");
-          case mdk.LogLevel.info:
-          // _logger.i("MDK Log: $message");
-          case mdk.LogLevel.warning:
-          // _logger.w("MDK Log: $message");
-          case mdk.LogLevel.error:
-            _logger.e("MDK Log: $message");
-          case mdk.LogLevel.off:
-            break;
-          case mdk.LogLevel.all:
-            break;
-        }
-      }
-    });
-  }
-
   bool _onMediaStatusInit(mdk.MediaStatus oldStatus, mdk.MediaStatus newStatus) {
     if (_isDisposed) return false;
 
@@ -655,6 +645,9 @@ class VideoService implements VideoPlaybackCommands {
 
   void _emitPlaybackState({Duration? position}) {
     if (_playbackEvents.isClosed) return;
+    // Every playback-state change publishes here, so this is also where the
+    // listenable the UI animates from is refreshed — one emitter, one truth.
+    _syncPlayingNotifier();
     _playbackEvents.add(
       PlaybackSnapshot(
         status: _playbackStatus,
@@ -662,6 +655,15 @@ class VideoService implements VideoPlaybackCommands {
         speed: _player.playbackRate,
       ),
     );
+  }
+
+  /// Mirrors [isPlaying] into [playing]. Guarded for a disposed player and
+  /// deliberately not derived from [PlaybackStatus]: a buffering blip must not
+  /// morph the pause glyph, only a real play/pause flip must.
+  void _syncPlayingNotifier() {
+    if (_isDisposed) return;
+    final bool value = _player.state == mdk.PlaybackState.playing;
+    if (playing.value != value) playing.value = value;
   }
 
   void _initSubtitlesAndAudiotracks() {
