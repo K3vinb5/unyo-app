@@ -60,9 +60,26 @@ mixin EffectMixin<State> on Cubit<State> {
     addEffect(CloseDialogEffect(context));
   }
 
-  void showSnackBarEffect(String title, {required String message, required ContentType contentType}) {
-    logger.i("ShowSnackbar with message: $message");
-    addEffect(ShowSnackbarEffect(title, message: message, contentType: contentType));
+  /// Queues a banner notification.
+  ///
+  /// [titleKey], [messageKey] and their args are translation keys, resolved at
+  /// the presentation boundary (`AppEffectHandler`) — a cubit must never hold
+  /// the rendered English. [messageKey] is nullable: no message, no key.
+  void showSnackBarEffect(
+    String titleKey, {
+    Map<String, String>? titleArgs,
+    String? messageKey,
+    Map<String, String>? messageArgs,
+    required ContentType contentType,
+  }) {
+    logger.i("ShowSnackbar with title key: $titleKey, message key: $messageKey");
+    addEffect(ShowSnackbarEffect(
+      titleKey,
+      titleArgs: titleArgs,
+      messageKey: messageKey,
+      messageArgs: messageArgs,
+      contentType: contentType,
+    ));
   }
 
   void replaceRouteEffect({required String path}) {
@@ -102,13 +119,31 @@ mixin EffectMixin<State> on Cubit<State> {
   /// [stackTrace] and [responseBody]. The banner only ever gets the classified
   /// copy from [ErrorCopyMapper]: no exception class names, no `Bad state:`
   /// text, no stack fragments and no dangling separators.
-  void handleError(String message, {ContentType contentType = ContentType.failure, StackTrace? stackTrace, String? responseBody}) {
+  ///
+  /// [copyKey] / [copyArgs] are the translation key and placeholders for call
+  /// sites whose [message] is already clean human copy (`ErrorFailureKind.
+  /// existingCopy`); they are ignored by the connectivity and generic branches,
+  /// which carry their own keys.
+  void handleError(
+    String message, {
+    ContentType contentType = ContentType.failure,
+    StackTrace? stackTrace,
+    String? responseBody,
+    String? copyKey,
+    Map<String, String>? copyArgs,
+  }) {
     final String detail = responseBody == null ? message : "$message [$responseBody]";
     logger.e(detail, stackTrace: stackTrace);
-    final ErrorCopy copy = ErrorCopyMapper.classify(message: message, responseBody: responseBody);
+    final ErrorCopy copy = ErrorCopyMapper.classify(
+      message: message,
+      responseBody: responseBody,
+      copyKey: copyKey,
+      copyArgs: copyArgs,
+    );
     showSnackBarEffect(
-      copy.title,
-      message: copy.message,
+      copy.titleKey,
+      messageKey: copy.messageKey,
+      messageArgs: copy.messageArgs,
       contentType: contentType,
     );
   }

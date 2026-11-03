@@ -47,7 +47,7 @@ class AddUserAvatar extends StatelessWidget {
           SizedBox(height: 10.h),
           Align(
             alignment: Alignment.centerLeft,
-            child: TextHeadlineLarge(text: context.tr("add_account")),
+            child: TextHeadlineLarge(text: context.tr("dialog_add_account")),
           ),
         ],
       ),

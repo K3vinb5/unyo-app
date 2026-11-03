@@ -14,23 +14,25 @@
 /// - `StateError` / `Bad state`, parse errors, and anything unrecognised →
 ///   the generic "Something went wrong" copy.
 /// - A message with no failure evidence at all (already human copy such as
-///   "This version of X is already installed.") is shown unchanged, so the
-///   central mapper does not degrade the copy that already works.
+///   "This version of X is already installed.") keeps the call site's own
+///   translation key, so the central mapper does not degrade copy that already
+///   works. It arrives as `copyKey`; without one the sentence cannot be
+///   translated and the generic copy is used.
 class ErrorCopyMapper {
   const ErrorCopyMapper._();
 
-  /// Banner title used when the failure looks connectivity/server related.
-  static const String connectivityTitle = "Can't reach the server";
+  /// Banner title key used when the failure looks connectivity/server related.
+  static const String connectivityTitleKey = 'error_connectivity_title';
 
-  /// Banner message for connectivity/server failures: what happened + next step.
-  static const String connectivityMessage =
-      "The server did not answer that request. Check your connection and try again.";
+  /// Banner message key for connectivity/server failures: what happened + next
+  /// step.
+  static const String connectivityMessageKey = 'error_connectivity_message';
 
-  /// Banner title for every non-network failure.
-  static const String genericTitle = "Something went wrong";
+  /// Banner title key for every non-network failure.
+  static const String genericTitleKey = 'error_generic_title';
 
-  /// Banner message for every non-network failure.
-  static const String genericMessage = "That did not work. Please try again.";
+  /// Banner message key for every non-network failure.
+  static const String genericMessageKey = 'error_generic_message';
 
   /// Substrings that identify a network/server failure in an interpolated
   /// exception string. `responseBody` alone is enough too — the call sites only
@@ -82,26 +84,41 @@ class ErrorCopyMapper {
 
   /// Classifies [message] (plus the HTTP [responseBody], when the call site had
   /// one) into banner copy.
-  static ErrorCopy classify({required String message, String? responseBody}) {
+  ///
+  /// [copyKey] / [copyArgs] carry the translation key for call sites whose
+  /// [message] is already clean human copy. Without a key that sentence cannot
+  /// be translated at the presentation boundary, so the generic copy is used
+  /// instead of leaking English out of `lib/application`.
+  static ErrorCopy classify({
+    required String message,
+    String? responseBody,
+    String? copyKey,
+    Map<String, String>? copyArgs,
+  }) {
     final String trimmed = stripDanglingSeparators(message);
+    if (_looksLikeHumanCopy(trimmed) &&
+        !_containsAny(trimmed, _rawFailureMarkers) &&
+        responseBody == null &&
+        !_containsAny(trimmed, _connectivityMarkers) &&
+        copyKey != null) {
+      return ErrorCopy(
+        titleKey: genericTitleKey,
+        messageKey: copyKey,
+        messageArgs: copyArgs,
+        kind: ErrorFailureKind.existingCopy,
+      );
+    }
     if (responseBody != null || _containsAny(trimmed, _connectivityMarkers)) {
       return const ErrorCopy(
-        title: connectivityTitle,
-        message: connectivityMessage,
+        titleKey: connectivityTitleKey,
+        messageKey: connectivityMessageKey,
         kind: ErrorFailureKind.connectivity,
       );
     }
-    if (!_looksLikeHumanCopy(trimmed) || _containsAny(trimmed, _rawFailureMarkers)) {
-      return const ErrorCopy(
-        title: genericTitle,
-        message: genericMessage,
-        kind: ErrorFailureKind.generic,
-      );
-    }
-    return ErrorCopy(
-      title: genericTitle,
-      message: trimmed,
-      kind: ErrorFailureKind.existingCopy,
+    return const ErrorCopy(
+      titleKey: genericTitleKey,
+      messageKey: genericMessageKey,
+      kind: ErrorFailureKind.generic,
     );
   }
 
@@ -140,19 +157,25 @@ enum ErrorFailureKind {
   /// State/parse/unknown failure: generic copy.
   generic,
 
-  /// The call site already produced clean human copy; it is shown unchanged.
+  /// The call site already produced clean human copy and supplied its own
+  /// translation key.
   existingCopy,
 }
 
 /// Banner copy produced by [ErrorCopyMapper.classify].
+///
+/// Copy is translation keys plus args, never rendered English: the resolution
+/// happens at the presentation boundary in `AppEffectHandler`.
 class ErrorCopy {
   const ErrorCopy({
-    required this.title,
-    required this.message,
+    required this.titleKey,
+    required this.messageKey,
+    this.messageArgs,
     required this.kind,
   });
 
-  final String title;
-  final String message;
+  final String titleKey;
+  final String messageKey;
+  final Map<String, String>? messageArgs;
   final ErrorFailureKind kind;
 }

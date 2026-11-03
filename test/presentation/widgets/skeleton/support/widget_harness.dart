@@ -2,10 +2,15 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../../support/localized_app.dart';
+
 /// Pumps [child] in an app-shaped tree: a 1920x1080 desktop surface (so
 /// screen-util units resolve 1:1 and geometry assertions stay readable), the
 /// same design size the app uses, and a scroll view so columns can report
 /// their natural height.
+///
+/// The app is built through `localizedApp`, so widgets that call `context.tr`
+/// get the real bundle instead of throwing `LocalizationNotFoundException`.
 ///
 /// Pass [disableAnimations] to exercise the accessibility path.
 Future<void> pumpSkeletonHarness(
@@ -27,7 +32,7 @@ Future<void> pumpSkeletonHarness(
     ScreenUtilInit(
       designSize: const Size(1920, 1080),
       minTextAdapt: true,
-      child: MaterialApp(
+      child: localizedApp(
         home: Scaffold(
           body: SingleChildScrollView(
             child: SizedBox(
@@ -43,5 +48,7 @@ Future<void> pumpSkeletonHarness(
       ),
     ),
   );
+  // EasyLocalization resolves its bundle a frame after `pumpWidget`.
+  await tester.pump();
   await tester.pump();
 }

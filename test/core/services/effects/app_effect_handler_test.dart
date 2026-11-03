@@ -10,6 +10,8 @@ import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 
+import '../../../support/localized_app.dart';
+
 class MockBuildContext extends Mock implements BuildContext {}
 
 class _FakeEffect extends AppEffect {}
@@ -73,9 +75,9 @@ void main() {
       handler = AppEffectHandler();
     });
 
-    ShowSnackbarEffect failure(String message) => ShowSnackbarEffect(
-          'Something went wrong',
-          message: message,
+    ShowSnackbarEffect failure(String messageKey) => ShowSnackbarEffect(
+          'error_generic_title',
+          messageKey: messageKey,
           contentType: ContentType.failure,
         );
 
@@ -83,7 +85,9 @@ void main() {
       tester.view.physicalSize = const Size(1400, 1000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: SizedBox.expand())));
+      await tester.pumpWidget(localizedApp(home: const Scaffold(body: SizedBox.expand())));
+      // `localizedApp` resolves its bundle one microtask after the first frame.
+      await tester.pump();
       return tester.element(find.byType(Scaffold));
     }
 
@@ -133,6 +137,34 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
       await tester.pumpAndSettle();
       expect(find.byType(MaterialBanner), findsNothing);
+    });
+
+    // WP #124: cubits carry translation keys and the banner resolves them here,
+    // which is the only layer holding a `BuildContext` (and therefore a locale).
+    testWidgets('resolves the effect keys at the presentation boundary', (WidgetTester tester) async {
+      final BuildContext context = await pumpHarness(tester);
+      handler.handle(
+        ShowSnackbarEffect(
+          'common_home_welcome',
+          titleArgs: <String, String>{'name': 'K3vinb5'},
+          messageKey: 'common_cancel',
+          contentType: ContentType.failure,
+        ),
+        context,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Welcome back K3vinb5, enjoy your journey!'), findsOneWidget,
+          reason: 'the title key must be translated with its named args');
+      expect(find.text('Cancel'), findsOneWidget,
+          reason: 'the message key must be translated too, not rendered as the key');
+      expect(find.text('common_home_welcome'), findsNothing);
+      expect(find.text('common_cancel'), findsNothing);
+
+      // Flush the banner's own auto-hide timer, or the test binding complains
+      // about a timer outliving the widget tree.
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
     });
 
     // The diagnosis could not tell whether the shared 3 s timer ever hid the

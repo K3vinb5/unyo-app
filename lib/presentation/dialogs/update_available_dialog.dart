@@ -1,4 +1,5 @@
 // External dependencies
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -18,6 +19,10 @@ import 'package:unyo/presentation/widgets/text/text_headline_medium.dart';
 /// silences the current run. It never downloads or installs anything by itself:
 /// the download button hands the asset URL to the system browser.
 class UpdateAvailableDialog extends StatelessWidget {
+  /// Catalog key of the headline, so the dialog renders localized copy.
+  static const String titleKey = 'dialog_update_title';
+
+  /// English source of [titleKey], kept as the canonical string for tests.
   static const String title = "There's a new release";
 
   /// The published release the verdict was drawn from. Notes, assets and the
@@ -76,10 +81,12 @@ class UpdateAvailableDialog extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const TextHeadlineMedium(text: title),
+                        TextHeadlineMedium(text: context.tr(titleKey)),
                         TextBodyLarge(
-                          text:
-                              "Unyo v$latestVersion is out — here's what changed.",
+                          text: context.tr(
+                            'dialog_update_subtitle',
+                            namedArgs: <String, String>{'version': latestVersion},
+                          ),
                         ),
                       ],
                     ),
@@ -90,10 +97,8 @@ class UpdateAvailableDialog extends StatelessWidget {
               Flexible(
                 child: SingleChildScrollView(
                   child: notes.isEmpty
-                      ? const TextBodyLarge(
-                          text:
-                              "This release was published without notes. "
-                              "Open the release page for the full changelog.",
+                      ? TextBodyLarge(
+                          text: context.tr('dialog_update_no_notes'),
                         )
                       : MarkdownBody(
                           data: notes,
@@ -110,13 +115,13 @@ class UpdateAvailableDialog extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   DarkUnyoButton(
-                    text: "Later",
+                    text: context.tr('dialog_update_later'),
                     minWidth: 100,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                   const SizedBox(width: 12),
                   DarkUnyoButton(
-                    text: "Open release page",
+                    text: context.tr('dialog_update_open_release_page'),
                     minWidth: 180,
                     onPressed: () {
                       Navigator.of(context).pop();
@@ -126,7 +131,10 @@ class UpdateAvailableDialog extends StatelessWidget {
                   if (downloadUrl != null) ...[
                     const SizedBox(width: 12),
                     DarkUnyoButton(
-                      text: "Download for ${targetPlatform.label}",
+                      text: context.tr(
+                        'dialog_update_download_for',
+                        namedArgs: <String, String>{'platform': targetPlatform.label},
+                      ),
                       minWidth: 200,
                       onPressed: () {
                         Navigator.of(context).pop();

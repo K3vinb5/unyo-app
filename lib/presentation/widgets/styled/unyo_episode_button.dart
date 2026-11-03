@@ -124,8 +124,8 @@ class _UnyoEpisodeButtonState extends State<UnyoEpisodeButton> {
                         SizedBox(width: 12.w),
                         Text(
                           widget.released >= widget.episodeNumber
-                              ? context.tr("released")
-                              : context.tr("not_yet_released"),
+                              ? context.tr("details_released")
+                              : context.tr("details_not_yet_released"),
                           maxLines: 2,
                           overflow: TextOverflow.fade,
                           style: TextStyle(

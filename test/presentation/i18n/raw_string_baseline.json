@@ -1,0 +1,282 @@
+[
+  {
+    "file": "lib/presentation/dialogs/account_creation_dialog.dart",
+    "text": "Anilist"
+  },
+  {
+    "file": "lib/presentation/dialogs/account_creation_dialog.dart",
+    "text": "MyAnimeList"
+  },
+  {
+    "file": "lib/presentation/dialogs/account_creation_dialog.dart",
+    "text": "Shikimori"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Completed"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Current"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Dropped"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Paused"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Planning"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Repeating"
+  },
+  {
+    "file": "lib/presentation/dialogs/character_dialog.dart",
+    "text": "Not available"
+  },
+  {
+    "file": "lib/presentation/dialogs/character_dialog.dart",
+    "text": "no description available"
+  },
+  {
+    "file": "lib/presentation/dialogs/extension_preferences_dialog.dart",
+    "text": "%s"
+  },
+  {
+    "file": "lib/presentation/dialogs/extension_preferences_dialog.dart",
+    "text": "EditTextPreference"
+  },
+  {
+    "file": "lib/presentation/dialogs/extension_preferences_dialog.dart",
+    "text": "ListPreference"
+  },
+  {
+    "file": "lib/presentation/dialogs/extension_preferences_dialog.dart",
+    "text": "MultiSelectListPreference"
+  },
+  {
+    "file": "lib/presentation/dialogs/extension_preferences_dialog.dart",
+    "text": "SwitchPreferenceCompat"
+  },
+  {
+    "file": "lib/presentation/dialogs/theme_color_picker_dialog.dart",
+    "text": "H ${}°   S ${}%   L ${}%"
+  },
+  {
+    "file": "lib/presentation/dialogs/theme_color_picker_dialog.dart",
+    "text": "H ${}°   S ${}%   V ${}%"
+  },
+  {
+    "file": "lib/presentation/dialogs/theme_color_picker_dialog.dart",
+    "text": "HSL"
+  },
+  {
+    "file": "lib/presentation/dialogs/theme_color_picker_dialog.dart",
+    "text": "HSV"
+  },
+  {
+    "file": "lib/presentation/dialogs/theme_color_picker_dialog.dart",
+    "text": "R ${}   G ${}   B ${}"
+  },
+  {
+    "file": "lib/presentation/dialogs/theme_color_picker_dialog.dart",
+    "text": "RGB"
+  },
+  {
+    "file": "lib/presentation/dialogs/update_available_dialog.dart",
+    "text": "There's a new release"
+  },
+  {
+    "file": "lib/presentation/drawers/anime_server_selection_drawer.dart",
+    "text": "Failed to open the server selection drawer: $e"
+  },
+  {
+    "file": "lib/presentation/screens/anime_advanced_search_screen.dart",
+    "text": "AnimeAdvancedSearch"
+  },
+  {
+    "file": "lib/presentation/screens/anime_advanced_search_screen.dart",
+    "text": "AnimeAdvancedSearch-${}"
+  },
+  {
+    "file": "lib/presentation/screens/calendar_screen.dart",
+    "text": "Calendar"
+  },
+  {
+    "file": "lib/presentation/screens/calendar_screen.dart",
+    "text": "Calendar-${}"
+  },
+  {
+    "file": "lib/presentation/screens/manga_advanced_search_screen.dart",
+    "text": "MangaAdvancedSearch"
+  },
+  {
+    "file": "lib/presentation/screens/manga_advanced_search_screen.dart",
+    "text": "MangaAdvancedSearch-${}"
+  },
+  {
+    "file": "lib/presentation/screens/media_list_screen.dart",
+    "text": "MediaList"
+  },
+  {
+    "file": "lib/presentation/screens/media_list_screen.dart",
+    "text": "MediaList-${}"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Anilist"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "MyAnimeList"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Shikimori"
+  },
+  {
+    "file": "lib/presentation/screens/video_screen.dart",
+    "text": "The video is loading"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcut_handler.dart",
+    "text": "$kind: $text"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcut_scope.dart",
+    "text": "video shortcut scope"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "ArrowDown"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "ArrowLeft"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "ArrowRight"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "ArrowUp"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "Esc"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "Shift+,"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "Shift+."
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "Shift+N"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "Space"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/banner_camera.dart",
+    "text": "BannerPose(scale: $scale, pan: $pan)"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "MANGA"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "MOVIE"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "MUSIC"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "NOT_YET_RELEASED"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "NOVEL"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "ONE_SHOT"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "RELEASING"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "SPECIAL"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "TV_SHORT"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/service_badge.dart",
+    "text": "a badge needs an asset or a glyph"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_banner_carousel.dart",
+    "text": "BannerCarousel"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "${} — click for ${}"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "Crop"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "Default audio"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "Fit"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "No subtitles"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "Stretch"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/user_avatar_image.dart",
+    "text": "EKtChtm.png"
+  },
+  {
+    "file": "lib/presentation/widgets/text/text_utils.dart",
+    "text": "Custom Repo"
+  },
+  {
+    "file": "lib/presentation/widgets/text/text_utils.dart",
+    "text": "GitHub Repo"
+  },
+  {
+    "file": "lib/presentation/widgets/text/text_utils.dart",
+    "text": "Unknown Repo"
+  },
+  {
+    "file": "lib/presentation/widgets/text/text_utils.dart",
+    "text": "r "
+  }
+]

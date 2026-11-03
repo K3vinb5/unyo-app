@@ -1,4 +1,5 @@
 // External dependencies
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:material_ui/material_ui.dart';
@@ -17,7 +18,7 @@ import 'package:unyo/domain/entities/user/user.dart';
 /// `LoginCard`s already ship, so no new assets are introduced.
 @immutable
 class ServiceBadge {
-  const ServiceBadge._({this.asset, this.glyph, required this.label})
+  const ServiceBadge._({this.asset, this.glyph, required this.labelKey})
     : assert(asset != null || glyph != null, 'a badge needs an asset or a glyph');
 
   /// Brand mark asset, drawn on the plate.
@@ -26,36 +27,37 @@ class ServiceBadge {
   /// Fallback glyph for providers that ship no brand mark.
   final IconData? glyph;
 
-  /// Human description, used for the semantics label.
-  final String label;
+  /// Human description, used for the semantics label. Kept as an i18n key so
+  /// the badges stay `const`; [ServiceBadgeView] resolves it with `context.tr`.
+  final String labelKey;
 
   static const ServiceBadge anilist = ServiceBadge._(
     asset: 'assets/images/anilist.svg',
-    label: 'AniList account',
+    labelKey: 'common_anilist_account',
   );
 
   static const ServiceBadge shikimori = ServiceBadge._(
     asset: 'assets/images/shikimori.svg',
-    label: 'Shikimori account',
+    labelKey: 'settings_shikimori_account',
   );
 
   static const ServiceBadge myanimelist = ServiceBadge._(
     asset: 'assets/images/myanimelist.svg',
-    label: 'MyAnimeList account',
+    labelKey: 'common_myanimelist_account',
   );
 
   /// Offline accounts. Deliberately not a provider: a local account is its own
   /// kind, not an unknown one.
   static const ServiceBadge local = ServiceBadge._(
     asset: 'assets/images/local_account.svg',
-    label: 'Local account',
+    labelKey: 'common_local_account',
   );
 
   /// A provider without a brand mark yet (Kitsu, Simkl) — visibly different
   /// from [local].
   static const ServiceBadge generic = ServiceBadge._(
     glyph: Icons.public_rounded,
-    label: 'Unknown account service',
+    labelKey: 'common_unknown_account_service',
   );
 
   /// The single service → mark mapping. The switch is exhaustive on purpose:
@@ -104,7 +106,7 @@ class ServiceBadgeView extends StatelessWidget {
         : Icon(badge.glyph, size: size * 0.58, color: Colors.white);
 
     return Semantics(
-      label: badge.label,
+      label: context.tr(badge.labelKey),
       child: Container(
         width: size,
         height: size,

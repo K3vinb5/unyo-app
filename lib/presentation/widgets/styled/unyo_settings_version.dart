@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // Internal dependencies
@@ -22,18 +23,21 @@ class UnyoSettingsVersion extends StatelessWidget {
     return Column(
       children: [
         _SettingsInfoRow(
-          title: "Version",
+          title: context.tr("settings_version_label"),
           description:
               currentVersion == null
-                  ? "Version unavailable"
-                  : "Unyo v$currentVersion",
+                  ? context.tr("settings_version_unavailable")
+                  : context.tr("settings_version_current", namedArgs: {"version": currentVersion}),
         ),
         if (lastResult is UpdateAvailable)
           _SettingsInfoRow(
-            title: "Update available: v${lastResult.latestVersion}",
-            description: "A newer release is available to download from GitHub",
+            title: context.tr(
+              "settings_update_available",
+              namedArgs: {"version": lastResult.latestVersion},
+            ),
+            description: context.tr("settings_update_available_description"),
             icon: Icons.system_update_rounded,
-            actionLabel: "Open releases page",
+            actionLabel: context.tr("settings_open_releases_page"),
             onAction: () =>
                 ReleasePageLauncher.openPage(lastResult.release.htmlUrl),
           ),

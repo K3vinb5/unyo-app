@@ -1,5 +1,6 @@
 // External package dependencies
 import 'package:collection/collection.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:auto_route/annotations.dart';
@@ -84,9 +85,9 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(height: 80.h),
-            const Text(
-              "Nothing to see here! Come back later :D",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+            Text(
+              context.tr('details_nothing_to_see'),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
               maxLines: 3,
             ),
           ],
@@ -104,7 +105,7 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
       final int episodeNumber = episodeNumbers[i];
       episodeButtons.add(
         UnyoEpisodeButton(
-          mainTitle: "Episode $episodeNumber",
+          mainTitle: context.tr('details_episode_number', namedArgs: <String, String>{'number': '$episodeNumber'}),
           secondaryTitle:
               state.episodesInfo.length > i
                   ? (state.episodesInfo[i].title.userPreferred != ""
@@ -199,7 +200,12 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                                             crossAxisAlignment: CrossAxisAlignment.center,
                                             children: [
                                               UnyoBannerIcon(
-                                                text: "${state.selectedAnime.duration}min",
+                                                text: context.tr(
+                                                  'details_duration_minutes',
+                                                  namedArgs: <String, String>{
+                                                    'minutes': '${state.selectedAnime.duration}',
+                                                  },
+                                                ),
                                                 iconData: Icons.timelapse_rounded,
                                               ),
                                               UnyoBannerIcon(
@@ -219,9 +225,9 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                                                       color: Colors.grey.withValues(alpha: 0.3),
                                                       borderRadius: BorderRadius.circular(8.0),
                                                     ),
-                                                    child: const Text(
-                                                      "Link metadata entry…",
-                                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                                    child: Text(
+                                                      context.tr('details_link_metadata_entry'),
+                                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                                                     ),
                                                   ),
                                                 ),
@@ -319,7 +325,7 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                                     ? CardRowFrame.details(
                                       child: AnimeRecommendationCardList(
                                         onPressed: context.read<AnimeDetailsCubit>().navigateToAnimeDetails,
-                                        listTitle: "Recommended Animes",
+                                        listTitle: context.tr('details_recommended_animes'),
                                         animeList: state.recommendations.$2,
                                         controller: recommendedAnimesController,
                                         loadMore: false,
@@ -357,7 +363,7 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                                         .read<AnimeDetailsCubit>()
                                         .selectAnimeExtension(selectedExtensionName),
                                 selectedValue: state.selectedExtension?.name,
-                                label: "Select Extension",
+                                label: context.tr('details_select_extension'),
                                 children: [...state.installedExtensions.map((extension) => extension.name)],
                               ),
                             ),

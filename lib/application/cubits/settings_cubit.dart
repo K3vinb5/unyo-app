@@ -24,6 +24,7 @@ import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/repositories.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
+import 'package:unyo/core/i18n/app_locales.dart';
 import 'package:unyo/domain/repositories/user_repository.dart';
 import 'package:unyo/presentation/dialogs/extensions_dialog.dart';
 import 'package:unyo/presentation/dialogs/theme_color_picker_dialog.dart';
@@ -135,6 +136,28 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
     } catch (e, stackTrace) {
       logger.e("Error updating episode title language $e", stackTrace: stackTrace);
       handleError("Error updating episode title language", stackTrace: stackTrace);
+    }
+  }
+
+  /// Persists the UI language (WP #124). `newLanguage` is a `Settings.language`
+  /// code from [kAppLocales], or the empty string for "System default" — which
+  /// is why this one deliberately does **not** reject an empty value the way
+  /// [updateMediaTitleLanguage] does.
+  ///
+  /// Persisting only: applying the locale to the running app needs a
+  /// BuildContext and is done in the presentation layer via
+  /// `applyUiLanguage` (see `unyo-docs/conventions/i18n.md`).
+  Future<void> updateLanguage(String? newLanguage) async {
+    if (newLanguage == null) return;
+    try {
+      final String normalized = normalizeLanguageCode(newLanguage);
+      Settings updatedSettings = (state.loggedUser.settings as SettingsModel).copyWith(
+        language: normalized,
+      );
+      await _updateUserInfo(updatedSettings);
+    } catch (e, stackTrace) {
+      logger.e("Error updating language $e", stackTrace: stackTrace);
+      handleError("Error updating language", stackTrace: stackTrace);
     }
   }
 

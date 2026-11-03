@@ -1,5 +1,6 @@
 // External dependencies
 import 'package:auto_route/annotations.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -84,7 +85,12 @@ class _MangaViewState extends State<_MangaView> {
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 40.0.w),
               child: Text(
-                "Manga isn't available with ${TextUtils.capitalize(state.loggedUser.settings.metadataService.name)}",
+                context.tr(
+                  'error_manga_unsupported',
+                  namedArgs: <String, String>{
+                    'provider': TextUtils.capitalize(state.loggedUser.settings.metadataService.name),
+                  },
+                ),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 20,
@@ -120,7 +126,7 @@ class _MangaViewState extends State<_MangaView> {
                                   .banners[0]
                                   .bannerImage
                               : "",
-                      text: "Calendar",
+                      text: context.tr('common_calendar'),
                     ),
                     const SizedBox(width: 30),
                     MediaButton(
@@ -131,7 +137,7 @@ class _MangaViewState extends State<_MangaView> {
                                   .banners[1]
                                   .bannerImage
                               : "",
-                      text: "Advanced Search",
+                      text: context.tr('common_advanced_search'),
                     ),
                   ],
                 ),
@@ -140,7 +146,7 @@ class _MangaViewState extends State<_MangaView> {
               state.trending.$1
                   ? CardRowFrame.browse(
                     child: MangaCardList(
-                      listTitle: "Trending Mangas",
+                      listTitle: context.tr('common_trending_mangas'),
                       mangaList: state.trending.$2,
                       controller: trendingController,
                       onPressed: context.read<MangaCubit>().navigateToMangaDetails,
@@ -152,7 +158,7 @@ class _MangaViewState extends State<_MangaView> {
               state.recentlyCompleted.$1
                   ? CardRowFrame.browse(
                     child: MangaCardList(
-                      listTitle: "Recently Completed Mangas",
+                      listTitle: context.tr('common_recently_completed_mangas'),
                       mangaList: state.recentlyCompleted.$2,
                       controller: recentlyCompletedController,
                       onPressed: context.read<MangaCubit>().navigateToMangaDetails,
@@ -164,7 +170,7 @@ class _MangaViewState extends State<_MangaView> {
               state.popular.$1
                   ? CardRowFrame.browse(
                     child: MangaCardList(
-                      listTitle: "Popular Mangas",
+                      listTitle: context.tr('common_popular_mangas'),
                       mangaList: state.popular.$2,
                       controller: popularController,
                       onPressed: context.read<MangaCubit>().navigateToMangaDetails,
@@ -176,7 +182,7 @@ class _MangaViewState extends State<_MangaView> {
               state.upcoming.$1
                   ? CardRowFrame.browse(
                     child: MangaCardList(
-                      listTitle: "Upcoming Mangas",
+                      listTitle: context.tr('common_upcoming_mangas'),
                       mangaList: state.upcoming.$2,
                       controller: upcomingController,
                       onPressed: context.read<MangaCubit>().navigateToMangaDetails,

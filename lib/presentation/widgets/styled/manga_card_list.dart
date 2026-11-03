@@ -44,7 +44,7 @@ class MangaCardList extends StatelessWidget {
                 ),
               ),
               Text(
-                "  ${mangaList.length.toString()} ${context.tr("entries")}",
+                "  ${context.plural("common_entry_count", mangaList.length)}",
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.normal,

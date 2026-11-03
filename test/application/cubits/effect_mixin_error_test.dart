@@ -40,10 +40,12 @@ void main() {
       );
 
       final ShowSnackbarEffect effect = cubit.state.stateEffects.whereType<ShowSnackbarEffect>().single;
-      expect(effect.title, ErrorCopyMapper.genericTitle);
-      expect(effect.message, ErrorCopyMapper.genericMessage);
-      expect(effect.message.contains('LateInitializationError'), isFalse);
-      expect(effect.message.contains('Exception'), isFalse);
+      // Keys, not English: the banner text is only resolved at the presentation
+      // boundary, so nothing in `lib/application` can leak developer detail.
+      expect(effect.titleKey, ErrorCopyMapper.genericTitleKey);
+      expect(effect.messageKey, ErrorCopyMapper.genericMessageKey);
+      expect(effect.messageKey!.contains('LateInitializationError'), isFalse);
+      expect(effect.messageKey!.contains('Exception'), isFalse);
     });
 
     test('shows connectivity copy for an HTTP server failure', () {
@@ -56,8 +58,8 @@ void main() {
       );
 
       final ShowSnackbarEffect effect = cubit.state.stateEffects.whereType<ShowSnackbarEffect>().single;
-      expect(effect.title, ErrorCopyMapper.connectivityTitle);
-      expect(effect.message, ErrorCopyMapper.connectivityMessage);
+      expect(effect.titleKey, ErrorCopyMapper.connectivityTitleKey);
+      expect(effect.messageKey, ErrorCopyMapper.connectivityMessageKey);
     });
   });
 }

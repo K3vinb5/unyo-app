@@ -8,6 +8,8 @@ import 'package:unyo/core/services/video/skip_window.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_bottom_status.dart';
 
+import '../../../support/localized_app.dart';
+
 /// WP #113: the skip pill owns its visibility (an active skip window keeps it on
 /// screen while the bar is hidden) and the up-next card/content rules.
 void main() {
@@ -25,7 +27,7 @@ void main() {
       ScreenUtilInit(
         designSize: const Size(1920, 1080),
         minTextAdapt: true,
-        child: MaterialApp(
+        child: localizedApp(
           home: Scaffold(
             backgroundColor: Colors.black,
             body: Align(

@@ -1,5 +1,6 @@
 // External package dependencies
 import 'package:collection/collection.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:auto_route/annotations.dart';
@@ -78,9 +79,9 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(height: 80.h),
-            const Text(
-              "Nothing to see here! Come back later :D",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+            Text(
+              context.tr('details_nothing_to_see'),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
               maxLines: 3,
             ),
           ],
@@ -91,8 +92,14 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
     for (int i = 0; i < numChapters; i++) {
       episodeButtons.add(
         UnyoEpisodeButton(
-          mainTitle: "Chapter ${i + 1}",
-          secondaryTitle: "${displayMediaTitle(state.selectedManga.title)} Chapter ${i + 1}",
+          mainTitle: context.tr('details_chapter_number', namedArgs: <String, String>{'number': '${i + 1}'}),
+          secondaryTitle: context.tr(
+            'details_title_chapter',
+            namedArgs: <String, String>{
+              'title': displayMediaTitle(state.selectedManga.title),
+              'number': '${i + 1}',
+            },
+          ),
           episodeImageUrl: state.selectedManga.bannerImage != "" ? state.selectedManga.bannerImage : state.selectedManga.coverImage,
           episodeNumber: i + 1,
           progress: state.mediaListEntry.progress,
@@ -254,7 +261,7 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
                                     ? CardRowFrame.details(
                                   child: MangaRecommendationCardList(
                                     onPressed: context.read<MangaDetailsCubit>().navigateToMangaDetails,
-                                    listTitle: "Recommended Mangas",
+                                    listTitle: context.tr('details_recommended_mangas'),
                                     mangaList: state.recommendations.$2,
                                     controller: recommendedMangasController,
                                     loadMore: false,
@@ -289,7 +296,7 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
                               child: UnyoDropdown(
                                 onPressed: (selectedExtensionName) => context.read<MangaDetailsCubit>().selectMangaExtension(selectedExtensionName),
                                 selectedValue: state.selectedExtension?.name,
-                                label: "Select Extension",
+                                label: context.tr('details_select_extension'),
                                 children: [
                                   ...state.installedExtensions.map(
                                         (extension) => extension.name,

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:unyo/presentation/widgets/skeleton/media_badge_clipper.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_metrics.dart';
@@ -16,6 +17,35 @@ const Set<String> _compactFormatLabels = <String>{
   "NOVEL",
   "MUSIC",
 };
+
+/// Provider format code (lowercased) -> i18n key.
+///
+/// The codes are API data, never copy: only their *display* is translated. They
+/// are keyed lowercased and looked up case-insensitively so the literal codes
+/// keep living purely as data ([_compactFormatLabels], the icon switch below),
+/// which is what the raw-string ratchet expects. An unknown code falls back to
+/// the underscore-free code itself.
+const Map<String, String> _formatKeys = <String, String>{
+  "tv": "common_format_tv",
+  "tv_short": "common_format_tv_short",
+  "movie": "common_format_movie",
+  "ova": "common_format_ova",
+  "ona": "common_format_ona",
+  "special": "common_format_special",
+  "music": "common_format_music",
+  "manga": "common_format_manga",
+  "manhwa": "common_format_manhwa",
+  "manhua": "common_format_manhua",
+  "novel": "common_format_novel",
+  "one_shot": "common_format_one_shot",
+  "doujinshi": "common_format_doujinshi",
+};
+
+/// Display label for a provider format code, translated when the code is known.
+String _formatLabel(BuildContext context, String format) {
+  final String? key = _formatKeys[format.toLowerCase()];
+  return key == null ? format.replaceAll("_", " ") : context.tr(key);
+}
 
 class MediaCard extends StatelessWidget {
   final String title;
@@ -229,7 +259,7 @@ class MediaCard extends StatelessWidget {
                   ),
                   const Spacer(),
                   Text(
-                    "${format.replaceAll("_", " ")} ",
+                    "${_formatLabel(context, format)} ",
                     style: TextStyle(
                       color: ColorScheme.of(
                         context,

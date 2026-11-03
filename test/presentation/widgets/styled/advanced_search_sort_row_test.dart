@@ -7,6 +7,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:unyo/presentation/widgets/styled/advanced_search_sort_row.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_sort_widget.dart';
 
+import '../../../support/localized_app.dart';
+
 /// WP #64(b) round 1 finding 1: the sort strip used to be gated on
 /// `sortOptions.$1 && sortOrders.$1`, so a provider that implements sort fields
 /// but no direction control (Shikimori — `OrderEnum` has no `_desc` twin for any
@@ -20,7 +22,7 @@ void main() {
     await tester.pumpWidget(
       ScreenUtilInit(
         designSize: const Size(1920, 1080),
-        child: MaterialApp(home: Scaffold(body: row)),
+        child: localizedApp(home: Scaffold(body: row)),
       ),
     );
     await tester.pump();

@@ -6,10 +6,12 @@ import 'package:material_ui/material_ui.dart';
 // test needs its in-memory platform implementation (transitive dependency).
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:unyo/core/i18n/underscore_asset_loader.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/anime_card_list.dart';
 import 'package:unyo/presentation/widgets/styled/card_row_frame.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_character_list.dart';
+import 'package:unyo/core/i18n/app_localizations.dart';
 
 /// Pumps [child] inside an app-shaped shell: the menu rail (100 wide) on the
 /// left and the screen content in the rest of the window, exactly like
@@ -38,7 +40,8 @@ Future<void> pumpInShell(
       supportedLocales: const [Locale('en', 'GB')],
       path: 'assets/i18n',
       fallbackLocale: const Locale('en', 'GB'),
-      useOnlyLangCode: true,
+      useOnlyLangCode: false,
+      assetLoader: const UnderscoreAssetLoader(),
       child: Builder(
         builder: (BuildContext context) {
           final localization = EasyLocalization.of(context);
@@ -47,7 +50,9 @@ Future<void> pumpInShell(
             child: MaterialApp(
               locale: const Locale('en', 'GB'),
               supportedLocales: const [Locale('en', 'GB')],
-              localizationsDelegates: localization?.delegates,
+              localizationsDelegates: appLocalizationDelegates(
+                localization?.delegates ?? const <LocalizationsDelegate<dynamic>>[],
+              ),
               home: Scaffold(
                 body: Row(
                   children: [

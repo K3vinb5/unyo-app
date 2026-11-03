@@ -2,6 +2,7 @@
 import 'dart:ui';
 
 import 'package:collection/collection.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -72,9 +73,9 @@ class _AnimeServerSelectionDrawerState extends State<AnimeServerSelectionDrawer>
                   child: state.animeServerDialogReady
                       ? Column(
                           children: [
-                            const Text(
-                              "Select Server",
-                              style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
+                            Text(
+                              context.tr('drawer_select_server'),
+                              style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
                             ),
                             SizedBox(height: 25.0.h),
                             Expanded(
@@ -105,7 +106,7 @@ class _AnimeServerSelectionDrawerState extends State<AnimeServerSelectionDrawer>
                             ),
                           ],
                         )
-                      : LoadingView(width: 85.w, description: "Please wait, this can take some seconds..."),
+                      : LoadingView(width: 85.w, description: context.tr('common_please_wait')),
                 ),
               ),
             ),

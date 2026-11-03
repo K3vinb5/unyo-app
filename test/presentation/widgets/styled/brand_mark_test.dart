@@ -6,6 +6,8 @@ import 'package:material_ui/material_ui.dart';
 // Internal dependencies
 import 'package:unyo/presentation/widgets/styled/brand_mark.dart';
 
+import '../../../support/localized_app.dart';
+
 /// WP #84: the login screen used to draw `assets/logo.png` at `scale: 2.5` —
 /// the old flat 100x100 export. The brand mark is now generated from
 /// `packaging/icons/source/unyo_1024.png` and drawn at an explicit size, so the
@@ -13,10 +15,11 @@ import 'package:unyo/presentation/widgets/styled/brand_mark.dart';
 void main() {
   testWidgets('BrandMark renders the generated brand-mark asset at 40x40', (WidgetTester tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: Center(child: BrandMark())),
+      localizedApp(
+        home: const Scaffold(body: Center(child: BrandMark())),
       ),
     );
+    await tester.pump();
 
     final Finder image = find.byType(Image);
     expect(image, findsOneWidget);
@@ -30,10 +33,11 @@ void main() {
 
   testWidgets('BrandMark honours an explicit size', (WidgetTester tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: Center(child: BrandMark(size: 64))),
+      localizedApp(
+        home: const Scaffold(body: Center(child: BrandMark(size: 64))),
       ),
     );
+    await tester.pump();
 
     final Image widget = tester.widget<Image>(find.byType(Image));
     expect(widget.width, 64);

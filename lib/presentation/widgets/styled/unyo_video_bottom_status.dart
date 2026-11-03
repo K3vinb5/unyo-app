@@ -1,5 +1,6 @@
 // External dependencies
 import 'package:material_ui/material_ui.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // Internal dependencies
@@ -147,7 +148,7 @@ class _UpNextCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Next: $seriesTitle',
+                  context.tr('video_up_next_series', namedArgs: <String, String>{'seriesTitle': seriesTitle}),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -168,14 +169,14 @@ class _UpNextCard extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           _CardAction(
-            label: 'Dismiss',
+            label: context.tr('common_dismiss'),
             icon: Icons.close_rounded,
             filled: false,
             onPressed: onDismiss,
           ),
           const SizedBox(width: 6),
           _CardAction(
-            label: 'Watch now',
+            label: context.tr('video_watch_now'),
             icon: Icons.play_arrow_rounded,
             filled: true,
             onPressed: onWatchNow,

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/presentation/widgets/styled/dark_unyo_button.dart';
@@ -24,7 +25,7 @@ class WarningDialog extends StatelessWidget {
               Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               SizedBox(height: 15.h),
               DarkUnyoButton(
-                text: "Confirm",
+                text: context.tr('common_confirm'),
                 onPressed: () {
                   Navigator.of(context).pop();
                 },

@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/application/cubits/tabs_cubit.dart';
@@ -86,13 +87,13 @@ class _UserOptionsDrawerState extends State<UserOptionsDrawer> {
                   ),
                   SizedBox(height: 35.h),
                   UserOptionDrawerSelection(
-                      text: "View Profile",
+                      text: context.tr('drawer_view_profile'),
                       icon: Icons.person_rounded,
                       onPressed: widget.cubit.openUserProfileDialog
                   ),
                   SizedBox(height: 10.h),
                   UserOptionDrawerSelection(
-                      text: "Logout",
+                      text: context.tr('common_logout'),
                       icon: Icons.logout_rounded,
                       onPressed: () {
                         widget.cubit.logoutUser();

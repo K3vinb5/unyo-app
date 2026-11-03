@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // Internal dependencies
@@ -37,14 +38,14 @@ class ShikimoriAccountSettings extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const TextBodyLarge(
-              text: "No Shikimori account is connected",
-              style: TextStyle(color: Colors.grey),
+            TextBodyLarge(
+              text: context.tr("settings_shikimori_no_account"),
+              style: const TextStyle(color: Colors.grey),
             ),
             SizedBox(height: 6.h),
-            const TextLabelMedium(
-              text: "Add one from the login screen to sync your list with Shikimori",
-              style: TextStyle(color: Colors.grey),
+            TextLabelMedium(
+              text: context.tr("settings_shikimori_no_account_hint"),
+              style: const TextStyle(color: Colors.grey),
             ),
           ],
         ),
@@ -74,14 +75,14 @@ class ShikimoriAccountSettings extends StatelessWidget {
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
                 TextLabelMedium(
-                  text: user.profileUrl.isEmpty ? "Shikimori account" : user.profileUrl,
+                  text: user.profileUrl.isEmpty ? context.tr("settings_shikimori_account") : user.profileUrl,
                   style: const TextStyle(color: Colors.grey),
                 ),
               ],
             ),
           ),
           SizedBox(width: 12.w),
-          DarkUnyoButton(text: "Logout", maxHeight: 40, onPressed: onLogout),
+          DarkUnyoButton(text: context.tr("common_logout"), maxHeight: 40, onPressed: onLogout),
         ],
       ),
     );

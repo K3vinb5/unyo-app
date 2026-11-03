@@ -242,8 +242,8 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
     } else {
       _logger.w("Selected extension $selectedMangaExtensionName not found among installed extensions.");
       showSnackBarEffect(
-        "Extension Not Found",
-        message: "The selected extension is not installed.",
+        'error_extension_not_found',
+        messageKey: 'error_extension_not_installed',
         contentType: ContentType.warning,
       );
     }
@@ -309,8 +309,8 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
       if (state.installedExtensions.isEmpty) {
         _logger.w("No installed extensions available to fetch manga info.");
         showSnackBarEffect(
-          "No Installed Extensions",
-          message: "Install some extensions if you want to watch some content",
+          'error_no_installed_extensions',
+          messageKey: 'error_no_extensions_install_hint',
           contentType: ContentType.warning,
         );
         return;
@@ -387,8 +387,8 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
     if (state.installedExtensions.isEmpty) {
       _logger.w("No installed extensions to fetch chapters.");
       showSnackBarEffect(
-        "No Installed Extensions",
-        message: "Open the Extensions tab to install one.",
+        'error_no_installed_extensions',
+        messageKey: 'error_no_extensions_open_tab',
         contentType: ContentType.warning,
       );
       return;
@@ -396,15 +396,15 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
     if (state.selectedExtension == null) {
       _logger.w("No extension selected to fetch chapters.");
       showSnackBarEffect(
-        "No Extension Selected",
-        message: "Select an extension to fetch chapters.",
+        'error_no_extension_selected',
+        messageKey: 'error_select_extension_chapters',
         contentType: ContentType.warning,
       );
       return;
     }
     showSnackBarEffect(
-      "Manga Reader",
-      message: "The manga reader is not available yet.",
+      'common_manga_reader',
+      messageKey: 'error_manga_reader_unavailable',
       contentType: ContentType.warning,
     );
   }

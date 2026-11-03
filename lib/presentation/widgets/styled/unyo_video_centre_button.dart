@@ -1,5 +1,6 @@
 // External dependencies
 import 'package:material_ui/material_ui.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // Internal dependencies
@@ -39,7 +40,7 @@ class UnyoVideoCentreButton extends StatelessWidget {
       child: Tooltip(
         waitDuration: const Duration(milliseconds: 2000),
         textAlign: TextAlign.center,
-        message: 'Resume Play',
+        message: context.tr('video_resume_play'),
         child: UnyoInkWell(
           onTap: onPressed,
           // No focus, therefore no focus ring (see the class comment).

@@ -171,12 +171,12 @@ void main() {
       expect(
         snackbars.any(
           (effect) =>
-              effect.title == 'No Installed Extensions' &&
-              effect.message == 'Open the Extensions tab to install one.',
+              effect.titleKey == 'error_no_installed_extensions' &&
+              effect.messageKey == 'error_no_extensions_open_tab',
         ),
         isTrue,
       );
-      expect(snackbars.any((effect) => effect.title == 'No Extension Selected'), isFalse);
+      expect(snackbars.any((effect) => effect.titleKey == 'error_no_extension_selected'), isFalse);
     });
 
     test('warns that a chapter needs an extension when none is selected', () {
@@ -186,7 +186,8 @@ void main() {
       expect(
         snackbars.any(
           (effect) =>
-              effect.title == 'No Extension Selected' && effect.message == 'Select an extension to fetch chapters.',
+              effect.titleKey == 'error_no_extension_selected' &&
+              effect.messageKey == 'error_select_extension_chapters',
         ),
         isTrue,
       );
@@ -203,7 +204,7 @@ void main() {
       expect(
         snackbars.any(
           (effect) =>
-              effect.title == 'Manga Reader' && effect.message == 'The manga reader is not available yet.',
+              effect.titleKey == 'common_manga_reader' && effect.messageKey == 'error_manga_reader_unavailable',
         ),
         isTrue,
       );
@@ -314,7 +315,7 @@ void main() {
 
     int noExtensionPrompts() => cubit.state.effects
         .whereType<ShowSnackbarEffect>()
-        .where((effect) => effect.title == 'No Extension Selected')
+        .where((effect) => effect.titleKey == 'error_no_extension_selected')
         .length;
 
     test('a saved mapping for the new title re-resolves the extension on the cleared state', () async {

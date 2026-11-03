@@ -73,6 +73,8 @@ dependencies:
 #  html: ^0.15.6
   # Localization
   easy_localization: ^3.0.8
+  flutter_localizations:
+    sdk: flutter
   # FFI/Native Integration
   cast: ^2.1.0
   system_info3: ^4.0.2

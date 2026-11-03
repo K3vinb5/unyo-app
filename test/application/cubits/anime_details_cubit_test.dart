@@ -175,13 +175,13 @@ void main() {
       expect(
         snackbars.any(
           (effect) =>
-              effect.title == 'No Installed Extensions' &&
-              effect.message == 'Open the Extensions tab to install one.',
+              effect.titleKey == 'error_no_installed_extensions' &&
+              effect.messageKey == 'error_no_extensions_open_tab',
         ),
         isTrue,
       );
       // The "select one" wording is wrong when the dropdown has no options.
-      expect(snackbars.any((effect) => effect.title == 'No Extension Selected'), isFalse);
+      expect(snackbars.any((effect) => effect.titleKey == 'error_no_extension_selected'), isFalse);
       expect(cubit.state.effects.whereType<ShowDrawerDialogEffect>(), isEmpty);
     });
 
@@ -201,12 +201,13 @@ void main() {
       expect(
         snackbars.any(
           (effect) =>
-              effect.title == 'No Extension Selected' && effect.message == 'Select an extension to fetch episodes.',
+              effect.titleKey == 'error_no_extension_selected' &&
+              effect.messageKey == 'error_select_extension_episodes',
         ),
         isTrue,
       );
-      expect(snackbars.any((effect) => effect.title.contains('null')), isFalse);
-      expect(snackbars.any((effect) => effect.message.contains('No results from the extension')), isFalse);
+      expect(snackbars.any((effect) => (effect.titleArgs?['extension'] ?? '').contains('null')), isFalse);
+      expect(snackbars.any((effect) => effect.messageKey == 'error_extension_no_results_try_again'), isFalse);
       expect(cubit.state.effects.whereType<ShowDrawerDialogEffect>(), isEmpty);
     });
 
@@ -229,11 +230,14 @@ void main() {
       expect(cubit.state.animeServerDialogLoading, isFalse);
       expect(
         snackbars.any(
-          (effect) => effect.title == '${testExtension.name} Error' && effect.message == 'No results from the extension. Try again.',
+          (effect) =>
+              effect.titleKey == 'error_extension_error_title' &&
+              effect.titleArgs?['extension'] == testExtension.name &&
+              effect.messageKey == 'error_extension_no_results_try_again',
         ),
         isTrue,
       );
-      expect(snackbars.any((effect) => effect.title.contains('null')), isFalse);
+      expect(snackbars.any((effect) => (effect.titleArgs?['extension'] ?? '').contains('null')), isFalse);
     });
 
     test('opens the extension episode the button was labelled with, not its list position', () async {
@@ -300,7 +304,9 @@ void main() {
         reason: 'the button labelled Episode 14 is the second extension episode, not list position 13',
       );
       expect(
-        snackbarsOf(cubit.state).any((effect) => effect.message.contains('Only 2 episodes were found')),
+        snackbarsOf(cubit.state).any(
+          (effect) => effect.messageKey == 'error_only_n_episodes_found' && effect.messageArgs?['count'] == '2',
+        ),
         isFalse,
         reason: 'an episode number must never be resolved as a list position',
       );
@@ -388,29 +394,32 @@ void main() {
       await pumpEventQueue();
 
       final List<ShowSnackbarEffect> snackbars = snackbarsOf(cubit.state);
-      final List<String> rendered = snackbars.map((effect) => '${effect.title} / ${effect.message}').toList();
+      final List<String> rendered = snackbars.map((effect) => '${effect.titleKey}(${effect.titleArgs}) / ${effect.messageKey}(${effect.messageArgs})').toList();
       expect(
         snackbars.any(
           (effect) =>
-              effect.title == testExtension.name &&
-              effect.message == 'No results found in ${testExtension.name} for $userPreferredTitle' &&
+              effect.titleKey == 'common_provider_name' &&
+              effect.titleArgs?['name'] == testExtension.name &&
+              effect.messageKey == 'error_no_results_in_extension' &&
+              effect.messageArgs?['extension'] == testExtension.name &&
+              effect.messageArgs?['title'] == userPreferredTitle &&
               effect.contentType == ContentType.warning,
         ),
         isTrue,
         reason: 'expected the designed no-results warning, got: $rendered',
       );
       expect(
-        snackbars.any((effect) => effect.title == 'Something went wrong'),
+        snackbars.any((effect) => effect.titleKey == 'error_generic_title'),
         isFalse,
         reason: 'no failure snackbar should be raised for an empty result set, got: $rendered',
       );
       expect(
-        snackbars.any((effect) => effect.message.contains('Bad state')),
+        snackbars.any((effect) => (effect.messageKey ?? '').contains('Bad state')),
         isFalse,
         reason: 'the empty result set must not leak StateError: Bad state, got: $rendered',
       );
       expect(
-        snackbars.any((effect) => effect.message.contains('Error fetching Anime Info')),
+        snackbars.any((effect) => (effect.messageKey ?? '').contains('Error fetching Anime Info')),
         isFalse,
         reason: 'no error path should be taken for an empty result set, got: $rendered',
       );
@@ -436,12 +445,14 @@ void main() {
       await pumpEventQueue();
 
       final List<ShowSnackbarEffect> snackbars = snackbarsOf(cubit.state);
-      final List<String> rendered = snackbars.map((effect) => '${effect.title} / ${effect.message}').toList();
+      final List<String> rendered = snackbars.map((effect) => '${effect.titleKey}(${effect.titleArgs}) / ${effect.messageKey}(${effect.messageArgs})').toList();
       expect(
         snackbars.any(
           (effect) =>
-              effect.title == testExtension.name &&
-              effect.message.startsWith('Found: ') &&
+              effect.titleKey == 'common_provider_name' &&
+              effect.titleArgs?['name'] == testExtension.name &&
+              effect.messageKey == 'common_results_found' &&
+              (effect.messageArgs?['title'] ?? '').isNotEmpty &&
               effect.contentType == ContentType.success,
         ),
         isTrue,
@@ -449,7 +460,7 @@ void main() {
       );
       expect(cubit.state.extensionAnimeResults, hasLength(2));
       expect(cubit.state.selectedAnimeResultIndex, 1);
-      expect(snackbars.any((effect) => effect.title == 'Something went wrong'), isFalse, reason: rendered.join('; '));
+      expect(snackbars.any((effect) => effect.titleKey == 'error_generic_title'), isFalse, reason: rendered.join('; '));
     });
 
     group('metadata-service reload', () {
@@ -569,16 +580,16 @@ void main() {
       await cubit.updateMediaListEntry(MockBuildContext());
 
       final List<ShowSnackbarEffect> snackbars = snackbarsOf(cubit.state);
-      final List<String> rendered = snackbars.map((effect) => '${effect.title} / ${effect.message}').toList();
+      final List<String> rendered = snackbars.map((effect) => '${effect.titleKey}(${effect.titleArgs}) / ${effect.messageKey}(${effect.messageArgs})').toList();
       expect(
         snackbars.any(
-          (effect) => effect.title == 'List not updated' && effect.contentType == ContentType.warning,
+          (effect) => effect.titleKey == 'error_list_not_updated' && effect.contentType == ContentType.warning,
         ),
         isTrue,
         reason: 'the user must learn the entry is unmatched, got: $rendered',
       );
       expect(
-        snackbars.any((effect) => effect.title == 'Something went wrong'),
+        snackbars.any((effect) => effect.titleKey == 'error_generic_title'),
         isFalse,
         reason: 'an unmatched entry is an expected state, not an app error, got: $rendered',
       );
@@ -775,14 +786,14 @@ void main() {
         reason: 'the no-id path must settle the gate instead of shimmering forever',
       );
       final List<ShowSnackbarEffect> snackbars = snackbarsOf(cubit.state);
-      final List<String> rendered = snackbars.map((ShowSnackbarEffect effect) => '${effect.title} / ${effect.message}').toList();
+      final List<String> rendered = snackbars.map((ShowSnackbarEffect effect) => '${effect.titleKey}(${effect.titleArgs}) / ${effect.messageKey}(${effect.messageArgs})').toList();
       expect(
-        snackbars.any((ShowSnackbarEffect effect) => effect.title == 'Something went wrong'),
+        snackbars.any((ShowSnackbarEffect effect) => effect.titleKey == 'error_generic_title'),
         isFalse,
         reason: 'an unaddressable record is an expected state, not an error, got: $rendered',
       );
       expect(
-        snackbars.any((ShowSnackbarEffect effect) => effect.message.contains('Episodes')),
+        snackbars.any((ShowSnackbarEffect effect) => (effect.messageKey ?? '').contains('episode')),
         isFalse,
         reason: 'the episode metadata fetch must be skipped, not failed, got: $rendered',
       );
@@ -963,7 +974,7 @@ void main() {
     }
 
     int noExtensionPrompts() => snackbarsOf(cubit.state)
-        .where((effect) => effect.title == 'No Extension Selected')
+        .where((effect) => effect.titleKey == 'error_no_extension_selected')
         .length;
 
     test('a saved mapping for the new title re-resolves the extension on the cleared state', () async {
@@ -1129,7 +1140,7 @@ void main() {
         reason: 'results fetched for the previous title must be discarded, not emitted onto the new one',
       );
       expect(
-        snackbarsOf(cubit.state).where((effect) => effect.message.contains('Stale result')),
+        snackbarsOf(cubit.state).where((effect) => (effect.messageArgs?['title'] ?? '').contains('Stale result')),
         isEmpty,
         reason: 'a discarded fetch must not snackbar a result the page does not show',
       );

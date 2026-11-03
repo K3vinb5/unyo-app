@@ -8,6 +8,8 @@ import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_centre_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_controls.dart';
 
+import '../../../support/localized_app.dart';
+
 /// WP #119 follow-up: the video canvas never advertises a click (design
 /// choice), and the centre pause/resume button must not look selected.
 void main() {
@@ -40,7 +42,7 @@ void main() {
         ScreenUtilInit(
           designSize: const Size(1920, 1080),
           minTextAdapt: true,
-          child: MaterialApp(
+          child: localizedApp(
             home: Material(
               child: Center(
                 child: UnyoVideoCentreButton(
@@ -52,6 +54,8 @@ void main() {
           ),
         ),
       );
+      // `localizedApp` resolves its bundle one microtask after the first frame.
+      await tester.pump();
     }
 
     testWidgets('paints no focus highlight, cannot take focus, shows the hand', (

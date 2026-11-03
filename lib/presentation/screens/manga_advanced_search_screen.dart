@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -84,24 +85,20 @@ class _MangaAdvancedSearchViewState extends State<_MangaAdvancedSearchView> {
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           TextHeadlineMedium(
-                            text: "Manga",
+                            text: context.tr("search_manga_advanced_search_title"),
                             style: TextStyle(
                               color: ColorScheme.of(context).tertiary,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const TextHeadlineMedium(
-                            text: " Advanced Search",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
                         ],
                       ),
-                      const Row(
+                      Row(
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           TextBodyLarge(
-                            text: "Refine your manga search with advanced filters",
-                            style: TextStyle(color: Colors.grey),
+                            text: context.tr("search_manga_subtitle"),
+                            style: const TextStyle(color: Colors.grey),
                           ),
                         ],
                       ),
@@ -118,7 +115,7 @@ class _MangaAdvancedSearchViewState extends State<_MangaAdvancedSearchView> {
                 children: [
                   UnyoTextfield(
                     width: 180.w,
-                    label: "Search",
+                    label: context.tr("search_search_field_label"),
                     debounceMilliseconds: 1000,
                     onChange: context.read<MangaAdvancedSearchCubit>().updateSearchQuery,
                   ),
@@ -126,7 +123,7 @@ class _MangaAdvancedSearchViewState extends State<_MangaAdvancedSearchView> {
                       ? SizedBox(
                         width: 190.w,
                         child: UnyoMultiSelectDropdown(
-                          label: "Genres",
+                          label: context.tr("search_genres_label"),
                           debounceMilliseconds: 1000,
                           icon: Icons.category_rounded,
                           children: state.genresFilters.$2,
@@ -139,7 +136,7 @@ class _MangaAdvancedSearchViewState extends State<_MangaAdvancedSearchView> {
                       ? SizedBox(
                         width: 190.w,
                         child: UnyoDropdown(
-                          label: "Format",
+                          label: context.tr("search_format_label"),
                           icon: Icons.video_library_rounded,
                           children: state.formatFilters.$2,
                           selectedValue: state.selectedFormat,
@@ -152,7 +149,7 @@ class _MangaAdvancedSearchViewState extends State<_MangaAdvancedSearchView> {
                       ? SizedBox(
                         width: 190.w,
                         child: UnyoDropdown(
-                          label: "Country",
+                          label: context.tr("search_country_label"),
                           icon: Icons.public,
                           children: state.countryFilters.$2,
                           selectedValue: state.selectedCountry,
@@ -165,7 +162,7 @@ class _MangaAdvancedSearchViewState extends State<_MangaAdvancedSearchView> {
                       ? SizedBox(
                         width: 190.w,
                         child: UnyoDropdown(
-                          label: "Airing Status",
+                          label: context.tr("search_airing_status_label"),
                           icon: Icons.signal_cellular_alt_rounded,
                           children: state.airingStatusFilters.$2,
                           selectedValue: state.selectedAiringStatus,

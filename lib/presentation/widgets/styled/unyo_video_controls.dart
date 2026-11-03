@@ -1,6 +1,7 @@
 // External dependencies
 import 'dart:async';
 import 'package:cast/cast.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:collection/collection.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -351,7 +352,7 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                               icon: Tooltip(
                                                 waitDuration: const Duration(milliseconds: 2000),
                                                 textAlign: TextAlign.center,
-                                                message: "Reverse 30s",
+                                                message: context.tr('video_reverse_30s'),
                                                 child: Icon(Icons.fast_rewind_rounded, color: Colors.white, size: _centreIconSize),
                                               ),
                                             ),
@@ -364,7 +365,7 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                             Tooltip(
                                               waitDuration: const Duration(milliseconds: 2000),
                                               textAlign: TextAlign.center,
-                                              message: "Forward 30s",
+                                              message: context.tr('video_forward_30s'),
                                               child: IconButton(
                                                 iconSize: _centreIconSize,
                                                 onPressed: () {
@@ -385,7 +386,7 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                   Align(
                                     alignment: Alignment.centerRight,
                                     child: UnyoVideoListButton(
-                                      tooltip: "Open Episode List",
+                                      tooltip: context.tr('video_open_episode_list'),
                                       onPressed: () {
                                         _interaction.hide();
                                         context.read<VideoCubit>().showDrawerDialogEffect(
@@ -483,7 +484,9 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                 children: [
                                                   SizedBox(width: 10.w),
                                                   Tooltip(
-                                                    message: "${_isPlaying ? "Pause" : "Play"} Video",
+                                                    message: _isPlaying
+                                                        ? context.tr('video_pause_video')
+                                                        : context.tr('video_play_video'),
                                                     child: IconButton(
                                                       onPressed: () => togglePlayPause(),
                                                       icon: Icon(
@@ -502,7 +505,7 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                 mainAxisAlignment: MainAxisAlignment.end,
                                                 children: [
                                                   PopupMenuButton<int>(
-                                                    tooltip: "Select Audio Track",
+                                                    tooltip: context.tr('video_select_audio_track'),
                                                     icon: const Icon(Icons.audiotrack_rounded, size: 27),
                                                     onSelected: (int index) {
                                                       widget.videoService.setAudioTrack(index);
@@ -515,7 +518,7 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                     ),
                                                   ),
                                                   PopupMenuButton<int>(
-                                                    tooltip: "Select Subtitle Track",
+                                                    tooltip: context.tr('video_select_subtitle_track'),
                                                     icon: const Icon(Icons.subtitles_rounded, size: 27),
                                                     onSelected: (int index) {
                                                       widget.videoService.setSubtitle(index);
@@ -528,7 +531,7 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                     ),
                                                   ),
                                                   PopupMenuButton<int>(
-                                                    tooltip: "Select Video Server",
+                                                    tooltip: context.tr('video_select_video_server'),
                                                     icon: const Icon(Icons.dns_rounded, size: 27),
                                                     onSelected: (int index) {
                                                       widget.videoService.swapVideoUrl(index);
@@ -565,7 +568,7 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                         .toList(),
                                                   ),
                                                   PopupMenuButton<double>(
-                                                    tooltip: "Adjust Playback Speed",
+                                                    tooltip: context.tr('video_adjust_playback_speed'),
                                                     icon: const Icon(Icons.speed_rounded, size: 27),
                                                     onSelected: (double speed) {
                                                       _interaction.setPlaybackSpeed(speed);
@@ -581,7 +584,7 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                     ],
                                                   ),
                                                   PopupMenuButton<CastDevice>(
-                                                    tooltip: "Cast to Device",
+                                                    tooltip: context.tr('video_cast_to_device'),
                                                     icon: const Icon(Icons.cast_rounded, size: 22),
                                                     onSelected: (CastDevice device) {
                                                       context.read<VideoCubit>().castToDevice(device);
@@ -601,7 +604,9 @@ class _UnyoVideoControlsState extends State<UnyoVideoControls> with TickerProvid
                                                     ),
                                                   ),
                                                   Tooltip(
-                                                    message: "${widget.videoService.isFullscreen ? "Disable" : "Enable"} Fullscreen",
+                                                    message: widget.videoService.isFullscreen
+                                                        ? context.tr('video_disable_fullscreen')
+                                                        : context.tr('video_enable_fullscreen'),
                                                     child: IconButton(
                                                       onPressed: () {
                                                         _interaction.setFullscreen(!widget.videoService.isFullscreen);

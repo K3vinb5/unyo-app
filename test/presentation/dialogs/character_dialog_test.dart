@@ -10,6 +10,7 @@ import 'package:unyo/presentation/dialogs/character_dialog.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 
+import '../../support/localized_app.dart';
 import '../widgets/skeleton/support/fake_image_http.dart';
 
 MediaCharacter character({
@@ -90,7 +91,7 @@ Future<void> pumpDialog(
     ScreenUtilInit(
       designSize: const Size(1920, 1080),
       minTextAdapt: true,
-      child: MaterialApp(
+      child: localizedApp(
         theme: theme ?? ThemeData.dark(),
         home: Scaffold(body: CharacterDialog(character: value)),
       ),
@@ -323,7 +324,7 @@ void main() {
         ScreenUtilInit(
           designSize: const Size(1920, 1080),
           minTextAdapt: true,
-          child: MaterialApp(
+          child: localizedApp(
             theme: ThemeData.dark(),
             home: Scaffold(
               body: Builder(
@@ -339,6 +340,8 @@ void main() {
           ),
         ),
       );
+      // `localizedApp` resolves its bundle one microtask after the first frame.
+      await tester.pump();
 
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
