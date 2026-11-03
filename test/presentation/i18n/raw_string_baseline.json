@@ -1,0 +1,1222 @@
+[
+  {
+    "file": "lib/presentation/dialogs/account_creation_dialog.dart",
+    "text": "Anilist"
+  },
+  {
+    "file": "lib/presentation/dialogs/account_creation_dialog.dart",
+    "text": "Local Account"
+  },
+  {
+    "file": "lib/presentation/dialogs/account_creation_dialog.dart",
+    "text": "MyAnimeList"
+  },
+  {
+    "file": "lib/presentation/dialogs/account_creation_dialog.dart",
+    "text": "Offline usage, no sync"
+  },
+  {
+    "file": "lib/presentation/dialogs/account_creation_dialog.dart",
+    "text": "Shikimori"
+  },
+  {
+    "file": "lib/presentation/dialogs/account_creation_dialog.dart",
+    "text": "Sync your list with Anilist"
+  },
+  {
+    "file": "lib/presentation/dialogs/account_creation_dialog.dart",
+    "text": "Sync your list with MyAnimeList"
+  },
+  {
+    "file": "lib/presentation/dialogs/account_creation_dialog.dart",
+    "text": "Sync your list with Shikimori"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Cancel"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Completed"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Completed At:"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Confirm"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Current"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Dropped"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "List Editor"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Paused"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Planning"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Progress"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Repeating"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Score"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Started At:"
+  },
+  {
+    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
+    "text": "Status"
+  },
+  {
+    "file": "lib/presentation/dialogs/character_dialog.dart",
+    "text": "AGE"
+  },
+  {
+    "file": "lib/presentation/dialogs/character_dialog.dart",
+    "text": "Age ${}"
+  },
+  {
+    "file": "lib/presentation/dialogs/character_dialog.dart",
+    "text": "BIRTHDAY"
+  },
+  {
+    "file": "lib/presentation/dialogs/character_dialog.dart",
+    "text": "CHARACTER"
+  },
+  {
+    "file": "lib/presentation/dialogs/character_dialog.dart",
+    "text": "Close"
+  },
+  {
+    "file": "lib/presentation/dialogs/character_dialog.dart",
+    "text": "GENDER"
+  },
+  {
+    "file": "lib/presentation/dialogs/character_dialog.dart",
+    "text": "Not available"
+  },
+  {
+    "file": "lib/presentation/dialogs/character_dialog.dart",
+    "text": "no description available"
+  },
+  {
+    "file": "lib/presentation/dialogs/extension_preferences_dialog.dart",
+    "text": "%s"
+  },
+  {
+    "file": "lib/presentation/dialogs/extension_preferences_dialog.dart",
+    "text": "Cancel"
+  },
+  {
+    "file": "lib/presentation/dialogs/extension_preferences_dialog.dart",
+    "text": "Confirm"
+  },
+  {
+    "file": "lib/presentation/dialogs/extension_preferences_dialog.dart",
+    "text": "EditTextPreference"
+  },
+  {
+    "file": "lib/presentation/dialogs/extension_preferences_dialog.dart",
+    "text": "Extension Preferences"
+  },
+  {
+    "file": "lib/presentation/dialogs/extension_preferences_dialog.dart",
+    "text": "ListPreference"
+  },
+  {
+    "file": "lib/presentation/dialogs/extension_preferences_dialog.dart",
+    "text": "MultiSelectListPreference"
+  },
+  {
+    "file": "lib/presentation/dialogs/extension_preferences_dialog.dart",
+    "text": "SwitchPreferenceCompat"
+  },
+  {
+    "file": "lib/presentation/dialogs/extension_preferences_dialog.dart",
+    "text": "Unsupported preference type: ${}"
+  },
+  {
+    "file": "lib/presentation/dialogs/extensions_dialog.dart",
+    "text": "Add Repository"
+  },
+  {
+    "file": "lib/presentation/dialogs/extensions_dialog.dart",
+    "text": "Cancel"
+  },
+  {
+    "file": "lib/presentation/dialogs/extensions_dialog.dart",
+    "text": "Confirm"
+  },
+  {
+    "file": "lib/presentation/dialogs/extensions_dialog.dart",
+    "text": "Remove"
+  },
+  {
+    "file": "lib/presentation/dialogs/textfield_dialog.dart",
+    "text": "Confirm"
+  },
+  {
+    "file": "lib/presentation/dialogs/theme_color_picker_dialog.dart",
+    "text": "Cancel"
+  },
+  {
+    "file": "lib/presentation/dialogs/theme_color_picker_dialog.dart",
+    "text": "Confirm"
+  },
+  {
+    "file": "lib/presentation/dialogs/theme_color_picker_dialog.dart",
+    "text": "H ${}°   S ${}%   L ${}%"
+  },
+  {
+    "file": "lib/presentation/dialogs/theme_color_picker_dialog.dart",
+    "text": "H ${}°   S ${}%   V ${}%"
+  },
+  {
+    "file": "lib/presentation/dialogs/theme_color_picker_dialog.dart",
+    "text": "HSL"
+  },
+  {
+    "file": "lib/presentation/dialogs/theme_color_picker_dialog.dart",
+    "text": "HSV"
+  },
+  {
+    "file": "lib/presentation/dialogs/theme_color_picker_dialog.dart",
+    "text": "Pick a color to get a theme based on that color"
+  },
+  {
+    "file": "lib/presentation/dialogs/theme_color_picker_dialog.dart",
+    "text": "R ${}   G ${}   B ${}"
+  },
+  {
+    "file": "lib/presentation/dialogs/theme_color_picker_dialog.dart",
+    "text": "RGB"
+  },
+  {
+    "file": "lib/presentation/dialogs/theme_color_picker_dialog.dart",
+    "text": "THEME COLOR"
+  },
+  {
+    "file": "lib/presentation/dialogs/update_available_dialog.dart",
+    "text": "Download for ${}"
+  },
+  {
+    "file": "lib/presentation/dialogs/update_available_dialog.dart",
+    "text": "Later"
+  },
+  {
+    "file": "lib/presentation/dialogs/update_available_dialog.dart",
+    "text": "Open release page"
+  },
+  {
+    "file": "lib/presentation/dialogs/update_available_dialog.dart",
+    "text": "Open the release page for the full changelog."
+  },
+  {
+    "file": "lib/presentation/dialogs/update_available_dialog.dart",
+    "text": "There's a new release"
+  },
+  {
+    "file": "lib/presentation/dialogs/update_available_dialog.dart",
+    "text": "This release was published without notes. "
+  },
+  {
+    "file": "lib/presentation/dialogs/update_available_dialog.dart",
+    "text": "Unyo v$latestVersion is out — here's what changed."
+  },
+  {
+    "file": "lib/presentation/dialogs/user_profile_dialog.dart",
+    "text": "${} account"
+  },
+  {
+    "file": "lib/presentation/dialogs/user_profile_dialog.dart",
+    "text": "ACCOUNT"
+  },
+  {
+    "file": "lib/presentation/dialogs/user_profile_dialog.dart",
+    "text": "Account ID"
+  },
+  {
+    "file": "lib/presentation/dialogs/user_profile_dialog.dart",
+    "text": "Close"
+  },
+  {
+    "file": "lib/presentation/dialogs/user_profile_dialog.dart",
+    "text": "Local account"
+  },
+  {
+    "file": "lib/presentation/dialogs/warning_dialog.dart",
+    "text": "Confirm"
+  },
+  {
+    "file": "lib/presentation/drawers/anime_server_selection_drawer.dart",
+    "text": "Failed to open the server selection drawer: $e"
+  },
+  {
+    "file": "lib/presentation/drawers/anime_server_selection_drawer.dart",
+    "text": "Please wait, this can take some seconds..."
+  },
+  {
+    "file": "lib/presentation/drawers/anime_server_selection_drawer.dart",
+    "text": "Select Server"
+  },
+  {
+    "file": "lib/presentation/drawers/episode_list_drawer.dart",
+    "text": "Episode $episodeNumber"
+  },
+  {
+    "file": "lib/presentation/drawers/episode_list_drawer.dart",
+    "text": "Episodes"
+  },
+  {
+    "file": "lib/presentation/drawers/episode_list_drawer.dart",
+    "text": "Nothing to see here! Come back later :D"
+  },
+  {
+    "file": "lib/presentation/drawers/user_options_drawer.dart",
+    "text": "Logout"
+  },
+  {
+    "file": "lib/presentation/drawers/user_options_drawer.dart",
+    "text": "View Profile"
+  },
+  {
+    "file": "lib/presentation/screens/anime_advanced_search_screen.dart",
+    "text": " Advanced Search"
+  },
+  {
+    "file": "lib/presentation/screens/anime_advanced_search_screen.dart",
+    "text": "Airing Status"
+  },
+  {
+    "file": "lib/presentation/screens/anime_advanced_search_screen.dart",
+    "text": "Anime"
+  },
+  {
+    "file": "lib/presentation/screens/anime_advanced_search_screen.dart",
+    "text": "AnimeAdvancedSearch"
+  },
+  {
+    "file": "lib/presentation/screens/anime_advanced_search_screen.dart",
+    "text": "AnimeAdvancedSearch-${}"
+  },
+  {
+    "file": "lib/presentation/screens/anime_advanced_search_screen.dart",
+    "text": "Format"
+  },
+  {
+    "file": "lib/presentation/screens/anime_advanced_search_screen.dart",
+    "text": "Genres"
+  },
+  {
+    "file": "lib/presentation/screens/anime_advanced_search_screen.dart",
+    "text": "Refine your anime search with advanced filters"
+  },
+  {
+    "file": "lib/presentation/screens/anime_advanced_search_screen.dart",
+    "text": "Search"
+  },
+  {
+    "file": "lib/presentation/screens/anime_advanced_search_screen.dart",
+    "text": "Season"
+  },
+  {
+    "file": "lib/presentation/screens/anime_advanced_search_screen.dart",
+    "text": "Year"
+  },
+  {
+    "file": "lib/presentation/screens/anime_details_screen.dart",
+    "text": "Episode $episodeNumber"
+  },
+  {
+    "file": "lib/presentation/screens/anime_details_screen.dart",
+    "text": "Link metadata entry…"
+  },
+  {
+    "file": "lib/presentation/screens/anime_details_screen.dart",
+    "text": "Nothing to see here! Come back later :D"
+  },
+  {
+    "file": "lib/presentation/screens/anime_details_screen.dart",
+    "text": "Recommended Animes"
+  },
+  {
+    "file": "lib/presentation/screens/anime_details_screen.dart",
+    "text": "Select Extension"
+  },
+  {
+    "file": "lib/presentation/screens/anime_screen.dart",
+    "text": "Advanced Search"
+  },
+  {
+    "file": "lib/presentation/screens/anime_screen.dart",
+    "text": "Calendar"
+  },
+  {
+    "file": "lib/presentation/screens/anime_screen.dart",
+    "text": "Popular Animes"
+  },
+  {
+    "file": "lib/presentation/screens/anime_screen.dart",
+    "text": "Recently Completed Animes"
+  },
+  {
+    "file": "lib/presentation/screens/anime_screen.dart",
+    "text": "Recently Released"
+  },
+  {
+    "file": "lib/presentation/screens/anime_screen.dart",
+    "text": "Trending Animes"
+  },
+  {
+    "file": "lib/presentation/screens/anime_screen.dart",
+    "text": "Upcoming Animes"
+  },
+  {
+    "file": "lib/presentation/screens/calendar_screen.dart",
+    "text": " Calendar"
+  },
+  {
+    "file": "lib/presentation/screens/calendar_screen.dart",
+    "text": "$title (${})"
+  },
+  {
+    "file": "lib/presentation/screens/calendar_screen.dart",
+    "text": "Anime"
+  },
+  {
+    "file": "lib/presentation/screens/calendar_screen.dart",
+    "text": "Calendar"
+  },
+  {
+    "file": "lib/presentation/screens/calendar_screen.dart",
+    "text": "Calendar-${}"
+  },
+  {
+    "file": "lib/presentation/screens/calendar_screen.dart",
+    "text": "You can find the next anime releases here!"
+  },
+  {
+    "file": "lib/presentation/screens/extensions_screen.dart",
+    "text": "Available Anime"
+  },
+  {
+    "file": "lib/presentation/screens/extensions_screen.dart",
+    "text": "Available Manga"
+  },
+  {
+    "file": "lib/presentation/screens/extensions_screen.dart",
+    "text": "Extensions!"
+  },
+  {
+    "file": "lib/presentation/screens/extensions_screen.dart",
+    "text": "Installed Anime"
+  },
+  {
+    "file": "lib/presentation/screens/extensions_screen.dart",
+    "text": "Installed Manga"
+  },
+  {
+    "file": "lib/presentation/screens/extensions_screen.dart",
+    "text": "Manage your "
+  },
+  {
+    "file": "lib/presentation/screens/extensions_screen.dart",
+    "text": "Repository..."
+  },
+  {
+    "file": "lib/presentation/screens/extensions_screen.dart",
+    "text": "Search extensions..."
+  },
+  {
+    "file": "lib/presentation/screens/extensions_screen.dart",
+    "text": "You can find and install your favorite extensions here"
+  },
+  {
+    "file": "lib/presentation/screens/home_screen.dart",
+    "text": " , enjoy your journey!"
+  },
+  {
+    "file": "lib/presentation/screens/home_screen.dart",
+    "text": "Anime List"
+  },
+  {
+    "file": "lib/presentation/screens/home_screen.dart",
+    "text": "Continue Reading"
+  },
+  {
+    "file": "lib/presentation/screens/home_screen.dart",
+    "text": "Continue Watching"
+  },
+  {
+    "file": "lib/presentation/screens/home_screen.dart",
+    "text": "Find your next favorite anime or manga!"
+  },
+  {
+    "file": "lib/presentation/screens/home_screen.dart",
+    "text": "Manga List"
+  },
+  {
+    "file": "lib/presentation/screens/home_screen.dart",
+    "text": "Welcome back "
+  },
+  {
+    "file": "lib/presentation/screens/login_screen.dart",
+    "text": "Unyo revamped! by K3vinb5"
+  },
+  {
+    "file": "lib/presentation/screens/manga_advanced_search_screen.dart",
+    "text": " Advanced Search"
+  },
+  {
+    "file": "lib/presentation/screens/manga_advanced_search_screen.dart",
+    "text": "Airing Status"
+  },
+  {
+    "file": "lib/presentation/screens/manga_advanced_search_screen.dart",
+    "text": "Country"
+  },
+  {
+    "file": "lib/presentation/screens/manga_advanced_search_screen.dart",
+    "text": "Format"
+  },
+  {
+    "file": "lib/presentation/screens/manga_advanced_search_screen.dart",
+    "text": "Genres"
+  },
+  {
+    "file": "lib/presentation/screens/manga_advanced_search_screen.dart",
+    "text": "Manga"
+  },
+  {
+    "file": "lib/presentation/screens/manga_advanced_search_screen.dart",
+    "text": "MangaAdvancedSearch"
+  },
+  {
+    "file": "lib/presentation/screens/manga_advanced_search_screen.dart",
+    "text": "MangaAdvancedSearch-${}"
+  },
+  {
+    "file": "lib/presentation/screens/manga_advanced_search_screen.dart",
+    "text": "Refine your manga search with advanced filters"
+  },
+  {
+    "file": "lib/presentation/screens/manga_advanced_search_screen.dart",
+    "text": "Search"
+  },
+  {
+    "file": "lib/presentation/screens/manga_details_screen.dart",
+    "text": "${} Chapter ${}"
+  },
+  {
+    "file": "lib/presentation/screens/manga_details_screen.dart",
+    "text": "Chapter ${}"
+  },
+  {
+    "file": "lib/presentation/screens/manga_details_screen.dart",
+    "text": "Nothing to see here! Come back later :D"
+  },
+  {
+    "file": "lib/presentation/screens/manga_details_screen.dart",
+    "text": "Recommended Mangas"
+  },
+  {
+    "file": "lib/presentation/screens/manga_details_screen.dart",
+    "text": "Select Extension"
+  },
+  {
+    "file": "lib/presentation/screens/manga_screen.dart",
+    "text": "Advanced Search"
+  },
+  {
+    "file": "lib/presentation/screens/manga_screen.dart",
+    "text": "Calendar"
+  },
+  {
+    "file": "lib/presentation/screens/manga_screen.dart",
+    "text": "Manga isn't available with ${}"
+  },
+  {
+    "file": "lib/presentation/screens/manga_screen.dart",
+    "text": "Popular Mangas"
+  },
+  {
+    "file": "lib/presentation/screens/manga_screen.dart",
+    "text": "Recently Completed Mangas"
+  },
+  {
+    "file": "lib/presentation/screens/manga_screen.dart",
+    "text": "Trending Mangas"
+  },
+  {
+    "file": "lib/presentation/screens/manga_screen.dart",
+    "text": "Upcoming Mangas"
+  },
+  {
+    "file": "lib/presentation/screens/media_list_screen.dart",
+    "text": "$title (${})"
+  },
+  {
+    "file": "lib/presentation/screens/media_list_screen.dart",
+    "text": "Hi "
+  },
+  {
+    "file": "lib/presentation/screens/media_list_screen.dart",
+    "text": "MediaList"
+  },
+  {
+    "file": "lib/presentation/screens/media_list_screen.dart",
+    "text": "MediaList-${}"
+  },
+  {
+    "file": "lib/presentation/screens/media_list_screen.dart",
+    "text": "Welcome to your ${} Lists!"
+  },
+  {
+    "file": "lib/presentation/screens/media_list_screen.dart",
+    "text": "You can find and remember your favorite ${} here"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "About"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "About the app"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Accounts"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Anilist"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Aniyomi Extensions Repository"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Appearance settings"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Automatically accept next episode pop-up when the current one ends"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Automatically set the theme color based on your wallpaper colors"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Automatically skip the ending of episodes"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Automatically skip the opening of episodes"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Change the Aniyomi extensions repository URL"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Change the Tachiyomi extensions repository URL"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Choose Color"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Choose Theme based on a color"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Common"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Default Episode Title Language"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Default Media Title Language"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Default manual skip time"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Discord RPC"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Enable OpenSubtitles.org integration (When available)"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Enable OpenSubtitles.org integration for automatic subtitle fetching"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Enable auto-play next episode"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Enable or disable Discord Rich Presence"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Enable or disable NSFW content throughout the app"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Episode Metadata Service"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Extensions"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Extensions management settings"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "General application settings"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Language Settings"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Manage your "
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Manage your Anilist connected accounts"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Manage your MyAnimeList connected accounts"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Manage your Shikimori connected accounts"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Manage your connected accounts"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Manage your language preferences"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Manga reader settings"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Media metadata service"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "MyAnimeList"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "NSFW Content"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Player"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Provider that owns details: synopsis, covers, genres and scores"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Reader"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Select a language"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Select a service"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Select the Episode Metadata service to use"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Select the default episode title language"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Select the default media title language"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Set the default time for manual skips"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Settings!"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Shikimori"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Skip ending automatically (when available)"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Skip opening automatically (when available)"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Tachiyomi Extensions Repository"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Theme"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Use wallpaper as theme color"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "Video player settings"
+  },
+  {
+    "file": "lib/presentation/screens/settings_screen.dart",
+    "text": "You can find and change your settings here"
+  },
+  {
+    "file": "lib/presentation/screens/video_screen.dart",
+    "text": "The video is loading"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcut_handler.dart",
+    "text": "$kind: $text"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcut_scope.dart",
+    "text": "video shortcut scope"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "ArrowDown"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "ArrowLeft"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "ArrowRight"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "ArrowUp"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "Esc"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "Shift+,"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "Shift+."
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "Shift+N"
+  },
+  {
+    "file": "lib/presentation/shortcuts/video_shortcuts.dart",
+    "text": "Space"
+  },
+  {
+    "file": "lib/presentation/widgets/media_link_dialog.dart",
+    "text": "${} id ${}"
+  },
+  {
+    "file": "lib/presentation/widgets/media_link_dialog.dart",
+    "text": "${}. We couldn't match this entry between the two "
+  },
+  {
+    "file": "lib/presentation/widgets/media_link_dialog.dart",
+    "text": "Dismiss"
+  },
+  {
+    "file": "lib/presentation/widgets/media_link_dialog.dart",
+    "text": "Link"
+  },
+  {
+    "file": "lib/presentation/widgets/media_link_dialog.dart",
+    "text": "None of these"
+  },
+  {
+    "file": "lib/presentation/widgets/media_link_dialog.dart",
+    "text": "Which entry is this?"
+  },
+  {
+    "file": "lib/presentation/widgets/media_link_dialog.dart",
+    "text": "You're signed in with ${}, but details come from "
+  },
+  {
+    "file": "lib/presentation/widgets/media_link_dialog.dart",
+    "text": "automatically — pick the right one."
+  },
+  {
+    "file": "lib/presentation/widgets/styled/banner_camera.dart",
+    "text": "BannerPose(scale: $scale, pan: $pan)"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "MANGA"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "MOVIE"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "MUSIC"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "NOT_YET_RELEASED"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "NOVEL"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "ONE_SHOT"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "RELEASING"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "SPECIAL"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/media_card.dart",
+    "text": "TV_SHORT"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/service_badge.dart",
+    "text": "AniList account"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/service_badge.dart",
+    "text": "Local account"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/service_badge.dart",
+    "text": "MyAnimeList account"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/service_badge.dart",
+    "text": "Shikimori account"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/service_badge.dart",
+    "text": "Unknown account service"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/service_badge.dart",
+    "text": "a badge needs an asset or a glyph"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/shikimori_account_settings.dart",
+    "text": "Add one from the login screen to sync your list with Shikimori"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/shikimori_account_settings.dart",
+    "text": "Logout"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/shikimori_account_settings.dart",
+    "text": "No Shikimori account is connected"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/shikimori_account_settings.dart",
+    "text": "Shikimori account"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_banner_carousel.dart",
+    "text": "BannerCarousel"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_character_list.dart",
+    "text": "Characters"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "April"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "August"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "Cancel"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "December"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "February"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "Fri"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "January"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "July"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "June"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "March"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "May"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "Mon"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "November"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "OK"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "October"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "Sat"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "September"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "Sun"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "Thu"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "Tue"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_date_picker.dart",
+    "text": "Wed"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_extension_button.dart",
+    "text": "Delete"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_extension_button.dart",
+    "text": "Download"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_extension_button.dart",
+    "text": "NFSW"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_extension_button.dart",
+    "text": "Settings"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_extension_button.dart",
+    "text": "Update"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_settings_version.dart",
+    "text": "A newer release is available to download from GitHub"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_settings_version.dart",
+    "text": "Open releases page"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_settings_version.dart",
+    "text": "Unyo v$currentVersion"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_settings_version.dart",
+    "text": "Update available: v${}"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_settings_version.dart",
+    "text": "Version"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_settings_version.dart",
+    "text": "Version unavailable"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_bottom_status.dart",
+    "text": "Dismiss"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_bottom_status.dart",
+    "text": "Next: $seriesTitle"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_bottom_status.dart",
+    "text": "Watch now"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_centre_button.dart",
+    "text": "Resume Play"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "${} Fullscreen"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "${} Video"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "${} — click for ${}"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "Adjust Playback Speed"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "Cast to Device"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "Crop"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "Default audio"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "Fit"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "Forward 30s"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "No subtitles"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "Open Episode List"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "Reverse 30s"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "Select Audio Track"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "Select Subtitle Track"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "Select Video Server"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/unyo_video_controls.dart",
+    "text": "Stretch"
+  },
+  {
+    "file": "lib/presentation/widgets/styled/user_avatar_image.dart",
+    "text": "EKtChtm.png"
+  },
+  {
+    "file": "lib/presentation/widgets/text/text_utils.dart",
+    "text": "Custom Repo"
+  },
+  {
+    "file": "lib/presentation/widgets/text/text_utils.dart",
+    "text": "GitHub Repo"
+  },
+  {
+    "file": "lib/presentation/widgets/text/text_utils.dart",
+    "text": "Unknown Repo"
+  },
+  {
+    "file": "lib/presentation/widgets/text/text_utils.dart",
+    "text": "r "
+  }
+]
