@@ -29,35 +29,46 @@ class MediaCardSkeleton extends StatelessWidget {
           // The same single silhouette the loaded card uses: nothing in the
           // placeholder may paint outside the cover's rounded rectangle (the
           // score badge used to poke past its corner).
-          MediaCoverSilhouette(
-            child: Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                // Square on purpose: the silhouette above is the shape. A
-                // second rounded block inside it would antialias the same
-                // edge twice (the #103/#119 drift guard).
-                SkeletonBlock(
-                  width: MediaCardMetrics.coverWidth,
-                  height: MediaCardMetrics.coverHeight,
-                  borderRadius: 0,
-                ),
-                Align(
-                  alignment: Alignment.bottomRight,
-                  // The same flush leaf as the loaded card's pill, in one block:
-                  // the shared `MediaBadgeClipper` fillet merges an opaque badge
-                  // into the cover's arc, but on a flat placeholder it carves a
-                  // notch out of the cover's own outline. The silhouette above
-                  // is the only shape the placeholder needs (WP #119).
-                  child: Padding(
-                    padding: EdgeInsets.all(MediaCardMetrics.badgeInset),
-                    child: SkeletonBlock(
-                      width: MediaCardMetrics.badgeWidth,
-                      height: MediaCardMetrics.badgeHeight,
-                      shape: MediaCardMetrics.badgeBorderRadius,
+          //
+          // Pinned to the cover box. Left to the Column's loose constraints,
+          // the badge `Align` below fills the whole card width (152.5), so this
+          // clip came out 12.5 wider than the cover and right-aligned the
+          // square 140-wide block inside it: the right corners followed the
+          // 20-radius arc while the left ones stayed square, and the body sat
+          // 6.25 to the right of the real cover (WP #119 round 6).
+          SizedBox(
+            width: MediaCardMetrics.coverWidth,
+            height: MediaCardMetrics.coverHeight,
+            child: MediaCoverSilhouette(
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  // Square on purpose: the silhouette above is the shape. A
+                  // second rounded block inside it would antialias the same
+                  // edge twice (the #103/#119 drift guard).
+                  SkeletonBlock(
+                    width: MediaCardMetrics.coverWidth,
+                    height: MediaCardMetrics.coverHeight,
+                    borderRadius: 0,
+                  ),
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    // The same flush leaf as the loaded card's pill, in one block:
+                    // the shared `MediaBadgeClipper` fillet merges an opaque badge
+                    // into the cover's arc, but on a flat placeholder it carves a
+                    // notch out of the cover's own outline. The silhouette above
+                    // is the only shape the placeholder needs (WP #119).
+                    child: Padding(
+                      padding: EdgeInsets.all(MediaCardMetrics.badgeInset),
+                      child: SkeletonBlock(
+                        width: MediaCardMetrics.badgeWidth,
+                        height: MediaCardMetrics.badgeHeight,
+                        shape: MediaCardMetrics.badgeBorderRadius,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           SizedBox(

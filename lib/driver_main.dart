@@ -9,6 +9,9 @@
 //   ext.unyo.findKey {key}            — like tapKey but only reports position/size
 //   ext.unyo.sendKey {key, shift}     — inject a real key press through the key
 //                                       pipeline (Shortcuts/Actions see it)
+//   ext.unyo.debugTypes {names}       — count widgets by runtimeType name
+//   ext.unyo.debugRects {names,limit} — live rect of each such widget, in tree
+//                                       order (what a frame is really made of)
 //
 // The driver also writes the live VM-service URI (auth token included) to
 // <system temp>/unyo-vm-service.txt: the app's stdout is block-buffered when it
@@ -121,6 +124,41 @@ void _registerUnyoAutomation() {
     return _json({'ok': true, 'handledDown': handledDown, 'handledUp': handledUp});
   });
 
+  // Which widgets a frame is made of, and where each one sits: a drive can
+  // compare a skeleton frame against a loaded frame on the live tree instead of
+  // re-deriving the geometry from the source.
+  developer.registerExtension('ext.unyo.debugTypes', (method, params) async {
+    final names = _nameParam(params['names']);
+    final counts = <String, int>{for (final name in names) name: 0};
+    void visit(Element element) {
+      final type = element.widget.runtimeType.toString();
+      if (counts.containsKey(type)) counts[type] = counts[type]! + 1;
+      element.visitChildren(visit);
+    }
+
+    WidgetsBinding.instance.rootElement?.visitChildren(visit);
+    return _json({'ok': true, 'counts': counts});
+  });
+
+  developer.registerExtension('ext.unyo.debugRects', (method, params) async {
+    final names = _nameParam(params['names']);
+    final limit = int.tryParse(params['limit'] ?? '') ?? 200;
+    final rects = <Map<String, dynamic>>[];
+    void visit(Element element) {
+      if (rects.length >= limit) return;
+      final type = element.widget.runtimeType.toString();
+      final box = element.renderObject;
+      if (names.contains(type) && box is RenderBox) {
+        final rect = _rectOf(type, box);
+        if (rect != null) rects.add(rect);
+      }
+      element.visitChildren(visit);
+    }
+
+    WidgetsBinding.instance.rootElement?.visitChildren(visit);
+    return _json({'ok': true, 'rects': rects});
+  });
+
   developer.registerExtension('ext.unyo.findKey', (method, params) async {
     final found = _findByKey(params['key']!);
     if (found == null) return _json({'ok': false, 'error': 'not found'});
@@ -135,6 +173,38 @@ void _registerUnyoAutomation() {
     });
   });
 }
+
+/// `"A,B,C"` as `{A, B, C}`: the widget-type names a debug extension reports on.
+Set<String> _nameParam(String? value) => (value ?? '')
+    .split(',')
+    .map((String name) => name.trim())
+    .where((String name) => name.isNotEmpty)
+    .toSet();
+
+/// `{"t", "x", "y", "w", "h"}` for [box]: its global origin and size, or `null`
+/// when the box has no size yet or sits at a non-finite coordinate (such a
+/// number cannot be JSON-encoded back to the drive).
+Map<String, dynamic>? _rectOf(String type, RenderBox box) {
+  if (!box.hasSize) return null;
+  final Offset origin = box.localToGlobal(Offset.zero);
+  final List<double> values = <double>[
+    origin.dx,
+    origin.dy,
+    box.size.width,
+    box.size.height,
+  ];
+  if (!values.every((double value) => value.isFinite)) return null;
+  return <String, dynamic>{
+    't': type,
+    'x': _round(origin.dx),
+    'y': _round(origin.dy),
+    'w': _round(box.size.width),
+    'h': _round(box.size.height),
+  };
+}
+
+/// Two decimals: a live rect is read as a measurement, not as a float dump.
+double _round(double value) => double.parse(value.toStringAsFixed(2));
 
 Element? _findByKey(String key) {
   Element? found;

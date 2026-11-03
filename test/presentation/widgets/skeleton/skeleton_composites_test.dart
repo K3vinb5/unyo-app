@@ -128,6 +128,53 @@ void main() {
         reason: 'the cover is clipped exactly once',
       );
     });
+
+    testWidgets('the cover silhouette is exactly the cover box', (
+      tester,
+    ) async {
+      // Regression, WP #119 round 6. The silhouette used to be a bare Column
+      // child, so the badge `Align` inside its Stack stretched the clip to the
+      // whole 152.5 card width while the square 140-wide block stayed
+      // right-aligned: the app painted a body rounded on the right and square
+      // on the left, 6.25 logical px right of the loaded cover.
+      await pumpSkeletonHarness(tester, const MediaCardSkeleton());
+
+      final Finder cover = block(
+        width: MediaCardMetrics.coverWidth,
+        height: MediaCardMetrics.coverHeight,
+      );
+      final Finder coverClip = find.ancestor(
+        of: cover,
+        matching: find.byType(ClipRRect),
+      );
+
+      expect(
+        tester.getSize(coverClip),
+        const Size(MediaCardMetrics.coverWidth, MediaCardMetrics.coverHeight),
+        reason: 'the clip must be the loaded card cover box, not the card slot',
+      );
+
+      final Rect clipRect = tester.getRect(coverClip);
+      final Rect coverRect = tester.getRect(cover);
+      expect(coverRect.left, clipRect.left, reason: 'no right shift');
+      expect(coverRect.right, clipRect.right);
+      expect(coverRect.top, clipRect.top);
+      expect(coverRect.bottom, clipRect.bottom);
+
+      // The clip is centred in the card, exactly like the loaded cover.
+      final Rect cardRect = tester.getRect(find.byType(MediaCardSkeleton));
+      final double gutter =
+          (MediaCardMetrics.width - MediaCardMetrics.coverWidth) / 2;
+      expect(
+        clipRect.left - cardRect.left,
+        moreOrLessEquals(gutter),
+        reason: 'the silhouette sits where the loaded cover sits',
+      );
+      expect(
+        clipRect.right - cardRect.left,
+        moreOrLessEquals(gutter + MediaCardMetrics.coverWidth),
+      );
+    });
   });
 
   group('CardRowSkeleton', () {
