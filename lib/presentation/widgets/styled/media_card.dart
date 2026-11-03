@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:unyo/presentation/widgets/skeleton/media_badge_clipper.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_metrics.dart';
 import 'package:unyo/presentation/widgets/styled/hover_animated_container.dart';
 import 'package:unyo/presentation/widgets/styled/media_cover_silhouette.dart';
@@ -89,67 +90,72 @@ class MediaCard extends StatelessWidget {
                           score != 0
                               ? Align(
                                   alignment: Alignment.bottomRight,
-                                  // Floats clear of the cover's 20-radius
-                                  // corner, so neither capsule end is carved by
-                                  // the silhouette (see badgeInset).
+                                  // Flush in the cover's bottom-right corner,
+                                  // like the original leaf: MediaBadgeClipper
+                                  // hands the badge's right end over to the
+                                  // cover's own 20-radius arc, so nothing is
+                                  // carved into a square step (WP #119).
                                   child: Padding(
                                     padding: const EdgeInsets.all(
                                       MediaCardMetrics.badgeInset,
                                     ),
                                     child: Opacity(
                                       opacity: 0.8,
-                                      child: Container(
-                                      decoration: BoxDecoration(
-                                        color: ColorScheme.of(context).primary,
-                                        borderRadius:
-                                            MediaCardMetrics.badgeBorderRadius,
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6.0,
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              "  ${(score / 10)}",
-                                              style: TextStyle(
-                                                color:
-                                                    ColorScheme.of(context)
-                                                            .primary
-                                                            .computeLuminance() >
-                                                        0.2
-                                                    ? Colors.black.withValues(
-                                                        alpha: 0.8,
-                                                      )
-                                                    : Colors.white.withValues(
-                                                        alpha: 0.8,
-                                                      ),
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                      child: ClipPath(
+                                        clipper: const MediaBadgeClipper(),
+                                        child: ColoredBox(
+                                          color: ColorScheme.of(
+                                            context,
+                                          ).primary,
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6.0,
                                             ),
-                                            Icon(
-                                              Icons.star,
-                                              color:
-                                                  ColorScheme.of(context)
-                                                          .primary
-                                                          .computeLuminance() >
-                                                      0.2
-                                                  ? Colors.black.withValues(
-                                                      alpha: 0.8,
-                                                    )
-                                                  : Colors.white.withValues(
-                                                      alpha: 0.8,
-                                                    ),
-                                              size: 15,
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  "  ${(score / 10)}",
+                                                  style: TextStyle(
+                                                    color:
+                                                        ColorScheme.of(context)
+                                                                .primary
+                                                                .computeLuminance() >
+                                                            0.2
+                                                        ? Colors.black
+                                                              .withValues(
+                                                                alpha: 0.8,
+                                                              )
+                                                        : Colors.white
+                                                              .withValues(
+                                                                alpha: 0.8,
+                                                              ),
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                Icon(
+                                                  Icons.star,
+                                                  color:
+                                                      ColorScheme.of(context)
+                                                              .primary
+                                                              .computeLuminance() >
+                                                          0.2
+                                                      ? Colors.black.withValues(
+                                                          alpha: 0.8,
+                                                        )
+                                                      : Colors.white.withValues(
+                                                          alpha: 0.8,
+                                                        ),
+                                                  size: 15,
+                                                ),
+                                              ],
                                             ),
-                                          ],
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              )
+                                )
                               : const SizedBox.shrink(),
                           // Release-status dot, bottom-left of the cover.
                           Padding(

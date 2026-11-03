@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:unyo/presentation/widgets/skeleton/media_badge_clipper.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 
 import 'support/widget_harness.dart';
@@ -105,8 +106,21 @@ void main() {
       );
       expect(
         tester.widget<SkeletonBlock>(badge).shape,
-        MediaCardMetrics.badgeBorderRadius,
-        reason: 'the placeholder badge is the same stadium capsule as the card',
+        isNull,
+        reason: 'a second rounded shape inside the clip would antialias twice',
+      );
+      // The outline is the shared clipper, so the placeholder leaf and the
+      // loaded leaf cannot drift apart (WP #119).
+      expect(
+        find.ancestor(
+          of: badge,
+          matching: find.byWidgetPredicate(
+            (Widget widget) =>
+                widget is ClipPath && widget.clipper is MediaBadgeClipper,
+          ),
+        ),
+        findsOneWidget,
+        reason: 'the placeholder badge is painted inside MediaBadgeClipper',
       );
     });
   });

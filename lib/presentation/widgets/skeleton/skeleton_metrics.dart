@@ -31,28 +31,36 @@ abstract final class MediaCardMetrics {
   static const double badgeWidth = 46;
   static const double badgeHeight = 18;
 
-  /// Radius of the badge's four corners — half of [badgeHeight], so each end is
-  /// a full semicircle (a stadium capsule, the look of the pre-#119 badge).
+  /// Radius of the badge's leaf corners — the original pre-#119 value.
   ///
-  /// Both ends must be mirror images: a square right end (the #119 follow-up)
-  /// was not a stylistic choice, it read as a clipped/glitched pill next to the
-  /// round left cap.
-  static const double badgeCornerRadius = badgeHeight / 2;
+  /// Far larger than [badgeHeight] on purpose: the renderer clamps it to the
+  /// box, so the top-left corner becomes one generous sweep from the top edge
+  /// down to the bottom-left point. The bottom-right corner is the same radius,
+  /// i.e. big enough to follow the cover's own corner arc.
+  static const double badgeCornerRadius = 50;
 
-  /// One continuous stadium capsule: every corner at [badgeCornerRadius], so
-  /// the left and right ends are identical semicircles. Loaded card and
-  /// skeleton both paint the badge with this, so they cannot diverge.
-  static const BorderRadius badgeBorderRadius = BorderRadius.all(
-    Radius.circular(badgeCornerRadius),
+  /// The leaf: [badgeCornerRadius] top-left and bottom-right, square
+  /// bottom-left. The top-right is deliberately *not* stated here — it has to
+  /// line up with the cover's arc, which depends on where the badge sits, so
+  /// `MediaBadgeClipper` builds the whole outline instead.
+  static const BorderRadius badgeBorderRadius = BorderRadius.only(
+    topLeft: Radius.circular(badgeCornerRadius),
+    bottomRight: Radius.circular(badgeCornerRadius),
   );
 
-  /// How far the badge floats from the cover's right and bottom edges.
+  /// Radius of the fillet that hands the badge's top edge over to the cover's
+  /// [coverRadius] bottom-right arc.
   ///
-  /// The pill no longer butts into the cover's 20-radius corner: a capsule
-  /// touching both edges would be carved by the cover silhouette and read as a
-  /// square step on its right end. At 6 the whole capsule sits inside the arc
-  /// (its right end centre is 16.07 < 20 from the corner's centre).
-  static const double badgeInset = 6;
+  /// The badge is flush in the corner (no inset) so it reads as part of the
+  /// card, but a square top-right then ends in a step where the flat top edge
+  /// meets the near-vertical arc — the pre-#119 glitch. The fillet is tangent
+  /// to both the top edge and the arc, so the outline is one continuous curve
+  /// ending on the cover's corner.
+  static const double badgeMergeRadius = 4;
+
+  /// The badge sits flush at the cover's bottom-right corner: the original
+  /// leaf placement, restored after the round-3 floating capsule.
+  static const double badgeInset = 0;
 
   /// `widgets/styled/media_card.dart` - the single text line painted inside
   /// [titleRowHeight] and [metaRowHeight]; a pill the size of the whole row

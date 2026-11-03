@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:unyo/presentation/widgets/skeleton/media_badge_clipper.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_block.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_metrics.dart';
 import 'package:unyo/presentation/widgets/styled/media_cover_silhouette.dart';
@@ -43,14 +44,18 @@ class MediaCardSkeleton extends StatelessWidget {
                 ),
                 Align(
                   alignment: Alignment.bottomRight,
-                  // Same float as the loaded card: the capsule clears the
-                  // cover's 20-radius corner instead of being carved by it.
+                  // Same flush placement and same outline as the loaded card:
+                  // the badge is clipped by MediaBadgeClipper, whose right end
+                  // follows the cover's arc (WP #119).
                   child: Padding(
                     padding: EdgeInsets.all(MediaCardMetrics.badgeInset),
-                    child: SkeletonBlock(
-                      width: MediaCardMetrics.badgeWidth,
-                      height: MediaCardMetrics.badgeHeight,
-                      shape: MediaCardMetrics.badgeBorderRadius,
+                    child: ClipPath(
+                      clipper: MediaBadgeClipper(),
+                      child: SkeletonBlock(
+                        width: MediaCardMetrics.badgeWidth,
+                        height: MediaCardMetrics.badgeHeight,
+                        borderRadius: 0,
+                      ),
                     ),
                   ),
                 ),
@@ -238,13 +243,15 @@ class MediaGridSkeleton extends StatelessWidget {
   }) {
     final double maxCrossAxisExtent = delegate.maxCrossAxisExtent;
     final double? mainAxisExtent = delegate.mainAxisExtent;
-    if (!size.width.isFinite || !size.height.isFinite || mainAxisExtent == null) {
+    if (!size.width.isFinite ||
+        !size.height.isFinite ||
+        mainAxisExtent == null) {
       return fallbackCellCount;
     }
     final int columns =
         (size.width / (maxCrossAxisExtent + delegate.crossAxisSpacing)).ceil();
-    final int rows =
-        (size.height / (mainAxisExtent + delegate.mainAxisSpacing)).ceil();
+    final int rows = (size.height / (mainAxisExtent + delegate.mainAxisSpacing))
+        .ceil();
     return (columns * rows).clamp(minCellCount, maxCellCount);
   }
 
@@ -254,9 +261,7 @@ class MediaGridSkeleton extends StatelessWidget {
       builder: (BuildContext context, BoxConstraints constraints) {
         final int count =
             itemCount ??
-            cellsForSize(
-              Size(constraints.maxWidth, constraints.maxHeight),
-            );
+            cellsForSize(Size(constraints.maxWidth, constraints.maxHeight));
         return GridView.builder(
           padding: EdgeInsets.zero,
           physics: const NeverScrollableScrollPhysics(),

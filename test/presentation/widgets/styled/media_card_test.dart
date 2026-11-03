@@ -1,15 +1,18 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:unyo/presentation/widgets/skeleton/media_badge_clipper.dart';
 import 'package:unyo/presentation/widgets/skeleton/media_card_skeleton.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_metrics.dart';
 import 'package:unyo/presentation/widgets/styled/media_card.dart';
 
 import '../skeleton/support/widget_harness.dart';
 
-/// WP #109: the loaded card must present one continuous rounded silhouette.
-/// The score badge is anchored inside the cover stack, so the cover stack has
-/// to carry the clip - otherwise the badge's square-ish corners paint over the
-/// 20-radius corner the cover cuts away.
+/// WP #109 / #119: the loaded card must present one continuous rounded
+/// silhouette, and the score badge must be the original flush leaf — with its
+/// right end handed over to the cover's corner arc instead of ending in a
+/// square step.
 void main() {
   MediaCard card({int score = 87}) => MediaCard(
     title: 'Cowboy Bebop',
@@ -22,133 +25,212 @@ void main() {
     tag: 'media-card-109',
   );
 
-  /// The badge is the only box in the card painted with the leaf radius.
-  bool isBadge(Widget widget) {
-    if (widget is! Container) return false;
-    final Decoration? decoration = widget.decoration;
-    return decoration is BoxDecoration &&
-        decoration.borderRadius == MediaCardMetrics.badgeBorderRadius;
-  }
+  /// The badge is the only box in the card painted inside [MediaBadgeClipper].
+  bool isBadgeClip(Widget widget) =>
+      widget is ClipPath && widget.clipper is MediaBadgeClipper;
 
-  final Finder badge = find.byWidgetPredicate(isBadge);
+  /// The badge's own clip (the box painted with the theme's primary).
+  final Finder badgeClip = find.byWidgetPredicate(isBadgeClip);
+
   final Finder coverClip = find.byWidgetPredicate(
     (Widget widget) =>
         widget is ClipRRect &&
         widget.borderRadius == MediaCardMetrics.coverBorderRadius,
   );
 
-  testWidgets('clips the cover stack to the cover silhouette', (tester) async {
-    await pumpSkeletonHarness(tester, card());
+  group('cover silhouette', () {
+    testWidgets('clips the cover stack, badge included', (tester) async {
+      await pumpSkeletonHarness(tester, card());
 
-    expect(badge, findsOneWidget, reason: 'a scored card paints its badge');
+      expect(
+        badgeClip,
+        findsOneWidget,
+        reason: 'a scored card paints its badge',
+      );
+      expect(
+        find.ancestor(of: badgeClip, matching: find.byType(ClipRRect)),
+        findsOneWidget,
+        reason: 'the badge must be painted inside the clipped cover stack',
+      );
 
-    final Finder clip = find.ancestor(
-      of: badge,
-      matching: find.byType(ClipRRect),
-    );
-    expect(
-      clip,
-      findsOneWidget,
-      reason: 'the badge must be painted inside the clipped cover stack',
-    );
-    expect(
-      tester.widget<ClipRRect>(clip).borderRadius,
-      MediaCardMetrics.coverBorderRadius,
-    );
+      final Rect coverRect = tester.getRect(coverClip);
+      final Rect badgeRect = tester.getRect(badgeClip);
+      expect(coverRect.width, MediaCardMetrics.coverWidth);
+      expect(coverRect.height, MediaCardMetrics.coverHeight);
+      // Width and height are text-driven (the badge hugs its score + star), so
+      // they are not fixed metrics: the harness's Ahem glyphs are wider and
+      // taller than the runtime font. What must hold is the placement.
+      expect(badgeRect.width, lessThanOrEqualTo(MediaCardMetrics.coverWidth));
+      expect(
+        coverRect.contains(badgeRect.bottomRight - const Offset(0.01, 0.01)),
+        isTrue,
+        reason: 'the badge may not spill out of the cover silhouette',
+      );
 
-    // The clip is the cover itself, not a smaller inner box: the badge floats
-    // `badgeInset` inside the cover's bottom-right edge, clear of the corner.
-    final Rect coverRect = tester.getRect(clip);
-    expect(coverRect.width, MediaCardMetrics.coverWidth);
-    expect(coverRect.height, MediaCardMetrics.coverHeight);
-    final Rect badgeRect = tester.getRect(badge);
-    expect(coverRect.right - badgeRect.right, MediaCardMetrics.badgeInset);
-    expect(coverRect.bottom - badgeRect.bottom, MediaCardMetrics.badgeInset);
+      // Flush, like the original leaf: the badge's bottom edge is the cover's
+      // bottom edge and its right edge is the cover's right edge. The corner
+      // merge happens in the badge's own outline, not by floating it inward.
+      expect(MediaCardMetrics.badgeInset, 0);
+      expect(coverRect.right - badgeRect.right, 0);
+      expect(coverRect.bottom - badgeRect.bottom, 0);
+    });
+
+    testWidgets('paints no badge for an unrated card, silhouette unchanged', (
+      tester,
+    ) async {
+      await pumpSkeletonHarness(tester, card(score: 0));
+
+      expect(badgeClip, findsNothing);
+      expect(
+        coverClip,
+        findsWidgets,
+        reason: 'the silhouette does not depend on the score',
+      );
+    });
+
+    testWidgets('the cover is clipped exactly once', (tester) async {
+      await pumpSkeletonHarness(tester, card());
+
+      // Nested clips at the same radius antialias the arc twice and soften it
+      // into "straight, then a bend" — one silhouette, one clip (WP #119).
+      expect(
+        find.descendant(of: coverClip, matching: coverClip),
+        findsNothing,
+        reason: 'the cover stack must not clip itself a second time',
+      );
+    });
+
+    testWidgets('skeleton and card agree on the silhouette', (tester) async {
+      await pumpSkeletonHarness(tester, card(score: 0));
+      final BorderRadiusGeometry cardRadius = tester
+          .widget<ClipRRect>(coverClip.first)
+          .borderRadius;
+
+      await pumpSkeletonHarness(tester, const MediaCardSkeleton());
+      expect(
+        coverClip,
+        findsOneWidget,
+        reason: 'the skeleton clips its cover with the shared constant',
+      );
+      expect(tester.widget<ClipRRect>(coverClip).borderRadius, cardRadius);
+    });
   });
 
-  testWidgets('paints no badge for an unrated card, silhouette unchanged', (
-    tester,
-  ) async {
-    await pumpSkeletonHarness(tester, card(score: 0));
+  group('score badge outline', () {
+    test('is the original leaf, not a stadium capsule', () {
+      // Restored pre-#119 geometry: 50-radius top-left and bottom-right, square
+      // bottom-left. Half-height corners (the round-3 capsule) are gone.
+      const Radius radius = Radius.circular(50);
+      expect(MediaCardMetrics.badgeCornerRadius, 50);
+      expect(MediaCardMetrics.badgeBorderRadius.topLeft, radius);
+      expect(MediaCardMetrics.badgeBorderRadius.bottomRight, radius);
+      expect(MediaCardMetrics.badgeBorderRadius.topRight, Radius.zero);
+      expect(MediaCardMetrics.badgeBorderRadius.bottomLeft, Radius.zero);
+      // Far bigger than the box on purpose: the renderer clamps it, which is
+      // what turns the top-left into a sweep that reaches the bottom-left point.
+      expect(
+        MediaCardMetrics.badgeCornerRadius,
+        greaterThan(MediaCardMetrics.badgeHeight),
+      );
+    });
 
-    expect(badge, findsNothing);
-    expect(
-      coverClip,
-      findsWidgets,
-      reason: 'the silhouette does not depend on the score',
-    );
-  });
+    test('the fillet is tangent to the top edge and to the cover arc', () {
+      const double width = MediaCardMetrics.badgeWidth;
+      const double height = MediaCardMetrics.badgeHeight;
+      const double coverRadius = MediaCardMetrics.coverRadius;
+      const double merge = MediaCardMetrics.badgeMergeRadius;
+      final Offset arcCentre = const Offset(
+        width - coverRadius,
+        height - coverRadius,
+      );
+      final double reach =
+          (coverRadius - merge) * (coverRadius - merge) -
+          (merge - arcCentre.dy) * (merge - arcCentre.dy);
+      expect(reach, greaterThan(0), reason: 'a fillet has to fit the corner');
 
-  testWidgets('the badge is a full stadium capsule, not a half-round pill', (
-    tester,
-  ) async {
-    await pumpSkeletonHarness(tester, card());
+      // Centre of the fillet: `merge` below the top edge and
+      // `coverRadius - merge` from the arc centre — tangent to both.
+      final Offset filletCentre = Offset(
+        arcCentre.dx + math.sqrt(reach),
+        merge,
+      );
+      expect(filletCentre.dy, merge);
+      expect(
+        (filletCentre - arcCentre).distance,
+        closeTo(coverRadius - merge, 1e-9),
+      );
+      // It starts inside the badge, so the top edge really is handed over.
+      expect(filletCentre.dx, lessThan(width));
+      expect(filletCentre.dx, greaterThan(width - coverRadius));
+    });
 
-    // Both ends are semicircles of the badge's half-height: the left end was
-    // already right, the square right end read as a clipped/glitched pill.
-    final BoxDecoration decoration =
-        tester.widget<Container>(badge).decoration! as BoxDecoration;
-    final BorderRadius radius = decoration.borderRadius! as BorderRadius;
-    final Radius cap = const Radius.circular(MediaCardMetrics.badgeCornerRadius);
-    expect(radius.topLeft, cap);
-    expect(radius.topRight, cap);
-    expect(radius.bottomLeft, cap);
-    expect(radius.bottomRight, cap);
-    // Radius = half the height, so each end spans the full pill height — a
-    // true capsule, and therefore mirror-symmetric end to end.
-    expect(MediaCardMetrics.badgeCornerRadius * 2, MediaCardMetrics.badgeHeight);
-    expect(MediaCardMetrics.badgeBorderRadius, BorderRadius.all(cap));
-  });
+    test('the outline has no square top-right and hugs the cover arc', () {
+      const Size size = Size(
+        MediaCardMetrics.badgeWidth,
+        MediaCardMetrics.badgeHeight,
+      );
+      final Path path = const MediaBadgeClipper().getClip(size);
 
-  testWidgets('the capsule floats clear of the cover corner', (tester) async {
-    await pumpSkeletonHarness(tester, card());
+      // The old glitch: a square corner at the badge's top-right, where the
+      // flat top edge ran into the near-vertical cover arc.
+      expect(
+        path.contains(const Offset(45.9, 0.5)),
+        isFalse,
+        reason: 'the top-right must not reach the card edge as a square corner',
+      );
+      expect(
+        path.contains(const Offset(46, 0.5)),
+        isFalse,
+        reason: 'nothing may be painted past the cover edge',
+      );
 
-    // A capsule butting into the 20-radius corner would be carved by the cover
-    // silhouette and show a square step on its right end again. Its right end
-    // circle must fit inside the corner arc: distance between the two centres
-    // plus the capsule radius stays within the cover radius.
-    final double cornerRadius = MediaCardMetrics.coverRadius;
-    final double fromEdge =
-        MediaCardMetrics.badgeInset + MediaCardMetrics.badgeCornerRadius;
-    final Offset capsuleEndCentre = Offset(fromEdge, fromEdge);
-    final Offset cornerArcCentre = Offset(cornerRadius, cornerRadius);
-    expect(
-      (capsuleEndCentre - cornerArcCentre).distance +
-          MediaCardMetrics.badgeCornerRadius,
-      lessThan(cornerRadius),
-      reason: 'the whole capsule has to fit inside the cover corner arc',
-    );
-    expect(
-      find.descendant(of: coverClip, matching: badge),
-      findsOneWidget,
-      reason: 'the badge is still painted inside the silhouette',
-    );
-  });
+      // Paint still exists on the top edge left of the fillet, on the bottom
+      // edge and in the middle of the leaf.
+      expect(path.contains(const Offset(20, 0.5)), isTrue);
+      expect(path.contains(const Offset(10, 17.5)), isTrue);
+      expect(path.contains(const Offset(23, 9)), isTrue);
 
-  testWidgets('the cover is clipped exactly once', (tester) async {
-    await pumpSkeletonHarness(tester, card());
+      // Bottom-right is the cover's arc, not the badge's own smaller corner:
+      // the point just inside the square corner lies outside the outline.
+      expect(path.contains(const Offset(45.5, 17.5)), isFalse);
+      expect(path.contains(const Offset(30, 17.5)), isTrue);
+    });
 
-    // Nested clips at the same radius antialias the arc twice and soften it
-    // into "straight, then a bend" — one silhouette, one clip (WP #119).
-    expect(
-      find.descendant(of: coverClip, matching: coverClip),
-      findsNothing,
-      reason: 'the cover stack must not clip itself a second time',
-    );
-  });
+    testWidgets('the skeleton placeholder paints the same outline', (
+      tester,
+    ) async {
+      await pumpSkeletonHarness(tester, const MediaCardSkeleton());
 
-  testWidgets('skeleton and card agree on the silhouette', (tester) async {
-    await pumpSkeletonHarness(tester, card(score: 0));
-    final BorderRadiusGeometry cardRadius = tester
-        .widget<ClipRRect>(coverClip.first)
-        .borderRadius;
+      expect(
+        badgeClip,
+        findsOneWidget,
+        reason: 'the placeholder badge uses the shared clipper',
+      );
+      final Rect skeletonBadge = tester.getRect(badgeClip);
+      expect(skeletonBadge.width, MediaCardMetrics.badgeWidth);
+      expect(skeletonBadge.height, MediaCardMetrics.badgeHeight);
+      final Rect coverRect = tester.getRect(coverClip);
+      expect(coverRect.right - skeletonBadge.right, 0);
+      expect(coverRect.bottom - skeletonBadge.bottom, 0);
+    });
 
-    await pumpSkeletonHarness(tester, const MediaCardSkeleton());
-    expect(
-      coverClip,
-      findsOneWidget,
-      reason: 'the skeleton clips its cover with the shared constant',
-    );
-    expect(tester.widget<ClipRRect>(coverClip).borderRadius, cardRadius);
+    testWidgets('card and skeleton badges share the same outline', (
+      tester,
+    ) async {
+      await pumpSkeletonHarness(tester, card());
+      final MediaBadgeClipper cardClipper =
+          tester.widget<ClipPath>(badgeClip).clipper! as MediaBadgeClipper;
+
+      await pumpSkeletonHarness(tester, const MediaCardSkeleton());
+      final MediaBadgeClipper skeletonClipper =
+          tester.widget<ClipPath>(badgeClip).clipper! as MediaBadgeClipper;
+
+      // Same clipper configuration on both sides; the rendered box differs only
+      // in the text-driven width (`getClip` adapts to whatever box it gets).
+      expect(skeletonClipper.shouldReclip(cardClipper), isFalse);
+      expect(skeletonClipper.cornerRadius, cardClipper.cornerRadius);
+      expect(skeletonClipper.coverRadius, cardClipper.coverRadius);
+      expect(skeletonClipper.mergeRadius, cardClipper.mergeRadius);
+    });
   });
 }
