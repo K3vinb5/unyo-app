@@ -1,5 +1,4 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:unyo/presentation/widgets/skeleton/media_badge_clipper.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_block.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_metrics.dart';
 import 'package:unyo/presentation/widgets/styled/media_cover_silhouette.dart';
@@ -44,18 +43,17 @@ class MediaCardSkeleton extends StatelessWidget {
                 ),
                 Align(
                   alignment: Alignment.bottomRight,
-                  // Same flush placement and same outline as the loaded card:
-                  // the badge is clipped by MediaBadgeClipper, whose right end
-                  // follows the cover's arc (WP #119).
+                  // The same flush leaf as the loaded card's pill, in one block:
+                  // the shared `MediaBadgeClipper` fillet merges an opaque badge
+                  // into the cover's arc, but on a flat placeholder it carves a
+                  // notch out of the cover's own outline. The silhouette above
+                  // is the only shape the placeholder needs (WP #119).
                   child: Padding(
                     padding: EdgeInsets.all(MediaCardMetrics.badgeInset),
-                    child: ClipPath(
-                      clipper: MediaBadgeClipper(),
-                      child: SkeletonBlock(
-                        width: MediaCardMetrics.badgeWidth,
-                        height: MediaCardMetrics.badgeHeight,
-                        borderRadius: 0,
-                      ),
+                    child: SkeletonBlock(
+                      width: MediaCardMetrics.badgeWidth,
+                      height: MediaCardMetrics.badgeHeight,
+                      shape: MediaCardMetrics.badgeBorderRadius,
                     ),
                   ),
                 ),

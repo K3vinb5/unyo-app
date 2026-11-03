@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:unyo/presentation/widgets/skeleton/media_badge_clipper.dart';
 import 'package:unyo/presentation/widgets/skeleton/media_card_skeleton.dart';
+import 'package:unyo/presentation/widgets/skeleton/skeleton_block.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_metrics.dart';
 import 'package:unyo/presentation/widgets/styled/media_card.dart';
 
@@ -196,17 +197,31 @@ void main() {
       expect(path.contains(const Offset(30, 17.5)), isTrue);
     });
 
-    testWidgets('the skeleton placeholder paints the same outline', (
+    testWidgets('the skeleton placeholder paints the shared leaf, unclipped', (
       tester,
     ) async {
       await pumpSkeletonHarness(tester, const MediaCardSkeleton());
 
+      // The placeholder is the leaf itself (`badgeBorderRadius`, the same
+      // constant the loaded pill is described by); the cover silhouette is the
+      // only clip in the stack, so no fillet is carved out of the cover corner
+      // (WP #119).
       expect(
         badgeClip,
-        findsOneWidget,
-        reason: 'the placeholder badge uses the shared clipper',
+        findsNothing,
+        reason: 'a clipper here cuts a notch out of the skeleton cover',
       );
-      final Rect skeletonBadge = tester.getRect(badgeClip);
+      final Finder badge = find.byWidgetPredicate(
+        (Widget widget) =>
+            widget is SkeletonBlock &&
+            widget.width == MediaCardMetrics.badgeWidth &&
+            widget.height == MediaCardMetrics.badgeHeight,
+      );
+      expect(
+        tester.widget<SkeletonBlock>(badge).shape,
+        MediaCardMetrics.badgeBorderRadius,
+      );
+      final Rect skeletonBadge = tester.getRect(badge);
       expect(skeletonBadge.width, MediaCardMetrics.badgeWidth);
       expect(skeletonBadge.height, MediaCardMetrics.badgeHeight);
       final Rect coverRect = tester.getRect(coverClip);
@@ -214,23 +229,36 @@ void main() {
       expect(coverRect.bottom - skeletonBadge.bottom, 0);
     });
 
-    testWidgets('card and skeleton badges share the same outline', (
+    testWidgets('card and skeleton badges share the same geometry', (
       tester,
     ) async {
+      // The loaded badge merges into the cover arc through the fillet; the
+      // placeholder keeps the plain leaf. Both read the same leaf constants, so
+      // the skeleton cannot drift from the card it stands in for (WP #119).
       await pumpSkeletonHarness(tester, card());
       final MediaBadgeClipper cardClipper =
           tester.widget<ClipPath>(badgeClip).clipper! as MediaBadgeClipper;
+      expect(cardClipper.cornerRadius, MediaCardMetrics.badgeCornerRadius);
+      expect(cardClipper.coverRadius, MediaCardMetrics.coverRadius);
+      expect(cardClipper.mergeRadius, MediaCardMetrics.badgeMergeRadius);
 
       await pumpSkeletonHarness(tester, const MediaCardSkeleton());
-      final MediaBadgeClipper skeletonClipper =
-          tester.widget<ClipPath>(badgeClip).clipper! as MediaBadgeClipper;
-
-      // Same clipper configuration on both sides; the rendered box differs only
-      // in the text-driven width (`getClip` adapts to whatever box it gets).
-      expect(skeletonClipper.shouldReclip(cardClipper), isFalse);
-      expect(skeletonClipper.cornerRadius, cardClipper.cornerRadius);
-      expect(skeletonClipper.coverRadius, cardClipper.coverRadius);
-      expect(skeletonClipper.mergeRadius, cardClipper.mergeRadius);
+      final Finder skeletonBadge = find.byWidgetPredicate(
+        (Widget widget) =>
+            widget is SkeletonBlock &&
+            widget.width == MediaCardMetrics.badgeWidth &&
+            widget.height == MediaCardMetrics.badgeHeight,
+      );
+      expect(
+        tester.widget<SkeletonBlock>(skeletonBadge).shape,
+        MediaCardMetrics.badgeBorderRadius,
+        reason: 'the placeholder is the leaf the loaded pill is described by',
+      );
+      expect(
+        tester.getRect(skeletonBadge).height,
+        MediaCardMetrics.badgeHeight,
+        reason: 'same badge height on both sides',
+      );
     });
   });
 }

@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:unyo/presentation/widgets/skeleton/media_badge_clipper.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 
 import 'support/widget_harness.dart';
@@ -104,23 +103,29 @@ void main() {
         findsOneWidget,
         reason: 'the badge placeholder is painted inside the clipped cover',
       );
+      // The placeholder badge is the shared leaf and nothing else: the cover's
+      // rounded rectangle is the only silhouette, so the corner has no notch
+      // carved out of it (WP #119).
       expect(
         tester.widget<SkeletonBlock>(badge).shape,
-        isNull,
-        reason: 'a second rounded shape inside the clip would antialias twice',
+        MediaCardMetrics.badgeBorderRadius,
+        reason: 'the placeholder keeps the loaded pill\'s leaf shape',
       );
-      // The outline is the shared clipper, so the placeholder leaf and the
-      // loaded leaf cannot drift apart (WP #119).
       expect(
         find.ancestor(
           of: badge,
           matching: find.byWidgetPredicate(
-            (Widget widget) =>
-                widget is ClipPath && widget.clipper is MediaBadgeClipper,
+            (Widget widget) => widget is ClipPath,
           ),
         ),
-        findsOneWidget,
-        reason: 'the placeholder badge is painted inside MediaBadgeClipper',
+        findsNothing,
+        reason: 'no clipper may cut a fillet out of the skeleton cover corner',
+      );
+      // One clip for the whole cover stack: the loaded card's silhouette.
+      expect(
+        find.descendant(of: coverClip, matching: find.byType(ClipRRect)),
+        findsNothing,
+        reason: 'the cover is clipped exactly once',
       );
     });
   });
