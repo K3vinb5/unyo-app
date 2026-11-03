@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:unyo/core/i18n/app_localizations.dart';
 import 'package:unyo/core/i18n/app_locales.dart';
 import 'package:unyo/core/i18n/underscore_asset_loader.dart';
 
@@ -26,7 +27,7 @@ Widget _probeApp({required Locale locale, required Widget home}) {
     assetLoader: const UnderscoreAssetLoader(),
     child: Builder(
       builder: (BuildContext context) => MaterialApp(
-        localizationsDelegates: context.localizationDelegates,
+        localizationsDelegates: appLocalizationDelegates(context.localizationDelegates),
         supportedLocales: context.supportedLocales,
         locale: context.locale,
         home: home,

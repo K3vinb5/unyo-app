@@ -6,6 +6,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 
 // Internal dependencies
+import 'package:unyo/core/i18n/app_localizations.dart';
 import 'package:unyo/core/i18n/app_locales.dart';
 
 /// Serves the real `assets/i18n/<code>.json` synchronously, from disk.
@@ -42,7 +43,7 @@ Widget localizedApp({required Widget home, ThemeData? theme}) => EasyLocalizatio
   useOnlyLangCode: false,
   child: Builder(
     builder: (BuildContext context) => MaterialApp(
-      localizationsDelegates: context.localizationDelegates,
+      localizationsDelegates: appLocalizationDelegates(context.localizationDelegates),
       supportedLocales: context.supportedLocales,
       locale: context.locale,
       theme: theme,

@@ -11,6 +11,7 @@ import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/anime_card_list.dart';
 import 'package:unyo/presentation/widgets/styled/card_row_frame.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_character_list.dart';
+import 'package:unyo/core/i18n/app_localizations.dart';
 
 /// Pumps [child] inside an app-shaped shell: the menu rail (100 wide) on the
 /// left and the screen content in the rest of the window, exactly like
@@ -49,7 +50,9 @@ Future<void> pumpInShell(
             child: MaterialApp(
               locale: const Locale('en', 'GB'),
               supportedLocales: const [Locale('en', 'GB')],
-              localizationsDelegates: localization?.delegates,
+              localizationsDelegates: appLocalizationDelegates(
+                localization?.delegates ?? const <LocalizationsDelegate<dynamic>>[],
+              ),
               home: Scaffold(
                 body: Row(
                   children: [
