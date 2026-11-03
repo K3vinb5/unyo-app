@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:unyo/presentation/widgets/skeleton/media_badge_clipper.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_block.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeleton_metrics.dart';
 import 'package:unyo/presentation/widgets/styled/media_cover_silhouette.dart';
@@ -43,17 +44,28 @@ class MediaCardSkeleton extends StatelessWidget {
                 ),
                 Align(
                   alignment: Alignment.bottomRight,
-                  // The same flush leaf as the loaded card's pill, in one block:
-                  // the shared `MediaBadgeClipper` fillet merges an opaque badge
-                  // into the cover's arc, but on a flat placeholder it carves a
-                  // notch out of the cover's own outline. The silhouette above
-                  // is the only shape the placeholder needs (WP #119).
+                  // The loaded card's own outline, applied to the placeholder
+                  // block and nothing else: `MediaBadgeClipper` sweeps the left
+                  // end from the bottom edge up to the top edge and hands the
+                  // right end over to the cover's 20-radius corner arc. A plain
+                  // leaf block instead ends in a square step where its flat top
+                  // edge meets that arc, and its own bottom-right arc competes
+                  // with the cover's — the pre-#119 look the user rejected
+                  // (WP #119).
+                  //
+                  // The block inside is square (`borderRadius: 0`) so the
+                  // clipper is the single source of the shape — a second rounded
+                  // corner in the same box would antialias the edge twice
+                  // (#103/#119 drift guard).
                   child: Padding(
                     padding: EdgeInsets.all(MediaCardMetrics.badgeInset),
-                    child: SkeletonBlock(
-                      width: MediaCardMetrics.badgeWidth,
-                      height: MediaCardMetrics.badgeHeight,
-                      shape: MediaCardMetrics.badgeBorderRadius,
+                    child: ClipPath(
+                      clipper: MediaBadgeClipper(),
+                      child: SkeletonBlock(
+                        width: MediaCardMetrics.badgeWidth,
+                        height: MediaCardMetrics.badgeHeight,
+                        borderRadius: 0,
+                      ),
                     ),
                   ),
                 ),

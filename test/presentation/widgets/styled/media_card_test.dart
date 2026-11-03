@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' show PathMetric, Tangent;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -197,19 +198,24 @@ void main() {
       expect(path.contains(const Offset(30, 17.5)), isTrue);
     });
 
-    testWidgets('the skeleton placeholder paints the shared leaf, unclipped', (
+    testWidgets('the skeleton placeholder paints the pill through the clipper', (
       tester,
     ) async {
       await pumpSkeletonHarness(tester, const MediaCardSkeleton());
 
-      // The placeholder is the leaf itself (`badgeBorderRadius`, the same
-      // constant the loaded pill is described by); the cover silhouette is the
-      // only clip in the stack, so no fillet is carved out of the cover corner
-      // (WP #119).
+      // Same treatment as the loaded card: the placeholder block is painted
+      // inside `MediaBadgeClipper`, so the skeleton cannot show a shape the
+      // loaded pill does not have (WP #119 — the plain leaf left a square
+      // bottom-left corner on the loading card).
       expect(
         badgeClip,
-        findsNothing,
-        reason: 'a clipper here cuts a notch out of the skeleton cover',
+        findsOneWidget,
+        reason: 'the placeholder badge uses the shared clipper',
+      );
+      expect(
+        find.ancestor(of: badgeClip, matching: find.byType(ClipRRect)),
+        findsOneWidget,
+        reason: 'the badge is painted inside the clipped cover stack',
       );
       final Finder badge = find.byWidgetPredicate(
         (Widget widget) =>
@@ -218,9 +224,15 @@ void main() {
             widget.height == MediaCardMetrics.badgeHeight,
       );
       expect(
-        tester.widget<SkeletonBlock>(badge).shape,
-        MediaCardMetrics.badgeBorderRadius,
+        find.descendant(of: badgeClip, matching: badge),
+        findsOneWidget,
+        reason: 'the placeholder block is what the clipper shapes',
       );
+      // The block itself is square: the clipper is the single shape source, a
+      // second rounded corner in the same box would antialias twice.
+      expect(tester.widget<SkeletonBlock>(badge).shape, isNull);
+      expect(tester.widget<SkeletonBlock>(badge).borderRadius, 0);
+
       final Rect skeletonBadge = tester.getRect(badge);
       expect(skeletonBadge.width, MediaCardMetrics.badgeWidth);
       expect(skeletonBadge.height, MediaCardMetrics.badgeHeight);
@@ -229,36 +241,68 @@ void main() {
       expect(coverRect.bottom - skeletonBadge.bottom, 0);
     });
 
-    testWidgets('card and skeleton badges share the same geometry', (
+    testWidgets('card and skeleton badges paint the exact same outline', (
       tester,
     ) async {
-      // The loaded badge merges into the cover arc through the fillet; the
-      // placeholder keeps the plain leaf. Both read the same leaf constants, so
-      // the skeleton cannot drift from the card it stands in for (WP #119).
+      // The clipper is the one definition of the badge outline, so the loaded
+      // pill and its placeholder resolve the identical path for the same box —
+      // no square corner on one side and a merged corner on the other (WP #119).
       await pumpSkeletonHarness(tester, card());
       final MediaBadgeClipper cardClipper =
           tester.widget<ClipPath>(badgeClip).clipper! as MediaBadgeClipper;
-      expect(cardClipper.cornerRadius, MediaCardMetrics.badgeCornerRadius);
-      expect(cardClipper.coverRadius, MediaCardMetrics.coverRadius);
-      expect(cardClipper.mergeRadius, MediaCardMetrics.badgeMergeRadius);
 
       await pumpSkeletonHarness(tester, const MediaCardSkeleton());
-      final Finder skeletonBadge = find.byWidgetPredicate(
-        (Widget widget) =>
-            widget is SkeletonBlock &&
-            widget.width == MediaCardMetrics.badgeWidth &&
-            widget.height == MediaCardMetrics.badgeHeight,
-      );
-      expect(
-        tester.widget<SkeletonBlock>(skeletonBadge).shape,
-        MediaCardMetrics.badgeBorderRadius,
-        reason: 'the placeholder is the leaf the loaded pill is described by',
-      );
-      expect(
-        tester.getRect(skeletonBadge).height,
+      final MediaBadgeClipper skeletonClipper =
+          tester.widget<ClipPath>(badgeClip).clipper! as MediaBadgeClipper;
+
+      expect(skeletonClipper.shouldReclip(cardClipper), isFalse);
+      expect(skeletonClipper.cornerRadius, cardClipper.cornerRadius);
+      expect(skeletonClipper.coverRadius, cardClipper.coverRadius);
+      expect(skeletonClipper.mergeRadius, cardClipper.mergeRadius);
+
+      const Size box = Size(
+        MediaCardMetrics.badgeWidth,
         MediaCardMetrics.badgeHeight,
-        reason: 'same badge height on both sides',
       );
+      final List<Offset> cardOutline = _sample(cardClipper.getClip(box));
+      final List<Offset> skeletonOutline = _sample(
+        skeletonClipper.getClip(box),
+      );
+      expect(skeletonOutline.length, cardOutline.length);
+      for (int i = 0; i < cardOutline.length; i++) {
+        expect(
+          (skeletonOutline[i] - cardOutline[i]).distance,
+          lessThan(0.01),
+          reason: 'the two outlines diverge at sample $i',
+        );
+      }
+
+      // And that shared outline is the cover's corner, not a square step: the
+      // bottom-right of the badge box lies outside it, the top edge stops
+      // before the right edge for the fillet.
+      final Path outline = skeletonClipper.getClip(box);
+      expect(outline.contains(const Offset(45.5, 17.5)), isFalse);
+      expect(
+        outline.contains(const Offset(45.5, 0.5)),
+        isFalse,
+        reason: 'the top edge hands over to the cover arc, no square top-right',
+      );
+      expect(outline.contains(const Offset(20, 0.5)), isTrue);
     });
   });
+}
+
+/// Samples a path outline every half pixel so two paths can be compared
+/// geometrically instead of by the widget tree alone.
+List<Offset> _sample(Path path) {
+  final List<Offset> points = <Offset>[];
+  for (final PathMetric metric in path.computeMetrics()) {
+    for (double d = 0; d <= metric.length; d += 0.5) {
+      final Tangent? tangent = metric.getTangentForOffset(d);
+      if (tangent != null) {
+        points.add(tangent.position);
+      }
+    }
+  }
+  return points;
 }
