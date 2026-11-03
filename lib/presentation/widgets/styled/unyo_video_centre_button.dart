@@ -44,9 +44,10 @@ class UnyoVideoCentreButton extends StatelessWidget {
           onTap: onPressed,
           // No focus, therefore no focus ring (see the class comment).
           canRequestFocus: false,
-          // The canvas never advertises a click (design choice, WP #119): the
-          // glyph is clickable but the pointer stays the default arrow.
-          mouseCursor: SystemMouseCursors.basic,
+          // Clickable, and it says so: the glyph is a button (resume the frame),
+          // so the pointer becomes a hand over it. The canvas behind it stays on
+          // the default arrow — the picture never advertises a click (WP #119).
+          mouseCursor: SystemMouseCursors.click,
           focusColor: Colors.transparent,
           hoverColor: Colors.white10,
           splashColor: Colors.white12,

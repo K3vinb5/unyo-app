@@ -54,7 +54,7 @@ void main() {
       );
     }
 
-    testWidgets('paints no focus highlight, cannot take focus, shows the arrow', (
+    testWidgets('paints no focus highlight, cannot take focus, shows the hand', (
       tester,
     ) async {
       await pumpButton(tester, onPressed: () {});
@@ -68,10 +68,10 @@ void main() {
       expect(ink.focusColor, Colors.transparent);
       expect(
         ink.mouseCursor,
-        SystemMouseCursors.basic,
+        SystemMouseCursors.click,
         reason:
-            'the video canvas never shows a click/hand cursor, even though the '
-            'glyph resumes the frame (design choice, WP #119)',
+            'the centre glyph is a button, so the pointer has to say so — the '
+            'canvas keeps the arrow, this control does not (WP #119)',
       );
     });
 
