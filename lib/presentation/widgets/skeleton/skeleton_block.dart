@@ -32,11 +32,9 @@ class SkeletonBlock extends StatelessWidget {
 
   /// Non-uniform corners: some components are not pills, they are leaves.
   ///
-  /// A single [borderRadius] cannot express one radius per corner. The media
-  /// card's score badge is no longer one of these — `MediaBadgeClipper` builds
-  /// that outline so the card and its placeholder share it (WP #119) — but a
-  /// placeholder that needs a leaf of its own still gets it here. When set,
-  /// [shape] wins over [borderRadius].
+  /// The score badge on the media card carries a 50-radius bottom-right corner
+  /// and a 50-radius top-left one, which a single [borderRadius] cannot
+  /// express. When set, [shape] wins over [borderRadius].
   final BorderRadius? shape;
 
   /// Base fill: `onSurface` at 6% - the resting skeleton colour.
