@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_animated_image_banner.dart';
 
 import '../skeleton/support/fake_image_http.dart';
+import '../../../support/localized_app.dart';
 
 Widget _banner({
   required double width,
@@ -22,7 +23,7 @@ Widget _banner({
       random: math.Random(randomSeed),
     ),
   );
-  return MaterialApp(
+  return localizedApp(
     home: Scaffold(
       body: Center(
         child: disableAnimations
@@ -46,6 +47,7 @@ void main() {
       addTearDown(tester.view.reset);
 
       await tester.pumpWidget(_banner(width: 800, height: 300));
+      await tester.pump();
 
       final Finder transformFinder = find.descendant(
         of: find.byType(UnyoAnimatedImageBanner),
@@ -109,6 +111,7 @@ void main() {
       await tester.pumpWidget(
         _banner(width: 800, height: 300, disableAnimations: true),
       );
+      await tester.pump();
 
       final Finder transformFinder = find.descendant(
         of: find.byType(UnyoAnimatedImageBanner),

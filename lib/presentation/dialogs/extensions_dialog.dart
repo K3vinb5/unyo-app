@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/presentation/widgets/styled/light_unyo_button.dart';
@@ -84,7 +85,7 @@ class _ExtensionsSettingsDialogState extends State<ExtensionsSettingsDialog> {
                                     ),
                                     SizedBox(width: 8.w),
                                     DarkUnyoButton(
-                                      text: "Remove",
+                                      text: context.tr("ext_remove_repository"),
                                       onPressed: () {
                                         setState(() {
                                           if (_currentRepositoriesUrls.length == 1) {
@@ -104,7 +105,7 @@ class _ExtensionsSettingsDialogState extends State<ExtensionsSettingsDialog> {
                     ),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 24.w),
-                      child: LightUnyoButton(text: "Add Repository", onPressed: () {
+                      child: LightUnyoButton(text: context.tr("ext_add_repository"), onPressed: () {
                         setState(() {
                           _currentRepositoriesUrls.add("");
                         });
@@ -118,14 +119,14 @@ class _ExtensionsSettingsDialogState extends State<ExtensionsSettingsDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   DarkUnyoButton(
-                    text: "Cancel",
+                    text: context.tr("common_cancel"),
                     onPressed: () {
                       Navigator.of(context).pop();
                     },
                   ),
                   SizedBox(width: 8.w),
                   LightUnyoButton(
-                    text: "Confirm",
+                    text: context.tr("common_confirm"),
                     onPressed: () {
                       widget.onSubmitted(_currentRepositoriesUrls);
                       Navigator.of(context).pop();

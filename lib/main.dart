@@ -72,6 +72,12 @@ void main() async {
       fallbackLocale: enGb.locale,
       useOnlyLangCode: false,
       saveLocale: false,
+      // A locale bundle with a missing or empty key must render the English
+      // master, not the raw key name. The Wave 3 parity test is what guarantees
+      // complete bundles at build time; this is the behaviour for anything that
+      // slips through at runtime.
+      useFallbackTranslations: true,
+      useFallbackTranslationsForEmptyResources: true,
       assetLoader: const UnderscoreAssetLoader(),
       child: ScreenUtilInit(
         designSize: const Size(1280, 720),

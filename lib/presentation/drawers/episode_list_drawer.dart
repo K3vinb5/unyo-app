@@ -1,6 +1,7 @@
 // External dependencies
 import 'dart:ui';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -30,9 +31,9 @@ class EpisodeListDrawer extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(height: 80.h),
-            const Text(
-              "Nothing to see here! Come back later :D",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+            Text(
+              context.tr('details_nothing_to_see'),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
               maxLines: 3,
             ),
           ],
@@ -50,7 +51,7 @@ class EpisodeListDrawer extends StatelessWidget {
       final int episodeNumber = episodeNumbers[i];
       episodeButtons.add(
         UnyoEpisodeButton(
-          mainTitle: "Episode $episodeNumber",
+          mainTitle: context.plural('details_episode_number', episodeNumber),
           secondaryTitle: state.episodesInfo.length > i
               ? (state.episodesInfo[i].title.userPreferred != ""
                     ? state.episodesInfo[i].title.userPreferred
@@ -118,7 +119,7 @@ class EpisodeListDrawer extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Episodes', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                          Text(context.tr('drawer_episodes'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                           IconButton(
                               icon: const Icon(Icons.close),
                               color: ColorScheme.of(context).tertiary,

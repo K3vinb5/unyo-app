@@ -10,6 +10,8 @@ import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 
+import '../../../support/localized_app.dart';
+
 class MockBuildContext extends Mock implements BuildContext {}
 
 class _FakeEffect extends AppEffect {}
@@ -83,7 +85,9 @@ void main() {
       tester.view.physicalSize = const Size(1400, 1000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: SizedBox.expand())));
+      await tester.pumpWidget(localizedApp(home: const Scaffold(body: SizedBox.expand())));
+      // `localizedApp` resolves its bundle one microtask after the first frame.
+      await tester.pump();
       return tester.element(find.byType(Scaffold));
     }
 

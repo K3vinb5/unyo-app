@@ -1,5 +1,6 @@
 // External dependencies
 import 'package:auto_route/auto_route.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -93,30 +94,16 @@ class _CalendarViewState extends State<_CalendarView>
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      TextHeadlineMedium(
+                        text: context.tr('common_calendar_title'),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
-                          TextHeadlineMedium(
-                            text: "Anime",
-                            style: TextStyle(
-                              color: ColorScheme.of(context).tertiary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const TextHeadlineMedium(
-                            text:
-                            " Calendar",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
                           TextBodyLarge(
-                            text:
-                            "You can find the next anime releases here!",
-                            style: TextStyle(color: Colors.grey),
+                            text: context.tr('common_calendar_subtitle'),
+                            style: const TextStyle(color: Colors.grey),
                           ),
                         ],
                       ),
@@ -145,13 +132,19 @@ class _CalendarViewState extends State<_CalendarView>
                     ...state.animeCalendarReleases
                         .entries
                         .map((entry) {
-                      String title = entry.key;
+                      final String label = context.tr(
+                        'common_tab_label_count',
+                        namedArgs: <String, String>{
+                          'title': entry.key,
+                          'count': '${entry.value.length}',
+                        },
+                      );
                       return Tooltip(
                         waitDuration: const Duration(milliseconds: 1000),
-                        message: "$title (${entry.value.length})",
+                        message: label,
                         child: SizedBox(
                           width: 170,
-                          child: Tab(text: "$title (${entry.value.length})"),
+                          child: Tab(text: label),
                         ),
                       );
                     }),

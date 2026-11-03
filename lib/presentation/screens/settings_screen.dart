@@ -84,30 +84,13 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          const TextHeadlineMedium(
-                            text: "Manage your ",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          TextHeadlineMedium(
-                            text: "Settings!",
-                            style: TextStyle(
-                              color: ColorScheme.of(context).tertiary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+                      TextHeadlineMedium(
+                        text: context.tr("settings_header_title"),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          TextBodyLarge(
-                            text: "You can find and change your settings here",
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        ],
+                      TextBodyLarge(
+                        text: context.tr("settings_header_subtitle"),
+                        style: const TextStyle(color: Colors.grey),
                       ),
                     ],
                   ),
@@ -121,37 +104,37 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                 child: ListView(
                   children: [
                     UnyoSettingsCategory(
-                      title: "Accounts",
-                      description: "Manage your connected accounts",
+                      title: context.tr("settings_accounts_title"),
+                      description: context.tr("settings_accounts_description"),
                       icon: Icons.person_rounded,
                       alignment: "top",
                       childAlignment: "center",
                       settingsOptions: [
-                        const UnyoSettingsCategory(
+                        UnyoSettingsCategory(
                           title: "Anilist",
-                          description: "Manage your Anilist connected accounts",
+                          description: context.tr("settings_anilist_accounts_description"),
                           icon: Icons.format_list_bulleted_rounded,
                           alignment: "",
                           childAlignment: "",
                           isChild: true,
-                          settingsOptions: [
+                          settingsOptions: const [
                             // TODO - Anilist account settings go here
                           ],
                         ),
-                        const UnyoSettingsCategory(
+                        UnyoSettingsCategory(
                           title: "MyAnimeList",
-                          description: "Manage your MyAnimeList connected accounts",
+                          description: context.tr("settings_myanimelist_accounts_description"),
                           icon: Icons.format_list_bulleted_rounded,
                           alignment: "",
                           childAlignment: "",
                           isChild: true,
-                          settingsOptions: [
+                          settingsOptions: const [
                             // TODO - MyAnimeList account settings go here
                           ],
                         ),
                         UnyoSettingsCategory(
                           title: "Shikimori",
-                          description: "Manage your Shikimori connected accounts",
+                          description: context.tr("settings_shikimori_accounts_description"),
                           icon: Icons.format_list_bulleted_rounded,
                           alignment: "",
                           childAlignment: "",
@@ -166,17 +149,17 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                       ],
                     ),
                     UnyoSettingsCategory(
-                      title: "Common",
-                      description: "General application settings",
+                      title: context.tr("settings_common_title"),
+                      description: context.tr("settings_common_description"),
                       icon: Icons.lightbulb_rounded,
                       alignment: "",
                       childAlignment: "",
                       settingsOptions: [
                         UnyoSettingsSelectionDropdown(
-                          title: "Media metadata service",
-                          description: "Provider that owns details: synopsis, covers, genres and scores",
+                          title: context.tr("settings_media_metadata_service_title"),
+                          description: context.tr("settings_media_metadata_service_description"),
                           icon: Icons.image_search_rounded,
-                          label: "Select a service",
+                          label: context.tr("settings_select_service"),
                           defaultValue:
                               TextUtils.capitalize(state.loggedUser.settings.metadataService.name),
                           children:
@@ -188,10 +171,10 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                           onPressed: context.read<SettingsCubit>().updateMediaMetadataService,
                         ),
                         UnyoSettingsSelectionDropdown(
-                          title: "Episode Metadata Service",
-                          description: "Select the Episode Metadata service to use",
+                          title: context.tr("settings_episode_metadata_service_title"),
+                          description: context.tr("settings_episode_metadata_service_description"),
                           icon: Icons.movie_filter_rounded,
-                          label: "Select a service",
+                          label: context.tr("settings_select_service"),
                           defaultValue:
                               TextUtils.capitalize(state.loggedUser.settings.episodeService.name),
                           children:
@@ -203,8 +186,8 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                           onPressed: context.read<SettingsCubit>().updateEpisodeMetadataService,
                         ),
                         UnyoSettingsCategory(
-                          title: "Language Settings",
-                          description: "Manage your language preferences",
+                          title: context.tr("settings_language_section_title"),
+                          description: context.tr("settings_language_section_description"),
                           icon: Icons.chat_bubble_rounded,
                           alignment: "",
                           childAlignment: "",
@@ -221,19 +204,19 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                               },
                             ),
                             UnyoSettingsSelectionDropdown(
-                              title: "Default Media Title Language",
-                              description: "Select the default media title language",
+                              title: context.tr("settings_default_media_title_language_title"),
+                              description: context.tr("settings_default_media_title_language_description"),
                               icon: Icons.text_fields_rounded,
-                              label: "Select a language",
+                              label: context.tr("settings_language_label"),
                               defaultValue: state.loggedUser.settings.mediaTitleLanguage,
                               children: MediaServiceFactory.getMediaService(state.loggedUser.settings.metadataService).titleLanguages,
                               onPressed: context.read<SettingsCubit>().updateMediaTitleLanguage,
                             ),
                             UnyoSettingsSelectionDropdown(
-                              title: "Default Episode Title Language",
-                              description: "Select the default episode title language",
+                              title: context.tr("settings_default_episode_title_language_title"),
+                              description: context.tr("settings_default_episode_title_language_description"),
                               icon: Icons.text_fields_rounded,
-                              label: "Select a language",
+                              label: context.tr("settings_language_label"),
                               defaultValue: state.loggedUser.settings.episodeTitleLanguage,
                               children: EpisodeMediaServiceFactory.getEpisodeMediaService(state.loggedUser.settings.episodeService).titleLanguages,
                               onPressed: context.read<SettingsCubit>().updateEpisodeTitleLanguage,
@@ -241,37 +224,37 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                           ],
                         ),
                         UnyoSettingsSelectionToggle(
-                          title: "Discord RPC",
-                          description: "Enable or disable Discord Rich Presence",
+                          title: context.tr("settings_discord_rpc_title"),
+                          description: context.tr("settings_discord_rpc_description"),
                           icon: Icons.discord_rounded,
                           initiallySelected: state.loggedUser.settings.enableDiscordRichPresence,
                           onPressed: context.read<SettingsCubit>().enableDiscordRichPresence,
                         ),
                         UnyoSettingsSelectionToggle(
-                          title: "NSFW Content",
+                          title: context.tr("settings_nsfw_content_title"),
                           icon: Icons.warning_rounded,
-                          description: "Enable or disable NSFW content throughout the app",
+                          description: context.tr("settings_nsfw_content_description"),
                           initiallySelected: state.loggedUser.settings.enableNsfwContent,
                           onPressed: context.read<SettingsCubit>().enableNSFWContent,
                         ),
                       ],
                     ),
                     UnyoSettingsCategory(
-                      title: "Theme",
-                      description: "Appearance settings",
+                      title: context.tr("settings_theme_title"),
+                      description: context.tr("settings_theme_description"),
                       icon: Icons.edit_rounded,
                       alignment: "",
                       childAlignment: "",
                       settingsOptions: [
                         UnyoSettingsSelectionDialog(
-                            title: "Choose Color",
-                            description: "Choose Theme based on a color",
+                            title: context.tr("settings_choose_color_title"),
+                            description: context.tr("settings_choose_color_description"),
                             icon: Icons.color_lens_rounded,
                             openDialog: () => context.read<SettingsCubit>().openColorPickerDialog(context)
                         ),
                         UnyoSettingsSelectionToggle(
-                          title: "Use wallpaper as theme color",
-                          description: "Automatically set the theme color based on your wallpaper colors",
+                          title: context.tr("settings_wallpaper_theme_color_title"),
+                          description: context.tr("settings_wallpaper_theme_color_description"),
                           icon: Icons.wallpaper_rounded,
                           initiallySelected: state.loggedUser.settings.useWallpaperAsThemeColor,
                           onPressed: context.read<SettingsCubit>().enableUseWallpaperAsThemeColor,
@@ -279,29 +262,29 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                       ],
                     ),
                     UnyoSettingsCategory(
-                      title: "Player",
-                      description: "Video player settings",
+                      title: context.tr("settings_player_title"),
+                      description: context.tr("settings_player_description"),
                       icon: Icons.play_arrow_rounded,
                       alignment: "",
                       childAlignment: "",
                       settingsOptions: [
                         UnyoSettingsSelectionToggle(
-                          title: "Skip opening automatically (when available)",
-                          description: "Automatically skip the opening of episodes",
+                          title: context.tr("settings_skip_opening_title"),
+                          description: context.tr("settings_skip_opening_description"),
                           icon: Icons.skip_next_rounded,
                           initiallySelected: state.loggedUser.settings.automaticallySkipOpening,
                           onPressed: context.read<SettingsCubit>().enableAutomaticallySkipOpening,
                         ),
                         UnyoSettingsSelectionToggle(
-                          title: "Skip ending automatically (when available)",
-                          description: "Automatically skip the ending of episodes",
+                          title: context.tr("settings_skip_ending_title"),
+                          description: context.tr("settings_skip_ending_description"),
                           icon: Icons.skip_previous_rounded,
                           initiallySelected: state.loggedUser.settings.automaticallySkipEnding,
                           onPressed: context.read<SettingsCubit>().enableAutomaticallySkipEnding,
                         ),
                         UnyoSettingsSelectionSlider(
-                          title: "Default manual skip time",
-                          description: "Set the default time for manual skips",
+                          title: context.tr("settings_manual_skip_time_title"),
+                          description: context.tr("settings_manual_skip_time_description"),
                           icon: Icons.fast_forward_rounded,
                           initialValue: state.loggedUser.settings.manualSkipTime,
                           minValue: 60,
@@ -309,58 +292,58 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                           onChanged: context.read<SettingsCubit>().manualSkipTimeUpdate,
                         ),
                         UnyoSettingsSelectionToggle(
-                          title: "Enable auto-play next episode",
-                          description: "Automatically accept next episode pop-up when the current one ends",
+                          title: context.tr("settings_auto_play_next_episode_title"),
+                          description: context.tr("settings_auto_play_next_episode_description"),
                           icon: Icons.navigate_next_rounded,
                           initiallySelected: state.loggedUser.settings.autoPlayNextEpisode,
                           onPressed: context.read<SettingsCubit>().enableAutoPlayNextEpisode,
                         ),
                         UnyoSettingsSelectionToggle(
-                          title: "Enable OpenSubtitles.org integration (When available)",
-                          description: "Enable OpenSubtitles.org integration for automatic subtitle fetching",
+                          title: context.tr("settings_opensubtitles_title"),
+                          description: context.tr("settings_opensubtitles_description"),
                           icon: Icons.subtitles_rounded,
                           initiallySelected: state.loggedUser.settings.enableOpenSubtitlesIntegration,
                           onPressed: context.read<SettingsCubit>().enableOpenSubtitlesIntegration,
                         ),
                       ],
                     ),
-                    const UnyoSettingsCategory(
-                      title: "Reader",
-                      description: "Manga reader settings",
+                    UnyoSettingsCategory(
+                      title: context.tr("settings_reader_title"),
+                      description: context.tr("settings_reader_description"),
                       icon: Icons.my_library_books_rounded,
                       alignment: "",
                       childAlignment: "",
-                      settingsOptions: [],
+                      settingsOptions: const [],
                     ),
                     UnyoSettingsCategory(
-                      title: "Extensions",
-                      description: "Extensions management settings",
+                      title: context.tr("settings_extensions_title"),
+                      description: context.tr("settings_extensions_description"),
                       icon: Icons.extension_rounded,
                       alignment: "",
                       childAlignment: "",
                       settingsOptions: [
                         UnyoSettingsSelectionDialog(
-                          title: "Aniyomi Extensions Repository",
-                          description: "Change the Aniyomi extensions repository URL",
+                          title: context.tr("settings_aniyomi_repository_title"),
+                          description: context.tr("settings_aniyomi_repository_description"),
                           icon: Icons.link_rounded,
                           openDialog: context.read<SettingsCubit>().openAniyomiExtensionsDialog,
                         ),
                         UnyoSettingsSelectionDialog(
-                          title: "Tachiyomi Extensions Repository",
-                          description: "Change the Tachiyomi extensions repository URL",
+                          title: context.tr("settings_tachiyomi_repository_title"),
+                          description: context.tr("settings_tachiyomi_repository_description"),
                           icon: Icons.link_rounded,
                           openDialog: context.read<SettingsCubit>().openTachiyomiExtensionsDialog,
                         ),
                       ],
                     ),
                     // Probably have a custom widget here with my information and a link to my social media and ko-fi
-                    const UnyoSettingsCategory(
-                      title: "About",
-                      description: "About the app",
+                    UnyoSettingsCategory(
+                      title: context.tr("settings_about_title"),
+                      description: context.tr("settings_about_description"),
                       icon: Icons.info_rounded,
                       alignment: "bottom",
                       childAlignment: "bottom",
-                      settingsOptions: [UnyoSettingsVersion()],
+                      settingsOptions: const [UnyoSettingsVersion()],
                     ),
                   ],
                 ),

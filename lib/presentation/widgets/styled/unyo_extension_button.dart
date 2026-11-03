@@ -1,4 +1,5 @@
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_pill.dart';
@@ -84,8 +85,8 @@ class UnyoExtensionButton extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         nsfw == 1
-                            ? const UnyoPill(
-                              text: "NFSW",
+                            ? UnyoPill(
+                              text: context.tr("ext_nsfw_badge"),
                               color: Colors.amber,
                               height: 14,
                               fontSize: 8,
@@ -126,7 +127,7 @@ class UnyoExtensionButton extends StatelessWidget {
                       padding: EdgeInsets.only(left: 10.0.w),
                       child: Tooltip(
                         waitDuration: const Duration(milliseconds: 1000),
-                        message: "Download",
+                        message: context.tr("ext_download_tooltip"),
                         child: UnyoInkWell(
                           onTap: onDownloadPressed,
                           child: Container(
@@ -147,7 +148,7 @@ class UnyoExtensionButton extends StatelessWidget {
                       padding: EdgeInsets.only(left: 10.0.w),
                       child: Tooltip(
                         waitDuration: const Duration(milliseconds: 1000),
-                        message: "Update",
+                        message: context.tr("ext_update_tooltip"),
                         child: UnyoInkWell(
                           onTap: onUpdatePressed,
                           child: Container(
@@ -168,7 +169,7 @@ class UnyoExtensionButton extends StatelessWidget {
                       padding: EdgeInsets.only(left: 10.0.w),
                       child: Tooltip(
                         waitDuration: const Duration(milliseconds: 1000),
-                        message: "Settings",
+                        message: context.tr("ext_settings_tooltip"),
                         child: UnyoInkWell(
                           onTap: onSettingsPressed,
                           child: Container(
@@ -189,7 +190,7 @@ class UnyoExtensionButton extends StatelessWidget {
                       padding: EdgeInsets.only(left: 10.0.w),
                       child: Tooltip(
                         waitDuration: const Duration(milliseconds: 1000),
-                        message: "Delete",
+                        message: context.tr("ext_delete_tooltip"),
                         child: UnyoInkWell(
                           onTap: onDeletePressed,
                           child: Container(

@@ -34,7 +34,7 @@ class UnyoCharacterList extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                "Characters",
+                context.tr('common_characters'),
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,

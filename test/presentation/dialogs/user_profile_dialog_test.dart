@@ -13,6 +13,7 @@ import 'package:unyo/presentation/widgets/styled/user_avatar_image.dart';
 import 'package:unyo/presentation/widgets/styled/light_unyo_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 
+import '../../support/localized_app.dart';
 import '../widgets/skeleton/support/fake_image_http.dart';
 
 UserModel anilistUser({
@@ -55,7 +56,7 @@ Future<void> openDialog(WidgetTester tester, User user, {ThemeData? theme}) asyn
     ScreenUtilInit(
       designSize: const Size(1920, 1080),
       minTextAdapt: true,
-      child: MaterialApp(
+      child: localizedApp(
         theme: theme,
         home: Scaffold(
           body: Builder(
@@ -71,6 +72,8 @@ Future<void> openDialog(WidgetTester tester, User user, {ThemeData? theme}) asyn
       ),
     ),
   );
+  // `localizedApp` resolves its bundle one microtask after the first frame.
+  await tester.pump();
   await tester.tap(find.text('open'));
   await tester.pumpAndSettle();
 }

@@ -11,6 +11,8 @@ import 'package:unyo/presentation/dialogs/unyo_dialog_theme.dart';
 import 'package:unyo/presentation/widgets/styled/dark_unyo_button.dart';
 import 'package:unyo/presentation/widgets/styled/light_unyo_button.dart';
 
+import '../../support/localized_app.dart';
+
 void main() {
   /// WCAG relative luminance, used to prove text/background contrast.
   double relativeLuminance(Color color) {
@@ -49,7 +51,7 @@ void main() {
       ScreenUtilInit(
         designSize: const Size(1920, 1080),
         minTextAdapt: true,
-        child: MaterialApp(
+        child: localizedApp(
           theme: theme,
           home: Scaffold(
             body: Builder(
@@ -68,6 +70,8 @@ void main() {
         ),
       ),
     );
+    // `localizedApp` resolves its bundle one microtask after the first frame.
+    await tester.pump();
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
   }

@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -105,12 +106,8 @@ class _ExtensionsViewState extends State<_ExtensionsView> with TickerProviderSta
                       Row(
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
-                          const TextHeadlineMedium(
-                            text: "Manage your ",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
                           TextHeadlineMedium(
-                            text: "Extensions!",
+                            text: context.tr("ext_header_title"),
                             style: TextStyle(
                               color: ColorScheme.of(context).tertiary,
                               fontWeight: FontWeight.bold,
@@ -118,12 +115,12 @@ class _ExtensionsViewState extends State<_ExtensionsView> with TickerProviderSta
                           ),
                         ],
                       ),
-                      const Row(
+                      Row(
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           TextBodyLarge(
-                            text: "You can find and install your favorite extensions here",
-                            style: TextStyle(color: Colors.grey),
+                            text: context.tr("ext_header_subtitle"),
+                            style: const TextStyle(color: Colors.grey),
                           ),
                         ],
                       ),
@@ -143,26 +140,26 @@ class _ExtensionsViewState extends State<_ExtensionsView> with TickerProviderSta
                 unselectedLabelColor: Colors.grey,
                 isScrollable: true,
                 controller: tabController,
-                tabs: const [
+                tabs: [
                   Tooltip(
-                    waitDuration: Duration(milliseconds: 1000),
-                    message: "Available Anime",
-                    child: SizedBox(width: 150, child: Tab(text: "Available Anime")),
+                    waitDuration: const Duration(milliseconds: 1000),
+                    message: context.tr("ext_tab_available_anime"),
+                    child: SizedBox(width: 150, child: Tab(text: context.tr("ext_tab_available_anime"))),
                   ),
                   Tooltip(
-                    waitDuration: Duration(milliseconds: 1000),
-                    message: "Available Manga",
-                    child: SizedBox(width: 150, child: Tab(text: "Available Manga")),
+                    waitDuration: const Duration(milliseconds: 1000),
+                    message: context.tr("ext_tab_available_manga"),
+                    child: SizedBox(width: 150, child: Tab(text: context.tr("ext_tab_available_manga"))),
                   ),
                   Tooltip(
-                    waitDuration: Duration(milliseconds: 1000),
-                    message: "Installed Anime",
-                    child: SizedBox(width: 150, child: Tab(text: "Installed Anime")),
+                    waitDuration: const Duration(milliseconds: 1000),
+                    message: context.tr("ext_tab_installed_anime"),
+                    child: SizedBox(width: 150, child: Tab(text: context.tr("ext_tab_installed_anime"))),
                   ),
                   Tooltip(
-                    waitDuration: Duration(milliseconds: 1000),
-                    message: "Installed Manga",
-                    child: SizedBox(width: 150, child: Tab(text: "Installed Manga")),
+                    waitDuration: const Duration(milliseconds: 1000),
+                    message: context.tr("ext_tab_installed_manga"),
+                    child: SizedBox(width: 150, child: Tab(text: context.tr("ext_tab_installed_manga"))),
                   ),
                 ],
               ),
@@ -174,7 +171,7 @@ class _ExtensionsViewState extends State<_ExtensionsView> with TickerProviderSta
                   Expanded(
                     flex: 8,
                     child: UnyoTextfield(
-                      label: "Search extensions...",
+                      label: context.tr("ext_search_hint"),
                       debounceMilliseconds: 300,
                       onChange: (value) {
                         setState(() {
@@ -187,7 +184,7 @@ class _ExtensionsViewState extends State<_ExtensionsView> with TickerProviderSta
                     Expanded(
                     flex: 2,
                     child: UnyoDropdown(
-                      label: "Repository...",
+                      label: context.tr("ext_repository_filter_label"),
                       selectedValue: _selectedRepo,
                       reactOnCancel: true,
                       children: context.read<ExtensionsCubit>().getAvailableRepositories().toList(),

@@ -9,6 +9,8 @@ import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/presentation/widgets/styled/shikimori_account_settings.dart';
 
+import '../../../support/localized_app.dart';
+
 /// WP #64 subpart (c): the settings account pane has three jobs — say whether a
 /// Shikimori account is connected, show who it is, and log out.
 void main() {
@@ -16,7 +18,9 @@ void main() {
     await tester.pumpWidget(
       ScreenUtilInit(
         designSize: const Size(1920, 1080),
-        child: MaterialApp(
+        // Wrapped in `localizedApp`: the pane's copy now comes from
+        // `context.tr`, which needs EasyLocalization above the MaterialApp.
+        child: localizedApp(
           home: Scaffold(
             body: ShikimoriAccountSettings(loggedUser: loggedUser, onLogout: onLogout),
           ),

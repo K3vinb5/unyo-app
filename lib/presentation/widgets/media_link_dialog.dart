@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -40,11 +41,17 @@ class _MediaLinkDialogState extends State<MediaLinkDialog> {
 
   String _serviceLabel(Service service) => '${service.name[0].toUpperCase()}${service.name.substring(1)}';
 
-  String _disambiguators(MediaLinkCandidate candidate) {
+  String _disambiguators(BuildContext context, MediaLinkCandidate candidate) {
     return <String>[
       if (candidate.year != null) '${candidate.year}',
       if (candidate.format != null && candidate.format!.isNotEmpty) candidate.format!.toUpperCase(),
-      '${_serviceLabel(candidate.service)} id ${candidate.nativeId}',
+      context.tr(
+        'dialog_entry_id',
+        namedArgs: <String, String>{
+          'service': _serviceLabel(candidate.service),
+          'id': candidate.nativeId,
+        },
+      ),
     ].join('  •  ');
   }
 
@@ -61,15 +68,19 @@ class _MediaLinkDialogState extends State<MediaLinkDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                "Which entry is this?",
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+              Text(
+                context.tr('dialog_which_entry_title'),
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
               ),
               SizedBox(height: 14.h),
               Text(
-                "You're signed in with ${_serviceLabel(proposal.userService)}, but details come from "
-                "${_serviceLabel(proposal.metadataService)}. We couldn't match this entry between the two "
-                "automatically — pick the right one.",
+                context.tr(
+                  'dialog_link_mismatch_body',
+                  namedArgs: <String, String>{
+                    'userService': _serviceLabel(proposal.userService),
+                    'metadataService': _serviceLabel(proposal.metadataService),
+                  },
+                ),
                 style: const TextStyle(fontSize: 13, color: Colors.grey),
               ),
               SizedBox(height: 20.h),
@@ -98,7 +109,7 @@ class _MediaLinkDialogState extends State<MediaLinkDialog> {
                           ),
                           SizedBox(height: 4.h),
                           Text(
-                            _disambiguators(candidate),
+                            _disambiguators(context, candidate),
                             style: const TextStyle(fontSize: 11, color: Colors.grey),
                           ),
                         ],
@@ -112,7 +123,7 @@ class _MediaLinkDialogState extends State<MediaLinkDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   DarkUnyoButton(
-                    text: "None of these",
+                    text: context.tr('dialog_none_of_these'),
                     maxHeight: 44,
                     onPressed: () {
                       Navigator.of(context).pop();
@@ -121,7 +132,7 @@ class _MediaLinkDialogState extends State<MediaLinkDialog> {
                   ),
                   SizedBox(width: 12.w),
                   DarkUnyoButton(
-                    text: "Dismiss",
+                    text: context.tr('common_dismiss'),
                     maxHeight: 44,
                     onPressed: () {
                       Navigator.of(context).pop();
@@ -130,7 +141,7 @@ class _MediaLinkDialogState extends State<MediaLinkDialog> {
                   ),
                   SizedBox(width: 12.w),
                   LightUnyoButton(
-                    text: "Link",
+                    text: context.tr('dialog_link'),
                     maxHeight: 44,
                     onPressed: () {
                       final MediaLinkCandidate? selected = _selected;

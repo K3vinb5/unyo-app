@@ -10,6 +10,8 @@ import 'package:unyo/presentation/widgets/styled/add_user_avatar.dart';
 import 'package:unyo/presentation/widgets/styled/user_avatar_image.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 
+import '../../../support/localized_app.dart';
+
 /// WP #102: the default avatar and the add-user glyph ship with the binary.
 /// Avatars are persisted in Hive, so already-stored local accounts still hold
 /// the pre-#102 third-party URL — that legacy value must render the bundled
@@ -18,12 +20,14 @@ void main() {
   // The value pre-#102 builds wrote into Hive for every local account.
   const String legacyPersistedAvatar = 'https://i.imgur.com/EKtChtm.png';
 
-  Future<void> pumpAvatar(WidgetTester tester, String avatarImage) {
-    return tester.pumpWidget(
-      MaterialApp(
+  Future<void> pumpAvatar(WidgetTester tester, String avatarImage) async {
+    await tester.pumpWidget(
+      localizedApp(
         home: Scaffold(body: Center(child: UserAvatarImage(avatarImage: avatarImage, borderRadius: 8))),
       ),
     );
+    // `localizedApp` resolves its bundle one microtask after the first frame.
+    await tester.pump();
   }
 
   group('UserAvatarImage.bundledAssetFor', () {
@@ -82,10 +86,11 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: Center(child: AddUserAvatarGlyph())),
+      localizedApp(
+        home: const Scaffold(body: Center(child: AddUserAvatarGlyph())),
       ),
     );
+    await tester.pump();
 
     expect(find.byType(UnyoNetworkImage), findsNothing, reason: 'nothing in the tile is fetched');
     final Image image = tester.widget<Image>(find.byType(Image));

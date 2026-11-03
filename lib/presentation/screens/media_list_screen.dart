@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -83,13 +84,13 @@ class _MediaListViewState extends State<_MediaListView> with TickerProviderState
                       Row(
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
-                          const TextHeadlineMedium(text: "Hi ", style: TextStyle(fontWeight: FontWeight.bold)),
                           TextHeadlineMedium(
-                            text: "${state.loggedUser.name}! ",
-                            style: TextStyle(color: ColorScheme.of(context).tertiary, fontWeight: FontWeight.bold),
-                          ),
-                          TextHeadlineMedium(
-                            text: "Welcome to your ${widget.type == MediaType.anime ? "Anime" : "Manga"} Lists!",
+                            text: context.tr(
+                              widget.type == MediaType.anime
+                                  ? 'common_media_list_greeting_anime'
+                                  : 'common_media_list_greeting_manga',
+                              namedArgs: <String, String>{'name': state.loggedUser.name},
+                            ),
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -98,7 +99,11 @@ class _MediaListViewState extends State<_MediaListView> with TickerProviderState
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           TextBodyLarge(
-                            text: "You can find and remember your favorite ${widget.type == MediaType.anime ? "anime" : "manga"} here",
+                            text: context.tr(
+                              widget.type == MediaType.anime
+                                  ? 'common_media_list_subtitle_anime'
+                                  : 'common_media_list_subtitle_manga',
+                            ),
                             style: const TextStyle(color: Colors.grey),
                           ),
                         ],
@@ -121,11 +126,17 @@ class _MediaListViewState extends State<_MediaListView> with TickerProviderState
                 controller: tabController,
                 tabs: [
                   ...(widget.type == MediaType.anime ? state.userAnimeLists : state.userMangaLists).entries.map((entry) {
-                    String title = entry.key;
+                    final String label = context.tr(
+                      'common_tab_label_count',
+                      namedArgs: <String, String>{
+                        'title': entry.key,
+                        'count': '${entry.value.length}',
+                      },
+                    );
                     return Tooltip(
                       waitDuration: const Duration(milliseconds: 1000),
-                      message: "$title (${entry.value.length})",
-                      child: SizedBox(width: 150, child: Tab(text: "$title (${entry.value.length})")),
+                      message: label,
+                      child: SizedBox(width: 150, child: Tab(text: label)),
                     );
                   }),
                 ],

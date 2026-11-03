@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 
 // Internal dependencies
@@ -56,8 +57,8 @@ class UserProfileDialog extends StatelessWidget {
   final User user;
 
   /// The rows under the identity block, in display order.
-  static List<UserProfileField> fieldsOf(User user) => <UserProfileField>[
-    UserProfileField(label: 'Account ID', value: user.id),
+  static List<UserProfileField> fieldsOf(BuildContext context, User user) => <UserProfileField>[
+    UserProfileField(label: context.tr('dialog_account_id'), value: user.id),
   ];
 
   /// The empty-slot rule: a row whose value is empty renders nothing at all.
@@ -67,14 +68,17 @@ class UserProfileDialog extends StatelessWidget {
   /// Provider wording, the same the drawer's subtitle already uses. A local
   /// account has no provider behind it, so it says so instead of repeating the
   /// service its settings happen to carry.
-  static String providerLabel(User user) => user is LocalUserModel
-      ? 'Local account'
-      : '${TextUtils.capitalize(user.settings.userService.name)} account';
+  static String providerLabel(BuildContext context, User user) => user is LocalUserModel
+      ? context.tr('dialog_local_account')
+      : context.tr(
+          'dialog_provider_account',
+          namedArgs: <String, String>{'provider': TextUtils.capitalize(user.settings.userService.name)},
+        );
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme scheme = ColorScheme.of(context);
-    final List<UserProfileField> fields = visibleFields(fieldsOf(user));
+    final List<UserProfileField> fields = visibleFields(fieldsOf(context, user));
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -152,7 +156,7 @@ class UserProfileDialog extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      providerLabel(user),
+                      providerLabel(context, user),
                       textAlign: TextAlign.center,
                       style: TextStyle(color: scheme.dialogDim, fontSize: 13),
                     ),
@@ -167,7 +171,7 @@ class UserProfileDialog extends StatelessWidget {
                       ),
                       const SizedBox(height: 11),
                       Text(
-                        'ACCOUNT',
+                        context.tr('dialog_account_section'),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: scheme.dialogDim,
@@ -206,7 +210,7 @@ class UserProfileDialog extends StatelessWidget {
                     // button, not a bespoke accent pill (WP #117).
                     LightUnyoButton(
                       key: UserProfileDialog.closeKey,
-                      text: 'Close',
+                      text: context.tr('common_close'),
                       width: double.infinity,
                       height: 44,
                       onPressed: () => Navigator.of(context).pop(),

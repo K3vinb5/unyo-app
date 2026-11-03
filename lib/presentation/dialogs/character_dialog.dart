@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 
 // Internal dependencies
@@ -23,6 +24,10 @@ const double characterDialogPortraitWidth = 292;
 const double characterDialogDescriptionWidth = 508;
 
 /// What a slot with no data says, instead of collapsing its row.
+///
+/// The dialog renders the translated copy (`details_not_available`); this
+/// constant stays as the context-free fallback for callers that have no
+/// [BuildContext] to translate with.
 const String characterDialogPlaceholder = 'Not available';
 
 /// Which parts of a [MediaCharacter] are genuinely known.
@@ -133,15 +138,15 @@ class CharacterDialog extends StatelessWidget {
                 children: <Widget>[
                   _buildHeader(context, scheme),
                   const SizedBox(height: 17),
-                  _buildChips(scheme),
+                  _buildChips(context, scheme),
                   const SizedBox(height: 24),
-                  _buildFactRows(scheme),
+                  _buildFactRows(context, scheme),
                   const SizedBox(height: 24),
                   Expanded(
                     child: SizedBox(
                       width: characterDialogDescriptionWidth,
                       child: SingleChildScrollView(
-                        child: _buildDescription(scheme),
+                        child: _buildDescription(context, scheme),
                       ),
                     ),
                   ),
@@ -163,7 +168,7 @@ class CharacterDialog extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                'CHARACTER',
+                context.tr('details_character'),
                 style: TextStyle(
                   color: scheme.dialogAccent,
                   fontSize: 11,
@@ -193,7 +198,7 @@ class CharacterDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildChips(ColorScheme scheme) {
+  Widget _buildChips(BuildContext context, ColorScheme scheme) {
     final List<Widget> chips = <Widget>[
       if (character.hasGender)
         _CharacterChip(
@@ -202,13 +207,17 @@ class CharacterDialog extends StatelessWidget {
           scheme: scheme,
         ),
       if (character.hasAge)
-        _CharacterChip(key: ageChipKey, label: "Age ${character.age}", scheme: scheme),
+        _CharacterChip(
+          key: ageChipKey,
+          label: context.tr('details_age_value', namedArgs: <String, String>{'age': '${character.age}'}),
+          scheme: scheme,
+        ),
     ];
     if (chips.isEmpty) {
       chips.add(
         _CharacterChip(
           key: placeholderChipKey,
-          label: characterDialogPlaceholder,
+          label: context.tr('details_not_available'),
           scheme: scheme,
           isPlaceholder: true,
         ),
@@ -219,11 +228,12 @@ class CharacterDialog extends StatelessWidget {
 
   /// The three fact rows, always: a missing value renders
   /// [characterDialogPlaceholder] rather than dropping its row.
-  Widget _buildFactRows(ColorScheme scheme) {
+  Widget _buildFactRows(BuildContext context, ColorScheme scheme) {
+    final String placeholder = context.tr('details_not_available');
     final List<(String, String?)> facts = <(String, String?)>[
-      ('GENDER', character.hasGender ? character.gender.trim() : null),
-      ('AGE', character.hasAge ? '${character.age}' : null),
-      ('BIRTHDAY', character.hasDateOfBirth ? character.dateOfBirth.trim() : null),
+      (context.tr('details_gender'), character.hasGender ? character.gender.trim() : null),
+      (context.tr('details_age'), character.hasAge ? '${character.age}' : null),
+      (context.tr('details_birthday'), character.hasDateOfBirth ? character.dateOfBirth.trim() : null),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,7 +254,7 @@ class CharacterDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  value ?? characterDialogPlaceholder,
+                  value ?? placeholder,
                   style: TextStyle(
                     color: value == null ? scheme.dialogDim : scheme.dialogText,
                     fontSize: 14,
@@ -267,10 +277,10 @@ class CharacterDialog extends StatelessWidget {
 
   /// The description block, always present: the provider's text, or the
   /// placeholder when it sent only a sentinel.
-  Widget _buildDescription(ColorScheme scheme) {
+  Widget _buildDescription(BuildContext context, ColorScheme scheme) {
     final String? description = character.descriptionText;
     return Text(
-      description ?? characterDialogPlaceholder,
+      description ?? context.tr('details_not_available'),
       key: descriptionKey,
       style: TextStyle(
         color: description == null ? scheme.dialogDim : scheme.dialogBody,
@@ -334,11 +344,11 @@ class _CloseGlyph extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: 'Close',
+      message: context.tr('common_close'),
       excludeFromSemantics: true,
       child: Semantics(
         container: true,
-        label: 'Close',
+        label: context.tr('common_close'),
         button: true,
         onTap: onPressed,
         child: SizedBox(

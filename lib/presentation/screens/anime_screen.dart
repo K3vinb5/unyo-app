@@ -1,6 +1,7 @@
 // External dependencies
 import 'package:material_ui/material_ui.dart';
 import 'package:auto_route/annotations.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 // Internal dependencies
@@ -100,14 +101,14 @@ class _AnimeViewState extends State<_AnimeView> {
                       onPressed: () => context.read<AnimeCubit>().navigateToCalendar(context),
                       image:
                           state.banners.isNotEmpty ? state.banners[0].bannerImage : "",
-                      text: "Calendar",
+                      text: context.tr('common_calendar'),
                     ),
                     const SizedBox(width: 30,),
                     MediaButton(
                       onPressed: () => context.read<AnimeCubit>().navigateToAdvancedSearch(context),
                       image:
                           state.banners.isNotEmpty ? state.banners[1].bannerImage : "",
-                      text: "Advanced Search",
+                      text: context.tr('common_advanced_search'),
                     ),
                   ],
                 ),
@@ -116,7 +117,7 @@ class _AnimeViewState extends State<_AnimeView> {
               state.recentlyReleased.$1
                   ? CardRowFrame.browse(
                     child: AnimeCardList(
-                      listTitle: "Recently Released",
+                      listTitle: context.tr('common_recently_released'),
                       animeList: state.recentlyReleased.$2,
                       controller: recentlyReleasedController,
                       onPressed: context.read<AnimeCubit>().navigateToAnimeDetails,
@@ -128,7 +129,7 @@ class _AnimeViewState extends State<_AnimeView> {
               state.trending.$1
                   ? CardRowFrame.browse(
                     child: AnimeCardList(
-                      listTitle: "Trending Animes",
+                      listTitle: context.tr('common_trending_animes'),
                       animeList: state.trending.$2,
                       controller: trendingController,
                       onPressed: context.read<AnimeCubit>().navigateToAnimeDetails,
@@ -140,7 +141,7 @@ class _AnimeViewState extends State<_AnimeView> {
               state.recentlyCompleted.$1
                   ? CardRowFrame.browse(
                     child: AnimeCardList(
-                      listTitle: "Recently Completed Animes",
+                      listTitle: context.tr('common_recently_completed_animes'),
                       animeList: state.recentlyCompleted.$2,
                       controller: recentlyCompletedController,
                       onPressed: context.read<AnimeCubit>().navigateToAnimeDetails,
@@ -152,7 +153,7 @@ class _AnimeViewState extends State<_AnimeView> {
               state.popular.$1
                   ? CardRowFrame.browse(
                     child: AnimeCardList(
-                      listTitle: "Popular Animes",
+                      listTitle: context.tr('common_popular_animes'),
                       animeList: state.popular.$2,
                       controller: popularController,
                       onPressed: context.read<AnimeCubit>().navigateToAnimeDetails,
@@ -164,7 +165,7 @@ class _AnimeViewState extends State<_AnimeView> {
               state.upcoming.$1
                   ? CardRowFrame.browse(
                     child: AnimeCardList(
-                      listTitle: "Upcoming Animes",
+                      listTitle: context.tr('common_upcoming_animes'),
                       animeList: state.upcoming.$2,
                       controller: upcomingController,
                       onPressed: context.read<AnimeCubit>().navigateToAnimeDetails,

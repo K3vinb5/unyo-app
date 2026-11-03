@@ -29,7 +29,10 @@ class FakeAssetLoader extends AssetLoader {
 
 /// [home] under the same localization setup the app runs with, so widgets that
 /// call `context.tr` render their real copy in a widget test.
-Widget localizedApp({required Widget home}) => EasyLocalization(
+///
+/// [theme] is passed straight through to the [MaterialApp] for the tests that
+/// assert on colours resolved from the theme.
+Widget localizedApp({required Widget home, ThemeData? theme}) => EasyLocalization(
   supportedLocales: kSupportedLocales,
   path: 'assets/i18n',
   assetLoader: const FakeAssetLoader(),
@@ -42,6 +45,7 @@ Widget localizedApp({required Widget home}) => EasyLocalization(
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
+      theme: theme,
       home: home,
     ),
   ),

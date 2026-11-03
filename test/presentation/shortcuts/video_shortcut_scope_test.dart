@@ -5,6 +5,8 @@ import 'package:unyo/core/services/video/video_playback_commands.dart';
 import 'package:unyo/presentation/shortcuts/video_shortcut_handler.dart';
 import 'package:unyo/presentation/shortcuts/video_shortcut_scope.dart';
 
+import '../../support/localized_app.dart';
+
 /// WP #98 Phase B focus discipline: the key table must not fire while a dialog,
 /// the episode drawer, or a text field owns focus, nor on other screens.
 void main() {
@@ -26,12 +28,14 @@ void main() {
 
   tearDown(() => handler.dispose());
 
-  Future<void> pumpScope(WidgetTester tester, Widget child, {bool enabled = true}) {
-    return tester.pumpWidget(
-      MaterialApp(
+  Future<void> pumpScope(WidgetTester tester, Widget child, {bool enabled = true}) async {
+    await tester.pumpWidget(
+      localizedApp(
         home: VideoShortcutScope(handler: handler, enabled: enabled, child: child),
       ),
     );
+    // `localizedApp` resolves its bundle one microtask after the first frame.
+    await tester.pump();
   }
 
   testWidgets('keys reach the handler while the video screen owns focus', (tester) async {
@@ -154,8 +158,9 @@ void main() {
 
   testWidgets('the handler is not consulted outside the scope', (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: SizedBox.expand())),
+      localizedApp(home: const Scaffold(body: SizedBox.expand())),
     );
+    await tester.pump();
 
     await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
     await tester.pump();

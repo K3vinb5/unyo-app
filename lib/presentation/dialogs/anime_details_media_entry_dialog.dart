@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -43,9 +44,9 @@ class AnimeDetailsMediaEntryDialog extends StatelessWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
-                                "List Editor",
-                                style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
+                              Text(
+                                context.tr('details_list_editor'),
+                                style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w800),
                               ),
                               IconButton(
                                 onPressed: () {},
@@ -64,7 +65,7 @@ class AnimeDetailsMediaEntryDialog extends StatelessWidget {
                               "Paused",
                               "Dropped",
                             ],
-                            label: "Status",
+                            label: context.tr('details_status'),
                             onPressed: context.read<AnimeDetailsCubit>().updateMediaListEntryStatus,
                             selectedValue: state.newMediaListEntry.status,
                           ),
@@ -75,7 +76,7 @@ class AnimeDetailsMediaEntryDialog extends StatelessWidget {
                               progress: state.newMediaListEntry.progress,
                               episodeCount: _episodeCount(state),
                             ),
-                            title: "Progress",
+                            title: context.tr('details_progress'),
                             maxValue: _episodeCount(state),
                             onChanged:
                                 (value) =>
@@ -86,7 +87,7 @@ class AnimeDetailsMediaEntryDialog extends StatelessWidget {
                             minValue: 0,
                             initialValue:
                             state.newMediaListEntry.score.toInt() != -1 ? state.newMediaListEntry.score.toInt() : 0,
-                            title: "Score",
+                            title: context.tr('details_score'),
                             maxValue: 10,
                             onChanged: context.read<AnimeDetailsCubit>().updateMediaListEntryScore,
                           ),
@@ -96,9 +97,9 @@ class AnimeDetailsMediaEntryDialog extends StatelessWidget {
                             children: [
                               Row(
                                 children: [
-                                  const Text(
-                                    "Started At:",
-                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                                  Text(
+                                    context.tr('details_started_at'),
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                                   ),
                                   const SizedBox(width: 4.0),
                                   Text("${state.newMediaListEntry.startedAt[0]}/${state.newMediaListEntry.startedAt[1]}/${state.newMediaListEntry.startedAt[2]}"),
@@ -115,9 +116,9 @@ class AnimeDetailsMediaEntryDialog extends StatelessWidget {
                               SizedBox(width: 25.0.w),
                               Row(
                                 children: [
-                                  const Text(
-                                    "Completed At:",
-                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                                  Text(
+                                    context.tr('details_completed_at'),
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                                   ),
                                   const SizedBox(width: 4.0),
                                   Text("${state.newMediaListEntry.completedAt[0]}/${state.newMediaListEntry.completedAt[1]}/${state.newMediaListEntry.completedAt[2]}"),
@@ -141,9 +142,9 @@ class AnimeDetailsMediaEntryDialog extends StatelessWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              DarkUnyoButton(text: "Cancel", maxHeight: 50, onPressed: () => context.read<AnimeDetailsCubit>().popRouteEffect(context)),
+                              DarkUnyoButton(text: context.tr('common_cancel'), maxHeight: 50, onPressed: () => context.read<AnimeDetailsCubit>().popRouteEffect(context)),
                               SizedBox(width: 25.0.w),
-                              LightUnyoButton(text: "Confirm", maxHeight: 50, onPressed: () => context.read<AnimeDetailsCubit>().updateMediaListEntry(context)),
+                              LightUnyoButton(text: context.tr('common_confirm'), maxHeight: 50, onPressed: () => context.read<AnimeDetailsCubit>().updateMediaListEntry(context)),
                             ],
                           )
                         ],

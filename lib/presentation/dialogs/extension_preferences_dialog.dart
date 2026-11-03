@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:unyo/domain/entities/extension/preference_item.dart';
@@ -46,9 +47,9 @@ class _ExtensionPreferencesDialogState extends State<ExtensionPreferencesDialog>
           padding: EdgeInsets.symmetric(horizontal: 16.0.w, vertical: 16.0.h),
           child: Column(
             children: [
-              const Text(
-                "Extension Preferences",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+              Text(
+                context.tr("ext_preferences_title"),
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
               ),
               SizedBox(height: 8.h),
               Text(
@@ -73,12 +74,12 @@ class _ExtensionPreferencesDialogState extends State<ExtensionPreferencesDialog>
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   DarkUnyoButton(
-                    text: "Cancel",
+                    text: context.tr("common_cancel"),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                   SizedBox(width: 12.w),
                   LightUnyoButton(
-                    text: "Confirm",
+                    text: context.tr("common_confirm"),
                     onPressed: () {
                       widget.onSave(_values);
                       Navigator.of(context).pop();
@@ -105,7 +106,7 @@ class _ExtensionPreferencesDialogState extends State<ExtensionPreferencesDialog>
         return _buildMultiSelectPreference(pref);
       default:
         return Text(
-          "Unsupported preference type: ${pref.type}",
+          context.tr("ext_unsupported_preference", namedArgs: {"type": pref.type}),
           style: const TextStyle(color: Colors.red),
         );
     }

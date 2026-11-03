@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -161,7 +162,7 @@ class _ThemeColorPickerDialogState extends State<ThemeColorPickerDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                'THEME COLOR',
+                context.tr('dialog_theme_color_eyebrow'),
                 key: ThemeColorPickerDialog.eyebrowKey,
                 style: TextStyle(
                   color: scheme.dialogDim,
@@ -172,7 +173,7 @@ class _ThemeColorPickerDialogState extends State<ThemeColorPickerDialog> {
               ),
               const SizedBox(height: 9),
               Text(
-                "Pick a color to get a theme based on that color",
+                context.tr('dialog_theme_color_title'),
                 key: ThemeColorPickerDialog.titleKey,
                 style: TextStyle(
                   color: scheme.dialogText,
@@ -233,13 +234,13 @@ class _ThemeColorPickerDialogState extends State<ThemeColorPickerDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: <Widget>[
                   DarkUnyoButton(
-                    text: 'Cancel',
+                    text: context.tr('common_cancel'),
                     maxHeight: 50,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                   const SizedBox(width: 16),
                   LightUnyoButton(
-                    text: 'Confirm',
+                    text: context.tr('common_confirm'),
                     maxHeight: 50,
                     onPressed: () {
                       widget.onConfirmed(_selectedColor);

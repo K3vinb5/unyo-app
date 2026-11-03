@@ -9,6 +9,8 @@ import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
 import 'package:unyo/core/services/update/release_asset_selector.dart';
 import 'package:unyo/presentation/dialogs/update_available_dialog.dart';
 
+import '../../support/localized_app.dart';
+
 GithubReleaseAssets asset(String name) => GithubReleaseAssets()
   ..name = name
   ..browserDownloadUrl =
@@ -45,7 +47,7 @@ void main() {
       ScreenUtilInit(
         designSize: const Size(1920, 1080),
         minTextAdapt: true,
-        child: MaterialApp(
+        child: localizedApp(
           home: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
@@ -69,6 +71,8 @@ void main() {
         ),
       ),
     );
+    // `localizedApp` resolves its bundle one microtask after the first frame.
+    await tester.pump();
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
   }

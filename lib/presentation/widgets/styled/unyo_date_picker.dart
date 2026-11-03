@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:unyo/presentation/widgets/styled/dark_unyo_button.dart';
 import 'package:unyo/presentation/widgets/styled/light_unyo_button.dart';
@@ -46,21 +47,29 @@ class UnyoDatePicker extends StatefulWidget {
 }
 
 class _UnyoDatePickerState extends State<UnyoDatePicker> {
-  static const List<String> _monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
+  static const List<String> _monthKeys = [
+    'common_january',
+    'common_february',
+    'common_march',
+    'common_april',
+    'common_may',
+    'common_june',
+    'common_july',
+    'common_august',
+    'common_september',
+    'common_october',
+    'common_november',
+    'common_december',
   ];
-  static const List<String> _weekdayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  static const List<String> _weekdayKeys = [
+    'common_weekday_short_mon',
+    'common_weekday_short_tue',
+    'common_weekday_short_wed',
+    'common_weekday_short_thu',
+    'common_weekday_short_fri',
+    'common_weekday_short_sat',
+    'common_weekday_short_sun',
+  ];
 
   late DateTime _displayedMonth = DateTime(widget.initialDate.year, widget.initialDate.month);
   late DateTime? _selected = _dateOnly(widget.initialDate);
@@ -111,9 +120,17 @@ class _UnyoDatePickerState extends State<UnyoDatePicker> {
                     onTap: () => _changeMonth(-1),
                     child: const Padding(padding: EdgeInsets.all(8.0), child: Icon(Icons.chevron_left)),
                   ),
-                  Text(
-                    '${_monthNames[_displayedMonth.month - 1]} ${_displayedMonth.year}',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  Expanded(
+                    child: Text(
+                      '${context.tr(_monthKeys[_displayedMonth.month - 1])} ${_displayedMonth.year}',
+                      // Month names grow with the locale ("September", "septiembre",
+                      // "September" + year); let the header shrink them instead of
+                      // overflowing the 420px dialog.
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                    ),
                   ),
                   UnyoInkWell(
                     borderRadius: BorderRadius.circular(20.0),
@@ -125,11 +142,11 @@ class _UnyoDatePickerState extends State<UnyoDatePicker> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  for (final String name in _weekdayNames)
+                  for (final String key in _weekdayKeys)
                     Expanded(
                       child: Center(
                         child: Text(
-                          name,
+                          context.tr(key),
                           style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.5)),
                         ),
                       ),
@@ -148,10 +165,14 @@ class _UnyoDatePickerState extends State<UnyoDatePicker> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  DarkUnyoButton(text: "Cancel", maxHeight: 50, onPressed: () => Navigator.of(context).pop()),
+                  DarkUnyoButton(
+                    text: context.tr('common_cancel'),
+                    maxHeight: 50,
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
                   const SizedBox(width: 16),
                   LightUnyoButton(
-                    text: "OK",
+                    text: context.tr('common_ok'),
                     maxHeight: 50,
                     isEnabled: _selected != null && _isEnabled(_selected!),
                     onPressed: () => Navigator.of(context).pop(_selected),

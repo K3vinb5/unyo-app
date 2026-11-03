@@ -114,15 +114,17 @@ class AccountCreationDialog extends StatelessWidget {
 class _ServiceOption {
   const _ServiceOption({
     required this.type,
-    required this.title,
-    required this.description,
+    this.title,
     required this.asset,
     required this.logoSize,
   });
 
   final LoginCardType type;
-  final String title;
-  final String description;
+
+  /// Brand name, shown verbatim and never translated. Null for the services
+  /// whose card title is app copy ([_cardTitle] resolves it through a key).
+  final String? title;
+
   final String asset;
   final double logoSize;
 }
@@ -133,32 +135,43 @@ const List<_ServiceOption> _serviceOptions = <_ServiceOption>[
   _ServiceOption(
     type: LoginCardType.anilist,
     title: 'Anilist',
-    description: 'Sync your list with Anilist',
     asset: 'assets/images/anilist.svg',
     logoSize: 120,
   ),
   _ServiceOption(
     type: LoginCardType.shikimori,
     title: 'Shikimori',
-    description: 'Sync your list with Shikimori',
     asset: 'assets/images/shikimori.svg',
     logoSize: 120,
   ),
   _ServiceOption(
     type: LoginCardType.mal,
     title: 'MyAnimeList',
-    description: 'Sync your list with MyAnimeList',
     asset: 'assets/images/myanimelist.svg',
     logoSize: 120,
   ),
   _ServiceOption(
     type: LoginCardType.local,
-    title: 'Local Account',
-    description: 'Offline usage, no sync',
     asset: 'assets/images/local_account.svg',
     logoSize: 130,
   ),
 ];
+
+/// Card title: provider brand names stay as they are (the list is `const`, so
+/// the brand name is the only per-service copy it can carry), the local account
+/// is app copy and goes through the catalog.
+String _cardTitle(BuildContext context, _ServiceOption option) =>
+    option.title ?? context.tr('dialog_account_local_title');
+
+/// Card description: "Sync your list with {provider}" for the three provider
+/// services, app copy for the offline local account.
+String _cardDescription(BuildContext context, _ServiceOption option) =>
+    option.title == null
+        ? context.tr('dialog_account_local_description')
+        : context.tr(
+            'dialog_account_sync_provider',
+            namedArgs: <String, String>{'provider': option.title!},
+          );
 
 /// The horizontally scrolling row of [LoginCard]s.
 ///
@@ -293,8 +306,8 @@ class _AccountServiceSelectorState extends State<_AccountServiceSelector> {
                           width: option.logoSize.w,
                           height: option.logoSize.h,
                         ),
-                        title: option.title,
-                        description: option.description,
+                        title: _cardTitle(context, option),
+                        description: _cardDescription(context, option),
                         onTap: () => widget.onSelect(option.type),
                         isSelected: widget.selectedType == option.type,
                       ),

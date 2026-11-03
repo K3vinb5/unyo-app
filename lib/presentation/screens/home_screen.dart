@@ -1,5 +1,6 @@
 // Flutter dependencies
 import 'package:auto_route/auto_route.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -84,22 +85,20 @@ class _HomeViewState extends State<_HomeView> {
                     children: [
                       Row(
                         children: [
-                          const TextDisplaySmall(text: "Welcome back "),
                           TextDisplaySmall(
-                            text: state.loggedUser.name,
-                            style: TextStyle(
-                              color: ColorScheme.of(context).tertiary,
+                            text: context.tr(
+                              'common_home_welcome',
+                              namedArgs: <String, String>{'name': state.loggedUser.name},
                             ),
                           ),
-                          const TextDisplaySmall(text: " , enjoy your journey!"),
                           const Spacer(),
                         ],
                       ),
-                      const Row(
+                      Row(
                         children: [
                           TextBodyLarge(
-                            text: "Find your next favorite anime or manga!",
-                            style: TextStyle(
+                            text: context.tr('common_home_subtitle'),
+                            style: const TextStyle(
                               color: Colors.grey,
                             ),
                           ),
@@ -120,7 +119,7 @@ class _HomeViewState extends State<_HomeView> {
                                 .read<HomeCubit>()
                                 .navigateToUserAnimeList(context),
                         image: state.mediaCoverImages.isNotEmpty ? state.mediaCoverImages[0] : "",
-                        text: "Anime List",
+                        text: context.tr('common_anime_list'),
                       ),
                       SizedBox(width: 50.w),
                       MediaButton(
@@ -130,7 +129,7 @@ class _HomeViewState extends State<_HomeView> {
                                 .navigateToUserMangaList(context),
                         image:
                             state.mediaCoverImages.isNotEmpty ? state.mediaCoverImages[1] : "",
-                        text: "Manga List",
+                        text: context.tr('common_manga_list'),
                       ),
                     ],
                   ),
@@ -140,7 +139,7 @@ class _HomeViewState extends State<_HomeView> {
                     ? const CardRowFrame.browse(child: CardRowSkeleton())
                     : CardRowFrame.browse(
                       child: AnimeCardList(
-                        listTitle: "Continue Watching",
+                        listTitle: context.tr('common_continue_watching'),
                         animeList: state.continueWatching,
                         controller: continueWatchingController,
                         onPressed: context.read<HomeCubit>().navigateToAnimeDetails,
@@ -152,7 +151,7 @@ class _HomeViewState extends State<_HomeView> {
                     ? const CardRowFrame.browse(child: CardRowSkeleton())
                     : CardRowFrame.browse(
                       child: MangaCardList(
-                        listTitle: "Continue Reading",
+                        listTitle: context.tr('common_continue_reading'),
                         mangaList: state.continueReading,
                         controller: continueReadingController,
                         loadMore: false,

@@ -6,6 +6,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:unyo/domain/entities/extension/track.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_controls.dart';
 
+import '../../../support/localized_app.dart';
+
 const Track _embeddedEnglish = Track(url: '', lang: 'English', embedded: true, embeddedIndex: 0);
 const Track _embeddedFrench = Track(url: '', lang: 'French', embedded: true, embeddedIndex: 1);
 const Track _externalSpanish =
@@ -19,7 +21,7 @@ void main() {
     List<PopupMenuEntry<int>> Function() itemBuilder,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
+      localizedApp(
         home: Scaffold(
           body: Center(
             child: PopupMenuButton<int>(
@@ -30,6 +32,8 @@ void main() {
         ),
       ),
     );
+    // `localizedApp` resolves its bundle one microtask after the first frame.
+    await tester.pump();
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
   }

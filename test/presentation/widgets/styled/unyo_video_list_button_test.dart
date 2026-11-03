@@ -3,13 +3,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_list_button.dart';
 
+import '../../../support/localized_app.dart';
+
 void main() {
   Future<void> pumpButton(WidgetTester tester, {VoidCallback? onPressed}) async {
     await tester.pumpWidget(
       ScreenUtilInit(
         designSize: const Size(1920, 1080),
         minTextAdapt: true,
-        child: MaterialApp(
+        child: localizedApp(
           home: Scaffold(
             body: UnyoVideoListButton(
               tooltip: 'Open Episode List',

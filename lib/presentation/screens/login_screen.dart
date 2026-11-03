@@ -141,7 +141,7 @@ class _LoginViewState extends State<_LoginView> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    const TextHeadlineSmall(text: "Unyo revamped! by K3vinb5"),
+                    TextHeadlineSmall(text: context.tr('common_login_footer')),
                     const BrandMark(),
                   ],
                 ),
