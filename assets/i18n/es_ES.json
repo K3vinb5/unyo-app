@@ -1,0 +1,16 @@
+{
+  "common_cancel": "Cancelar",
+  "common_confirm": "Confirmar",
+  "common_entry_count.one": "entrada",
+  "common_entry_count.other": "entradas",
+  "details_not_yet_released": "Aún no publicado",
+  "details_released": "Publicado",
+  "dialog_add_account": "Añadir cuenta",
+  "dialog_select_user": "¿Quién está viendo?",
+  "dialog_sign_in_title": "Añadir una cuenta nueva",
+  "settings_language_ai_translated": "Traducido por IA",
+  "settings_language_description": "Selecciona el idioma de la aplicación",
+  "settings_language_label": "Selecciona un idioma",
+  "settings_language_system_default": "Predeterminado del sistema",
+  "settings_language_title": "Idioma"
+}

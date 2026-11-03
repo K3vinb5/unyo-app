@@ -90,13 +90,23 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // All three MaterialApps must carry the same localization config.
+    // `EasyLocalization` sits ABOVE `MyApp`, so `context.tr()` keeps working
+    // even on the loading/error branches — but `MaterialLocalizations` comes
+    // from `MaterialApp`'s own `Localizations`. A bare `MaterialApp` therefore
+    // renders Spanish (or any locale) copy while every `DropdownMenu` red-screens
+    // with "No MaterialLocalizations found".
+    // Evidence: research/unyo-124-i18n-proof/DIAGNOSIS.md.
     return StreamBuilder<ThemeData>(
       stream: sl<ThemeService>().theme$,
       builder: (BuildContext context, AsyncSnapshot<ThemeData> snapshot) {
         // Handle loading and error states
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const MaterialApp(
-            home: Scaffold(body: Center(child: CircularProgressIndicator())),
+          return MaterialApp(
+            localizationsDelegates: context.localizationDelegates,
+            supportedLocales: context.supportedLocales,
+            locale: context.locale,
+            home: const Scaffold(body: Center(child: CircularProgressIndicator())),
             debugShowCheckedModeBanner: false,
           );
         }
@@ -104,6 +114,9 @@ class MyApp extends StatelessWidget {
         if (snapshot.hasError) {
           sl<Logger>().e("Theme stream error: ${snapshot.error}");
           return MaterialApp(
+            localizationsDelegates: context.localizationDelegates,
+            supportedLocales: context.supportedLocales,
+            locale: context.locale,
             theme: ThemeData.dark(),
             home: const Scaffold(body: Center(child: Text("Error loading theme"))),
             debugShowCheckedModeBanner: false,
