@@ -105,7 +105,7 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
       final int episodeNumber = episodeNumbers[i];
       episodeButtons.add(
         UnyoEpisodeButton(
-          mainTitle: context.plural('details_episode_number', episodeNumber),
+          mainTitle: context.tr('details_episode_number', namedArgs: <String, String>{'number': '$episodeNumber'}),
           secondaryTitle:
               state.episodesInfo.length > i
                   ? (state.episodesInfo[i].title.userPreferred != ""

@@ -92,11 +92,13 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
     for (int i = 0; i < numChapters; i++) {
       episodeButtons.add(
         UnyoEpisodeButton(
-          mainTitle: context.plural('details_chapter_number', i + 1),
-          secondaryTitle: context.plural(
+          mainTitle: context.tr('details_chapter_number', namedArgs: <String, String>{'number': '${i + 1}'}),
+          secondaryTitle: context.tr(
             'details_title_chapter',
-            i + 1,
-            namedArgs: <String, String>{'title': displayMediaTitle(state.selectedManga.title)},
+            namedArgs: <String, String>{
+              'title': displayMediaTitle(state.selectedManga.title),
+              'number': '${i + 1}',
+            },
           ),
           episodeImageUrl: state.selectedManga.bannerImage != "" ? state.selectedManga.bannerImage : state.selectedManga.coverImage,
           episodeNumber: i + 1,

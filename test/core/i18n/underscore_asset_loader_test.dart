@@ -35,11 +35,12 @@ void main() {
     });
 
     test('a missing locale file falls back to en_GB instead of throwing', () async {
-      // es_419 is a shipped locale whose bundle lands in Wave 3. Until then —
-      // and forever after, if a file is ever lost — the UI must stay up in
-      // English rather than red-screening on `Unable to load asset`.
+      // A locale that is deliberately NOT shipped (and never will be) is the
+      // recoverable case: if its file is ever lost or a registry entry outruns
+      // its bundle, the UI must stay up in English rather than red-screening on
+      // `Unable to load asset`.
       final Map<String, dynamic>? data =
-          await loader.load('assets/i18n', const Locale('es', '419'));
+          await loader.load('assets/i18n', const Locale('xx', 'XX'));
       expect(data, isNotNull, reason: 'missing locale must not throw');
       expect(data!['settings_language_title'], 'Language');
       expect(data['common_cancel'], 'Cancel');

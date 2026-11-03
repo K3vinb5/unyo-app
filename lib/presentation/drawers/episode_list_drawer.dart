@@ -51,7 +51,7 @@ class EpisodeListDrawer extends StatelessWidget {
       final int episodeNumber = episodeNumbers[i];
       episodeButtons.add(
         UnyoEpisodeButton(
-          mainTitle: context.plural('details_episode_number', episodeNumber),
+          mainTitle: context.tr('details_episode_number', namedArgs: <String, String>{'number': '$episodeNumber'}),
           secondaryTitle: state.episodesInfo.length > i
               ? (state.episodesInfo[i].title.userPreferred != ""
                     ? state.episodesInfo[i].title.userPreferred
