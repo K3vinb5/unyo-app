@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:logger/logger.dart';
 
@@ -126,6 +127,15 @@ class AppEffectHandler {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final _BannerLifetime lifetime = _BannerLifetime();
 
+    // Presentation boundary: cubits carry keys, the text is resolved here, the
+    // only place that has a `BuildContext` (and therefore a locale).
+    final String title =
+        effect.titleKey.isEmpty ? '' : context.tr(effect.titleKey, namedArgs: effect.titleArgs);
+    final String? messageKey = effect.messageKey;
+    final String message = messageKey == null || messageKey.isEmpty
+        ? ''
+        : context.tr(messageKey, namedArgs: effect.messageArgs);
+
     // A replacement notification takes over the screen: stop the previous
     // banner's countdown instead of extending anything it had left.
     _visibleBanner?.cancel();
@@ -136,8 +146,8 @@ class AppEffectHandler {
       backgroundColor: Colors.transparent,
       forceActionsBelow: true,
       content: AwesomeSnackbarContent(
-        title: effect.title,
-        message: effect.message,
+        title: title,
+        message: message,
         contentType: effect.contentType,
         inMaterialBanner: true,
       ),

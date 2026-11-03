@@ -53,10 +53,39 @@ class CloseDialogEffect extends AppEffect {
 }
 
 // Feedback Effects
+
+/// A banner notification expressed as translation **keys plus arguments**.
+///
+/// Cubits emit keys, never user-facing English: `lib/application` has no
+/// `BuildContext` and no `Locale`, so the English (or translated) sentence only
+/// exists at the presentation boundary, inside
+/// `AppEffectHandler._handleShowSnackbarEffect`, which resolves these keys with
+/// `context.tr(...)`.
+///
+/// Values that are not ours to translate (extension/provider names, media
+/// titles, device names) travel in [titleArgs] / [messageArgs] as named
+/// placeholders, so one key covers every provider.
 class ShowSnackbarEffect extends AppEffect {
-  final String title;
-  final String message;
+  /// Translation key for the banner title. Empty renders no title.
+  final String titleKey;
+
+  /// Named placeholders for [titleKey].
+  final Map<String, String>? titleArgs;
+
+  /// Translation key for the banner body. `null` renders no body — an absent
+  /// message stays absent instead of minting an empty key.
+  final String? messageKey;
+
+  /// Named placeholders for [messageKey].
+  final Map<String, String>? messageArgs;
+
   final ContentType contentType;
 
-  ShowSnackbarEffect(this.title, {required this.message, required this.contentType});
+  ShowSnackbarEffect(
+    this.titleKey, {
+    this.titleArgs,
+    this.messageKey,
+    this.messageArgs,
+    required this.contentType,
+  });
 }

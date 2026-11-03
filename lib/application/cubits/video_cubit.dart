@@ -379,8 +379,9 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
       if (castState == CastSessionState.connected) {
         _logger.d("Connected to Cast device: ${device.name}");
         showSnackBarEffect(
-          "Cast Connected",
-          message: "Connected to ${device.name}",
+          'common_cast_connected',
+          messageKey: 'common_cast_connected_to',
+          messageArgs: <String, String>{'device': device.name},
           contentType: ContentType.success,
         );
       }
@@ -547,16 +548,16 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
     if (selectedExtension == null) {
       _logger.w("No extension selected to fetch videos.");
       showSnackBarEffect(
-        "No Extension Selected",
-        message: "Select an extension to fetch videos.",
+        'error_no_extension_selected',
+        messageKey: 'error_select_extension_videos',
         contentType: ContentType.warning,
       );
       return [];
     } else if (selectedJSEpisode == null) {
       _logger.w("No JSEpisode selected to fetch videos.");
       showSnackBarEffect(
-        "No Episode Selected",
-        message: "Select an episode to fetch videos.",
+        'error_no_episode_selected',
+        messageKey: 'error_select_episode_videos',
         contentType: ContentType.warning,
       );
       return [];
@@ -573,9 +574,13 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
         return videoResults.map((jVideo) => ext.Video.fromJVideo(jVideo)).toList();
       } else {
         showSnackBarEffect(
-          selectedExtension.name,
-          message:
-              "No video links found in ${selectedExtension.name} for ${state.selectedAnime.title.userPreferred}",
+          'common_provider_name',
+          titleArgs: <String, String>{'name': selectedExtension.name},
+          messageKey: 'error_no_video_links_in_extension',
+          messageArgs: <String, String>{
+            'extension': selectedExtension.name,
+            'title': state.selectedAnime.title.userPreferred,
+          },
           contentType: ContentType.warning,
         );
         return [];
@@ -642,8 +647,8 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
       // not claim success either.
       _logger.w("Skipped marking the episode as watched: $e", stackTrace: stackTrace);
       showSnackBarEffect(
-        "Progress not saved",
-        message: "This entry isn't matched to your account provider yet, so your progress wasn't written.",
+        'error_progress_not_saved',
+        messageKey: 'error_progress_entry_not_matched',
         contentType: ContentType.warning,
       );
       return;
@@ -652,7 +657,11 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
     } catch (e, stackTrace) {
       handleError("Error updating Anime Entry: $e", stackTrace: stackTrace);
     }
-    showSnackBarEffect("Episode marked as complete!", message: "This episode has been marked as completed", contentType: ContentType.success);
+    showSnackBarEffect(
+      'common_episode_marked_complete',
+      messageKey: 'common_episode_marked_complete_message',
+      contentType: ContentType.success,
+    );
   }
 }
 

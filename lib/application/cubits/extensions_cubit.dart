@@ -84,7 +84,11 @@ class ExtensionsCubit extends Cubit<ExtensionsState> with EffectMixin<Extensions
   Future<void> downloadExtension(Extension extension) async {
     if (state.installedAnimeExtensions.contains(extension) ||
         state.installedMangaExtensions.contains(extension)) {
-      handleError("This version of ${extension.name} is already installed.");
+      handleError(
+        "This version of ${extension.name} is already installed.",
+        copyKey: 'ext_already_installed',
+        copyArgs: <String, String>{'name': extension.name},
+      );
       return;
     }
     try {
@@ -99,8 +103,10 @@ class ExtensionsCubit extends Cubit<ExtensionsState> with EffectMixin<Extensions
         _fetchMangaExtensionUpdates(state.loggedUser);
       }
       showSnackBarEffect(
-        "${extension.name} Installed!",
-        message: "${extension.name} was installed successfully",
+        'ext_installed_title',
+        titleArgs: <String, String>{'name': extension.name},
+        messageKey: 'ext_installed_message',
+        messageArgs: <String, String>{'name': extension.name},
         contentType: ContentType.success,
       );
     } catch (e, stackTrace) {
@@ -116,7 +122,11 @@ class ExtensionsCubit extends Cubit<ExtensionsState> with EffectMixin<Extensions
   Future<void> removeExtension(Extension extension) async {
     if (!state.installedAnimeExtensions.contains(extension) &&
         !state.installedMangaExtensions.contains(extension)) {
-      handleError("This version of ${extension.name} is already uninstalled.");
+      handleError(
+        "This version of ${extension.name} is already uninstalled.",
+        copyKey: 'ext_already_uninstalled',
+        copyArgs: <String, String>{'name': extension.name},
+      );
       return;
     }
     try {
@@ -131,8 +141,10 @@ class ExtensionsCubit extends Cubit<ExtensionsState> with EffectMixin<Extensions
         _fetchMangaExtensionUpdates(state.loggedUser);
       }
       showSnackBarEffect(
-        "${extension.name} Removed!",
-        message: "${extension.name} was removed successfully",
+        'ext_removed_title',
+        titleArgs: <String, String>{'name': extension.name},
+        messageKey: 'ext_removed_message',
+        messageArgs: <String, String>{'name': extension.name},
         contentType: ContentType.success,
       );
     } catch (e, stackTrace) {
@@ -151,7 +163,11 @@ class ExtensionsCubit extends Cubit<ExtensionsState> with EffectMixin<Extensions
         : state.mangaExtensionUpdates[installedExtension.pkg];
 
     if (newExtension == null) {
-      handleError("No update available for ${installedExtension.name}.");
+      handleError(
+        "No update available for ${installedExtension.name}.",
+        copyKey: 'ext_no_update_available',
+        copyArgs: <String, String>{'name': installedExtension.name},
+      );
       return;
     }
 
@@ -167,8 +183,10 @@ class ExtensionsCubit extends Cubit<ExtensionsState> with EffectMixin<Extensions
         _fetchMangaExtensionUpdates(state.loggedUser);
       }
       showSnackBarEffect(
-        "${installedExtension.name} Updated!",
-        message: "Updated to version ${newExtension.version}",
+        'ext_updated_title',
+        titleArgs: <String, String>{'name': installedExtension.name},
+        messageKey: 'ext_updated_message',
+        messageArgs: <String, String>{'version': newExtension.version},
         contentType: ContentType.success,
       );
     } catch (e, stackTrace) {
@@ -196,8 +214,8 @@ class ExtensionsCubit extends Cubit<ExtensionsState> with EffectMixin<Extensions
     try {
       await _extensionRepositoryAniyomi.setExtensionPreferences(pkg, values);
       showSnackBarEffect(
-        "Preferences Saved",
-        message: "Extension preferences updated",
+        'ext_preferences_saved_title',
+        messageKey: 'ext_preferences_saved_message',
         contentType: ContentType.success,
       );
     } catch (e, stackTrace) {

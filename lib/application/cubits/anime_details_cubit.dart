@@ -360,8 +360,8 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     } else {
       _logger.w("Selected extension $selectedAnimeExtensionName not found among installed extensions.");
       showSnackBarEffect(
-        "Extension Not Found",
-        message: "The selected extension is not installed.",
+        'error_extension_not_found',
+        messageKey: 'error_extension_not_installed',
         contentType: ContentType.warning,
       );
     }
@@ -382,8 +382,8 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     if (state.installedExtensions.isEmpty) {
       _logger.w("No installed extensions to fetch episodes.");
       showSnackBarEffect(
-        "No Installed Extensions",
-        message: "Open the Extensions tab to install one.",
+        'error_no_installed_extensions',
+        messageKey: 'error_no_extensions_open_tab',
         contentType: ContentType.warning,
       );
       return;
@@ -392,8 +392,8 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     if (selectedExtension == null) {
       _logger.w("No extension selected to open the server selection drawer.");
       showSnackBarEffect(
-        "No Extension Selected",
-        message: "Select an extension to fetch episodes.",
+        'error_no_extension_selected',
+        messageKey: 'error_select_extension_episodes',
         contentType: ContentType.warning,
       );
       return;
@@ -401,8 +401,9 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     if (state.extensionAnimeResults.isEmpty || state.selectedAnimeResultIndex >= state.extensionAnimeResults.length) {
       _logger.w("Cannot open server selection: no extension anime results available.");
       showSnackBarEffect(
-        "${selectedExtension.name} Error",
-        message: "No results from the extension. Try again.",
+        'error_extension_error_title',
+        titleArgs: <String, String>{'extension': selectedExtension.name},
+        messageKey: 'error_extension_no_results_try_again',
         contentType: ContentType.warning,
       );
       return;
@@ -427,8 +428,10 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       if (resolvedEpisodeIndex < 0) {
         _logger.w("Episode $episodeNumber is not part of the extension episode results.");
         showSnackBarEffect(
-          "${selectedExtension.name} Error",
-          message: "Only ${state.extensionEpisodeResults.length} episodes were found",
+          'error_extension_error_title',
+          titleArgs: <String, String>{'extension': selectedExtension.name},
+          messageKey: 'error_only_n_episodes_found',
+          messageArgs: <String, String>{'count': '${state.extensionEpisodeResults.length}'},
           contentType: ContentType.warning,
         );
         return;
@@ -442,8 +445,10 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
                 if (resolvedEpisodeIndex >= state.extensionEpisodeResults.length) {
                   _logger.w("Episode index $resolvedEpisodeIndex is out of bounds for extension episode results.");
                   showSnackBarEffect(
-                    "${state.selectedExtension?.name} Error",
-                    message: "Only ${state.extensionEpisodeResults.length} episodes were found",
+                    'error_extension_error_title',
+                    titleArgs: <String, String>{'extension': '${state.selectedExtension?.name}'},
+                    messageKey: 'error_only_n_episodes_found',
+                    messageArgs: <String, String>{'count': '${state.extensionEpisodeResults.length}'},
                     contentType: ContentType.warning,
                   );
                   return false;
@@ -504,8 +509,11 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       // Writing to a guessed id would corrupt another entry: nothing was sent.
       _logger.w("Skipped the list update, no verified user-provider entry: $e", stackTrace: stackTrace);
       showSnackBarEffect(
-        "List not updated",
-        message: "This entry isn't matched to your ${TextUtils.capitalize(state.loggedUser.settings.userService.name)} account yet, so nothing was written.",
+        'error_list_not_updated',
+        messageKey: 'error_entry_not_matched_account',
+        messageArgs: <String, String>{
+          'service': TextUtils.capitalize(state.loggedUser.settings.userService.name),
+        },
         contentType: ContentType.warning,
       );
       // Keep the editor open: nothing was written, so closing it would imply a save.
@@ -765,8 +773,8 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       if (state.installedExtensions.isEmpty) {
         _logger.w("No installed extensions available to fetch anime info.");
         showSnackBarEffect(
-          "No Installed Extensions",
-          message: "Install some extensions if you want to watch some content",
+          'error_no_installed_extensions',
+          messageKey: 'error_no_extensions_install_hint',
           contentType: ContentType.warning,
         );
         return;
@@ -810,14 +818,23 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
       emit(state.copyWith(extensionAnimeResults: animeResults, selectedAnimeResultIndex: selectedAnimeResultIndex));
       if (animeResults.isNotEmpty) {
         showSnackBarEffect(
-          selectedExtension.name,
-          message: "Found: ${animeResults[selectedAnimeResultIndex].getTitle()}",
+          'common_provider_name',
+          titleArgs: <String, String>{'name': selectedExtension.name},
+          messageKey: 'common_results_found',
+          messageArgs: <String, String>{
+            'title': '${animeResults[selectedAnimeResultIndex].getTitle()}',
+          },
           contentType: ContentType.success,
         );
       } else {
         showSnackBarEffect(
-          selectedExtension.name,
-          message: "No results found in ${selectedExtension.name} for ${requestedAnime.title.userPreferred}",
+          'common_provider_name',
+          titleArgs: <String, String>{'name': selectedExtension.name},
+          messageKey: 'error_no_results_in_extension',
+          messageArgs: <String, String>{
+            'extension': selectedExtension.name,
+            'title': requestedAnime.title.userPreferred,
+          },
           contentType: ContentType.warning,
         );
       }
@@ -855,16 +872,16 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     if (selectedExtension == null) {
       _logger.w("No extension selected to fetch episodes.");
       showSnackBarEffect(
-        "No Extension Selected",
-        message: "Select an extension to fetch episodes.",
+        'error_no_extension_selected',
+        messageKey: 'error_select_extension_episodes',
         contentType: ContentType.warning,
       );
       return false;
     } else if (selectedJSAnime == null) {
       _logger.w("No JSAnime selected to fetch episodes.");
       showSnackBarEffect(
-        "No Anime Selected",
-        message: "Select an anime to fetch episodes.",
+        'error_no_anime_selected',
+        messageKey: 'error_select_anime_episodes',
         contentType: ContentType.warning,
       );
       return false;
@@ -889,8 +906,13 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         return true;
       } else {
         showSnackBarEffect(
-          selectedExtension.name,
-          message: "No episodes found in ${selectedExtension.name} for ${requestedAnime.title.userPreferred}",
+          'common_provider_name',
+          titleArgs: <String, String>{'name': selectedExtension.name},
+          messageKey: 'error_no_episodes_in_extension',
+          messageArgs: <String, String>{
+            'extension': selectedExtension.name,
+            'title': requestedAnime.title.userPreferred,
+          },
           contentType: ContentType.warning,
         );
         return false;
@@ -908,16 +930,16 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     if (selectedExtension == null) {
       _logger.w("No extension selected to fetch videos.");
       showSnackBarEffect(
-        "No Extension Selected",
-        message: "Select an extension to fetch videos.",
+        'error_no_extension_selected',
+        messageKey: 'error_select_extension_videos',
         contentType: ContentType.warning,
       );
       return false;
     } else if (selectedJSEpisode == null) {
       _logger.w("No JSEpisode selected to fetch videos.");
       showSnackBarEffect(
-        "No Episode Selected",
-        message: "Select an episode to fetch videos.",
+        'error_no_episode_selected',
+        messageKey: 'error_select_episode_videos',
         contentType: ContentType.warning,
       );
       return false;
@@ -940,8 +962,13 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
         return true;
       } else {
         showSnackBarEffect(
-          selectedExtension.name,
-          message: "No video links found in ${selectedExtension.name} for ${requestedAnime.title.userPreferred}",
+          'common_provider_name',
+          titleArgs: <String, String>{'name': selectedExtension.name},
+          messageKey: 'error_no_video_links_in_extension',
+          messageArgs: <String, String>{
+            'extension': selectedExtension.name,
+            'title': requestedAnime.title.userPreferred,
+          },
           contentType: ContentType.warning,
         );
         return false;
