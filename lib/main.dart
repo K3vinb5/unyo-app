@@ -12,6 +12,7 @@ import 'package:logger/logger.dart';
 import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/i18n/app_locales.dart';
+import 'package:unyo/core/i18n/app_localizations.dart';
 import 'package:unyo/core/i18n/underscore_asset_loader.dart';
 import 'package:unyo/core/router/app_router.dart';
 import 'package:unyo/core/theme/theme_service.dart';
@@ -96,20 +97,18 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // All three MaterialApps must carry the same localization config.
-    // `EasyLocalization` sits ABOVE `MyApp`, so `context.tr()` keeps working
-    // even on the loading/error branches — but `MaterialLocalizations` comes
-    // from `MaterialApp`'s own `Localizations`. A bare `MaterialApp` therefore
-    // renders Spanish (or any locale) copy while every `DropdownMenu` red-screens
-    // with "No MaterialLocalizations found".
-    // Evidence: research/unyo-124-i18n-proof/DIAGNOSIS.md.
+    // All three MaterialApps share one localization config — see
+    // `core/i18n/app_localizations.dart` for why the delegate list is not just
+    // `context.localizationDelegates` (short version: `material_ui` has its own
+    // `MaterialLocalizations`, and without its delegates every DropdownMenu
+    // red-screens at non-English locales).
     return StreamBuilder<ThemeData>(
       stream: sl<ThemeService>().theme$,
       builder: (BuildContext context, AsyncSnapshot<ThemeData> snapshot) {
         // Handle loading and error states
         if (snapshot.connectionState == ConnectionState.waiting) {
           return MaterialApp(
-            localizationsDelegates: context.localizationDelegates,
+            localizationsDelegates: appLocalizationDelegates(context.localizationDelegates),
             supportedLocales: context.supportedLocales,
             locale: context.locale,
             home: const Scaffold(body: Center(child: CircularProgressIndicator())),
@@ -120,7 +119,7 @@ class MyApp extends StatelessWidget {
         if (snapshot.hasError) {
           sl<Logger>().e("Theme stream error: ${snapshot.error}");
           return MaterialApp(
-            localizationsDelegates: context.localizationDelegates,
+            localizationsDelegates: appLocalizationDelegates(context.localizationDelegates),
             supportedLocales: context.supportedLocales,
             locale: context.locale,
             theme: ThemeData.dark(),
@@ -129,7 +128,7 @@ class MyApp extends StatelessWidget {
           );
         }
         return MaterialApp.router(
-          localizationsDelegates: context.localizationDelegates,
+          localizationsDelegates: appLocalizationDelegates(context.localizationDelegates),
           supportedLocales: context.supportedLocales,
           locale: context.locale,
           debugShowCheckedModeBanner: false,
