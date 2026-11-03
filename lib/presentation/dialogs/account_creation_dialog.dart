@@ -75,7 +75,7 @@ class AccountCreationDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(height: 28.h),
-            TextDisplayLarge(text: context.tr("sign_in_title")),
+            TextDisplayLarge(text: context.tr("dialog_sign_in_title")),
             SizedBox(height: 20.h),
             Flexible(
               child: _AccountServiceSelector(
@@ -92,13 +92,13 @@ class AccountCreationDialog extends StatelessWidget {
                   DarkUnyoButton(
                     key: cancelKey,
                     onPressed: onCancel,
-                    text: context.tr("cancel"),
+                    text: context.tr("common_cancel"),
                   ),
                   SizedBox(width: 15.w),
                   LightUnyoButton(
                     key: confirmKey,
                     onPressed: onConfirm,
-                    text: context.tr("confirm"),
+                    text: context.tr("common_confirm"),
                   ),
                 ],
               ),

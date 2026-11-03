@@ -11,6 +11,8 @@ import 'package:logger/logger.dart';
 //Internal dependencies
 import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/core/di/locator.dart';
+import 'package:unyo/core/i18n/app_locales.dart';
+import 'package:unyo/core/i18n/underscore_asset_loader.dart';
 import 'package:unyo/core/router/app_router.dart';
 import 'package:unyo/core/theme/theme_service.dart';
 import 'package:unyo/hive_registrar.g.dart';
@@ -56,12 +58,21 @@ void main() async {
     windowManager.setPreventClose(true);
   });
   // Run Flutter app with localization and screen utilities
+  //
+  // Locale resolution (WP #124): no `startLocale` and `saveLocale: false`, so
+  // `easy_localization` picks the *system* locale at boot and falls back to
+  // `en_GB` — that is what renders the pre-login "Who's Watching?" screen.
+  // Once a user is selected the app calls `context.setLocale` from
+  // `Settings.language` and persists changes there; easy_localization must not
+  // keep a second, app-level copy of the choice.
   runApp(
     EasyLocalization(
-      supportedLocales: const [Locale('en', 'GB')],
+      supportedLocales: kSupportedLocales,
       path: 'assets/i18n',
-      fallbackLocale: const Locale('en', 'GB'),
-      useOnlyLangCode: true,
+      fallbackLocale: enGb.locale,
+      useOnlyLangCode: false,
+      saveLocale: false,
+      assetLoader: const UnderscoreAssetLoader(),
       child: ScreenUtilInit(
         designSize: const Size(1280, 720),
         minTextAdapt: true,

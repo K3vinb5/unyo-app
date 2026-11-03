@@ -8,6 +8,7 @@ import 'package:easy_localization/easy_localization.dart';
 //Internal dependencies
 import 'package:unyo/application/cubits/login_cubit.dart';
 import 'package:unyo/application/states/login_state.dart';
+import 'package:unyo/core/i18n/locale_switcher.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/styled.dart';
@@ -80,7 +81,7 @@ class _LoginViewState extends State<_LoginView> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Spacer(flex: 15),
-            TextDisplayLarge(text: context.tr("select_user")),
+            TextDisplayLarge(text: context.tr("dialog_select_user")),
             SizedBox(height: 40.h),
             SizedBox(
               height: 250.h,
@@ -114,7 +115,17 @@ class _LoginViewState extends State<_LoginView> {
                       )
                     else
                       ...state.availableUsers.map(
-                            (user) => UserAvatar(user: user, onPressed: () => context.read<LoginCubit>().loginUser(user, context)),
+                            (user) => UserAvatar(
+                              user: user,
+                              onPressed: () async {
+                                // WP #124 decision 1: the pre-login UI runs in the
+                                // OS locale. Selecting a user flips the app to that
+                                // user's stored language before the route changes.
+                                await applyUiLanguage(context, user.settings.language);
+                                if (!context.mounted) return;
+                                await context.read<LoginCubit>().loginUser(user, context);
+                              },
+                            ),
                       ),
                     AddUserAvatar(onPressed: () => context.read<LoginCubit>().initiateAccountCreation(context)),
                     // Display existing users

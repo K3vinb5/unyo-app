@@ -107,20 +107,32 @@ abstract class SettingsModel with _$SettingsModel implements Settings {
   }) = _SettingsModel;
 
   factory SettingsModel.empty() =>
-      const SettingsModel();
+      migrateLanguage(const SettingsModel());
 
   /// Pre-split installs only carry [service]; that value was always the media
   /// metadata provider, so it migrates into [metadataService] and
   /// [userService] keeps its AniList default. Key presence — not the value —
   /// decides whether this install was ever migrated.
   factory SettingsModel.fromJson(Map<String, dynamic> json) =>
-      reconcileLegacyService(_$SettingsModelFromJson(_migrateLegacyServiceKeys(json)));
+      migrateLanguage(reconcileLegacyService(_$SettingsModelFromJson(_migrateLegacyServiceKeys(json))));
 
-  static Map<String, dynamic> _migrateLegacyServiceKeys(Map<String, dynamic> json) {
-    if (json.containsKey('metadataService') || !json.containsKey('service') || json['service'] == null) {
+  static Map<String, dynamic> _migrateLegacyServiceKeys(Map<String, dynamic> json) {    if (json.containsKey('metadataService') || !json.containsKey('service') || json['service'] == null) {
       return json;
     }
     return <String, dynamic>{...json, 'metadataService': json['service']};
+  }
+
+  /// Read-time rule for the UI language (WP #124 decision 3): installs written
+  /// before the 29-locale rollout stored the bare code `en`, which is not a
+  /// valid `Settings.language` value any more. `en` becomes `en_GB`; every
+  /// other value — including the "follow the OS" sentinel `''` — is left alone.
+  ///
+  /// Applied on both read paths ([SettingsModel.fromJson] and the Hive
+  /// [SettingsModelMigrationAdapter]) and by [SettingsModel.empty], so no stale
+  /// `en` reaches `context.setLocale` or `DateFormat`.
+  static SettingsModel migrateLanguage(SettingsModel settings) {
+    if (settings.language != 'en') return settings;
+    return settings.copyWith(language: 'en_GB');
   }
 
   /// Read-time rule shared by the JSON entry point and the Hive adapter:

@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 // test needs its in-memory platform implementation (transitive dependency).
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:unyo/core/i18n/underscore_asset_loader.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/anime_card_list.dart';
 import 'package:unyo/presentation/widgets/styled/card_row_frame.dart';
@@ -38,7 +39,8 @@ Future<void> pumpInShell(
       supportedLocales: const [Locale('en', 'GB')],
       path: 'assets/i18n',
       fallbackLocale: const Locale('en', 'GB'),
-      useOnlyLangCode: true,
+      useOnlyLangCode: false,
+      assetLoader: const UnderscoreAssetLoader(),
       child: Builder(
         builder: (BuildContext context) {
           final localization = EasyLocalization.of(context);

@@ -42,7 +42,7 @@ class UnyoCharacterList extends StatelessWidget {
                 ),
               ),
               Text(
-                "  ${characters.length.toString()} ${context.tr("entries")}",
+                "  ${context.plural("common_entry_count", characters.length)}",
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.normal,

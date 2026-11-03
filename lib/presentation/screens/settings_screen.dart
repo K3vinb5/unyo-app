@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -10,10 +11,12 @@ import 'package:unyo/application/states/settings_state.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/episode_service.dart';
 import 'package:unyo/core/enums/service.dart';
+import 'package:unyo/core/i18n/locale_switcher.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/core/services/media/episode_service.dart';
 import 'package:unyo/core/services/media/media_service.dart';
 import 'package:unyo/presentation/widgets/styled/shikimori_account_settings.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_language_dropdown.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_category.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_dialog.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_dropdown.dart';
@@ -207,14 +210,15 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                           childAlignment: "",
                           isChild: true,
                           settingsOptions: [
-                            UnyoSettingsSelectionDropdown(
-                              title: "Language",
-                              description: "Select the application language",
-                              icon: Icons.language_rounded,
-                              label: "Select a language",
-                              defaultValue: "English",
-                              children: const ["English"],
-                              onPressed: (value) {},
+                            UnyoLanguageDropdown(
+                              title: context.tr("settings_language_title"),
+                              description: context.tr("settings_language_description"),
+                              selectedCode: state.loggedUser.settings.language,
+                              onSelected: (String code) async {
+                                await context.read<SettingsCubit>().updateLanguage(code);
+                                if (!context.mounted) return;
+                                await applyUiLanguage(context, code);
+                              },
                             ),
                             UnyoSettingsSelectionDropdown(
                               title: "Default Media Title Language",

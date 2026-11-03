@@ -1,0 +1,16 @@
+{
+  "common_cancel": "Cancel",
+  "common_confirm": "Confirm",
+  "common_entry_count.one": "entry",
+  "common_entry_count.other": "entries",
+  "details_not_yet_released": "Not yet released",
+  "details_released": "Released",
+  "dialog_add_account": "Add Account",
+  "dialog_select_user": "Who's Watching?",
+  "dialog_sign_in_title": "Add a new account",
+  "settings_language_ai_translated": "AI translated",
+  "settings_language_description": "Select the application language",
+  "settings_language_label": "Select a language",
+  "settings_language_system_default": "System default",
+  "settings_language_title": "Language"
+}

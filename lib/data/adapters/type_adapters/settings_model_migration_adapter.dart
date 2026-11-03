@@ -21,7 +21,8 @@ class SettingsModelMigrationAdapter extends TypeAdapter<SettingsModel> {
   int get typeId => _generated.typeId;
 
   @override
-  SettingsModel read(BinaryReader reader) => SettingsModel.reconcileLegacyService(_generated.read(reader));
+  SettingsModel read(BinaryReader reader) =>
+      SettingsModel.migrateLanguage(SettingsModel.reconcileLegacyService(_generated.read(reader)));
 
   @override
   void write(BinaryWriter writer, SettingsModel obj) =>

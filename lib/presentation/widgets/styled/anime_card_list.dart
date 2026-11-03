@@ -46,7 +46,7 @@ class AnimeCardList extends StatelessWidget {
                 ),
               ),
               Text(
-                "  ${animeList.length.toString()} ${context.tr("entries")}",
+                "  ${context.plural("common_entry_count", animeList.length)}",
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.normal,
