@@ -57,6 +57,7 @@ flutter analyze
 
 - `unyo_lib` is a **git dependency** on `https://gitea.k3vinb5.dev/Unyo/unyo-lib.git` (`ref: master`) in `pubspec.yaml`, because CI has no sibling checkout.
 - Local development uses the live sibling repo instead: `pubspec_overrides.yaml` (git-ignored) overrides it with `path: ../unyo-lib`. `flutter pub get` picks that file up automatically; delete it to test the git dependency exactly as CI does.
+- `pubspec.lock` records whichever form last resolved `unyo_lib` (the git dep, `../unyo-lib`, or a lane checkout's `../../../unyo-lib`), so the entry churns with the checkout layout. Commit it only in its canonical `path: ../unyo-lib` form; CI's "Generated files must be committed" step excludes `pubspec.lock` from its drift diff for exactly this reason (WP #127).
 - Heads-up: a *full* clone of unyo-lib from gitea times out server-side (HTTP 504, ~110MB of committed JREs). Both workflows therefore `git clone --depth 1` it into `../unyo-lib` and write the same override file before `flutter pub get`.
 - Custom JREs ship inside unyo_lib (`jre/{linux,macos}/customjre`); copy one into a release bundle with `bash scripts/copy_jre.sh <linux|macos|windows>` (resolves unyo_lib from `../unyo-lib` or `.dart_tool/package_config.json`, honours `$UNYO_JRE_SRC`).
 - Local extensions require **Java 17+** installed.

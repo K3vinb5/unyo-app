@@ -283,6 +283,36 @@ void main() {
           'keys (re-encoded form differs)',
     );
   });
+
+  test('i18n assets are pinned to LF at checkout time', () {
+    // The byte-level checks above read the working tree, which Windows
+    // checkouts rewrite to CRLF via core.autocrlf unless .gitattributes forces
+    // LF (WP #127: windows-latest failed "en_GB.json is well formed" on CI run
+    // 41730397754 while the repo bytes were fine). Pin the attribute itself so
+    // the guarantee is checkable on every OS, not only on Windows.
+    final File attrs = File('.gitattributes');
+    expect(
+      attrs.existsSync(),
+      isTrue,
+      reason: '.gitattributes is missing — i18n assets would check out as CRLF '
+          'on Windows and fail the byte-level checks above',
+    );
+    final List<String> rules = attrs
+        .readAsStringSync()
+        .split('\n')
+        .map((String l) => l.trim())
+        .where((String l) => l.startsWith('$_i18nDir/'))
+        .toList();
+    expect(
+      rules,
+      isNotEmpty,
+      reason: '.gitattributes must pin $_i18nDir/*.json to eol=lf',
+    );
+    for (final String rule in rules) {
+      expect(rule, contains('eol=lf'),
+          reason: 'i18n asset attribute must force LF, got: $rule');
+    }
+  });
 }
 
 Map<String, dynamic> _load(String code) {

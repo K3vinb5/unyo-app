@@ -1,0 +1,7 @@
+# Byte-level tests read assets/i18n/*.json off the working tree and assert LF
+# newlines plus a byte-exact re-encode (test/presentation/i18n/locale_parity_test.dart,
+# "en_GB.json is well formed"). Windows checkouts default to core.autocrlf=true and
+# rewrite the JSON to CRLF, failing those assertions on the working tree while the
+# repo bytes stay fine (CI run 41730397754, windows-latest only). Force LF so the
+# working tree matches the repo bytes on every OS.
+assets/i18n/*.json text eol=lf
