@@ -205,8 +205,14 @@ jobs:
       - name: Generate code
         run: flutter pub run build_runner build --delete-conflicting-outputs
 
+      # The check's job is stale build_runner output, not lockfile bookkeeping.
+      # pubspec.lock is excluded: its unyo_lib entry records whichever layout last
+      # resolved it (git dep in pubspec.yaml, ../unyo-lib override in the shared
+      # checkout and in this workflow, ../../../unyo-lib from a lane checkout) —
+      # no committed value is stable across those, so a full-tree diff turns that
+      # churn into a false red (WP #127: it blocked Release run 41743301806).
       - name: Generated files must be committed
-        run: git diff --exit-code
+        run: git diff --exit-code -- . ':(exclude)pubspec.lock'
 
       # rewrite already carries 24 warnings / 34 infos (0 errors), so only
       # analyzer errors are fatal here. Tighten once the backlog is cleared.
