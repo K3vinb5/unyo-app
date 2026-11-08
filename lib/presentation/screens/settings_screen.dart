@@ -22,7 +22,7 @@ import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_dialog.
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_dropdown.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_slider.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_toggle.dart';
-import 'package:unyo/presentation/widgets/styled/unyo_settings_version.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_settings_update_badge.dart';
 import 'package:unyo/presentation/widgets/text/text_body_large.dart';
 import 'package:unyo/presentation/widgets/text/text_headline_medium.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
@@ -336,14 +336,17 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                         ),
                       ],
                     ),
-                    // Probably have a custom widget here with my information and a link to my social media and ko-fi
+                    // WP #150: same row as before, but it activates the About
+                    // card instead of expanding into a lone version string.
                     UnyoSettingsCategory(
                       title: context.tr("settings_about_title"),
                       description: context.tr("settings_about_description"),
                       icon: Icons.info_rounded,
                       alignment: "bottom",
                       childAlignment: "bottom",
-                      settingsOptions: const [UnyoSettingsVersion()],
+                      badge: const UnyoSettingsUpdateBadge(),
+                      onActivate: context.read<SettingsCubit>().openAboutDialog,
+                      settingsOptions: const [],
                     ),
                   ],
                 ),
