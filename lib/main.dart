@@ -18,6 +18,7 @@ import 'package:unyo/core/router/app_router.dart';
 import 'package:unyo/core/theme/theme_service.dart';
 import 'package:unyo/hive_registrar.g.dart';
 import 'package:unyo/data/adapters/type_adapters/settings_model_migration_adapter.dart';
+import 'package:unyo/data/migrations/user_box_schema_migration.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 
 final _appRouter = AppRouter();
@@ -45,6 +46,10 @@ void main() async {
     // nor mirror the legacy `service` field on write. Box data is binary, so
     // this adapter — not SettingsModel.fromJson — is what migrates real installs.
     ..registerAdapter<SettingsModel>(SettingsModelMigrationAdapter(), override: true);
+  // Drop user frames written by another persisted-schema generation before the
+  // repositories open their boxes: Hive deserialises every frame, stale ones
+  // included, and one unreadable frame aborts the whole user list (WP #122).
+  await UserBoxSchemaMigration(sl<Logger>()).run();
   // Inject the remaining dependencies that rely on Hive and are not Lazy
   setupLocatorAfterHiveInit();
   // Setup Window Manager options
