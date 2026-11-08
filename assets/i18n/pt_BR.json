@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "Provedor que detém os detalhes: sinopse, capas, gêneros e notas",
   "settings_media_metadata_service_title": "Serviço de metadados de mídia",
   "settings_myanimelist_accounts_description": "Gerencie suas contas MyAnimeList conectadas",
+  "settings_myanimelist_no_account": "Nenhuma conta MyAnimeList está conectada",
+  "settings_myanimelist_no_account_hint": "Adicione uma na tela de login para sincronizar sua lista com o MyAnimeList",
   "settings_nsfw_content_description": "Ative ou desative conteúdo NSFW em todo o aplicativo",
   "settings_nsfw_content_title": "Conteúdo NSFW",
   "settings_open_releases_page": "Abrir página de lançamentos",

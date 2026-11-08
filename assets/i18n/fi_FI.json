@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "Palvelu, joka tarjoaa tiedot: juoni, kansikuvat, genret ja arvosanat",
   "settings_media_metadata_service_title": "Median metatietopalvelu",
   "settings_myanimelist_accounts_description": "Hallinnoi yhdistettyjä MyAnimeList-tilejäsi",
+  "settings_myanimelist_no_account": "MyAnimeList-tiliä ei ole yhdistetty",
+  "settings_myanimelist_no_account_hint": "Lisää tili kirjautumisnäkymästä, niin listasi synkronoituu MyAnimeListin",
   "settings_nsfw_content_description": "Ota NSFW-sisältö käyttöön tai poista se käytöstä koko sovelluksessa",
   "settings_nsfw_content_title": "NSFW-sisältö",
   "settings_open_releases_page": "Avaa julkaisusivu",

@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "विवरण प्रदान करने वाली सेवा: सारांश, कवर, शैलियाँ और स्कोर",
   "settings_media_metadata_service_title": "मीडिया मेटाडेटा सेवा",
   "settings_myanimelist_accounts_description": "अपने जुड़े MyAnimeList खाते प्रबंधित करें",
+  "settings_myanimelist_no_account": "कोई MyAnimeList खाता जुड़ा नहीं है",
+  "settings_myanimelist_no_account_hint": "अपनी सूची MyAnimeList के साथ सिंक करने के लिए लॉगिन स्क्रीन से एक जोड़ें",
   "settings_nsfw_content_description": "पूरे ऐप में NSFW सामग्री चालू या बंद करें",
   "settings_nsfw_content_title": "NSFW सामग्री",
   "settings_open_releases_page": "रिलीज़ पेज खोलें",

@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "줄거리, 표지, 장르, 점수를 제공하는 서비스",
   "settings_media_metadata_service_title": "미디어 메타데이터 서비스",
   "settings_myanimelist_accounts_description": "연결된 MyAnimeList 계정 관리",
+  "settings_myanimelist_no_account": "연결된 MyAnimeList 계정이 없습니다",
+  "settings_myanimelist_no_account_hint": "로그인 화면에서 계정을 추가해 MyAnimeList와 목록을 동기화하세요",
   "settings_nsfw_content_description": "앱 전체에서 NSFW 콘텐츠 활성화 또는 비활성화",
   "settings_nsfw_content_title": "NSFW 콘텐츠",
   "settings_open_releases_page": "릴리스 페이지 열기",

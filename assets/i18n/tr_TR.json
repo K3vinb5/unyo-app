@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "Ayrıntıları sağlayan servis: özet, kapaklar, türler ve puanlar",
   "settings_media_metadata_service_title": "Medya meta verisi servisi",
   "settings_myanimelist_accounts_description": "Bağlı MyAnimeList hesaplarını yönet",
+  "settings_myanimelist_no_account": "Bağlı MyAnimeList hesabı yok",
+  "settings_myanimelist_no_account_hint": "Listeni MyAnimeList ile senkronize etmek için giriş ekranından bir hesap ekle",
   "settings_nsfw_content_description": "Uygulama genelinde NSFW içeriğini aç veya kapat",
   "settings_nsfw_content_title": "NSFW İçerik",
   "settings_open_releases_page": "Sürümler sayfasını aç",

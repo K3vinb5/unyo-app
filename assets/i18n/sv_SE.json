@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "Leverantör som äger detaljerna: synopsis, omslag, genrer och betyg",
   "settings_media_metadata_service_title": "Metadatatjänst för media",
   "settings_myanimelist_accounts_description": "Hantera dina anslutna MyAnimeList-konton",
+  "settings_myanimelist_no_account": "Inget MyAnimeList-konto är anslutet",
+  "settings_myanimelist_no_account_hint": "Lägg till ett från inloggningsskärmen för att synkronisera din lista med MyAnimeList",
   "settings_nsfw_content_description": "Aktivera eller inaktivera NSFW-innehåll i hela appen",
   "settings_nsfw_content_title": "NSFW-innehåll",
   "settings_open_releases_page": "Öppna releasesidan",

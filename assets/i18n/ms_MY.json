@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "Penyedia yang memiliki butiran: sinopsis, muka depan, genre dan skor",
   "settings_media_metadata_service_title": "Perkhidmatan metadata media",
   "settings_myanimelist_accounts_description": "Urus akaun MyAnimeList yang disambungkan",
+  "settings_myanimelist_no_account": "Tiada akaun MyAnimeList yang disambungkan",
+  "settings_myanimelist_no_account_hint": "Tambah satu daripada skrin log masuk untuk menyegerakkan senarai anda dengan MyAnimeList",
   "settings_nsfw_content_description": "Dayakan atau lumpuhkan kandungan NSFW dalam seluruh aplikasi",
   "settings_nsfw_content_title": "Kandungan NSFW",
   "settings_open_releases_page": "Buka halaman keluaran",

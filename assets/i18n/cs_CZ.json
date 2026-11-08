@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "Poskytovatel údajů: synopse, obálky, žánry a hodnocení",
   "settings_media_metadata_service_title": "Služba metadat médií",
   "settings_myanimelist_accounts_description": "Spravujte svá připojená konta MyAnimeList",
+  "settings_myanimelist_no_account": "Není připojeno žádné konto MyAnimeList",
+  "settings_myanimelist_no_account_hint": "Přidejte účet na přihlašovací obrazovce a synchronizujte svůj seznam s MyAnimeList",
   "settings_nsfw_content_description": "Povolte nebo zakažte obsah NSFW v celé aplikaci",
   "settings_nsfw_content_title": "Obsah NSFW",
   "settings_open_releases_page": "Otevřít stránku vydání",

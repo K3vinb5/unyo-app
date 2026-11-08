@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "Provider na may-ari ng mga detalye: synopsis, cover, genre at score",
   "settings_media_metadata_service_title": "Serbisyo ng metadata ng media",
   "settings_myanimelist_accounts_description": "Pamahalaan ang iyong mga konektadong account sa MyAnimeList",
+  "settings_myanimelist_no_account": "Walang konektadong account sa MyAnimeList",
+  "settings_myanimelist_no_account_hint": "Magdagdag ng isa mula sa login screen para ma-sync ang iyong listahan sa MyAnimeList",
   "settings_nsfw_content_description": "I-enable o i-disable ang NSFW na nilalaman sa buong app",
   "settings_nsfw_content_title": "NSFW na Nilalaman",
   "settings_open_releases_page": "Buksan ang pahina ng mga release",
