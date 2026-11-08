@@ -49,7 +49,7 @@ void main() async {
   // Drop user frames written by another persisted-schema generation before the
   // repositories open their boxes: Hive deserialises every frame, stale ones
   // included, and one unreadable frame aborts the whole user list (WP #122).
-  await UserBoxSchemaMigration(sl<Logger>()).run();
+  await UserBoxSchemaMigration(sl<Logger>()).runOrReport();
   // Inject the remaining dependencies that rely on Hive and are not Lazy
   setupLocatorAfterHiveInit();
   // Setup Window Manager options
