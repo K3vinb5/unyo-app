@@ -28,6 +28,13 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
   final UserRepositoryLocal _userRepositoryLocal;
   final UserRepositoryAnilist _userRepositoryAnilist;
   final UserRepositoryShikimori _userRepositoryShikimori;
+
+  /// The MAL account repository (WP #156). Optional so the `locator.dart`
+  /// registration (wave 7 DI) can supply it explicitly; while it is absent the
+  /// getter resolves from the service locator at call time and the MAL
+  /// branches degrade instead of blocking the login screen.
+  final UserRepositoryMal? _userRepositoryMalOverride;
+  UserRepositoryMal get _userRepositoryMal => _userRepositoryMalOverride ?? sl<UserRepositoryMal>();
   final Logger _logger = sl<Logger>();
 
   // Notifiers / Subscriptions
@@ -46,8 +53,10 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
     this._userRepositoryAnilist,
     this._userRepositoryShikimori,
     this._colorImageService,
-    this._themeService,
-  ) : super(
+    this._themeService, {
+    UserRepositoryMal? userRepositoryMal,
+  })  : _userRepositoryMalOverride = userRepositoryMal,
+        super(
         const LoginState(
           availableUsers: [],
           selectedLoginCard: LoginCardType.anilist,
@@ -129,6 +138,9 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
         case ShikimoriUserModel shikimoriUserModel:
           _logger.i("Logging in Shikimori User: ${shikimoriUserModel.name}");
           await _loginShikimoriUser(shikimoriUserModel);
+        case MalUserModel malUserModel:
+          _logger.i("Logging in MyAnimeList User: ${malUserModel.name}");
+          await _loginMalUser(malUserModel);
         case LocalUserModel localUserModel:
           _logger.i("Logging in Local User: ${localUserModel.name}");
         default:
@@ -158,6 +170,7 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
         await _createShikimoriUser();
       case LoginCardType.mal:
         _logger.i("Attempting to create MyAnimeList User");
+        await _createMalUser();
       case LoginCardType.local:
         _logger.i("Attempting to create Local User");
     }
@@ -173,7 +186,18 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
           (await _userRepositoryAnilist.fetchAllLoggedInUsers()).cast<User>();
       List<User> usersAvailableShikimori =
           (await _userRepositoryShikimori.fetchAllLoggedInUsers()).cast<User>();
-      _updateAvailableUsers(usersAvailableAnilist + usersAvailableShikimori + usersAvailableLocal);
+      List<User> usersAvailableMal;
+      try {
+        usersAvailableMal =
+            (await _userRepositoryMal.fetchAllLoggedInUsers()).cast<User>();
+      } catch (e, stackTrace) {
+        // The MAL repository is registered by the DI wave (WP #156 wave 7);
+        // until then (or on a Hive failure) the login screen must still show
+        // the other accounts instead of dying on one repository.
+        _logger.w("MyAnimeList accounts unavailable: $e", stackTrace: stackTrace);
+        usersAvailableMal = <User>[];
+      }
+      _updateAvailableUsers(usersAvailableAnilist + usersAvailableShikimori + usersAvailableMal + usersAvailableLocal);
     } finally {
       // Settles the avatar skeletons even when a repository fails.
       if (!isClosed && state.isLoading) {
@@ -195,6 +219,9 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
         case ShikimoriUserModel _:
           // `currentUser` carries no banner, so there is no wallpaper to sample.
           _logger.d("Getting shikimori user's theme");
+        case MalUserModel _:
+          // `GET /users/@me` has no banner field either.
+          _logger.d("Getting myanimelist user's theme");
         case LocalUserModel _:
           _logger.d("Getting local user's theme");
       }
@@ -262,6 +289,29 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
       await _userRepositoryShikimori.attemptCreateUser();
     } catch (e, stackTrace) {
       handleError("Error creating Shikimori user $e", stackTrace: stackTrace);
+    }
+  }
+
+  /// A MyAnimeList access token lives ~1 h and there is no JWT to inspect, so
+  /// the stored expiry decides: an expired pair is rotated here (from the
+  /// stored refresh token) and re-persisted before the session starts.
+  Future<void> _loginMalUser(MalUserModel user) async {
+    try {
+      final MalUserModel fresh = await _userRepositoryMal.ensureFreshAccessToken(user);
+      _loggedUserNotifier.updateUser(fresh);
+    } catch (e, stackTrace) {
+      handleError(
+        "Error refreshing the MyAnimeList token: $e",
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<void> _createMalUser() async {
+    try {
+      await _userRepositoryMal.attemptCreateUser();
+    } catch (e, stackTrace) {
+      handleError("Error creating MyAnimeList user $e", stackTrace: stackTrace);
     }
   }
 
