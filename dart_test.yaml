@@ -1,0 +1,12 @@
+# Serial execution is deliberate (WP #128).
+#
+# `flutter test` selects the `expanded` reporter when stdout is not a terminal.
+# That reporter only prints a per-test line when exactly one test is active, so
+# a parallel run's log silently omits whole suites even though they ran (the
+# 2026-11 "9 of 81 test files never run" report was this, not a discovery bug —
+# `--reporter json` always showed all 81 suites and all 842 test starts).
+#
+# Serial execution makes the printed log a complete, auditable ledger of every
+# suite, which is what the test-suite review and the CI logs need. The suite
+# still runs in ~75s locally.
+concurrency: 1
