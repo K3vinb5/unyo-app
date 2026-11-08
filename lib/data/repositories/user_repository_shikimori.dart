@@ -107,6 +107,18 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
     _loggedUserNotifier.updateUser(user);
   }
 
+  /// Drops the row [updateUserInfo] wrote: the box is keyed by `user.name`.
+  @override
+  Future<void> removeUser(User user) async {
+    _shikimoriUsersBox = await Hive.openBox<ShikimoriUserModel>(usersBoxName);
+    if (!_shikimoriUsersBox.containsKey(user.name)) {
+      _logger.w("User ${user.name} is not stored in the registered shikimori users, nothing to remove");
+      return;
+    }
+    await _shikimoriUsersBox.delete(user.name);
+    _logger.i("Removed user ${user.name} from the registered shikimori users");
+  }
+
   @override
   /// [ignoreCache] is forwarded to the GraphQL read: the home screen asks for a
   /// cache-busting reload after a list entry is written (WP #110), and dropping

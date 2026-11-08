@@ -10,12 +10,14 @@ import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/selected_menu_option.dart';
 import 'package:unyo/core/notification/menu_bar_notifier.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
+import 'package:unyo/core/services/account/account_unlink_service.dart';
 import 'package:unyo/core/services/update/app_version_provider.dart';
 import 'package:unyo/core/services/update/release_page_launcher.dart';
 import 'package:unyo/core/services/update/update_check_result.dart';
 import 'package:unyo/core/services/update/update_checker_service.dart';
 import 'package:unyo/core/theme/theme_service.dart';
 import 'package:unyo/domain/entities/user/user.dart';
+import 'package:unyo/presentation/dialogs/unlink_account_dialog.dart';
 import 'package:unyo/presentation/dialogs/update_available_dialog.dart';
 import 'package:unyo/presentation/dialogs/user_profile_dialog.dart';
 import 'package:unyo/presentation/drawers/user_options_drawer.dart' show UserOptionsDrawer;
@@ -27,6 +29,7 @@ class TabsCubit extends Cubit<TabsState>
   final MenuBarNotifier _menuBarNotifier;
   final UpdateCheckerService _updateCheckerService;
   final AppVersionProvider _versionProvider;
+  final AccountUnlinkService _accountUnlinkService;
   final Logger _logger = sl<Logger>();
   late StreamSubscription<User> _newLoggedUserSubscription;
   late StreamSubscription<bool> _showMenuBarSubscription;
@@ -37,12 +40,17 @@ class TabsCubit extends Cubit<TabsState>
   /// nagging policy ("every start while outdated").
   bool _updateCheckStarted = false;
 
+  /// Guards a double confirm: two dialogs (or a double click) would otherwise
+  /// remove the same account twice and route twice.
+  bool _unlinkInProgress = false;
+
   TabsCubit(
       this._themeService,
       this._loggedUserNotifier,
       this._menuBarNotifier,
       this._updateCheckerService,
-      this._versionProvider,) : super(
+      this._versionProvider,
+      this._accountUnlinkService,) : super(
     TabsState(
       selectedMenuOption: SelectedMenuOption.home,
       showMenuBar: false,
@@ -155,6 +163,63 @@ class TabsCubit extends Cubit<TabsState>
   void openUserProfileDialog() {
     _logger.i("Opening the user profile dialog for ${state.loggedUser.name}");
     showWidgetDialogEffect(dialog: UserProfileDialog(user: state.loggedUser));
+  }
+
+  /// Drawer → "Unlink account…": ask first, naming the account so the user can
+  /// see *which* one is about to leave the device.
+  void confirmUnlinkUser() {
+    final User user = state.loggedUser;
+    if (user.id.isEmpty) {
+      _logger.w("Not asking to unlink: no account is signed in");
+      return;
+    }
+    _logger.i("Asking to unlink ${user.name}");
+    showWidgetDialogEffect(
+      dialog: UnlinkAccountDialog(
+        user: user,
+        onConfirm: () => unlinkUser(user),
+      ),
+    );
+  }
+
+  /// Removes [user] from the device and routes out of the session.
+  ///
+  /// The cleanup itself lives in [AccountUnlinkService]; this only owns the
+  /// session side (menu bar, routing, the failure banner). Whatever happens, the
+  /// app never stays on a session for an account it could not keep: the failure
+  /// path reports and lands on the same pre-session screen.
+  Future<void> unlinkUser(User user) async {
+    if (_unlinkInProgress) return;
+    _unlinkInProgress = true;
+    try {
+      final AccountUnlinkResult result = await _accountUnlinkService.unlink(user);
+      _logger.i(
+        "Unlinked ${user.name}: ${result.remainingUsers.length} account(s) remain, "
+        "landing on ${result.destination.name}",
+      );
+      _leaveSession(path: result.destination.route);
+    } catch (e, stackTrace) {
+      _logger.e("Error unlinking ${user.name}: $e", stackTrace: stackTrace);
+      handleError(
+        "The account could not be removed from this device.",
+        copyKey: 'error_unlink_account_failed',
+      );
+      _leaveSession(path: UnlinkDestination.picker.route);
+    } finally {
+      _unlinkInProgress = false;
+    }
+  }
+
+  /// Drops the shell chrome, the session's copy of the account and the route
+  /// together, so nothing on screen keeps rendering a user that is no longer
+  /// stored. The `UserNotifier.clear()` that ran during the cleanup never
+  /// writes an empty user back into this cubit (its listener ignores it), so
+  /// this is the one place that can drop it before the route is replaced.
+  void _leaveSession({required String path}) {
+    if (isClosed) return;
+    _menuBarNotifier.showMenuBar(false);
+    emit(state.copyWith(loggedUser: UserModel.empty()));
+    replaceRouteEffect(path: path);
   }
 
   void showUserOptionsDrawer() {

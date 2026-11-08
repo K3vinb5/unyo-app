@@ -37,6 +37,7 @@ import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/core/notification/video_info_notifier.dart';
 import 'package:unyo/core/services/api/graphql/graphql_service.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
+import 'package:unyo/core/services/account/account_unlink_service.dart';
 import 'package:unyo/core/services/api/http/response_cache_scope.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/core/services/api/shikimori/shikimori_auth_service.dart';
@@ -194,6 +195,19 @@ void setupLocator() async{
       sl<ReloadNotifier>(),
     ),
   );
+  // Owns the removal checklist for WP #151: provider row, notifiers, theme
+  // fallback and the response-cache revision in one place.
+  sl.registerLazySingleton<AccountUnlinkService>(
+    () => AccountUnlinkService(
+      sl<UserRepositoryAnilist>(),
+      sl<UserRepositoryShikimori>(),
+      sl<UserRepositoryLocal>(),
+      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
+      sl<UserNotifier>(instanceName: config.newUserNotifier),
+      sl<ThemeService>(),
+      sl<ResponseCacheScope>(),
+    ),
+  );
   sl.registerFactory<TabsCubit>(
     () => TabsCubit(
       sl<ThemeService>(),
@@ -201,6 +215,7 @@ void setupLocator() async{
       sl<MenuBarNotifier>(),
       sl<UpdateCheckerService>(),
       sl<AppVersionProvider>(),
+      sl<AccountUnlinkService>(),
     ),
   );
   sl.registerFactory<AnimeCubit>(

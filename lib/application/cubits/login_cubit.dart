@@ -75,6 +75,11 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
     _newUserCreatedSubscription = _newUserNotifier.userStream.listen((
         newLoggedUser,
         ) {
+      // A cleared notifier (WP #151: the account was unlinked) must not become
+      // a blank tile in the picker.
+      if (newLoggedUser == UserModel.empty()) {
+        return;
+      }
       //In case of user update!!
       emit(
         state.copyWith(

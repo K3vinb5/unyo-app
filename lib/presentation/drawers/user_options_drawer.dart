@@ -35,7 +35,7 @@ class _UserOptionsDrawerState extends State<UserOptionsDrawer> {
           filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
           child: Container(
             width: 500.w,
-            height: 220.h,
+            height: 300.h,
             decoration: BoxDecoration(
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(40),
@@ -98,6 +98,18 @@ class _UserOptionsDrawerState extends State<UserOptionsDrawer> {
                       onPressed: () {
                         widget.cubit.logoutUser();
                         Navigator.of(context).pop();
+                      }
+                  ),
+                  SizedBox(height: 10.h),
+                  UserOptionDrawerSelection(
+                      text: context.tr('drawer_unlink_account'),
+                      icon: Icons.link_off_rounded,
+                      destructive: true,
+                      onPressed: () {
+                        // Close the drawer first: the confirmation is a dialog
+                        // over the shell, not over the drawer overlay.
+                        Navigator.of(context).pop();
+                        widget.cubit.confirmUnlinkUser();
                       }
                   )
                 ],
