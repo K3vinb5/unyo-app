@@ -203,8 +203,15 @@ class MalUserRateService {
     final bool rewatching = MalListStatusPolicy.isRewatchingFor(entry.status);
     final Map<String, String> payload = <String, String>{
       'status': status,
-      'score': entry.score.round().toString(),
     };
+    // `-1.0` is the domain's "no score" sentinel and must never reach the wire
+    // (mirror of anime_repository_anilist.dart, which omits the key at -1.0):
+    // an explicit `0` on this partial upsert would clear a stored score, while
+    // omitting the key leaves it alone. A real score is clamped into MAL's
+    // 0-10 range before rounding.
+    if (entry.score != -1.0) {
+      payload['score'] = entry.score.clamp(0, 10).round().toString();
+    }
     switch (target) {
       case MalListTarget.anime:
         payload['num_watched_episodes'] = progress.toString();

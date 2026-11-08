@@ -107,7 +107,10 @@ void main() {
   MediaListEntry entry({
     int progress = 0,
     int progressVolumes = 0,
-    double score = 0,
+    // Default to the empty() factory's "no score" sentinel so a test that
+    // forgets the score exercises the omit-the-key path instead of hiding the
+    // sentinel leak behind a plausible 0.
+    double score = -1.0,
     int repeat = 0,
     String status = 'Current',
   }) {
@@ -379,6 +382,84 @@ void main() {
 
       expect(requests.single.bodyFields['status'], 'watching');
       expect(requests.single.bodyFields['is_rewatching'], 'true');
+    });
+
+    test('a status-only "add to list" write omits the score key (the -1 sentinel never reaches the wire)', () async {
+      answers = <Object>[
+        (200, jsonEncode(<String, dynamic>{'status': 'watching'})),
+      ];
+
+      await service.updateEntry(
+        user: userWith(),
+        targetId: 15,
+        target: MalListTarget.anime,
+        // The list editor starts from empty() and the user set only a status:
+        // every counter is still the -1 "untouched" sentinel.
+        entry: MediaListEntryModel.empty().copyWith(status: 'Current'),
+      );
+
+      final Map<String, String> fields = requests.single.bodyFields;
+      expect(fields['status'], 'watching');
+      expect(fields.containsKey('score'), isFalse,
+          reason: 'score=-1 is the domain sentinel, not a wire value; an explicit 0 would clear a stored score on this partial upsert');
+      expect(fields['num_watched_episodes'], '0');
+    });
+
+    test('auto mark-watched episode 1 on an unlisted anime omits the score key', () async {
+      answers = <Object>[
+        (200, jsonEncode(<String, dynamic>{'status': 'watching', 'num_episodes_watched': 1})),
+      ];
+
+      await service.updateEntry(
+        user: userWith(),
+        targetId: 15,
+        target: MalListTarget.anime,
+        // video_cubit._markEpisodeAsWatched: empty().copyWith(progress: 1, status: 'Current').
+        entry: MediaListEntryModel.empty().copyWith(progress: 1, status: 'Current'),
+      );
+
+      final Map<String, String> fields = requests.single.bodyFields;
+      expect(fields.containsKey('score'), isFalse);
+      expect(fields['num_watched_episodes'], '1');
+      expect(fields['status'], 'watching');
+    });
+
+    test('a real score is still sent', () async {
+      answers = <Object>[
+        (200, jsonEncode(<String, dynamic>{'status': 'watching', 'score': 7, 'num_episodes_watched': 5})),
+      ];
+
+      await service.updateEntry(
+        user: userWith(),
+        targetId: 15,
+        target: MalListTarget.anime,
+        entry: entry(progress: 5, score: 7),
+      );
+
+      expect(requests.single.bodyFields['score'], '7');
+    });
+
+    test('scores clamp into MAL\'s 0-10 range (12 -> 10, 0 stays 0)', () async {
+      answers = <Object>[
+        (200, jsonEncode(<String, dynamic>{'score': 10})),
+        (200, jsonEncode(<String, dynamic>{'score': 0})),
+      ];
+
+      await service.updateEntry(
+        user: userWith(),
+        targetId: 15,
+        target: MalListTarget.anime,
+        entry: entry(score: 12),
+      );
+      await service.updateEntry(
+        user: userWith(),
+        targetId: 15,
+        target: MalListTarget.anime,
+        entry: entry(score: 0),
+      );
+
+      expect(requests[0].bodyFields['score'], '10', reason: 'out-of-range scores clamp instead of leaking 12');
+      expect(requests[1].bodyFields['score'], '0', reason: 'a user-set 0 is a real value and is sent as-is');
     });
 
     test('the empty "add to list" status deletes the stored entry', () async {
