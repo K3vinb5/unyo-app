@@ -211,6 +211,9 @@ class AnimeAdvancedSearchCubit extends Cubit<AnimeAdvancedSearchState>
       );
       if (isClosed) return;
       emit(state.copyWith(searchResults: searchResults, isSearching: false));
+    } catch (e, stackTrace) {
+      _logger.e("Error performing anime advanced search $e", stackTrace: stackTrace);
+      handleError("Error performing anime advanced search", stackTrace: stackTrace);
     } finally {
       if (!isClosed && state.isSearching) {
         emit(state.copyWith(isSearching: false));

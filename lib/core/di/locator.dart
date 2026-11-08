@@ -1,4 +1,5 @@
 // External dependencies
+import 'package:cast/cast.dart';
 import 'package:unyo_lib/aniyomi_bridge.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:logger/logger.dart';
@@ -110,6 +111,7 @@ void setupLocator() async{
   sl.registerLazySingleton<ColorImageService>(() => ColorImageService());
   sl.registerSingleton<AniyomiBridge>(AniyomiBridge());
   sl.registerSingleton<TorrentService>(TorrentService());
+  sl.registerLazySingleton<CastDiscoveryService>(() => CastDiscoveryService());
   sl.registerSingleton<SettingsService>(SettingsService());
   // Notifiers
   sl.registerLazySingleton<UserNotifier>(() => UserNotifier(), instanceName: config.loggedUserNotifier);
@@ -170,153 +172,160 @@ void setupLocator() async{
     ),
   );
   sl.registerLazySingleton<EpisodeRepository>(() => EpisodeRepositoryFactory());
+  registerApplicationCubits(sl);
+}
+
+/// Registers every cubit factory. Kept separate from [setupLocator] so tests can
+/// build cubits against a container of overrides without editing this list.
+void registerApplicationCubits(GetIt registry) {
   // Cubits / Blocs
-  sl.registerFactory<LoginCubit>(
+  registry.registerFactory<LoginCubit>(
     () => LoginCubit(
-      sl<UserRepositoryLocal>(),
-      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
-      sl<UserNotifier>(instanceName: config.newUserNotifier),
-      sl<UserRepositoryAnilist>(),
-      sl<UserRepositoryShikimori>(),
-      sl<ColorImageService>(),
-      sl<ThemeService>(),
+      registry<UserRepositoryLocal>(),
+      registry<UserNotifier>(instanceName: config.loggedUserNotifier),
+      registry<UserNotifier>(instanceName: config.newUserNotifier),
+      registry<UserRepositoryAnilist>(),
+      registry<UserRepositoryShikimori>(),
+      registry<ColorImageService>(),
+      registry<ThemeService>(),
     ),
   );
-  sl.registerFactory<HomeCubit>(
+  registry.registerFactory<HomeCubit>(
     () => HomeCubit(
-      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
-      sl<AnimeNotifier>(),
-      sl<MangaNotifier>(),
-      sl<MediaListNotifier>(),
-      sl<UserRepository>(),
-      sl<AnimeRepository>(),
-      sl<MenuBarNotifier>(),
-      sl<ReloadNotifier>(),
+      registry<UserNotifier>(instanceName: config.loggedUserNotifier),
+      registry<AnimeNotifier>(),
+      registry<MangaNotifier>(),
+      registry<MediaListNotifier>(),
+      registry<UserRepository>(),
+      registry<AnimeRepository>(),
+      registry<MenuBarNotifier>(),
+      registry<ReloadNotifier>(),
     ),
   );
-  sl.registerFactory<TabsCubit>(
+  registry.registerFactory<TabsCubit>(
     () => TabsCubit(
-      sl<ThemeService>(),
-      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
-      sl<MenuBarNotifier>(),
-      sl<UpdateCheckerService>(),
-      sl<AppVersionProvider>(),
+      registry<ThemeService>(),
+      registry<UserNotifier>(instanceName: config.loggedUserNotifier),
+      registry<MenuBarNotifier>(),
+      registry<UpdateCheckerService>(),
+      registry<AppVersionProvider>(),
     ),
   );
-  sl.registerFactory<AnimeCubit>(
+  registry.registerFactory<AnimeCubit>(
     () => AnimeCubit(
-      sl<AnimeRepository>(),
-      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
-      sl<AnimeNotifier>(),
-      sl<AnimeGenresNotifier>(),
-      sl<MediaListNotifier>(),
-      sl<ReloadNotifier>(),
+      registry<AnimeRepository>(),
+      registry<UserNotifier>(instanceName: config.loggedUserNotifier),
+      registry<AnimeNotifier>(),
+      registry<AnimeGenresNotifier>(),
+      registry<MediaListNotifier>(),
+      registry<ReloadNotifier>(),
     ),
   );
-  sl.registerFactory<MangaCubit>(
+  registry.registerFactory<MangaCubit>(
     () => MangaCubit(
-      sl<MangaRepository>(),
-      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
-      sl<MangaNotifier>(),
-      sl<MangaGenresNotifier>(),
-      sl<MediaListNotifier>(),
-      sl<ReloadNotifier>(),
+      registry<MangaRepository>(),
+      registry<UserNotifier>(instanceName: config.loggedUserNotifier),
+      registry<MangaNotifier>(),
+      registry<MangaGenresNotifier>(),
+      registry<MediaListNotifier>(),
+      registry<ReloadNotifier>(),
     ),
   );
-  sl.registerFactory<ExtensionsCubit>(
+  registry.registerFactory<ExtensionsCubit>(
     () => ExtensionsCubit(
-      sl<ExtensionRepositoryAniyomi>(),
-      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
+      registry<ExtensionRepositoryAniyomi>(),
+      registry<UserNotifier>(instanceName: config.loggedUserNotifier),
     ),
   );
-  sl.registerFactory<MediaListCubit>(
+  registry.registerFactory<MediaListCubit>(
     () => MediaListCubit(
-      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
-      sl<UserRepository>(),
-      sl<AnimeNotifier>(),
-      sl<MangaNotifier>(),
-      sl<MediaListNotifier>(),
+      registry<UserNotifier>(instanceName: config.loggedUserNotifier),
+      registry<UserRepository>(),
+      registry<AnimeNotifier>(),
+      registry<MangaNotifier>(),
+      registry<MediaListNotifier>(),
     ),
   );
-  sl.registerFactory<CalendarCubit>(
+  registry.registerFactory<CalendarCubit>(
     () => CalendarCubit(
-      sl<AnimeRepository>(),
-      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
-      sl<AnimeNotifier>(),
-      sl<MediaListNotifier>(),
+      registry<AnimeRepository>(),
+      registry<UserNotifier>(instanceName: config.loggedUserNotifier),
+      registry<AnimeNotifier>(),
+      registry<MediaListNotifier>(),
     ),
   );
-  sl.registerFactory<AnimeDetailsCubit>(
+  registry.registerFactory<AnimeDetailsCubit>(
     () => AnimeDetailsCubit(
-      sl<AnimeRepository>(),
-      sl<EpisodeRepository>(),
-      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
-      sl<AnimeNotifier>(),
-      sl<AnimeGenresNotifier>(),
-      sl<MediaListNotifier>(),
-      sl<VideoInfoNotifier>(),
-      sl<ExtensionRepositoryAniyomi>(),
-      sl<UserRepository>(),
-      sl<EpisodesInfoNotifier>(),
-      sl<MediaListEntryNotifier>(),
-      sl<ExtensionNotifier>(),
-      sl<EpisodesNotifier>(),
-      sl<ReloadNotifier>(),
-      sl<MediaIdService>(),
+      registry<AnimeRepository>(),
+      registry<EpisodeRepository>(),
+      registry<UserNotifier>(instanceName: config.loggedUserNotifier),
+      registry<AnimeNotifier>(),
+      registry<AnimeGenresNotifier>(),
+      registry<MediaListNotifier>(),
+      registry<VideoInfoNotifier>(),
+      registry<ExtensionRepositoryAniyomi>(),
+      registry<UserRepository>(),
+      registry<EpisodesInfoNotifier>(),
+      registry<MediaListEntryNotifier>(),
+      registry<ExtensionNotifier>(),
+      registry<EpisodesNotifier>(),
+      registry<ReloadNotifier>(),
+      registry<MediaIdService>(),
     ),
   );
-  sl.registerFactory<MangaDetailsCubit>(
+  registry.registerFactory<MangaDetailsCubit>(
     () => MangaDetailsCubit(
-      sl<MangaRepository>(),
-      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
-      sl<MangaNotifier>(),
-      sl<MangaGenresNotifier>(),
-      sl<MediaListNotifier>(),
-      sl<ExtensionRepositoryAniyomi>(),
-      sl<UserRepository>(),
+      registry<MangaRepository>(),
+      registry<UserNotifier>(instanceName: config.loggedUserNotifier),
+      registry<MangaNotifier>(),
+      registry<MangaGenresNotifier>(),
+      registry<MediaListNotifier>(),
+      registry<ExtensionRepositoryAniyomi>(),
+      registry<UserRepository>(),
     ),
   );
-  sl.registerFactory<SettingsCubit>(
+  registry.registerFactory<SettingsCubit>(
     () => SettingsCubit(
-      sl<UserRepository>(),
-      sl<UserRepositoryLocal>(),
-      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
-      sl<ReloadNotifier>(),
-      sl<ThemeService>(),
-      sl<ColorImageService>()
+      registry<UserRepository>(),
+      registry<UserRepositoryLocal>(),
+      registry<UserNotifier>(instanceName: config.loggedUserNotifier),
+      registry<ReloadNotifier>(),
+      registry<ThemeService>(),
+      registry<ColorImageService>()
     ),
   );
-  sl.registerFactory<AnimeAdvancedSearchCubit>(
+  registry.registerFactory<AnimeAdvancedSearchCubit>(
     () => AnimeAdvancedSearchCubit(
-      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
-      sl<MediaListNotifier>(),
-      sl<AnimeNotifier>(),
-      sl<AnimeGenresNotifier>(),
-      sl<AnimeRepository>(),
+      registry<UserNotifier>(instanceName: config.loggedUserNotifier),
+      registry<MediaListNotifier>(),
+      registry<AnimeNotifier>(),
+      registry<AnimeGenresNotifier>(),
+      registry<AnimeRepository>(),
     ),
   );
-  sl.registerFactory<MangaAdvancedSearchCubit>(
+  registry.registerFactory<MangaAdvancedSearchCubit>(
     () => MangaAdvancedSearchCubit(
-      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
-      sl<MediaListNotifier>(),
-      sl<MangaNotifier>(),
-      sl<MangaGenresNotifier>(),
-      sl<MangaRepository>(),
+      registry<UserNotifier>(instanceName: config.loggedUserNotifier),
+      registry<MediaListNotifier>(),
+      registry<MangaNotifier>(),
+      registry<MangaGenresNotifier>(),
+      registry<MangaRepository>(),
     ),
   );
-  sl.registerFactory<VideoCubit>(
+  registry.registerFactory<VideoCubit>(
           () => VideoCubit(
-      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
-      sl<VideoInfoNotifier>(),
-      sl<AnimeNotifier>(),
-      sl<EpisodesInfoNotifier>(),
-      sl<MediaListEntryNotifier>(),
-      sl<ExtensionNotifier>(),
-      sl<EpisodesNotifier>(),
-      sl<ExtensionRepositoryAniyomi>(),
-      sl<AnimeRepository>(),
-      sl<ReloadNotifier>(),
-      sl<VideoDisplayModeStore>(),
+      registry<UserNotifier>(instanceName: config.loggedUserNotifier),
+      registry<VideoInfoNotifier>(),
+      registry<AnimeNotifier>(),
+      registry<EpisodesInfoNotifier>(),
+      registry<MediaListEntryNotifier>(),
+      registry<ExtensionNotifier>(),
+      registry<EpisodesNotifier>(),
+      registry<ExtensionRepositoryAniyomi>(),
+      registry<AnimeRepository>(),
+      registry<ReloadNotifier>(),
+      registry<VideoDisplayModeStore>(),
+      castDiscoveryService: registry<CastDiscoveryService>(),
     )
   );
 }

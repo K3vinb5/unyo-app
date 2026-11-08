@@ -198,6 +198,9 @@ class MangaAdvancedSearchCubit extends Cubit<MangaAdvancedSearchState>
       );
       if (isClosed) return;
       emit(state.copyWith(searchResults: searchResults, isSearching: false));
+    } catch (e, stackTrace) {
+      _logger.e("Error performing manga advanced search $e", stackTrace: stackTrace);
+      handleError("Error performing manga advanced search", stackTrace: stackTrace);
     } finally {
       if (!isClosed && state.isSearching) {
         emit(state.copyWith(isSearching: false));
