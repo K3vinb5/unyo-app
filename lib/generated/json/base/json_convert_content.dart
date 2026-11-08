@@ -20,6 +20,7 @@ import 'package:unyo/core/services/api/dto/anizip/anizip_id_mappings_entity.dart
 import 'package:unyo/core/services/api/dto/extensions/aniyomi_repo_json_entity.dart';
 import 'package:unyo/core/services/api/dto/extensions/tachiyomi_repo_json_entity.dart';
 import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
+import 'package:unyo/core/services/api/dto/mal/mal_token_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_details_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_list_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_mapping_query_entity.dart';
@@ -443,6 +444,9 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		if(<GithubReleaseAssets>[] is M){
 			return data.map<GithubReleaseAssets>((Map<String, dynamic> e) => GithubReleaseAssets.fromJson(e)).toList() as M;
 		}
+		if(<MalTokenEntity>[] is M){
+			return data.map<MalTokenEntity>((Map<String, dynamic> e) => MalTokenEntity.fromJson(e)).toList() as M;
+		}
 		if(<AnimeDetailsQueryEntity>[] is M){
 			return data.map<AnimeDetailsQueryEntity>((Map<String, dynamic> e) => AnimeDetailsQueryEntity.fromJson(e)).toList() as M;
 		}
@@ -750,6 +754,7 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		(TachiyomiRepoJsonSources).toString(): TachiyomiRepoJsonSources.fromJson,
 		(GithubReleaseEntity).toString(): GithubReleaseEntity.fromJson,
 		(GithubReleaseAssets).toString(): GithubReleaseAssets.fromJson,
+		(MalTokenEntity).toString(): MalTokenEntity.fromJson,
 		(AnimeDetailsQueryEntity).toString(): AnimeDetailsQueryEntity.fromJson,
 		(AnimeDetailsQueryAnimes).toString(): AnimeDetailsQueryAnimes.fromJson,
 		(AnimeDetailsQueryAnimesUserRate).toString(): AnimeDetailsQueryAnimesUserRate.fromJson,
