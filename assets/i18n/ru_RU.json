@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "Провайдер, предоставляющий данные: описание, обложки, жанры и оценки",
   "settings_media_metadata_service_title": "Сервис метаданных медиа",
   "settings_myanimelist_accounts_description": "Управление подключёнными аккаунтами MyAnimeList",
+  "settings_myanimelist_no_account": "Аккаунт MyAnimeList не подключён",
+  "settings_myanimelist_no_account_hint": "Добавьте его на экране входа, чтобы синхронизировать список с MyAnimeList",
   "settings_nsfw_content_description": "Включить или отключить NSFW-контент во всём приложении",
   "settings_nsfw_content_title": "NSFW-контент",
   "settings_open_releases_page": "Открыть страницу релизов",

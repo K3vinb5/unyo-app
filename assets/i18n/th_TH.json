@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "ผู้ให้บริการที่เป็นเจ้าของรายละเอียด: เรื่องย่อ ปก แนว และคะแนน",
   "settings_media_metadata_service_title": "บริการข้อมูลเมตาของสื่อ",
   "settings_myanimelist_accounts_description": "จัดการบัญชี MyAnimeList ที่เชื่อมต่อของคุณ",
+  "settings_myanimelist_no_account": "ยังไม่มีบัญชี MyAnimeList ที่เชื่อมต่อ",
+  "settings_myanimelist_no_account_hint": "เพิ่มบัญชีจากหน้าลงชื่อเข้าใช้เพื่อซิงค์รายการของคุณกับ MyAnimeList",
   "settings_nsfw_content_description": "เปิดหรือปิดเนื้อหา NSFW ทั่วทั้งแอป",
   "settings_nsfw_content_title": "เนื้อหา NSFW",
   "settings_open_releases_page": "เปิดหน้ารีลีส",

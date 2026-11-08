@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "Udbyder, der ejer detaljerne: synopsis, covers, genrer og scores",
   "settings_media_metadata_service_title": "Metadatatjeneste for medier",
   "settings_myanimelist_accounts_description": "Administrer dine forbundne MyAnimeList-konti",
+  "settings_myanimelist_no_account": "Ingen MyAnimeList-konto er forbundet",
+  "settings_myanimelist_no_account_hint": "Tilføj en fra login-skærmen for at synkronisere din liste med MyAnimeList",
   "settings_nsfw_content_description": "Slå NSFW-indhold til eller fra i hele appen",
   "settings_nsfw_content_title": "NSFW-indhold",
   "settings_open_releases_page": "Åbn udgivelsessiden",

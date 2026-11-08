@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "提供詳情資訊的服務：簡介、封面、類型與評分",
   "settings_media_metadata_service_title": "媒體中繼資料服務",
   "settings_myanimelist_accounts_description": "管理你已連結的 MyAnimeList 帳號",
+  "settings_myanimelist_no_account": "尚未連結 MyAnimeList 帳號",
+  "settings_myanimelist_no_account_hint": "在登入畫面新增帳號，即可將清單與 MyAnimeList 同步",
   "settings_nsfw_content_description": "在整個應用程式中啟用或停用 NSFW 內容",
   "settings_nsfw_content_title": "NSFW 內容",
   "settings_open_releases_page": "開啟發佈頁面",

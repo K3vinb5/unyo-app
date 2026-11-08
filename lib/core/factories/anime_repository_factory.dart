@@ -6,6 +6,7 @@ import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/services/media/media_provenance.dart';
 import 'package:unyo/data/repositories/anime_repository_anilist.dart';
+import 'package:unyo/data/repositories/anime_repository_mal.dart';
 import 'package:unyo/data/repositories/anime_repository_shikimori.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/anime_details.dart';
@@ -24,10 +25,12 @@ import 'package:unyo/core/services/media/media_link_exception.dart';
 ///
 /// List-entry reads/writes are routed by the user provider
 /// (`settings.userService`) — the metadata provider is presentation-only
-/// (WP #61 field ownership).
+/// (WP #61 field ownership), and [Service.mal] owns its list entries through
+/// [AnimeRepositoryMal] while staying a tracker-only provider (SPEC Q2).
 class AnimeRepositoryFactory implements AnimeRepository {
   final AnimeRepositoryAnilist _animeRepositoryAnilist = sl<AnimeRepositoryAnilist>();
   final AnimeRepositoryShikimori _animeRepositoryShikimori = sl<AnimeRepositoryShikimori>();
+  final AnimeRepositoryMal _animeRepositoryMal = sl<AnimeRepositoryMal>();
   final Logger _logger = sl<Logger>();
   final MediaIdService _mediaIdService = sl<MediaIdService>();
 
@@ -313,7 +316,11 @@ class AnimeRepositoryFactory implements AnimeRepository {
         );
       case Service.mal:
         _logger.i("Updating Media List Entry to $newMediaListEntry on MyAnimeList");
-        return MediaListEntryModel.empty();
+        return _animeRepositoryMal.updateMediaListEntry(
+          newMediaListEntry,
+          userRecord,
+          loggedUser,
+        );
       case Service.shikimori:
         _logger.i("Updating Media List Entry to $newMediaListEntry on Shikimori");
         return _animeRepositoryShikimori.updateMediaListEntry(
@@ -351,7 +358,11 @@ class AnimeRepositoryFactory implements AnimeRepository {
         );
       case Service.mal:
         _logger.i("Fetching User Media List Entry from MyAnimeList for ${selectedAnime.title.userPreferred}");
-        return MediaListEntryModel.empty();
+        return _animeRepositoryMal.getMediaListEntry(
+          userRecord,
+          loggedUser,
+          ignoreCache: ignoreCache,
+        );
       case Service.shikimori:
         _logger.i("Fetching User Media List Entry from Shikimori for ${selectedAnime.title.userPreferred}");
         return _animeRepositoryShikimori.getMediaListEntry(

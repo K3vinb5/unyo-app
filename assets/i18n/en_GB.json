@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "Provider that owns details: synopsis, covers, genres and scores",
   "settings_media_metadata_service_title": "Media metadata service",
   "settings_myanimelist_accounts_description": "Manage your MyAnimeList connected accounts",
+  "settings_myanimelist_no_account": "No MyAnimeList account is connected",
+  "settings_myanimelist_no_account_hint": "Add one from the login screen to sync your list with MyAnimeList",
   "settings_nsfw_content_description": "Enable or disable NSFW content throughout the app",
   "settings_nsfw_content_title": "NSFW Content",
   "settings_open_releases_page": "Open releases page",

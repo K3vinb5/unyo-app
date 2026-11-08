@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "Dostawca szczegółów: opis, okładki, gatunki i oceny",
   "settings_media_metadata_service_title": "Usługa metadanych mediów",
   "settings_myanimelist_accounts_description": "Zarządzaj połączonymi kontami MyAnimeList",
+  "settings_myanimelist_no_account": "Nie połączono żadnego konta MyAnimeList",
+  "settings_myanimelist_no_account_hint": "Dodaj konto z ekranu logowania, aby synchronizować listę z MyAnimeList",
   "settings_nsfw_content_description": "Włącz lub wyłącz treści NSFW w całej aplikacji",
   "settings_nsfw_content_title": "Treści NSFW",
   "settings_open_releases_page": "Otwórz stronę wydań",
