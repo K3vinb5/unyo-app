@@ -39,6 +39,12 @@ Rules:
 flutter test
 ```
 
+Cubit/service tests build real cubits through `test/support/test_deps.dart`
+(`TestDeps.setUp()` + typed overrides + `deps.cubit<T>()`); never add a cubit
+registration just to make a test work. The full contract, including the Hive
+temp-dir helper and the no-network/JVM rule, lives in
+`../unyo-docs/conventions/testing.md`.
+
 ### Analysis
 ```sh
 flutter analyze
