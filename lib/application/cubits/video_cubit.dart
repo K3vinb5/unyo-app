@@ -55,6 +55,9 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
   /// Per-user persistence for the video display mode (WP #114).
   final VideoDisplayModeStore _videoDisplayModeStore;
 
+  /// mDNS cast discovery. Injectable so tests never touch the network.
+  final CastDiscoveryService _castDiscoveryService;
+
   // Notifiers / Subscriptions
   final UserNotifier _loggedUserNotifier;
   final VideoInfoNotifier _videoInfoNotifier;
@@ -99,8 +102,10 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
     this._extensionRepositoryAniyomi,
     this._animeRepository,
     this._reloadNotifier,
-    this._videoDisplayModeStore,
-  ) : super(
+    this._videoDisplayModeStore, {
+    CastDiscoveryService? castDiscoveryService,
+  }) : _castDiscoveryService = castDiscoveryService ?? CastDiscoveryService(),
+       super(
         VideoState(
           loggedUser: UserModel.empty(),
           videoInfo: VideoInfoModel.empty(),
@@ -368,7 +373,7 @@ class VideoCubit extends Cubit<VideoState> with EffectMixin<VideoState> {
 
 
   Future<void> _getAvailableCastDevices() async {
-    List<CastDevice> availableCastDevices = await CastDiscoveryService().search();
+    List<CastDevice> availableCastDevices = await _castDiscoveryService.search();
     emit(state.copyWith(availableCastDevices: availableCastDevices));
   }
 
