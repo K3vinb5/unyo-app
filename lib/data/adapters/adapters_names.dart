@@ -9,4 +9,5 @@ const extensionModelAdapterName = 'ExtensionModelAdapter';
 const anilistMangaDetailsModelAdapterName = 'MangaProgressModelAdapter';
 const mangaListEntryModelAdapterName = 'MediaListEntryModelAdapter';
 const shikimoriUserModelAdapterName = 'ShikimoriUserModelAdapter';
+const malUserModelAdapterName = 'MalUserModelAdapter';
 const videoDisplayModeEnumAdapterName = 'VideoDisplayModeAdapter';
