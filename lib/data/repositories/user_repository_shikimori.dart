@@ -25,6 +25,7 @@ import 'package:unyo/data/models/shikimori/media/shikimori_list_status_policy.da
 import 'package:unyo/data/models/shikimori/media/shikimori_manga_model.dart';
 import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/repository_mixin.dart';
+import 'package:unyo/data/repositories/user_provider_reconciliation.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
@@ -67,7 +68,12 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
   @override
   Future<List<User>> fetchAllLoggedInUsers() async {
     _shikimoriUsersBox = await Hive.openBox<ShikimoriUserModel>(usersBoxName);
-    return [..._shikimoriUsersBox.values];
+    return UserProviderReconciliation.reconcile<ShikimoriUserModel>(
+      box: _shikimoriUsersBox,
+      provider: Service.shikimori,
+      logger: _logger,
+      withSettings: (ShikimoriUserModel user, SettingsModel settings) => user.copyWith(settings: settings),
+    );
   }
 
   /// Opens the same localhost callback AniList uses and sends the user to the
