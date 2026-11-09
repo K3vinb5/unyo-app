@@ -9,6 +9,8 @@ import 'package:unyo/core/services/api/dto/anilist/auth_token_dto.dart';
 import 'package:unyo/core/services/api/dto/anilist/media_collection_graphql_entity.dart';
 import 'package:unyo/data/models/anilist/media/anilist_anime_model.dart';
 import 'package:unyo/data/models/anilist/media/anilist_manga_model.dart';
+import 'package:unyo/data/oauth/oauth_callback_handler.dart';
+import 'package:unyo/data/oauth/oauth_callback_page.dart';
 import 'package:unyo/data/repositories/repository_mixin.dart';
 import 'package:unyo/data/repositories/user_provider_reconciliation.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
@@ -42,6 +44,11 @@ class UserRepositoryAnilist with RepositoryMixin implements UserRepository {
   final UserNotifier _loggedUserNotifier;
   late Box<AnilistUserModel> _anilistUsersBox;
   late HttpServer _server;
+  late final OAuthCallbackHandler _loginCallbackHandler = OAuthCallbackHandler(
+    providerName: OAuthCallbackPage.anilistProviderName,
+    logger: _logger,
+    onFinished: () => _server.close(),
+  );
 
   UserRepositoryAnilist(this._newUserNotifier, this._loggedUserNotifier);
 
@@ -220,21 +227,8 @@ class UserRepositoryAnilist with RepositoryMixin implements UserRepository {
     );
   }
 
-  Future<shelf.Response> _handleLoginRequest(shelf.Request request) async {
-    try {
-      _logger.i("Handling login request from Anilist at ${request.requestedUri.path}");
-      String accessCode = request.requestedUri.queryParameters['code']!;
-      await _createUser(accessCode);
-      return shelf.Response.ok('Authorization successful. You can close this window.');
-    } catch (e, stackTrace) {
-      _logger.e("Error Handling login request: $e", stackTrace: stackTrace);
-      return shelf.Response.internalServerError(
-        body: "Something went wrong D:, please verify your internet connection and try again",
-      );
-    } finally {
-      _logger.i("Closing Anilist login server");
-      _server.close();
-    }
+  Future<shelf.Response> _handleLoginRequest(shelf.Request request) {
+    return _loginCallbackHandler.handle(request, _createUser);
   }
 
   Future<void> _createUser(String accessCode) async {

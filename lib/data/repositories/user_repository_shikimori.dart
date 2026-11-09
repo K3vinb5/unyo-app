@@ -24,6 +24,8 @@ import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_list_status_policy.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_manga_model.dart';
 import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
+import 'package:unyo/data/oauth/oauth_callback_handler.dart';
+import 'package:unyo/data/oauth/oauth_callback_page.dart';
 import 'package:unyo/data/repositories/repository_mixin.dart';
 import 'package:unyo/data/repositories/user_provider_reconciliation.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
@@ -62,6 +64,11 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
   final UserNotifier _loggedUserNotifier;
   late Box<ShikimoriUserModel> _shikimoriUsersBox;
   late HttpServer _server;
+  late final OAuthCallbackHandler _loginCallbackHandler = OAuthCallbackHandler(
+    providerName: OAuthCallbackPage.shikimoriProviderName,
+    logger: _logger,
+    onFinished: () => _server.close(),
+  );
 
   UserRepositoryShikimori(this._newUserNotifier, this._loggedUserNotifier);
 
@@ -299,26 +306,8 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
     }
   }
 
-  Future<shelf.Response> _handleLoginRequest(shelf.Request request) async {
-    try {
-      _logger.i("Handling login request from Shikimori at ${request.requestedUri.path}");
-      final String? code = request.requestedUri.queryParameters['code'];
-      if (code == null || code.isEmpty) {
-        return shelf.Response.badRequest(
-          body: "Shikimori did not send an authorization code: ${request.requestedUri.query}",
-        );
-      }
-      await _createUser(code);
-      return shelf.Response.ok('Authorization successful. You can close this window.');
-    } catch (e, stackTrace) {
-      _logger.e("Error Handling login request: $e", stackTrace: stackTrace);
-      return shelf.Response.internalServerError(
-        body: "Something went wrong D:, please verify your internet connection and try again",
-      );
-    } finally {
-      _logger.i("Closing Shikimori login server");
-      _server.close();
-    }
+  Future<shelf.Response> _handleLoginRequest(shelf.Request request) {
+    return _loginCallbackHandler.handle(request, _createUser);
   }
 
   Future<void> _createUser(String accessCode) async {
