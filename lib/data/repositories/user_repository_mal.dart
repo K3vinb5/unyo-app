@@ -1,4 +1,5 @@
 // External dependencies
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -78,15 +79,35 @@ class UserRepositoryMal implements UserRepository {
   final UserNotifier _loggedUserNotifier;
   final http.Client _client;
   late Box<MalUserModel> _malUsersBox;
-  late HttpServer _server;
+
+  /// The callback listener while a login is in flight, `null` once it is closed
+  /// (or before the first login).
+  HttpServer? _server;
+
+  /// The last listener's close, kept so a later [closeLoginServer] or
+  /// [attemptCreateUser] can await it: the success path closes fire-and-forget.
+  Future<void>? _serverClose;
+
+  /// How long the OAuth callback server may sit without a successful login
+  /// before it closes itself (WP #163). A login abandoned in the browser must
+  /// not leave :9998 bound forever.
+  final Duration _loginServerTimeout;
+
+  /// Reaps an abandoned login. Cancelled by [_closeLoginServer].
+  Timer? _loginServerTimer;
 
   /// The PKCE pair of the login currently in flight (D2). Kept on the instance
   /// because the authorize URL and the token exchange must agree on it.
   String _codeVerifier = '';
   String _state = '';
 
-  UserRepositoryMal(this._newUserNotifier, this._loggedUserNotifier, {http.Client? client})
-      : _client = client ?? http.Client();
+  UserRepositoryMal(
+    this._newUserNotifier,
+    this._loggedUserNotifier, {
+    http.Client? client,
+    Duration loginServerTimeout = const Duration(minutes: 10),
+  })  : _client = client ?? http.Client(),
+        _loginServerTimeout = loginServerTimeout;
 
   @override
   Future<List<User>> fetchAllLoggedInUsers() async {
@@ -99,6 +120,10 @@ class UserRepositoryMal implements UserRepository {
   @override
   Future<void> attemptCreateUser() async {
     _logger.i("Creating MyAnimeList user");
+    // LoginCubit re-invokes this on every dialog confirm: a previous listener
+    // and its abandonment timer must go first, or the new bind fails with
+    // "address in use" (this port is not `shared`).
+    await _closeLoginServer();
     _codeVerifier = _authService.generateCodeVerifier();
     _state = _authService.generateState();
     final Uri redirect = Uri.parse(config.malRedirectUri);
@@ -106,6 +131,10 @@ class UserRepositoryMal implements UserRepository {
       _logger.d("Opening MyAnimeList login server at ${config.malRedirectUri}");
       // D1: own port, no `shared` — the AniList/Shikimori shelf owns :9999.
       _server = await shelfio.serve(_handleLoginRequest, redirect.host, redirect.port);
+      _loginServerTimer = Timer(_loginServerTimeout, () {
+        _logger.i("MyAnimeList login server timed out, closing it");
+        unawaited(_closeLoginServer());
+      });
     } catch (e, stackTrace) {
       _logger.e("Error attempting to open server: $e", stackTrace: stackTrace);
       await _launchAuthorizationPage();
@@ -298,11 +327,35 @@ class UserRepositoryMal implements UserRepository {
     }
   }
 
+  /// Closes the OAuth callback server and cancels the abandonment timer.
+  ///
+  /// Safe before a server was ever started and safe to call any number of
+  /// times. The socket close is returned rather than awaited by the callers
+  /// inside [_handleLoginRequest]/the timer: `HttpServer.close()` (force: false)
+  /// waits for the in-flight response, so awaiting it from the handler would
+  /// deadlock until the client gave up.
+  Future<void> _closeLoginServer() {
+    _loginServerTimer?.cancel();
+    _loginServerTimer = null;
+    final HttpServer? server = _server;
+    if (server != null) {
+      _server = null;
+      _serverClose = server.close();
+    }
+    return _serverClose ?? Future<void>.value();
+  }
+
+  /// Closes the OAuth callback server early. Safe before the login server was
+  /// started and idempotent; used by tests/teardown.
+  Future<void> closeLoginServer() => _closeLoginServer();
+
   Future<shelf.Response> _handleLoginRequest(shelf.Request request) async {
     try {
       _logger.i("Handling login request from MyAnimeList at ${request.requestedUri.path}");
       final String? code = request.requestedUri.queryParameters['code'];
       if (code == null || code.isEmpty) {
+        // WP #163: a favicon/probe/mistyped URL is not a login attempt. Answer
+        // 400 and keep serving — closing here killed the OAuth redirect.
         return shelf.Response.badRequest(
           body: "MyAnimeList did not send an authorization code: ${request.requestedUri.query}",
         );
@@ -314,16 +367,16 @@ class UserRepositoryMal implements UserRepository {
         );
       }
       await _createUser(code);
-      return shelf.Response.ok('Authorization successful. You can close this window.');
     } catch (e, stackTrace) {
+      // Keep serving on a failed exchange: the redirect can be replayed.
       _logger.e("Error Handling login request: $e", stackTrace: stackTrace);
       return shelf.Response.internalServerError(
         body: "Something went wrong D:, please verify your internet connection and try again",
       );
-    } finally {
-      _logger.i("Closing MyAnimeList login server");
-      _server.close();
     }
+    _logger.i("Closing MyAnimeList login server");
+    unawaited(_closeLoginServer());
+    return shelf.Response.ok('Authorization successful. You can close this window.');
   }
 
   Future<void> _createUser(String accessCode) async {
