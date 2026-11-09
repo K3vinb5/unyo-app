@@ -124,23 +124,20 @@ class _MangaViewState extends State<_MangaView> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    MediaButton(
-                      onPressed: () {},
-                      image:
-                          state.banners.isNotEmpty
-                              ? state
-                                  .banners[0]
-                                  .bannerImage
-                              : "",
-                      text: context.tr('common_calendar'),
-                    ),
-                    const SizedBox(width: 30),
+                    // No Calendar button on the manga browse, on purpose: the
+                    // calendar tab is anime-only by data model. Every provider's
+                    // schedule feed is `AnimeRepository.getCalendarReleases`
+                    // (MAL: Jikan `/schedules`; AniList: `nextAiringEpisode`;
+                    // Shikimori: `/api/calendar` `next_episode_at`) and
+                    // `MangaRepository` has no calendar method at all, so a
+                    // manga calendar could only show anime. The button that sat
+                    // here had an empty handler (WP #169).
                     MediaButton(
                       onPressed: () => context.read<MangaCubit>().navigateToAdvancedSearch(context),
                       image:
                           state.banners.isNotEmpty
                               ? state
-                                  .banners[1]
+                                  .banners[0]
                                   .bannerImage
                               : "",
                       text: context.tr('common_advanced_search'),
