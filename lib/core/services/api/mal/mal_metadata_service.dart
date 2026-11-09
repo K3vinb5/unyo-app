@@ -17,6 +17,7 @@ import 'package:unyo/core/services/api/mal/mal_auth_service.dart';
 import 'package:unyo/core/services/api/mal/mal_metadata_vocabularies.dart';
 import 'package:unyo/core/services/api/mal/mal_rate_limiter.dart';
 import 'package:unyo/data/models/mal/user/mal_user_model.dart';
+import 'package:unyo/data/repositories/user_repository_mal.dart';
 
 /// Read-only MyAnimeList metadata transport (WP #166).
 ///
@@ -28,9 +29,17 @@ import 'package:unyo/data/models/mal/user/mal_user_model.dart';
 ///
 /// * **every** `api.myanimelist.net` read carries `X-MAL-CLIENT-ID` — MAL's v2
 ///   answers **403** to an anonymous read without it (probed live), so the
-///   public client id is not optional, and `Authorization: Bearer` is added
-///   **only** when a [MalUserModel] with a token is passed (personalises
-///   `my_list_status`);
+///   public client id is not optional;
+/// * **public reads are anonymous, always**: the rankings (and the Jikan feeds)
+///   serve the same rows to a signed-in user, so they never carry
+///   `Authorization` — no argument can add one, which also keeps the carousels
+///   immune to an expired token;
+/// * **authenticated reads refresh first**: the details calls (the only reads
+///   that reflect the user's own entry, via `my_list_status`) run through
+///   [_authorizedUser], which refreshes a stale pair through the tracker's own
+///   helpers before the request and degrades to the anonymous shape when no
+///   usable token can be had — and a `401` mid-flight is the tracker's
+///   force-refresh-and-repeat-once guard ([_getAuthorizedJson]);
 /// * **every** `api.myanimelist.net` read takes a grant from [MalRateLimiter]
 ///   first — the same budget the tracker writes use (2 rps, 403 = throttle);
 /// * `fields=` is always explicit. The constants below are the only field sets,
@@ -115,6 +124,11 @@ class MalMetadataService {
   MalRateLimiter get _rateLimiter => sl<MalRateLimiter>();
   MalAuthService get _authService => sl<MalAuthService>();
 
+  /// The token store the authenticated reads refresh through; lazy for the same
+  /// reason as [_rateLimiter] — anonymous reads never need it, and the pure
+  /// mapping tests do not register it.
+  UserRepositoryMal get _userRepository => sl<UserRepositoryMal>();
+
   MalMetadataService({http.Client? client, JikanRateLimiter? jikanRateLimiter})
       : _client = client ?? http.Client(),
         _jikanRateLimiter = jikanRateLimiter ?? JikanRateLimiter();
@@ -123,11 +137,14 @@ class MalMetadataService {
 
   /// `GET /anime/ranking?ranking_type=…` — `airing` is the closest MAL
   /// equivalent of AniList's trending feed (SPEC §2).
+  ///
+  /// Public: the ranking rows are identical for every viewer, so the read is
+  /// anonymous even when the logged-in user is a MAL account — no token means
+  /// an expired one can never fail the carousel.
   Future<MalAnimeListEntity> getAnimeRanking(
     String rankingType, {
     int page = 1,
     int limit = defaultLimit,
-    MalUserModel? user,
   }) async {
     _validateRankingType(rankingType, MalMetadataVocabularies.animeRankingTypes);
     final Uri uri = _listUri(
@@ -139,23 +156,33 @@ class MalMetadataService {
       },
     );
     return MalAnimeListEntity.fromJson(
-      await _getJson(uri, user: user, reason: 'GET anime/ranking $rankingType'),
+      await _getJson(uri, reason: 'GET anime/ranking $rankingType'),
     );
   }
 
   /// `GET /anime/{id}` with the full details field set.
+  ///
+  /// Authenticated when [user] is a usable MAL account: the token is refreshed
+  /// first ([_authorizedUser]) so `my_list_status` reflects the viewer's own
+  /// entry, and a `401` mid-flight forces one refresh and one repeat
+  /// ([_getAuthorizedJson]).
   Future<MalAnimeNode> getAnimeDetails(int id, [MalUserModel? user]) async {
     _validateId(id);
     final Uri uri = Uri.parse('${config.malApiBase}/anime/$id')
         .replace(queryParameters: <String, String>{'fields': animeDetailsFields});
     return MalAnimeNode.fromJson(
-      await _getJson(uri, user: user, reason: 'GET anime/$id details'),
+      user == null
+          ? await _getJson(uri, reason: 'GET anime/$id details')
+          : await _getAuthorizedJson(uri, user: user, reason: 'GET anime/$id details'),
     );
   }
 
   // ------------------------------------------------------------------ manga
 
   /// `GET /manga/ranking?ranking_type=…`.
+  ///
+  /// Public/anonymous for the same reason as [getAnimeRanking] — no argument
+  /// can attach the account token.
   ///
   /// The reference table lists nine ranking types; `publishing` and `upcoming`
   /// are **not** among them (probed live: `400 invalid ranking_type`), so no
@@ -165,7 +192,6 @@ class MalMetadataService {
     String rankingType, {
     int page = 1,
     int limit = defaultLimit,
-    MalUserModel? user,
   }) async {
     _validateRankingType(rankingType, MalMetadataVocabularies.mangaRankingTypes);
     final Uri uri = _listUri(
@@ -177,17 +203,20 @@ class MalMetadataService {
       },
     );
     return MalMangaListEntity.fromJson(
-      await _getJson(uri, user: user, reason: 'GET manga/ranking $rankingType'),
+      await _getJson(uri, reason: 'GET manga/ranking $rankingType'),
     );
   }
 
-  /// `GET /manga/{id}` with the full details field set.
+  /// `GET /manga/{id}` with the full details field set (authenticated when
+  /// [user] is a usable MAL account — see [getAnimeDetails]).
   Future<MalMangaNode> getMangaDetails(int id, [MalUserModel? user]) async {
     _validateId(id);
     final Uri uri = Uri.parse('${config.malApiBase}/manga/$id')
         .replace(queryParameters: <String, String>{'fields': mangaDetailsFields});
     return MalMangaNode.fromJson(
-      await _getJson(uri, user: user, reason: 'GET manga/$id details'),
+      user == null
+          ? await _getJson(uri, reason: 'GET manga/$id details')
+          : await _getAuthorizedJson(uri, user: user, reason: 'GET manga/$id details'),
     );
   }
 
@@ -330,6 +359,96 @@ class MalMetadataService {
       if (value != null && value.trim().isNotEmpty) present[key] = value.trim();
     });
     return present;
+  }
+
+  /// The account an authenticated read may act as, or `null` to read
+  /// anonymously.
+  ///
+  /// Refresh is the tracker's own seam, not a second copy of it: a stale pair
+  /// goes through `UserRepositoryMal.ensureFreshAccessToken`
+  /// (`user_repository_mal.dart:232`), which rotates via
+  /// `MalAuthService.withFreshAccessToken` and re-persists the pair, exactly
+  /// what the list reads and writes already do. The service never runs the
+  /// OAuth dance itself and never invents a token policy.
+  ///
+  /// Two failure shapes, both of which keep the details page alive (the
+  /// Shikimori details rule, `anime_repository_shikimori.dart:82`: an expired
+  /// token is not sent, because a `401` would take the whole page down instead
+  /// of just its list state):
+  ///
+  /// * **no refresh token** — the helper hands the stored pair back unchanged;
+  ///   if it is still expired it is dropped here and the read goes anonymous;
+  /// * **refresh refused** ([MalAuthException]: `invalid_grant`, revoked pair,
+  ///   network) — logged and the read goes anonymous. That is the tracker's
+  ///   session policy too: `MalUserRateService._freshUser`
+  ///   (`mal_user_rate_service.dart:120`) lets the exception escape and nothing
+  ///   in the app turns it into a logout, so the stored account is left exactly
+  ///   as it is here — never cleared, never marked dead.
+  Future<MalUserModel?> _authorizedUser(MalUserModel? user) async {
+    if (user == null || user.accessToken.trim().isEmpty) return null;
+    try {
+      final MalUserModel refreshed = await _userRepository.ensureFreshAccessToken(user);
+      if (_authService.isAccessTokenExpired(refreshed)) {
+        _logger.w(
+          "MyAnimeList access token for ${user.name} is still expired (no refresh token stored), "
+          "reading anonymously so my_list_status degrades instead of the page failing",
+        );
+        return null;
+      }
+      return refreshed;
+    } on MalAuthException catch (e) {
+      _logger.w(
+        "MyAnimeList token refresh for ${user.name} failed ($e), reading anonymously",
+      );
+      return null;
+    }
+  }
+
+  /// One authenticated read with the tracker's `401` guard
+  /// (`MalUserRateService._withAuthRetry`, `mal_user_rate_service.dart:103`): a
+  /// `401` means the stored pair was revoked or rotated out from under us — not
+  /// that the media is gone — so the token is force-refreshed and the GET
+  /// repeated **exactly once**.
+  ///
+  /// The guard never turns a details read into an error:
+  ///
+  /// * no usable account at all → the existing anonymous read;
+  /// * the forced refresh is refused → the existing anonymous read;
+  /// * the repeat is rejected too → two requests in total, then the empty
+  ///   payload, which the repositories already fold into the anonymous details
+  ///   shape (`node.id <= 0` → `(false, empty)`). No third request: a pair of
+  ///   401s means the account is broken, not that the same token deserves
+  ///   another try.
+  Future<Map<String, dynamic>> _getAuthorizedJson(
+    Uri uri, {
+    required String reason,
+    required MalUserModel user,
+  }) async {
+    final MalUserModel? authorized = await _authorizedUser(user);
+    if (authorized == null) return _getJson(uri, reason: reason);
+    try {
+      return await _getJson(uri, user: authorized, reason: reason);
+    } on HttpServerException catch (e) {
+      if (e.statusCode != 401) rethrow;
+      _logger.w("MyAnimeList answered 401 on $reason, refreshing the token and retrying once");
+      final MalUserModel? retried = await _forceRefresh(authorized);
+      if (retried == null) return _getJson(uri, reason: reason);
+      try {
+        return await _getJson(uri, user: retried, reason: reason);
+      } on HttpServerException catch (retry) {
+        if (retry.statusCode != 401) rethrow;
+        _logger.w("MyAnimeList answered 401 again after the refresh, degrading $reason");
+        return const <String, dynamic>{};
+      }
+    }
+  }
+
+  /// Force-refresh through the same helper the first attempt uses: an empty
+  /// expiry makes `ensureFreshAccessToken` rotate unconditionally (the real
+  /// `MalAuthService.isAccessTokenExpired` treats an unparseable expiry as
+  /// expired) and re-persist the pair.
+  Future<MalUserModel?> _forceRefresh(MalUserModel user) {
+    return _authorizedUser(user.copyWith(accessTokenExpiresAt: ''));
   }
 
   /// MAL v2 headers: the public client id **always** (an anonymous v2 read

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:logger/logger.dart';
+import 'package:mocktail/mocktail.dart';
 
 // Internal dependencies
 import 'package:unyo/config/config.dart' as config;
@@ -15,7 +16,40 @@ import 'package:unyo/core/services/api/mal/mal_auth_service.dart';
 import 'package:unyo/core/services/api/mal/mal_metadata_service.dart';
 import 'package:unyo/core/services/api/mal/mal_rate_limiter.dart';
 import 'package:unyo/data/models/mal/user/mal_user_model.dart';
+import 'package:unyo/data/repositories/user_repository_mal.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
+
+class MockUserRepositoryMal extends Mock implements UserRepositoryMal {}
+
+/// Auth double, the same shape the tracker tests use: the expiry bit is
+/// scripted, and the rotation is counted, so the refresh can be asserted
+/// without sleeping (mirror of `mal_user_rate_service_test.dart`'s fake).
+class FakeMalAuthService extends MalAuthService {
+  FakeMalAuthService({this.expired = false});
+
+  bool expired;
+  int refreshes = 0;
+
+  @override
+  bool isAccessTokenExpired(MalUserModel user, {DateTime? at}) {
+    // The real rule the force-refresh leans on (`mal_auth_service.dart:146`):
+    // an unparseable/empty expiry counts as expired. Otherwise the scripted
+    // clock decides, so a "revoked while clock-valid" token can be modelled.
+    if (user.accessTokenExpiresAt.trim().isEmpty) return true;
+    return expired;
+  }
+
+  @override
+  Future<MalUserModel> withFreshAccessToken(MalUserModel user) async {
+    refreshes++;
+    expired = false;
+    return user.copyWith(
+      accessToken: 'fresh-access',
+      refreshToken: 'fresh-refresh',
+      accessTokenExpiresAt: '2099-01-01T00:00:00.000',
+    );
+  }
+}
 
 /// Budget double: the real limiter's spacing/window is covered by its own
 /// tests, here we only prove every MAL read takes a grant and Jikan takes none.
@@ -60,7 +94,29 @@ void main() {
   late String body;
   late CountingMalRateLimiter limiter;
   late CountingJikanRateLimiter jikanLimiter;
+  late FakeMalAuthService auth;
+  late MockUserRepositoryMal userRepository;
   late MalMetadataService service;
+
+  Future<MalUserModel> ensureFresh(MalUserModel user) async {
+    if (!auth.isAccessTokenExpired(user)) return user;
+    if (user.refreshToken.isEmpty) return user;
+    return auth.withFreshAccessToken(user);
+  }
+
+  setUpAll(() {
+    registerFallbackValue(MalUserModel(
+      id: '0',
+      name: 'fallback',
+      settings: SettingsModel.empty(),
+      avatarImage: '',
+      bannerImage: '',
+      accessToken: '',
+      refreshToken: '',
+      accessTokenExpiresAt: '',
+      profileUrl: '',
+    ));
+  });
 
   setUp(() async {
     await sl.reset();
@@ -68,9 +124,16 @@ void main() {
     limiter = CountingMalRateLimiter();
     sl.registerSingleton<MalRateLimiter>(limiter);
     jikanLimiter = CountingJikanRateLimiter();
-    sl.registerSingleton<MalAuthService>(MalAuthService(client: MockClient((http.Request request) async {
-      return http.Response('{}', 200);
-    })));
+    auth = FakeMalAuthService();
+    sl.registerSingleton<MalAuthService>(auth);
+    userRepository = MockUserRepositoryMal();
+    sl.registerSingleton<UserRepositoryMal>(userRepository);
+    // The repository helper's real contract (`user_repository_mal.dart:232`):
+    // a live pair is handed back untouched, an expired one is rotated, and a
+    // missing refresh token keeps the stored pair. Rotation is the shared fake.
+    when(() => userRepository.ensureFreshAccessToken(any())).thenAnswer(
+      (Invocation invocation) => ensureFresh(invocation.positionalArguments.first as MalUserModel),
+    );
     requests = <http.Request>[];
     status = 200;
     body = jsonEncode(<String, dynamic>{'data': <Object>[], 'paging': <String, dynamic>{}});
@@ -128,12 +191,217 @@ void main() {
       expect(request.headers.containsKey('Authorization'), isFalse);
     });
 
-    test('a logged account sends the client id AND the bearer token', () async {
-      await service.getAnimeRanking('airing', user: malUser());
+    test('a public ranking read never touches the token store, even for a logged account', () async {
+      await service.getAnimeRanking('airing');
+      await service.getMangaRanking('bypopularity');
+
+      expect(requests, hasLength(2));
+      for (final http.Request request in requests) {
+        expect(request.headers['X-MAL-CLIENT-ID'], config.malClientId);
+        expect(request.headers.containsKey('Authorization'), isFalse,
+            reason: 'public reads are anonymous by design: no argument can attach the account token');
+      }
+      verifyNever(() => userRepository.ensureFreshAccessToken(any()));
+      expect(auth.refreshes, 0);
+    });
+  });
+
+  group('authenticated details (token refresh)', () {
+    String detailsBody(int id, String title) {
+      return jsonEncode(<String, dynamic>{
+        'id': id,
+        'title': title,
+        'my_list_status': <String, dynamic>{
+          'status': 'watching',
+          'num_episodes_watched': 7,
+          'score': 9,
+        },
+      });
+    }
+
+    test('an expired pair is refreshed once and the fresh token is used', () async {
+      auth.expired = true;
+      body = detailsBody(5114, 'Fullmetal Alchemist: Brotherhood');
+
+      final dynamic node = await service.getAnimeDetails(5114, malUser());
 
       final http.Request request = single();
+      expect(request.headers['Authorization'], 'Bearer fresh-access',
+          reason: 'the stale token must never reach the wire');
       expect(request.headers['X-MAL-CLIENT-ID'], config.malClientId);
-      expect(request.headers['Authorization'], 'Bearer access-token-1');
+      expect(auth.refreshes, 1, reason: 'exactly one refresh');
+      verify(() => userRepository.ensureFreshAccessToken(any())).called(1);
+      expect(limiter.acquires, 1);
+      expect(node.id, 5114);
+    });
+
+    test('a live pair is not refreshed', () async {
+      body = detailsBody(5114, 'Fullmetal Alchemist: Brotherhood');
+
+      await service.getAnimeDetails(5114, malUser());
+
+      expect(single().headers['Authorization'], 'Bearer access-token-1');
+      expect(auth.refreshes, 0);
+      verify(() => userRepository.ensureFreshAccessToken(any())).called(1);
+    });
+
+    test('getMangaDetails takes the same refresh path', () async {
+      auth.expired = true;
+      body = detailsBody(2, 'Berserk');
+
+      await service.getMangaDetails(2, malUser());
+
+      final http.Request request = single();
+      expect(request.url.path, '/v2/manga/2');
+      expect(request.headers['Authorization'], 'Bearer fresh-access');
+      expect(auth.refreshes, 1);
+    });
+
+    test('an expired token with no refresh token is never sent (anonymous read)', () async {
+      auth.expired = true;
+      body = detailsBody(5114, 'Fullmetal Alchemist: Brotherhood');
+
+      final dynamic node = await service.getAnimeDetails(
+        5114,
+        malUser().copyWith(refreshToken: '', accessTokenExpiresAt: '2000-01-01T00:00:00.000'),
+      );
+
+      final http.Request request = single();
+      expect(request.headers.containsKey('Authorization'), isFalse,
+          reason: 'a 401 would take the whole details page down instead of just its list state');
+      expect(request.headers['X-MAL-CLIENT-ID'], config.malClientId);
+      expect(auth.refreshes, 0, reason: 'there is nothing to refresh with');
+      expect(node.id, 5114, reason: 'the public part of the page still renders');
+    });
+
+    test('a refused refresh (invalid_grant) degrades to anonymous, never to an error', () async {
+      auth.expired = true;
+      body = detailsBody(5114, 'Fullmetal Alchemist: Brotherhood');
+      when(() => userRepository.ensureFreshAccessToken(any())).thenThrow(
+        const MalAuthException(400, 'invalid_grant: The provided authorization grant is invalid.'),
+      );
+
+      final dynamic node = await service.getAnimeDetails(5114, malUser());
+
+      final http.Request request = single();
+      expect(request.headers.containsKey('Authorization'), isFalse,
+          reason: 'the tracker policy leaves the session alive; the details page degrades instead');
+      expect(request.headers['X-MAL-CLIENT-ID'], config.malClientId);
+      expect(node.id, 5114);
+      expect(auth.refreshes, 0);
+      expect(limiter.acquires, 1);
+    });
+  });
+
+  group('authenticated details 401 guard (tracker mirror)', () {
+    String detailsBody(int id, String title) {
+      return jsonEncode(<String, dynamic>{
+        'id': id,
+        'title': title,
+        'my_list_status': <String, dynamic>{
+          'status': 'watching',
+          'num_episodes_watched': 7,
+          'score': 9,
+        },
+      });
+    }
+
+    /// Scripted per-request answers, in order (the shared harness only holds
+    /// one `(status, body)` pair, and this guard needs two different ones).
+    void scriptAnswers(List<(int, String)> answers) {
+      service = MalMetadataService(
+        client: MockClient((http.Request request) async {
+          requests.add(request);
+          final (int status, String body) = answers.removeAt(0);
+          return http.Response(body, status);
+        }),
+        jikanRateLimiter: jikanLimiter,
+      );
+    }
+
+    test('a clock-valid but revoked token 401s, force-refreshes once and repeats with the fresh token', () async {
+      // The stored pair has not expired by the clock; MAL rejects it anyway
+      // (revoked/rotated), which is exactly what the tracker guard covers.
+      scriptAnswers(<(int, String)>[
+        (401, '{"error":"invalid_token"}'),
+        (200, detailsBody(5114, 'Fullmetal Alchemist: Brotherhood')),
+      ]);
+
+      final dynamic node = await service.getAnimeDetails(5114, malUser());
+
+      expect(requests, hasLength(2), reason: 'one refusal, one repeat — no more');
+      expect(requests.first.headers['Authorization'], 'Bearer access-token-1');
+      expect(requests.last.headers['Authorization'], 'Bearer fresh-access',
+          reason: 'the repeat carries the rotated token');
+      expect(auth.refreshes, 1, reason: 'exactly one forced refresh');
+      verify(() => userRepository.ensureFreshAccessToken(any())).called(2);
+      // ^ the first (live) attempt plus the forced one, through the same helper.
+      expect(limiter.acquires, 2, reason: 'both GETs take a MAL budget grant');
+      expect(node.id, 5114);
+      expect(node.myListStatus.status, 'watching');
+    });
+
+    test('getMangaDetails takes the same 401 guard', () async {
+      scriptAnswers(<(int, String)>[
+        (401, '{"error":"invalid_token"}'),
+        (200, detailsBody(2, 'Berserk')),
+      ]);
+
+      final dynamic node = await service.getMangaDetails(2, malUser());
+
+      expect(requests, hasLength(2));
+      expect(requests.first.url.path, '/v2/manga/2');
+      expect(requests.last.headers['Authorization'], 'Bearer fresh-access');
+      expect(auth.refreshes, 1);
+      expect(node.id, 2);
+    });
+
+    test('a second 401 stops after two requests and degrades without throwing', () async {
+      scriptAnswers(<(int, String)>[
+        (401, '{"error":"invalid_token"}'),
+        (401, '{"error":"invalid_token"}'),
+      ]);
+
+      final dynamic node = await service.getAnimeDetails(5114, malUser());
+
+      expect(requests, hasLength(2), reason: 'a pair of refusals ends the guard: no third request');
+      expect(requests.last.headers['Authorization'], 'Bearer fresh-access');
+      expect(auth.refreshes, 1, reason: 'the repeat is attempted once, then given up');
+      expect(limiter.acquires, 2);
+      expect(node.id, 0, reason: 'the empty payload is the anonymous details shape the repository folds');
+    });
+
+    test('a non-401 mid-flight failure is not treated as a token problem', () async {
+      scriptAnswers(<(int, String)>[(500, '{"message":"server error"}')]);
+
+      await expectLater(service.getAnimeDetails(5114, malUser()), throwsA(isA<HttpServerException>()));
+      expect(requests, hasLength(1), reason: 'a 500 is not retried and never spends a refresh');
+      expect(auth.refreshes, 0);
+    });
+
+    test('a refused forced refresh falls back to the anonymous read', () async {
+      scriptAnswers(<(int, String)>[
+        (401, '{"error":"invalid_token"}'),
+        (200, detailsBody(5114, 'Fullmetal Alchemist: Brotherhood')),
+      ]);
+      when(() => userRepository.ensureFreshAccessToken(any())).thenAnswer(
+        (Invocation invocation) async {
+          final MalUserModel given = invocation.positionalArguments.first as MalUserModel;
+          // The first call hands the live pair back; the forced one (empty
+          // expiry) is refused by the token endpoint.
+          if (!auth.isAccessTokenExpired(given)) return given;
+          throw const MalAuthException(400, 'invalid_grant: The provided authorization grant is invalid.');
+        },
+      );
+
+      final dynamic node = await service.getAnimeDetails(5114, malUser());
+
+      expect(requests, hasLength(2));
+      expect(requests.last.headers.containsKey('Authorization'), isFalse,
+          reason: 'with the refresh refused the read goes anonymous instead of failing');
+      expect(requests.last.headers['X-MAL-CLIENT-ID'], config.malClientId);
+      expect(auth.refreshes, 0);
+      expect(node.id, 5114);
     });
   });
 

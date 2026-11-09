@@ -40,6 +40,17 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(UserModel.empty());
+    registerFallbackValue(MalUserModel(
+      id: '0',
+      name: 'fallback',
+      settings: SettingsModel.empty(),
+      avatarImage: '',
+      bannerImage: '',
+      accessToken: '',
+      refreshToken: '',
+      accessTokenExpiresAt: '',
+      profileUrl: '',
+    ));
   });
 
   setUp(() async {
@@ -54,6 +65,12 @@ void main() {
     userRepository = MockUserRepositoryMal();
     sl.registerSingleton<UserRepositoryMal>(userRepository);
     when(() => userRepository.updateUserInfo(any())).thenAnswer((_) async {});
+    // The tracker helper's live-pair contract: the metadata service asks it for
+    // a usable account before every authenticated details read, and here the
+    // stored pair is already live, so nothing rotates.
+    when(() => userRepository.ensureFreshAccessToken(any())).thenAnswer(
+      (Invocation invocation) async => invocation.positionalArguments.first as MalUserModel,
+    );
     wire = MalWireDouble();
     sl.registerSingleton<MalUserRateService>(MalUserRateService(client: wire.createClient()));
     sl.registerSingleton<MalMetadataService>(MalMetadataService(
