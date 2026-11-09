@@ -384,7 +384,12 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
       name: currentUser.nickname,
       // The account provider setting is what every factory routes on; a
       // Shikimori account must carry it from the moment it is created.
-      settings: SettingsModel.empty().copyWith(userService: Service.shikimori),
+      // WP #164: Shikimori is in ProviderCapabilities.metadataProviders, so a
+      // new account browses Shikimori details too.
+      settings: SettingsModel.empty().copyWith(
+        userService: Service.shikimori,
+        metadataService: Service.shikimori,
+      ),
       avatarImage: currentUser.avatarUrl,
       bannerImage: '',
       accessToken: token.accessToken,

@@ -295,7 +295,10 @@ void main() {
     return ShikimoriUserModel(
       id: '23456789',
       name: 'tester',
-      settings: SettingsModel.empty().copyWith(userService: Service.shikimori),
+      settings: SettingsModel.empty().copyWith(
+        userService: Service.shikimori,
+        metadataService: Service.shikimori,
+      ),
       avatarImage: '',
       bannerImage: '',
       accessToken: 'stored-access',
@@ -697,6 +700,11 @@ void main() {
       expect(stored, isNotNull, reason: 'the box is keyed by user.name');
       expect(stored!.accessToken, 'access-1');
       expect(stored.refreshToken, 'refresh-1');
+      final SettingsModel storedSettings = stored.settings as SettingsModel;
+      expect(storedSettings.userService, Service.shikimori);
+      expect(storedSettings.metadataService, Service.shikimori,
+          reason: 'WP #164: a new Shikimori account browses Shikimori metadata, '
+              'not the AniList default');
 
       // A successful login is the one request that does close the callback.
       await expectLater(getCallback(callback), throwsA(isA<SocketException>()));
