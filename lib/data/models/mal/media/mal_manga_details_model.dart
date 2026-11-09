@@ -17,8 +17,8 @@ part 'mal_manga_details_model.g.dart';
 /// The MyAnimeList extras of one `GET /manga/{id}?fields=…` answer (WP #166).
 /// Mirror of `MalAnimeDetailsModel`: `related_manga` feeds
 /// `recommendedMangas`, `my_list_status` folds onto the shared entry, and
-/// `characters` stays empty (MAL v2 has no character data; Jikan is calendar
-/// only — SPEC §4).
+/// `characters` stays empty (MAL v2 has no character data, and the Jikan v4
+/// feeds carry none — SPEC §2/§4).
 @freezed
 abstract class MalMangaDetailsModel with _$MalMangaDetailsModel implements MangaDetails {
   const MalMangaDetailsModel._();

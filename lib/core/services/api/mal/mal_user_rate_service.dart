@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
@@ -242,8 +244,22 @@ class MalUserRateService {
     if (body != null) {
       request.bodyFields = body;
     }
-    final http.StreamedResponse streamed = await _client.send(request);
-    return http.Response.fromStream(streamed);
+    // Bounded like the metadata transport (`config.malRequestTimeout`): a dead
+    // host must not hang a list read for the OS SYN-retry window.
+    try {
+      final http.StreamedResponse streamed =
+          await _client.send(request).timeout(config.malRequestTimeout);
+      return await http.Response.fromStream(streamed);
+    } on TimeoutException {
+      _logger.e("$method $uri timed out after ${config.malRequestTimeout.inSeconds} s");
+      throw HttpTimeoutException("$method $uri timed out after ${config.malRequestTimeout.inSeconds} s");
+    } on SocketException catch (e) {
+      _logger.e("$method $uri hit a socket error: $e");
+      throw HttpNetworkException("$method $uri failed: ${e.message}");
+    } on http.ClientException catch (e) {
+      _logger.e("$method $uri hit a client error: $e");
+      throw HttpNetworkException("$method $uri failed: ${e.message}");
+    }
   }
 
   void _expectOk(http.Response response) {

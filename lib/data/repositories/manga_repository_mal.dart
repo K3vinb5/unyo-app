@@ -26,12 +26,13 @@ import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/repositories/manga_repository.dart';
 
 /// MyAnimeList manga repository: metadata (`GET /manga/ranking`, `/manga/{id}`
-/// and Jikan `/v4/manga` through [MalMetadataService]) plus the WP #156
+/// and the Jikan v4 `/manga` API through [MalMetadataService]) plus the WP #156
 /// list-entry tracker half ([MalUserRateService]).
 ///
 /// Mirror of `MangaRepositoryShikimori` method-by-method. The amended SPEC §2
 /// map is hybrid: MAL v2 serves the popularity ranking, details and covers,
-/// while Jikan serves the status-ordered feeds and the advanced search (v2
+/// while the Jikan v4 API (Tenrai by default; a self-hosted Jikan compatible)
+/// serves the status-ordered feeds and the advanced search (v2
 /// `/manga` has no `publishing`/`upcoming` ranking type — probed 400 — and
 /// ignores `status`/`sort` on `/manga`). Details fold `my_list_status` onto the
 /// shared entry and `related_manga` onto `recommendedMangas`; covers come from
@@ -221,6 +222,9 @@ class MangaRepositoryMal with RepositoryMixin implements MangaRepository {
     } on HttpServerException catch (e) {
       _logger.e("MyAnimeList details for ${selectedManga.id} failed: $e");
       return (false, MalMangaDetailsModel.empty());
+    } on HttpException catch (e) {
+      _logger.e("MyAnimeList details for ${selectedManga.id} failed (${e.message})");
+      return (false, MalMangaDetailsModel.empty());
     }
   }
 
@@ -319,6 +323,9 @@ class MangaRepositoryMal with RepositoryMixin implements MangaRepository {
     } on HttpServerException catch (e) {
       _logger.e("Jikan $reason failed (${e.statusCode}), status=$status type=$type");
       return (false, <Manga>[]);
+    } on HttpException catch (e) {
+      _logger.e("Jikan $reason failed (${e.message}), status=$status type=$type");
+      return (false, <Manga>[]);
     }
   }
 
@@ -338,6 +345,11 @@ class MangaRepositoryMal with RepositoryMixin implements MangaRepository {
       return (true, _visible(_mapNodes(response), loggedUser));
     } on HttpServerException catch (e) {
       _logger.e("MyAnimeList $reason failed: $e");
+      return (false, const <Manga>[]);
+    } on HttpException catch (e) {
+      // Dead host / timed-out call (WP #166 live evidence): degrade exactly
+      // like a server error instead of letting the exception escape.
+      _logger.e("MyAnimeList $reason failed (${e.message})");
       return (false, const <Manga>[]);
     }
   }

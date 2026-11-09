@@ -27,6 +27,10 @@ import 'package:unyo/domain/entities/user/user.dart';
 import '../../core/services/api/shikimori/support/fake_rate_limiter_clock.dart';
 import 'support/fake_mal_wire.dart';
 
+/// The Jikan v4 base is a config value (`config.jikanBaseEndpoint`, Tenrai by
+/// default), so route assertions derive from it instead of a literal host.
+final Uri jikanBase = Uri.parse(config.jikanBaseEndpoint);
+
 /// Repository-level tests for [MangaRepositoryMal].
 ///
 /// The real [MalUserRateService] runs under the repository (wire faked at the
@@ -311,8 +315,8 @@ void main() {
       expect(ok, isTrue);
       expect(mangas, hasLength(1), reason: 'the hentai entry is gated out with NSFW off');
       final RecordedMalRequest request = wire.requests.single;
-      expect(request.url.host, 'api.jikan.moe');
-      expect(request.url.path, '/v4/manga');
+      expect(request.url.host, jikanBase.host);
+      expect(request.url.path, '${jikanBase.path}/manga');
       final Map<String, String> query = request.url.queryParameters;
       expect(query['status'], 'publishing', reason: 'v2 /manga/ranking rejects ranking_type=publishing (400)');
       expect(query['order_by'], 'members');
@@ -342,7 +346,7 @@ void main() {
 
       expect(ok, isTrue);
       final Map<String, String> query = wire.requests.single.url.queryParameters;
-      expect(wire.requests.single.url.path, '/v4/manga');
+      expect(wire.requests.single.url.path, '${jikanBase.path}/manga');
       expect(query['status'], 'complete');
       expect(query['order_by'], 'end_date');
       expect(query['sort'], 'desc');
@@ -355,7 +359,7 @@ void main() {
       await repository.getUpcomingMangas(1, malUser());
 
       final Map<String, String> query = wire.requests.single.url.queryParameters;
-      expect(wire.requests.single.url.path, '/v4/manga');
+      expect(wire.requests.single.url.path, '${jikanBase.path}/manga');
       expect(query['status'], 'upcoming', reason: 'v2 /manga/ranking rejects ranking_type=upcoming (400)');
       expect(query['order_by'], 'start_date');
       expect(query['sort'], 'asc');
@@ -522,8 +526,8 @@ void main() {
 
       expect(results, hasLength(1), reason: 'the hentai entry is dropped while NSFW is off');
       final RecordedMalRequest request = wire.requests.single;
-      expect(request.url.host, 'api.jikan.moe');
-      expect(request.url.path, '/v4/manga');
+      expect(request.url.host, jikanBase.host);
+      expect(request.url.path, '${jikanBase.path}/manga');
       final Map<String, String> query = request.url.queryParameters;
       expect(query['q'], 'Berserk');
       expect(query['genres'], '27,1', reason: 'genre labels become MAL/Jikan ids');

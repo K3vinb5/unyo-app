@@ -165,4 +165,22 @@ void main() {
       );
     });
   });
+
+  group('scoreOutOfTen', () {
+    // Domain scores are 0-100 (SPEC §3): AniList native, Shikimori/MAL scaled
+    // ×10 from a 0-10 source. Everything a user reads shows the 0-10 form.
+    final List<(int domain, String shown)> cases = <(int, String)>[
+      (90, '9.0'), // MAL mean 9.0 (live evidence: ★ 90 → ★ 9.0)
+      (95, '9.5'), // MAL mean 9.5 (Berserk)
+      (87, '8.7'), // AniList averageScore 87
+      (100, '10.0'),
+      (0, '0.0'), // unset sentinel
+    ];
+
+    for (final (int domain, String shown) in cases) {
+      test('$domain → $shown', () {
+        expect(TextUtils.scoreOutOfTen(domain), shown);
+      });
+    }
+  });
 }

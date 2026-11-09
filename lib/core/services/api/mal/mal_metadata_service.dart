@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
@@ -44,6 +46,10 @@ import 'package:unyo/data/repositories/user_repository_mal.dart';
 ///   first — the same budget the tracker writes use (2 rps, 403 = throttle);
 /// * `fields=` is always explicit. The constants below are the only field sets,
 ///   so a metadata read never depends on MAL's trimmed-by-default answer;
+/// * every read is **bounded** by [requestTimeout] (`config.malRequestTimeout`,
+///   15 s): a dead host raises [HttpTimeoutException]/[HttpNetworkException] and
+///   the repository degrades to `(false, [])` — without it a blackholed host
+///   stalled the serial browse refresh for the OS SYN-retry window each call;
 /// * `/anime` and `/manga` are **not called at all**: their only accepted
 ///   input is a required `q` (probed: `400 {"message":"invalid q"}`) plus
 ///   paging and `fields`, and status/type/genre/sort are silently ignored
@@ -57,32 +63,40 @@ import 'package:unyo/data/repositories/user_repository_mal.dart';
 /// * `page`/`limit` are the caller's units: `offset = (page - 1) * limit` on
 ///   MAL, a 1-based `page` and a 25-capped `limit` on Jikan.
 ///
-/// ## Jikan
+/// ## Jikan v4
 ///
 /// MAL v2 has no schedule endpoint and cannot filter or order a catalog, so
 /// [getSchedules] and the [getJikanAnimeList]/[getJikanMangaList] feeds are
-/// served by Jikan — a third-party mirror of MyAnimeList — which can filter
-/// (`q`, `type`, `status`, `rating`, `genres`, `order_by`, `sort`). Jikan is
-/// **not** MyAnimeList: it has its own rate limits (3/s, 60/min) and serves
-/// public data anonymously, so it takes a [JikanRateLimiter] grant (never a
-/// [MalRateLimiter] one) and no MAL headers. It is read-only and every call is
-/// listed here — nothing else may use it (SPEC §2/§4).
+/// served by the **Jikan v4 wire API** (`config.jikanBaseEndpoint`), which can
+/// filter (`q`, `type`, `status`, `rating`, `genres`, `order_by`, `sort`).
+/// Jikan's own public deployment was discontinued on 2026-10-01, so the base
+/// is a config value: **Tenrai** by default (`https://api.tenrai.org/v1`,
+/// exact v4 schema — drop-in) or a self-hosted Jikan. It is **not**
+/// MyAnimeList: its budget is separate (~120 req/min/IP on Tenrai, and the
+/// limiter stays at a gentler 60/min), it serves public data anonymously, so
+/// it takes a [JikanRateLimiter] grant (never a [MalRateLimiter] one) and no
+/// MAL headers. It is read-only and every call is listed here — nothing else
+/// may use it (SPEC §2/§4).
 class MalMetadataService {
   static const int defaultLimit = 50;
 
   /// MAL's documented hard cap for `/anime` and `/manga`.
   static const int maxLimit = 100;
 
-  /// Jikan's `/v4/schedules` endpoint — the weekly calendar.
-  static const String jikanScheduleEndpoint = 'https://api.jikan.moe/v4/schedules';
+  /// Jikan v4 wire shape (served by Tenrai by default; a self-hosted Jikan is
+  /// compatible — only `config.jikanBaseEndpoint` moves).
+  ///
+  /// `/schedules` — the weekly calendar.
+  static const String jikanScheduleEndpoint =
+      '${config.jikanBaseEndpoint}/schedules';
 
-  /// Jikan's filtered anime catalog (`/v4/anime`).
-  static const String jikanAnimeEndpoint = 'https://api.jikan.moe/v4/anime';
+  /// Jikan v4 wire shape — `/anime`, the filtered anime catalog.
+  static const String jikanAnimeEndpoint = '${config.jikanBaseEndpoint}/anime';
 
-  /// Jikan's filtered manga catalog (`/v4/manga`).
-  static const String jikanMangaEndpoint = 'https://api.jikan.moe/v4/manga';
+  /// Jikan v4 wire shape — `/manga`, the filtered manga catalog.
+  static const String jikanMangaEndpoint = '${config.jikanBaseEndpoint}/manga';
 
-  /// Jikan caps `limit` at 25 on every list endpoint.
+  /// Jikan v4 caps `limit` at 25 on every list endpoint.
   static const int jikanMaxLimit = 25;
 
   /// Carousel/search node fields: exactly what [MalAnimeModel] fills.
@@ -115,6 +129,10 @@ class MalMetadataService {
       'related_anime,related_manga,recommendations,serialization{name}';
 
   final http.Client _client;
+
+  /// Hard ceiling for one HTTP GET (SPEC §4, `config.malRequestTimeout`).
+  /// Injectable so the timeout path is testable without spending 15 s.
+  final Duration requestTimeout;
   final Logger _logger = sl<Logger>();
 
   /// Jikan's own budget; one instance per service (see [JikanRateLimiter]).
@@ -129,8 +147,11 @@ class MalMetadataService {
   /// mapping tests do not register it.
   UserRepositoryMal get _userRepository => sl<UserRepositoryMal>();
 
-  MalMetadataService({http.Client? client, JikanRateLimiter? jikanRateLimiter})
-      : _client = client ?? http.Client(),
+  MalMetadataService({
+    http.Client? client,
+    JikanRateLimiter? jikanRateLimiter,
+    this.requestTimeout = config.malRequestTimeout,
+  })  : _client = client ?? http.Client(),
         _jikanRateLimiter = jikanRateLimiter ?? JikanRateLimiter();
 
   // ------------------------------------------------------------------ anime
@@ -222,7 +243,7 @@ class MalMetadataService {
 
   // ----------------------------------------------------------------- Jikan
 
-  /// One `GET https://api.jikan.moe/v4/anime` page — the only place the app can
+  /// One `GET <jikanBaseEndpoint>/anime` page — the only place the app can
   /// **filter and order** a catalog (MAL v2 `/anime` accepts `q` + paging only;
   /// SPEC §2).
   ///
@@ -261,7 +282,7 @@ class MalMetadataService {
     );
   }
 
-  /// One `GET https://api.jikan.moe/v4/manga` page (see [getJikanAnimeList]).
+  /// One `GET <jikanBaseEndpoint>/manga` page (see [getJikanAnimeList]).
   /// Manga has no `rating` filter — adult entries are excluded by `sfw` only.
   Future<JikanMediaListEntity> getJikanMangaList({
     String? q,
@@ -291,7 +312,7 @@ class MalMetadataService {
     );
   }
 
-  /// `GET https://api.jikan.moe/v4/schedules` — the calendar feed.
+  /// `GET <jikanBaseEndpoint>/schedules` — the calendar feed.
   ///
   /// [day] is a Jikan weekday filter (`monday` … `sunday`, or `unknown`/
   /// `other`); omit it for the whole week.
@@ -468,9 +489,33 @@ class MalMetadataService {
     MalUserModel? user,
   }) async {
     await _rateLimiter.acquire(reason: reason);
-    final http.Response response = await _client.get(uri, headers: _headers(user));
+    final http.Response response = await _get(uri, headers: _headers(user), reason: reason);
     _expectOk(response);
     return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// One GET with the hard timeout, mapping transport failures onto the app's
+  /// shared HTTP exceptions so every caller can degrade the same way:
+  /// [HttpTimeoutException] when the deadline passes and [HttpNetworkException]
+  /// for a dead/unreachable host. Without this a dead host blocks the serial
+  /// browse refresh for the OS SYN-retry window (WP #166 live evidence).
+  Future<http.Response> _get(
+    Uri uri, {
+    Map<String, String>? headers,
+    required String reason,
+  }) async {
+    try {
+      return await _client.get(uri, headers: headers).timeout(requestTimeout);
+    } on TimeoutException {
+      _logger.e("$reason timed out after ${requestTimeout.inSeconds} s ($uri)");
+      throw HttpTimeoutException("$reason timed out after ${requestTimeout.inSeconds} s");
+    } on SocketException catch (e) {
+      _logger.e("$reason hit a socket error ($uri): $e");
+      throw HttpNetworkException("$reason failed: ${e.message}");
+    } on http.ClientException catch (e) {
+      _logger.e("$reason hit a client error ($uri): $e");
+      throw HttpNetworkException("$reason failed: ${e.message}");
+    }
   }
 
   /// One Jikan read: a [JikanRateLimiter] grant, no MAL headers, and a single
@@ -479,11 +524,11 @@ class MalMetadataService {
   /// an empty page — never a hot retry loop.
   Future<Map<String, dynamic>> _getJikanJson(Uri uri, {required String reason}) async {
     await _jikanRateLimiter.acquire(reason: reason);
-    http.Response response = await _client.get(uri);
+    http.Response response = await _get(uri, reason: reason);
     if (response.statusCode == 429) {
       await _jikanRateLimiter.backoff(reason: reason);
       await _jikanRateLimiter.acquire(reason: reason);
-      response = await _client.get(uri);
+      response = await _get(uri, reason: reason);
     }
     _expectOk(response);
     return jsonDecode(response.body) as Map<String, dynamic>;

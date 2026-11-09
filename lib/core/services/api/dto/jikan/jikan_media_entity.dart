@@ -3,13 +3,15 @@ import 'package:unyo/generated/json/jikan_media_entity.g.dart';
 import 'dart:convert';
 export 'package:unyo/generated/json/jikan_media_entity.g.dart';
 
-/// `GET https://api.jikan.moe/v4/anime` and `/v4/manga` (WP #166).
+/// Jikan v4 wire shape (served by Tenrai by default; a self-hosted Jikan is
+/// compatible).
 ///
-/// Jikan is a third-party mirror of MyAnimeList. MAL v2's `/anime` and `/manga`
-/// accept only `q` (required), paging and `fields` — no status/type/genre/sort
-/// filter — so the catalog feeds and advanced search are served from Jikan,
-/// which does filter and order (SPEC §2). Read-only, anonymous, and trimmed to
-/// the fields the [MalAnimeModel]/[MalMangaModel] Jikan factories fill.
+/// `GET <jikanBaseEndpoint>/anime` and `/manga` (WP #166). MAL v2's `/anime` and
+/// `/manga` accept only `q` (required), paging and `fields` — no
+/// status/type/genre/sort filter — so the catalog feeds and advanced search
+/// are served from the Jikan v4 API, which does filter and order (SPEC §2).
+/// Read-only, anonymous, and trimmed to the fields the
+/// [MalAnimeModel]/[MalMangaModel] Jikan factories fill.
 ///
 /// Both spaces share this shape: the anime node carries `episodes`, `aired`,
 /// `rating`, `duration` and `season`; the manga node carries `chapters`,

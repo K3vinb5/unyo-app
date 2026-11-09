@@ -11,6 +11,7 @@ import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/anime_card_list.dart';
+import 'package:unyo/presentation/widgets/styled/banner_carousel_fallback.dart';
 import 'package:unyo/presentation/widgets/styled/card_row_frame.dart';
 import 'package:unyo/presentation/widgets/styled/media_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_banner_carousel.dart';
@@ -85,12 +86,17 @@ class _AnimeViewState extends State<_AnimeView> {
             mainAxisSize: MainAxisSize.max,
             children: [
               SizedBox(height: 20.0.h),
-              state.banners.isEmpty
-                  ? const BannerCarouselSkeleton()
-                  : UnyoBannerCarousel(
-                    animeList: state.banners,
-                    onTapAnime: context.read<AnimeCubit>().navigateToAnimeDetails,
-                  ),
+              switch (bannerHeaderMode(
+                isLoading: state.isLoading,
+                hasBanners: state.banners.isNotEmpty,
+              )) {
+                BannerHeaderMode.skeleton => const BannerCarouselSkeleton(),
+                BannerHeaderMode.fallback => const BannerCarouselFallback(),
+                BannerHeaderMode.carousel => UnyoBannerCarousel(
+                  animeList: state.banners,
+                  onTapAnime: context.read<AnimeCubit>().navigateToAnimeDetails,
+                ),
+              },
               const SizedBox(height: 40,),
               SizedBox(
                 height: 90,

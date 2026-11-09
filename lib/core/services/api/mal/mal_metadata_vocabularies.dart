@@ -7,12 +7,13 @@ import 'package:collection/collection.dart';
 /// enums, so — unlike Shikimori, which fetches `genres(entryType:)` — these are
 /// constants.
 ///
-/// The filter values are **Jikan's**, not MAL v2's: since the amended SPEC §2
-/// the advanced search runs on `api.jikan.moe/v4/anime|manga`, because MAL's
-/// `/anime` and `/manga` accept only a required `q` plus paging and silently
-/// ignore every other filter. Only the axes Jikan actually filters are exposed
-/// (`type`, `status`, `genres`, `order_by` + `sort`); a value Jikan does not
-/// define is never sent.
+/// The filter values are **Jikan v4's**, not MAL v2's: since the amended SPEC
+/// §2 the advanced search runs on the Jikan v4 API (`config.jikanBaseEndpoint`
+/// — Tenrai by default, a self-hosted Jikan compatible) at `/anime|manga`,
+/// because MAL's `/anime` and `/manga` accept only a required `q` plus paging
+/// and silently ignore every other filter. Only the axes it actually filters
+/// are exposed (`type`, `status`, `genres`, `order_by` + `sort`); a value it
+/// does not define is never sent.
 ///
 /// Sources:
 /// * genre ids/names: MAL's official genre list (the ids are stable and shared

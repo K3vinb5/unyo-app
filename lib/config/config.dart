@@ -68,6 +68,29 @@ const String malOAuthScope = 'write:users';
 /// returned `expires_in` is trusted when present).
 const Duration malAccessTokenTtl = Duration(hours: 1);
 const Duration malAccessTokenExpiryMargin = Duration(minutes: 1);
+// Jikan v4 catalog configuration (WP #166)
+/// Base of the **Jikan v4** API that serves MyAnimeList's catalog feeds, its
+/// advanced search and the weekly schedule.
+///
+/// Jikan's public API host was discontinued on 2026-10-01
+/// (`jikan-me/jikan-rest#613`) — it is dead for everyone, so the app must not
+/// point at it. The default is **Tenrai** (`https://api.tenrai.org/v1`), a
+/// drop-in Jikan v4 mirror: same paths, same query parameters, same response
+/// schema (probed 200 on `/anime`, `/manga` and `/schedules`, filters
+/// included). A **self-hosted Jikan** is a drop-in alternative as well —
+/// identical schema, so only this constant moves.
+///
+/// Budget: Tenrai allows ~120 requests/min/IP; `JikanRateLimiter` deliberately
+/// stays at the older, gentler 60/min (429 → back off once, then degrade).
+const String jikanBaseEndpoint = 'https://api.tenrai.org/v1';
+/// Hard ceiling for one MyAnimeList / Jikan v4 HTTP request (WP #166).
+///
+/// Without it a dead host hangs the call for the OS SYN-retry window (~110 s
+/// observed live, `research/unyo-166-mal-metadata-proof/EVIDENCE.md` §1), and
+/// the browse refresh is serial, so one unreachable provider froze the whole
+/// screen. 15 s is comfortably above the healthy p99 (MAL answered in <0.5 s
+/// on the same host) and keeps a dead provider to a bounded, per-call stall.
+const Duration malRequestTimeout = Duration(seconds: 15);
 // Anizip API configuration
 const String anizipBaseEndpoint = 'https://api.ani.zip';
 // Aniski API configuration

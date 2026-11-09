@@ -6,6 +6,7 @@ import 'package:unyo/presentation/widgets/styled/hover_animated_container.dart';
 import 'package:unyo/presentation/widgets/styled/media_cover_silhouette.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
+import 'package:unyo/presentation/widgets/text/text_utils.dart';
 
 /// Format labels too long for the meta row at its normal size.
 const Set<String> _compactFormatLabels = <String>{
@@ -145,7 +146,7 @@ class MediaCard extends StatelessWidget {
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 Text(
-                                                  "  ${(score / 10)}",
+                                                  "  ${TextUtils.scoreOutOfTen(score)}",
                                                   style: TextStyle(
                                                     color:
                                                         ColorScheme.of(context)

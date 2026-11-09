@@ -28,6 +28,10 @@ import 'package:unyo/domain/entities/user/user.dart';
 import '../../core/services/api/shikimori/support/fake_rate_limiter_clock.dart';
 import 'support/fake_mal_wire.dart';
 
+/// The Jikan v4 base is a config value (`config.jikanBaseEndpoint`, Tenrai by
+/// default), so route assertions derive from it instead of a literal host.
+final Uri jikanBase = Uri.parse(config.jikanBaseEndpoint);
+
 /// Repository-level tests for [AnimeRepositoryMal].
 ///
 /// The real [MalUserRateService] runs under the repository (the wire is faked
@@ -293,8 +297,8 @@ void main() {
       expect(ok, isTrue);
       expect(animes, hasLength(1), reason: 'the Rx entry is dropped while NSFW is off');
       final RecordedMalRequest request = wire.requests.single;
-      expect(request.url.host, 'api.jikan.moe');
-      expect(request.url.path, '/v4/anime');
+      expect(request.url.host, jikanBase.host);
+      expect(request.url.path, '${jikanBase.path}/anime');
       final Map<String, String> query = request.url.queryParameters;
       expect(query['status'], 'airing', reason: 'Jikan status vocabulary, not MAL\'s currently_airing');
       expect(query['order_by'], 'start_date');
@@ -326,7 +330,7 @@ void main() {
 
       expect(ok, isTrue);
       final Map<String, String> query = wire.requests.single.url.queryParameters;
-      expect(wire.requests.single.url.path, '/v4/anime');
+      expect(wire.requests.single.url.path, '${jikanBase.path}/anime');
       expect(query['status'], 'complete');
       expect(query['order_by'], 'end_date');
       expect(query['sort'], 'desc');
@@ -372,6 +376,20 @@ void main() {
       expect(trending, isEmpty);
       expect(releasedOk, isFalse);
       expect(released, isEmpty);
+    });
+
+    test('a dead host degrades to (false, []) instead of freezing the refresh', () async {
+      // WP #166 live evidence §3.2: the blackholed Jikan host used to hang each
+      // serial browse call for the OS SYN-retry window. The transport now raises
+      // a typed HttpException, and the repository degrades exactly like a 5xx.
+      wire.answers = <Object>[const SocketException('Network is unreachable')];
+
+      final (bool ok, List<Anime> animes) =
+          await repository.getRecentlyReleasedAnimes(1, malUser());
+
+      expect(ok, isFalse);
+      expect(animes, isEmpty);
+      expect(wire.requests, hasLength(1), reason: 'the read was attempted once');
     });
   });
 
@@ -447,8 +465,8 @@ void main() {
       expect(results, hasLength(1), reason: 'the adult entry is dropped while NSFW is off');
       expect(results.single.id, 58514);
       final RecordedMalRequest request = wire.requests.single;
-      expect(request.url.host, 'api.jikan.moe');
-      expect(request.url.path, '/v4/anime');
+      expect(request.url.host, jikanBase.host);
+      expect(request.url.path, '${jikanBase.path}/anime');
       final Map<String, String> query = request.url.queryParameters;
       expect(query.containsKey('q'), isFalse, reason: 'a blank query is not a filter');
       expect(query['type'], 'tv');
@@ -564,14 +582,14 @@ void main() {
       expect(wire.requests, hasLength(7));
       expect(
         wire.requests.map((RecordedMalRequest request) => request.url.host).toSet(),
-        <String>{'api.jikan.moe'},
+        <String>{jikanBase.host},
       );
       expect(
         wire.requests.map((RecordedMalRequest request) => request.url.queryParameters['filter']).toList(),
         <String>['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
       );
       for (final RecordedMalRequest request in wire.requests) {
-        expect(request.url.path, '/v4/schedules');
+        expect(request.url.path, '${jikanBase.path}/schedules');
         expect(request.url.queryParameters['limit'], '25');
         expect(request.url.queryParameters['page'], '1');
         expect(request.headers.containsKey('authorization'), isFalse);

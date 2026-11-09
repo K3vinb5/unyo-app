@@ -1,5 +1,7 @@
 // External dependencies
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -18,6 +20,10 @@ import 'package:unyo/core/services/api/mal/mal_rate_limiter.dart';
 import 'package:unyo/data/models/mal/user/mal_user_model.dart';
 import 'package:unyo/data/repositories/user_repository_mal.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
+
+/// The Jikan v4 base is a config value (`config.jikanBaseEndpoint`, Tenrai by
+/// default), so route assertions derive from it instead of a literal host.
+final Uri jikanBase = Uri.parse(config.jikanBaseEndpoint);
 
 class MockUserRepositoryMal extends Mock implements UserRepositoryMal {}
 
@@ -522,7 +528,7 @@ void main() {
   });
 
   group('getJikanAnimeList', () {
-    test('asks api.jikan.moe/v4/anime with the filter set, no MAL headers and no MAL grant', () async {
+    test('asks the configured Jikan base /anime with the filter set, no MAL headers and no MAL grant', () async {
       body = jsonEncode(<String, dynamic>{'data': <Object>[], 'pagination': <String, dynamic>{}});
       await service.getJikanAnimeList(
         status: 'airing',
@@ -533,8 +539,8 @@ void main() {
       );
 
       final http.Request request = single();
-      expect(request.url.host, 'api.jikan.moe');
-      expect(request.url.path, '/v4/anime');
+      expect(request.url.host, jikanBase.host);
+      expect(request.url.path, '${jikanBase.path}/anime');
       final Map<String, String> query = request.url.queryParameters;
       expect(query['status'], 'airing');
       expect(query['order_by'], 'start_date');
@@ -611,7 +617,7 @@ void main() {
   });
 
   group('getJikanMangaList', () {
-    test('asks api.jikan.moe/v4/manga without the anime-only rating filter', () async {
+    test('asks the configured Jikan base /manga without the anime-only rating filter', () async {
       await service.getJikanMangaList(
         status: 'publishing',
         orderBy: 'members',
@@ -621,7 +627,7 @@ void main() {
       );
 
       final http.Request request = single();
-      expect(request.url.path, '/v4/manga');
+      expect(request.url.path, '${jikanBase.path}/manga');
       final Map<String, String> query = request.url.queryParameters;
       expect(query['status'], 'publishing');
       expect(query['order_by'], 'members');
@@ -635,13 +641,13 @@ void main() {
   });
 
   group('getSchedules (Jikan)', () {
-    test('asks api.jikan.moe/v4/schedules with the day filter, on the Jikan budget', () async {
+    test('asks the configured Jikan base /schedules with the day filter, on the Jikan budget', () async {
       body = jsonEncode(<String, dynamic>{'data': <Object>[], 'pagination': <String, dynamic>{}});
       await service.getSchedules(day: 'Monday');
 
       final http.Request request = single();
-      expect(request.url.host, 'api.jikan.moe');
-      expect(request.url.path, '/v4/schedules');
+      expect(request.url.host, jikanBase.host);
+      expect(request.url.path, '${jikanBase.path}/schedules');
       expect(request.url.queryParameters['filter'], 'monday');
       expect(request.url.queryParameters['limit'], '25');
       expect(request.url.queryParameters['page'], '1');
@@ -661,6 +667,102 @@ void main() {
       status = 500;
       body = '{"message":"server error"}';
       await expectLater(service.getSchedules(), throwsA(isA<HttpServerException>()));
+    });
+  });
+
+  group('Jikan base configuration', () {
+    test('defaults to Tenrai, the drop-in Jikan v4 mirror', () {
+      expect(config.jikanBaseEndpoint, 'https://api.tenrai.org/v1',
+          reason: "Jikan's public API host was discontinued 2026-10-01");
+      expect(MalMetadataService.jikanAnimeEndpoint,
+          '${config.jikanBaseEndpoint}/anime');
+      expect(MalMetadataService.jikanMangaEndpoint,
+          '${config.jikanBaseEndpoint}/manga');
+      expect(MalMetadataService.jikanScheduleEndpoint,
+          '${config.jikanBaseEndpoint}/schedules');
+    });
+
+    test('builds every Jikan URL from the config base, not a hardcoded host',
+        () async {
+      await service.getJikanAnimeList();
+      await service.getJikanMangaList();
+      await service.getSchedules();
+
+      expect(requests, hasLength(3));
+      expect(
+        requests.map((http.Request request) => request.url.toString()).toList(),
+        everyElement(startsWith('${config.jikanBaseEndpoint}/')),
+      );
+      expect(
+        requests.map((http.Request request) => request.url.path).toList(),
+        <String>[
+          '${jikanBase.path}/anime',
+          '${jikanBase.path}/manga',
+          '${jikanBase.path}/schedules',
+        ],
+      );
+    });
+  });
+
+  group('transport isolation', () {
+    // WP #166 live evidence §3.2: the metadata transport had no timeout, so a
+    // blackholed host stalled each read for the OS SYN-retry window (~110 s)
+    // and the serial browse refresh froze. Every read is now bounded and a
+    // transport failure surfaces as a typed HttpException the repositories
+    // already degrade on.
+    late MalMetadataService shortTimeout;
+
+    setUp(() {
+      shortTimeout = MalMetadataService(
+        client: MockClient((http.Request request) {
+          requests.add(request);
+          return Completer<http.Response>().future;
+        }),
+        jikanRateLimiter: jikanLimiter,
+        requestTimeout: const Duration(milliseconds: 20),
+      );
+    });
+
+    test('a hung MAL read raises HttpTimeoutException, not a 110 s stall',
+        () async {
+      await expectLater(
+        shortTimeout.getAnimeRanking('airing'),
+        throwsA(isA<HttpTimeoutException>()),
+      );
+    });
+
+    test('a hung Jikan read raises HttpTimeoutException too', () async {
+      await expectLater(
+        shortTimeout.getJikanAnimeList(),
+        throwsA(isA<HttpTimeoutException>()),
+      );
+      expect(jikanLimiter.acquires, 1,
+          reason: 'the grant is still taken before the bounded GET');
+    });
+
+    test('an unreachable host raises HttpNetworkException on both transports',
+        () async {
+      final MalMetadataService unreachable = MalMetadataService(
+        client: MockClient((http.Request request) async {
+          throw const SocketException('Network is unreachable');
+        }),
+        jikanRateLimiter: jikanLimiter,
+        requestTimeout: const Duration(milliseconds: 20),
+      );
+
+      await expectLater(
+        unreachable.getAnimeRanking('airing'),
+        throwsA(isA<HttpNetworkException>()),
+      );
+      await expectLater(
+        unreachable.getJikanAnimeList(),
+        throwsA(isA<HttpNetworkException>()),
+      );
+    });
+
+    test('defaults to the 15 s budget', () {
+      expect(service.requestTimeout, config.malRequestTimeout);
+      expect(config.malRequestTimeout, const Duration(seconds: 15));
     });
   });
 }

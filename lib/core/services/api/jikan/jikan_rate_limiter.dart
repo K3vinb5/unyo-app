@@ -4,22 +4,24 @@ import 'package:logger/logger.dart';
 // Internal dependencies
 import 'package:unyo/core/di/locator.dart';
 
-/// The request budget for **Jikan** reads (WP #166).
+/// The request budget for **Jikan v4** reads (WP #166).
 ///
-/// Jikan is not MyAnimeList and does not share `MalRateLimiter`'s budget: it
-/// publishes its own limits (**60 requests per
-/// minute**, 3 per second) and answers a throttled request with **HTTP 429**.
-/// Since WP #166's amended map, Jikan serves the calendar, the catalog feeds
-/// MAL v2 cannot filter and the advanced search, so every `api.jikan.moe` call
-/// acquires from exactly one instance of this class.
+/// The Jikan v4 API (served by Tenrai by default — Jikan's own public
+/// deployment was discontinued 2026-10-01; see `config.jikanBaseEndpoint`) is
+/// not MyAnimeList and does not share `MalRateLimiter`'s budget: it publishes
+/// its own allowance (**~120 requests per minute per IP** on Tenrai) and
+/// answers a throttled request with **HTTP 429**. Since WP #166's amended map,
+/// the v4 API serves the calendar, the catalog feeds MAL v2 cannot filter and
+/// the advanced search, so every Jikan v4 call acquires from exactly one
+/// instance of this class.
 ///
 /// `MalRateLimiter`'s algorithm fits (strict spacing instead of a burst: two
 /// instant grants can trip a per-second throttle while averaging under the
 /// limit), but its constants and its "one budget for all MyAnimeList traffic"
 /// contract do not, so the shape is mirrored here instead of bending that
 /// class: **500 ms spacing** (~2 rps, the gentle pace the SPEC asks for) plus a
-/// sliding 60 s window of [perMinuteLimit] grants, which is what actually caps
-/// a sustained run at Jikan's 60/min.
+/// sliding 60 s window of [perMinuteLimit] grants — deliberately half of
+/// Tenrai's allowance, so a sustained run stays well inside it (SPEC §2).
 ///
 /// Calls are also **serialized**: `acquire()` chains on the previous grant, so
 /// two callers can never pass the gate together (Jikan's limit is enforced
@@ -30,7 +32,8 @@ class JikanRateLimiter {
   /// Minimum distance between two grants: ~2/s, spread out instead of bursty.
   static const Duration minSpacing = Duration(milliseconds: 500);
 
-  /// Sliding-window cap: Jikan's documented 60 requests per minute.
+  /// Sliding-window cap: 60 per minute, half of Tenrai's ~120/min/IP budget
+  /// (the older Jikan public limit, kept as a margin).
   static const int perMinuteLimit = 60;
 
   /// Width of the sliding window the cap applies to.

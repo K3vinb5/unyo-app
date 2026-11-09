@@ -3,13 +3,14 @@ import 'package:unyo/generated/json/jikan_schedule_entity.g.dart';
 import 'dart:convert';
 export 'package:unyo/generated/json/jikan_schedule_entity.g.dart';
 
-/// `GET https://api.jikan.moe/v4/schedules` (WP #166, calendar only).
+/// Jikan v4 wire shape (served by Tenrai by default; a self-hosted Jikan is
+/// compatible).
 ///
-/// Jikan is a third-party mirror of MyAnimeList. MAL v2 has no schedule
-/// endpoint; since the amended SPEC §2 map Jikan also serves the catalog feeds
-/// and the advanced search (`JikanMediaListEntity`), all of it under one
-/// `JikanRateLimiter` (60/min, 429 = throttle). Read-only, anonymous, and the
-/// node is trimmed to what a calendar card needs.
+/// `GET <jikanBaseEndpoint>/schedules` (WP #166, calendar). MAL v2 has no
+/// schedule endpoint; since the amended SPEC §2 map the same v4 API also
+/// serves the catalog feeds and the advanced search (`JikanMediaListEntity`),
+/// all of it under one `JikanRateLimiter` (60/min, 429 = throttle). Read-only,
+/// anonymous, and the node is trimmed to what a calendar card needs.
 @JsonSerializable()
 class JikanScheduleEntity {
 	late List<JikanScheduleData> data = [];

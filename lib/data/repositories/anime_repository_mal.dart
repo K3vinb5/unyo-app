@@ -33,8 +33,9 @@ import 'package:unyo/domain/repositories/anime_repository.dart';
 /// `AnimeRepositoryShikimori`'s method-by-method shape. Per the amended SPEC §2
 /// map the source is hybrid: MAL v2 serves the ranking feeds, details and
 /// covers (`/anime` cannot filter anything but `q`, which is required), while
-/// Jikan serves the two date-ordered catalog feeds, the schedule and the
-/// advanced search — the only source that can filter and order. The transport
+/// the Jikan v4 API (Tenrai by default; a self-hosted Jikan compatible) serves
+/// the two date-ordered catalog feeds, the schedule and the advanced search —
+/// the only source that can filter and order. The transport
 /// owns the rate-limiter grants (MAL and Jikan have separate budgets), the
 /// explicit `fields=` sets, the `X-MAL-CLIENT-ID` header and the `nsfw`/`sfw`
 /// parameters, so every read shares the platform's budget and honours the app's
@@ -217,6 +218,11 @@ class AnimeRepositoryMal with RepositoryMixin implements AnimeRepository {
     } on HttpServerException catch (e) {
       _logger.e("MyAnimeList ranking $rankingType failed (${e.statusCode})");
       return (false, <Anime>[]);
+    } on HttpException catch (e) {
+      // Dead host / timed-out call (WP #166 live evidence): degrade exactly
+      // like a server error instead of letting the exception escape.
+      _logger.e("MyAnimeList ranking $rankingType failed (${e.message})");
+      return (false, <Anime>[]);
     }
   }
 
@@ -249,6 +255,9 @@ class AnimeRepositoryMal with RepositoryMixin implements AnimeRepository {
       return (true, _visible(_mapJikanNodes(feed), loggedUser));
     } on HttpServerException catch (e) {
       _logger.e("Jikan $reason failed (${e.statusCode}), status=$status type=$type");
+      return (false, <Anime>[]);
+    } on HttpException catch (e) {
+      _logger.e("Jikan $reason failed (${e.message}), status=$status type=$type");
       return (false, <Anime>[]);
     }
   }
@@ -302,6 +311,9 @@ class AnimeRepositoryMal with RepositoryMixin implements AnimeRepository {
       return (true, MalAnimeDetailsModel.fromNode(node));
     } on HttpServerException catch (e) {
       _logger.e("MyAnimeList details for ${selectedAnime.id} failed (${e.statusCode})");
+      return (false, MalAnimeDetailsModel.empty());
+    } on HttpException catch (e) {
+      _logger.e("MyAnimeList details for ${selectedAnime.id} failed (${e.message})");
       return (false, MalAnimeDetailsModel.empty());
     }
   }
@@ -395,10 +407,10 @@ class AnimeRepositoryMal with RepositoryMixin implements AnimeRepository {
 
   // ------------------------------------------------------------ calendar
 
-  /// The weekly schedule. MAL v2 has **no** schedule endpoint, so this is the
-  /// one Jikan read in the app (SPEC §4; the transport documents why nothing
-  /// else may use it). Jikan's `/v4/schedules` exposes a broadcast *weekday*
-  /// (`Mondays`) and an `HH:mm` slot, but never a per-episode airing timestamp
+  /// The weekly schedule. MAL v2 has **no** schedule endpoint, so this is a
+  /// Jikan v4 read like the filters (SPEC §2/§4). The v4 `/schedules`
+  /// endpoint exposes a broadcast *weekday* (`Mondays`) and an `HH:mm` slot,
+  /// but never a per-episode airing timestamp
   /// — `anime.aired` is the series range, not the next episode — so dated keys
   /// could only be produced by fabricating data. The buckets therefore stay
   /// weekday names, Monday → Sunday, which is also how MAL's own calendar is
@@ -407,8 +419,8 @@ class AnimeRepositoryMal with RepositoryMixin implements AnimeRepository {
   /// by broadcast time, and the calendar tab renders the key as its label, so
   /// the key is user-visible text (do not rename it casually).
   ///
-  /// Jikan pages at 25 entries, so the week is fetched one weekday filter at a
-  /// time; a day that fails keeps the rest of the week. `page > 1` is empty for
+  /// The v4 API pages at 25 entries, so the week is fetched one weekday
+  /// filter at a time; a day that fails keeps the rest of the week. `page > 1` is empty for
   /// the same reason as Shikimori's unpaginated calendar.
   @override
   Future<Map<String, List<Anime>>> getCalendarReleases(int page, User loggedUser) async {
@@ -427,6 +439,8 @@ class AnimeRepositoryMal with RepositoryMixin implements AnimeRepository {
         }
       } on HttpServerException catch (e) {
         _logger.w("Jikan schedules for $weekday failed (${e.statusCode}); keeping the rest of the week");
+      } on HttpException catch (e) {
+        _logger.w("Jikan schedules for $weekday failed (${e.message}); keeping the rest of the week");
       }
     }
     return _groupByWeekday(dated, loggedUser);

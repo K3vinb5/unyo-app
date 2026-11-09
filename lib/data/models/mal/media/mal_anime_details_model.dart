@@ -21,8 +21,8 @@ part 'mal_anime_details_model.g.dart';
 ///   empty "add to list" entry, like `MalUserRateService.getEntry`.
 /// * `recommendedAnimes` are the `related_anime` nodes. MAL's `related_manga`
 ///   cannot be rendered as an anime card, so it is not mapped here.
-/// * `characters` is always empty: **MAL v2 exposes no character data** and
-///   Jikan is off-limits beyond the calendar (SPEC §4).
+/// * `characters` is always empty: **MAL v2 exposes no character data**, and
+///   the Jikan v4 feeds (catalog/search only — SPEC §2/§4) carry none.
 @freezed
 abstract class MalAnimeDetailsModel with _$MalAnimeDetailsModel implements AnimeDetails {
   const MalAnimeDetailsModel._();

@@ -1,5 +1,15 @@
 
 class TextUtils {
+  /// Domain media scores are **0–100** (`Anime.averageScore`, SPEC §3): AniList
+  /// answers 0–100 natively, and the Shikimori and MAL mappers both scale a
+  /// 0–10 source (`score`, `mean`) up by ten. Every user-facing score shows the
+  /// familiar 0–10 form of that value, so the conversion lives here once:
+  /// details pages used to print the raw 0–100 int (a 9.0 MAL mean rendered as
+  /// "★ 90", WP #166 live evidence) while cards divided by ten.
+  static String scoreOutOfTen(int scoreOutOfHundred) {
+    return (scoreOutOfHundred / 10).toStringAsFixed(1);
+  }
+
   /// Provider descriptions arrive in three markup dialects and this is the one
   /// place that turns them into display-ready prose:
   ///
