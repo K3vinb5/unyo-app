@@ -20,6 +20,10 @@ import 'package:unyo/core/services/api/dto/anizip/anizip_id_mappings_entity.dart
 import 'package:unyo/core/services/api/dto/extensions/aniyomi_repo_json_entity.dart';
 import 'package:unyo/core/services/api/dto/extensions/tachiyomi_repo_json_entity.dart';
 import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
+import 'package:unyo/core/services/api/dto/jikan/jikan_schedule_entity.dart';
+import 'package:unyo/core/services/api/dto/mal/mal_anime_node.dart';
+import 'package:unyo/core/services/api/dto/mal/mal_manga_node.dart';
+import 'package:unyo/core/services/api/dto/mal/mal_media_list_entity.dart';
 import 'package:unyo/core/services/api/dto/mal/mal_my_list_status_entity.dart';
 import 'package:unyo/core/services/api/dto/mal/mal_token_entity.dart';
 import 'package:unyo/core/services/api/dto/mal/mal_user_entity.dart';
@@ -447,6 +451,99 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		if(<GithubReleaseAssets>[] is M){
 			return data.map<GithubReleaseAssets>((Map<String, dynamic> e) => GithubReleaseAssets.fromJson(e)).toList() as M;
 		}
+		if(<JikanScheduleEntity>[] is M){
+			return data.map<JikanScheduleEntity>((Map<String, dynamic> e) => JikanScheduleEntity.fromJson(e)).toList() as M;
+		}
+		if(<JikanScheduleData>[] is M){
+			return data.map<JikanScheduleData>((Map<String, dynamic> e) => JikanScheduleData.fromJson(e)).toList() as M;
+		}
+		if(<JikanScheduleDataImages>[] is M){
+			return data.map<JikanScheduleDataImages>((Map<String, dynamic> e) => JikanScheduleDataImages.fromJson(e)).toList() as M;
+		}
+		if(<JikanScheduleDataImagesJpg>[] is M){
+			return data.map<JikanScheduleDataImagesJpg>((Map<String, dynamic> e) => JikanScheduleDataImagesJpg.fromJson(e)).toList() as M;
+		}
+		if(<JikanScheduleDataBroadcast>[] is M){
+			return data.map<JikanScheduleDataBroadcast>((Map<String, dynamic> e) => JikanScheduleDataBroadcast.fromJson(e)).toList() as M;
+		}
+		if(<JikanScheduleDataAired>[] is M){
+			return data.map<JikanScheduleDataAired>((Map<String, dynamic> e) => JikanScheduleDataAired.fromJson(e)).toList() as M;
+		}
+		if(<JikanSchedulePagination>[] is M){
+			return data.map<JikanSchedulePagination>((Map<String, dynamic> e) => JikanSchedulePagination.fromJson(e)).toList() as M;
+		}
+		if(<MalAnimeNode>[] is M){
+			return data.map<MalAnimeNode>((Map<String, dynamic> e) => MalAnimeNode.fromJson(e)).toList() as M;
+		}
+		if(<MalAnimeNodeMainPicture>[] is M){
+			return data.map<MalAnimeNodeMainPicture>((Map<String, dynamic> e) => MalAnimeNodeMainPicture.fromJson(e)).toList() as M;
+		}
+		if(<MalAnimeNodeAlternativeTitles>[] is M){
+			return data.map<MalAnimeNodeAlternativeTitles>((Map<String, dynamic> e) => MalAnimeNodeAlternativeTitles.fromJson(e)).toList() as M;
+		}
+		if(<MalAnimeNodeGenres>[] is M){
+			return data.map<MalAnimeNodeGenres>((Map<String, dynamic> e) => MalAnimeNodeGenres.fromJson(e)).toList() as M;
+		}
+		if(<MalAnimeNodeStudios>[] is M){
+			return data.map<MalAnimeNodeStudios>((Map<String, dynamic> e) => MalAnimeNodeStudios.fromJson(e)).toList() as M;
+		}
+		if(<MalAnimeNodeStartSeason>[] is M){
+			return data.map<MalAnimeNodeStartSeason>((Map<String, dynamic> e) => MalAnimeNodeStartSeason.fromJson(e)).toList() as M;
+		}
+		if(<MalAnimeNodeBroadcast>[] is M){
+			return data.map<MalAnimeNodeBroadcast>((Map<String, dynamic> e) => MalAnimeNodeBroadcast.fromJson(e)).toList() as M;
+		}
+		if(<MalAnimeNodeRelated>[] is M){
+			return data.map<MalAnimeNodeRelated>((Map<String, dynamic> e) => MalAnimeNodeRelated.fromJson(e)).toList() as M;
+		}
+		if(<MalAnimeNodeRelatedNode>[] is M){
+			return data.map<MalAnimeNodeRelatedNode>((Map<String, dynamic> e) => MalAnimeNodeRelatedNode.fromJson(e)).toList() as M;
+		}
+		if(<MalAnimeNodeRelatedNodeMainPicture>[] is M){
+			return data.map<MalAnimeNodeRelatedNodeMainPicture>((Map<String, dynamic> e) => MalAnimeNodeRelatedNodeMainPicture.fromJson(e)).toList() as M;
+		}
+		if(<MalMangaNode>[] is M){
+			return data.map<MalMangaNode>((Map<String, dynamic> e) => MalMangaNode.fromJson(e)).toList() as M;
+		}
+		if(<MalMangaNodeMainPicture>[] is M){
+			return data.map<MalMangaNodeMainPicture>((Map<String, dynamic> e) => MalMangaNodeMainPicture.fromJson(e)).toList() as M;
+		}
+		if(<MalMangaNodeAlternativeTitles>[] is M){
+			return data.map<MalMangaNodeAlternativeTitles>((Map<String, dynamic> e) => MalMangaNodeAlternativeTitles.fromJson(e)).toList() as M;
+		}
+		if(<MalMangaNodeGenres>[] is M){
+			return data.map<MalMangaNodeGenres>((Map<String, dynamic> e) => MalMangaNodeGenres.fromJson(e)).toList() as M;
+		}
+		if(<MalMangaNodeRelated>[] is M){
+			return data.map<MalMangaNodeRelated>((Map<String, dynamic> e) => MalMangaNodeRelated.fromJson(e)).toList() as M;
+		}
+		if(<MalMangaNodeRelatedNode>[] is M){
+			return data.map<MalMangaNodeRelatedNode>((Map<String, dynamic> e) => MalMangaNodeRelatedNode.fromJson(e)).toList() as M;
+		}
+		if(<MalMangaNodeRelatedNodeMainPicture>[] is M){
+			return data.map<MalMangaNodeRelatedNodeMainPicture>((Map<String, dynamic> e) => MalMangaNodeRelatedNodeMainPicture.fromJson(e)).toList() as M;
+		}
+		if(<MalAnimeListEntity>[] is M){
+			return data.map<MalAnimeListEntity>((Map<String, dynamic> e) => MalAnimeListEntity.fromJson(e)).toList() as M;
+		}
+		if(<MalAnimeListEntityData>[] is M){
+			return data.map<MalAnimeListEntityData>((Map<String, dynamic> e) => MalAnimeListEntityData.fromJson(e)).toList() as M;
+		}
+		if(<MalAnimeListEntityRanking>[] is M){
+			return data.map<MalAnimeListEntityRanking>((Map<String, dynamic> e) => MalAnimeListEntityRanking.fromJson(e)).toList() as M;
+		}
+		if(<MalMangaListEntity>[] is M){
+			return data.map<MalMangaListEntity>((Map<String, dynamic> e) => MalMangaListEntity.fromJson(e)).toList() as M;
+		}
+		if(<MalMangaListEntityData>[] is M){
+			return data.map<MalMangaListEntityData>((Map<String, dynamic> e) => MalMangaListEntityData.fromJson(e)).toList() as M;
+		}
+		if(<MalMangaListEntityRanking>[] is M){
+			return data.map<MalMangaListEntityRanking>((Map<String, dynamic> e) => MalMangaListEntityRanking.fromJson(e)).toList() as M;
+		}
+		if(<MalPagingEntity>[] is M){
+			return data.map<MalPagingEntity>((Map<String, dynamic> e) => MalPagingEntity.fromJson(e)).toList() as M;
+		}
 		if(<MalMyListStatusEntity>[] is M){
 			return data.map<MalMyListStatusEntity>((Map<String, dynamic> e) => MalMyListStatusEntity.fromJson(e)).toList() as M;
 		}
@@ -787,6 +884,37 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		(TachiyomiRepoJsonSources).toString(): TachiyomiRepoJsonSources.fromJson,
 		(GithubReleaseEntity).toString(): GithubReleaseEntity.fromJson,
 		(GithubReleaseAssets).toString(): GithubReleaseAssets.fromJson,
+		(JikanScheduleEntity).toString(): JikanScheduleEntity.fromJson,
+		(JikanScheduleData).toString(): JikanScheduleData.fromJson,
+		(JikanScheduleDataImages).toString(): JikanScheduleDataImages.fromJson,
+		(JikanScheduleDataImagesJpg).toString(): JikanScheduleDataImagesJpg.fromJson,
+		(JikanScheduleDataBroadcast).toString(): JikanScheduleDataBroadcast.fromJson,
+		(JikanScheduleDataAired).toString(): JikanScheduleDataAired.fromJson,
+		(JikanSchedulePagination).toString(): JikanSchedulePagination.fromJson,
+		(MalAnimeNode).toString(): MalAnimeNode.fromJson,
+		(MalAnimeNodeMainPicture).toString(): MalAnimeNodeMainPicture.fromJson,
+		(MalAnimeNodeAlternativeTitles).toString(): MalAnimeNodeAlternativeTitles.fromJson,
+		(MalAnimeNodeGenres).toString(): MalAnimeNodeGenres.fromJson,
+		(MalAnimeNodeStudios).toString(): MalAnimeNodeStudios.fromJson,
+		(MalAnimeNodeStartSeason).toString(): MalAnimeNodeStartSeason.fromJson,
+		(MalAnimeNodeBroadcast).toString(): MalAnimeNodeBroadcast.fromJson,
+		(MalAnimeNodeRelated).toString(): MalAnimeNodeRelated.fromJson,
+		(MalAnimeNodeRelatedNode).toString(): MalAnimeNodeRelatedNode.fromJson,
+		(MalAnimeNodeRelatedNodeMainPicture).toString(): MalAnimeNodeRelatedNodeMainPicture.fromJson,
+		(MalMangaNode).toString(): MalMangaNode.fromJson,
+		(MalMangaNodeMainPicture).toString(): MalMangaNodeMainPicture.fromJson,
+		(MalMangaNodeAlternativeTitles).toString(): MalMangaNodeAlternativeTitles.fromJson,
+		(MalMangaNodeGenres).toString(): MalMangaNodeGenres.fromJson,
+		(MalMangaNodeRelated).toString(): MalMangaNodeRelated.fromJson,
+		(MalMangaNodeRelatedNode).toString(): MalMangaNodeRelatedNode.fromJson,
+		(MalMangaNodeRelatedNodeMainPicture).toString(): MalMangaNodeRelatedNodeMainPicture.fromJson,
+		(MalAnimeListEntity).toString(): MalAnimeListEntity.fromJson,
+		(MalAnimeListEntityData).toString(): MalAnimeListEntityData.fromJson,
+		(MalAnimeListEntityRanking).toString(): MalAnimeListEntityRanking.fromJson,
+		(MalMangaListEntity).toString(): MalMangaListEntity.fromJson,
+		(MalMangaListEntityData).toString(): MalMangaListEntityData.fromJson,
+		(MalMangaListEntityRanking).toString(): MalMangaListEntityRanking.fromJson,
+		(MalPagingEntity).toString(): MalPagingEntity.fromJson,
 		(MalMyListStatusEntity).toString(): MalMyListStatusEntity.fromJson,
 		(MalMyListStatusMediaEntity).toString(): MalMyListStatusMediaEntity.fromJson,
 		(MalTokenEntity).toString(): MalTokenEntity.fromJson,

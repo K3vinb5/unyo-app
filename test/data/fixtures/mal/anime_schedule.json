@@ -1,0 +1,65 @@
+{
+  "data": [
+    {
+      "mal_id": 269,
+      "title": "Bleach",
+      "type": "TV",
+      "episodes": 366,
+      "status": "Finished Airing",
+      "score": 8.2,
+      "rating": "R - 17+ (violence & profanity)",
+      "airing": false,
+      "synopsis": "A teenager becomes a Soul Reaper.",
+      "images": {
+        "jpg": {
+          "image_url": "https://cdn.myanimelist.net/images/anime/3/40451.jpg",
+          "small_image_url": "https://cdn.myanimelist.net/images/anime/3/40451s.jpg",
+          "large_image_url": "https://cdn.myanimelist.net/images/anime/3/40451l.jpg"
+        }
+      },
+      "broadcast": { "day": "Mondays", "time": "23:30", "string": "Mondays at 23:30 (JST)" },
+      "aired": { "from": "2004-10-05T00:00:00+00:00" }
+    },
+    {
+      "mal_id": 52991,
+      "title": "Sousou no Frieren",
+      "type": "TV",
+      "episodes": 28,
+      "status": "Finished Airing",
+      "score": 9.3,
+      "rating": "PG-13 - Teens 13 or older",
+      "airing": false,
+      "synopsis": "An elf mage walks the road south.",
+      "images": {
+        "jpg": {
+          "image_url": "https://cdn.myanimelist.net/images/anime/1015/138006.jpg",
+          "small_image_url": "https://cdn.myanimelist.net/images/anime/1015/138006s.jpg",
+          "large_image_url": "https://cdn.myanimelist.net/images/anime/1015/138006l.jpg"
+        }
+      },
+      "broadcast": { "day": "Tuesdays", "time": "23:00", "string": "Tuesdays at 23:00 (JST)" },
+      "aired": { "from": "2023-09-29T00:00:00+00:00" }
+    },
+    {
+      "mal_id": 9999,
+      "title": "Adult Test Title",
+      "type": "TV",
+      "episodes": 12,
+      "status": "Currently Airing",
+      "score": 7,
+      "rating": "Rx - Hentai",
+      "airing": true,
+      "synopsis": "",
+      "images": {
+        "jpg": {
+          "image_url": "https://cdn.myanimelist.net/images/anime/1/1.jpg",
+          "small_image_url": "https://cdn.myanimelist.net/images/anime/1/1s.jpg",
+          "large_image_url": "https://cdn.myanimelist.net/images/anime/1/1l.jpg"
+        }
+      },
+      "broadcast": { "day": "Mondays", "time": "22:00", "string": "Mondays at 22:00 (JST)" },
+      "aired": { "from": "2026-10-05T00:00:00+00:00" }
+    }
+  ],
+  "pagination": { "last_visible_page": 1, "has_next_page": false }
+}

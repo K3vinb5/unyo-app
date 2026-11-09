@@ -16,16 +16,16 @@ enum Service {
 /// Single place that states which [Service] values are wired up for each role.
 ///
 /// AniList, Shikimori (WP #64 subpart (c)) and MyAnimeList (WP #156) own
-/// accounts/lists, while details can come from AniList or Shikimori only — MAL
-/// is a tracker-only provider (SPEC Q2), so it stays out of
-/// [metadataProviders]. Extend these lists (do not add ad-hoc checks in the
-/// UI) when Kitsu/Simkl user repositories land.
+/// accounts/lists, and all three now serve media details as well — MAL's
+/// metadata reads landed in WP #166, so it joined [metadataProviders] there.
+/// Extend these lists (do not add ad-hoc checks in the UI) when Kitsu/Simkl
+/// user repositories land.
 class ProviderCapabilities {
   const ProviderCapabilities._();
 
   static const List<Service> userProviders = [Service.anilist, Service.shikimori, Service.mal];
 
-  static const List<Service> metadataProviders = [Service.anilist, Service.shikimori];
+  static const List<Service> metadataProviders = [Service.anilist, Service.shikimori, Service.mal];
 
   /// True when [service] can currently be used as the `userService`.
   static bool isUser(Service service) => userProviders.contains(service);

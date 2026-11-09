@@ -1,5 +1,6 @@
 // External dependencies
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logger/logger.dart';
@@ -9,6 +10,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/core/di/locator.dart' show sl;
 import 'package:unyo/core/services/api/mal/mal_auth_service.dart';
+import 'package:unyo/core/services/api/mal/mal_metadata_service.dart';
 import 'package:unyo/core/services/api/mal/mal_rate_limiter.dart';
 import 'package:unyo/core/services/api/mal/mal_user_rate_service.dart';
 import 'package:unyo/data/models/mal/user/mal_user_model.dart';
@@ -16,6 +18,7 @@ import 'package:unyo/data/repositories/manga_repository_mal.dart';
 import 'package:unyo/data/repositories/user_repository_mal.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
+import 'package:unyo/domain/entities/media/manga_details.dart';
 import 'package:unyo/domain/entities/media/title.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
@@ -52,8 +55,13 @@ void main() {
     when(() => userRepository.updateUserInfo(any())).thenAnswer((_) async {});
     wire = MalWireDouble();
     sl.registerSingleton<MalUserRateService>(MalUserRateService(client: wire.createClient()));
+    sl.registerSingleton<MalMetadataService>(MalMetadataService(client: wire.createClient()));
     repository = MangaRepositoryMal();
   });
+
+  Map<String, dynamic> fixture(String name) {
+    return jsonDecode(File('test/data/fixtures/mal/$name').readAsStringSync()) as Map<String, dynamic>;
+  }
 
   MalUserModel malUser() {
     return MalUserModel(
@@ -201,25 +209,358 @@ void main() {
       expect(written.status, MediaListEntryModel.empty().status);
       expect(wire.requests, isEmpty);
     });
+  });
 
-    test('metadata methods are deliberate stubs, not fabricated data', () async {
-      await expectLater(
-        repository.getMangaDetails(manga(), malUser()),
-        throwsA(isA<UnimplementedError>().having(
-          (UnimplementedError e) => e.message,
-          'message',
-          contains('tracker-only provider'),
-        )),
+  group('MangaRepositoryMal browse lists', () {
+    test('popular asks the MAL bypopularity ranking and maps the node, dropping adult titles', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('manga_list_popular.json')))];
+
+      final (bool ok, List<Manga> mangas) = await repository.getPopularMangas(1, malUser());
+
+      expect(ok, isTrue);
+      expect(mangas, hasLength(1), reason: 'the ranking has no nsfw param, so nsfw:black is gated client-side');
+      final RecordedMalRequest request = wire.requests.single;
+      expect(request.method, 'GET');
+      expect(request.url.path, '/v2/manga/ranking');
+      final Map<String, String> query = request.url.queryParameters;
+      expect(query['ranking_type'], 'bypopularity');
+      expect(query['limit'], '50');
+      expect(query['offset'], '0');
+      expect(query['fields'], MalMetadataService.mangaListFields);
+      expect(query.containsKey('nsfw'), isFalse, reason: 'the ranking endpoint has no nsfw parameter');
+      expect(request.headers.containsKey('authorization'), isFalse);
+
+      expect(mangas.any((Manga manga) => manga.id == 2), isFalse, reason: 'Berserk is nsfw:black');
+
+      final Manga chainsawMan = mangas.single;
+      expect(chainsawMan.id, 116778);
+      expect(chainsawMan.idMal, 116778);
+      expect(chainsawMan.title.userPreferred, 'Chainsaw Man');
+      expect(chainsawMan.chapters, 97);
+      expect(chainsawMan.status, 'FINISHED');
+      expect(chainsawMan.averageScore, 86);
+      expect(chainsawMan.isAdult, isFalse);
+      expect(chainsawMan.endDate, '14/12/2020');
+    });
+
+    test('NSFW on keeps the nsfw:black ranking entry and its mapped fields', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('manga_list_popular.json')))];
+
+      final (bool ok, List<Manga> mangas) = await repository.getPopularMangas(
+        1,
+        malUser().copyWith(settings: SettingsModel.empty().copyWith(enableNsfwContent: true)),
       );
-      await expectLater(
-        repository.getPopularMangas(1, malUser()),
-        throwsA(isA<UnimplementedError>()),
+
+      expect(ok, isTrue);
+      expect(mangas, hasLength(2));
+      final Manga berserk = mangas.firstWhere((Manga manga) => manga.id == 2);
+      expect(berserk.idMal, 2);
+      expect(berserk.title.userPreferred, 'Berserk');
+      expect(berserk.averageScore, 95, reason: 'mean 9.47 rides the 0-100 scale');
+      expect(berserk.meanScore, 95);
+      expect(berserk.startDate, '25/8/1989');
+      expect(berserk.format, 'MANGA');
+      expect(berserk.status, 'RELEASING');
+      expect(berserk.genres, containsAll(<String>['Action', 'Seinen']));
+      expect(berserk.chapters, 0);
+      expect(berserk.isAdult, isTrue, reason: 'nsfw:black is MAL adult (manga has no rating field)');
+      expect(berserk.coverImage, contains('157897l.jpg'));
+      expect(berserk.countryOfOrigin, 'JP');
+      expect(berserk.bannerImage, '');
+    });
+
+    test('the carousel page maps onto limit/offset', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('manga_list_popular.json')))];
+
+      await repository.getPopularMangas(3, malUser());
+
+      final Map<String, String> query = wire.requests.single.url.queryParameters;
+      expect(query['limit'], '50');
+      expect(query['offset'], '100');
+    });
+
+    test('trending browses the publishing catalog ordered by members', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('manga_list_popular.json')))];
+
+      final (bool ok, List<Manga> mangas) = await repository.getTrendingMangas(1, malUser());
+
+      expect(ok, isTrue);
+      expect(mangas, hasLength(1), reason: 'the adult catalog entry is gated out with NSFW off');
+      final RecordedMalRequest request = wire.requests.single;
+      expect(request.url.path, '/v2/manga');
+      final Map<String, String> query = request.url.queryParameters;
+      expect(query['status'], 'publishing');
+      expect(query['sort'], '-manga_num_list_users');
+      expect(query['nsfw'], 'false');
+      expect(query['limit'], '50');
+      expect(query['offset'], '0');
+      expect(query['fields'], MalMetadataService.mangaListFields);
+    });
+
+    test('recently completed asks finished titles sorted by end date desc', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('manga_list_popular.json')))];
+
+      await repository.getRecentlyCompletedMangas(1, malUser());
+
+      final Map<String, String> query = wire.requests.single.url.queryParameters;
+      expect(wire.requests.single.url.path, '/v2/manga');
+      expect(query['status'], 'finished');
+      expect(query['sort'], '-manga_end_date');
+    });
+
+    test('upcoming asks unpublished titles sorted by start date asc', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('manga_list_popular.json')))];
+
+      await repository.getUpcomingMangas(1, malUser());
+
+      final Map<String, String> query = wire.requests.single.url.queryParameters;
+      expect(wire.requests.single.url.path, '/v2/manga');
+      expect(query['status'], 'not_yet_published');
+      expect(query['sort'], 'manga_start_date');
+    });
+
+    test('the NSFW setting drives nsfw both ways on /manga', () async {
+      wire.answers = <Object>[
+        (200, jsonEncode(fixture('manga_list_popular.json'))),
+        (200, jsonEncode(fixture('manga_list_popular.json'))),
+      ];
+
+      await repository.getTrendingMangas(1, malUser());
+      expect(wire.requests.first.url.queryParameters['nsfw'], 'false');
+
+      await repository.getTrendingMangas(
+        1,
+        malUser().copyWith(settings: SettingsModel.empty().copyWith(enableNsfwContent: true)),
       );
-      await expectLater(
-        repository.getMediaCoverImages(malUser()),
-        throwsA(isA<UnimplementedError>()),
+      expect(wire.requests.last.url.queryParameters['nsfw'], 'true',
+          reason: 'MAL defaults to the safe catalog, so opt-in must be explicit');
+    });
+
+    test('a non-2xx browse answer degrades to (false, [])', () async {
+      wire.answers = <Object>[(500, jsonEncode(<String, dynamic>{'error': 'server_error'}))];
+
+      final (bool ok, List<Manga> mangas) = await repository.getPopularMangas(1, malUser());
+
+      expect(ok, isFalse);
+      expect(mangas, isEmpty);
+      expect(wire.requests, hasLength(1));
+    });
+  });
+
+  group('MangaRepositoryMal details', () {
+    test('asks /v2/manga/{id} with the details fields and the account token', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('manga_details.json')))];
+
+      final (bool ok, MangaDetails details) = await repository.getMangaDetails(manga(id: 2), malUser());
+
+      expect(ok, isTrue);
+      final RecordedMalRequest request = wire.requests.single;
+      expect(request.url.path, '/v2/manga/2');
+      final String fields = request.url.queryParameters['fields']!;
+      for (final String required in <String>[
+        'my_list_status',
+        'related_manga',
+        'num_volumes',
+        'num_chapters',
+        'authors',
+        'serialization',
+        'alternative_titles',
+        'main_picture',
+        'start_date',
+        'end_date',
+        'synopsis',
+        'mean',
+        'media_type',
+        'status',
+        'nsfw',
+      ]) {
+        expect(fields, contains(required), reason: 'details fields must request $required');
+      }
+      expect(fields, MalMetadataService.mangaDetailsFields);
+      expect(request.headers['authorization'], 'Bearer stored-access');
+
+      expect(details.mediaListEntry.status, 'CURRENT');
+      expect(details.mediaListEntry.progress, 120);
+      expect(details.mediaListEntry.progressVolumes, 3);
+      expect(details.mediaListEntry.score, 9);
+      expect(details.mediaListEntry.repeat, 1);
+      expect(details.characters, isEmpty, reason: 'MAL v2 carries no character data');
+
+      expect(
+        details.recommendedMangas.map((Manga manga) => manga.id).toList(),
+        <int>[3009, 25515],
       );
+      expect(details.recommendedMangas.first.title.romaji, 'Berserk (2016)');
+      expect(details.recommendedMangas.first.idMal, 3009);
+      expect(details.recommendedMangas.last.format, 'ONE_SHOT');
+    });
+
+    test('a non-MyAnimeList user reads details anonymously and gets the empty entry', () async {
+      // MAL omits `my_list_status` on an anonymous read, so the payload here
+      // mirrors that: the repository must not invent an entry.
+      final Map<String, dynamic> payload = fixture('manga_details.json')..remove('my_list_status');
+      wire.answers = <Object>[(200, jsonEncode(payload))];
+
+      final (bool ok, MangaDetails details) = await repository.getMangaDetails(manga(id: 2), UserModel.empty());
+
+      expect(ok, isTrue);
+      expect(wire.requests.single.headers.containsKey('authorization'), isFalse);
+      expect(details.mediaListEntry.status, MediaListEntryModel.empty().status);
+      expect(details.recommendedMangas, hasLength(2));
+    });
+
+    test('a 404 degrades to an empty details model', () async {
+      wire.answers = <Object>[(404, jsonEncode(<String, dynamic>{'error': 'not_found'}))];
+
+      final (bool ok, MangaDetails details) = await repository.getMangaDetails(manga(id: 2), malUser());
+
+      expect(ok, isFalse);
+      expect(details.recommendedMangas, isEmpty);
+      expect(details.characters, isEmpty);
+      expect(details.mediaListEntry.status, MediaListEntryModel.empty().status);
+    });
+
+    test('a non-positive id skips the call', () async {
+      final (bool ok, MangaDetails details) = await repository.getMangaDetails(manga(id: 0), malUser());
+
+      expect(ok, isFalse);
+      expect(details.recommendedMangas, isEmpty);
       expect(wire.requests, isEmpty);
     });
   });
+
+  group('MangaRepositoryMal advanced search filters', () {
+    test('returns the MAL vocabularies in the Shikimori map shape', () async {
+      final Map<String, (bool, List<String>)> filters =
+          await repository.getUserMangaAdvancedSearchFilters(malUser());
+
+      expect(filters['genres']!.$1, isTrue);
+      expect(filters['genres']!.$2, containsAll(<String>['Action', 'Seinen', 'Shounen']));
+      expect(filters['formats']!.$1, isTrue);
+      expect(filters['formats']!.$2, containsAll(<String>['Manga', 'One Shot', 'Doujinshi']));
+      expect(filters['airingStatuses']!.$2, containsAll(<String>['Publishing', 'Finished', 'Not Yet Published']));
+      expect(filters['sortOptions']!.$2, containsAll(<String>['Score', 'Start Date']));
+      expect(filters['countries']!.$1, isFalse, reason: 'MAL v2 has no manga country filter');
+      expect(filters['sortOrders']!.$1, isFalse, reason: 'direction rides the - prefix on the sort field');
+      for (final MapEntry<String, (bool, List<String>)> entry in filters.entries) {
+        if (entry.value.$1) {
+          expect(entry.value.$2, isNotEmpty, reason: '${entry.key} is enabled but has no options');
+        }
+      }
+      expect(wire.requests, isEmpty);
+    });
+  });
+
+  group('MangaRepositoryMal advanced search', () {
+    test('maps q, genre ids, format, status and sort, and drops the country', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('manga_search.json')))];
+
+      final List<Manga> results = await repository.performMangaAdvancedSearch(
+        '  Berserk  ',
+        <String>['Shounen', 'Action'],
+        'One Shot',
+        'Japan',
+        'Publishing',
+        'Score_Desc',
+        2,
+        malUser(),
+      );
+
+      expect(results, hasLength(1));
+      final RecordedMalRequest request = wire.requests.single;
+      expect(request.url.path, '/v2/manga');
+      final Map<String, String> query = request.url.queryParameters;
+      expect(query['q'], 'Berserk');
+      expect(query['genre'], '27,1');
+      expect(query['type'], 'one_shot');
+      expect(query['status'], 'publishing');
+      expect(query['sort'], '-manga_score');
+      expect(query['limit'], '50');
+      expect(query['offset'], '50');
+      expect(query['nsfw'], 'false');
+      expect(query['fields'], MalMetadataService.mangaListFields);
+      expect(query.containsKey('country'), isFalse, reason: 'a country is not a MAL filter');
+      expect(query.containsKey('origin'), isFalse);
+
+      expect(results.single.id, 13);
+      expect(results.single.idMal, 13);
+      expect(results.single.title.userPreferred, 'One Piece');
+      expect(results.single.chapters, 1100);
+      expect(results.single.averageScore, 92);
+      expect(results.single.status, 'RELEASING');
+    });
+
+    test('accepts wire values, keeps empty filters off the wire and honours the NSFW setting', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('manga_search.json')))];
+
+      await repository.performMangaAdvancedSearch(
+        '',
+        <String>[],
+        'manga',
+        null,
+        null,
+        'Start_Date_Asc',
+        1,
+        malUser().copyWith(settings: SettingsModel.empty().copyWith(enableNsfwContent: true)),
+      );
+
+      final Map<String, String> query = wire.requests.single.url.queryParameters;
+      expect(query['type'], 'manga');
+      expect(query['sort'], 'manga_start_date');
+      expect(query.containsKey('q'), isFalse);
+      expect(query.containsKey('status'), isFalse);
+      expect(query.containsKey('genre'), isFalse);
+      expect(query['nsfw'], 'true', reason: 'MAL defaults to the safe catalog, so opt-in must be explicit');
+    });
+
+    test('an unknown sort or filter value is dropped instead of guessed', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('manga_search.json')))];
+
+      await repository.performMangaAdvancedSearch('', <String>[], 'Unknown Kind', null, 'Unknown Status', 'Name_Desc', 1, malUser());
+
+      final Map<String, String> query = wire.requests.single.url.queryParameters;
+      expect(query.containsKey('type'), isFalse);
+      expect(query.containsKey('status'), isFalse);
+      expect(query.containsKey('sort'), isFalse);
+    });
+
+    test('advanced search drops adult results while NSFW is off', () async {
+      wire.answers = <Object>[
+        (200, jsonEncode(fixture('manga_list_popular.json'))),
+        (200, jsonEncode(fixture('manga_list_popular.json'))),
+      ];
+
+      final List<Manga> off = await repository.performMangaAdvancedSearch(
+          '', <String>[], null, null, null, 'Score_Desc', 1, malUser());
+      final List<Manga> on = await repository.performMangaAdvancedSearch(
+        '',
+        <String>[],
+        null,
+        null,
+        null,
+        'Score_Desc',
+        1,
+        malUser().copyWith(settings: SettingsModel.empty().copyWith(enableNsfwContent: true)),
+      );
+
+      expect(off.map((Manga manga) => manga.id), <int>[116778]);
+      expect(on, hasLength(2));
+      expect(on.any((Manga manga) => manga.isAdult), isTrue);
+    });
+  });
+
+  group('MangaRepositoryMal covers', () {
+    test('cover images come from the popular ranking page', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('manga_list_popular.json')))];
+
+      final List<String> covers = await repository.getMediaCoverImages(malUser());
+
+      expect(covers, hasLength(1), reason: 'the nsfw:black entry is gated out and covers stay non-empty');
+      expect(covers.every((String cover) => cover.isNotEmpty), isTrue);
+      final RecordedMalRequest request = wire.requests.single;
+      expect(request.url.path, '/v2/manga/ranking');
+      expect(request.url.queryParameters['ranking_type'], 'bypopularity');
+    });
+  });
 }
+

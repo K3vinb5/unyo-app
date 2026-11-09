@@ -20,6 +20,10 @@ class MediaServiceFactory {
     switch (serviceName?.toLowerCase()) {
       case 'anilist':
         return Service.anilist;
+      // The settings metadata picker lists `TextUtils.capitalize(service.name)`
+      // and hands that string back, so `Mal` must resolve to the MAL provider
+      // just like its brand name does.
+      case 'mal':
       case 'myanimelist':
         return Service.mal;
       case 'kitsu':

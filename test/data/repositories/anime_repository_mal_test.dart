@@ -1,5 +1,6 @@
 // External dependencies
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logger/logger.dart';
@@ -9,6 +10,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/core/di/locator.dart' show sl;
 import 'package:unyo/core/services/api/mal/mal_auth_service.dart';
+import 'package:unyo/core/services/api/mal/mal_metadata_service.dart';
+import 'package:unyo/core/services/api/mal/mal_metadata_vocabularies.dart';
 import 'package:unyo/core/services/api/mal/mal_rate_limiter.dart';
 import 'package:unyo/core/services/api/mal/mal_user_rate_service.dart';
 import 'package:unyo/data/models/mal/user/mal_user_model.dart';
@@ -16,6 +19,7 @@ import 'package:unyo/data/repositories/anime_repository_mal.dart';
 import 'package:unyo/data/repositories/user_repository_mal.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
+import 'package:unyo/domain/entities/media/anime_details.dart';
 import 'package:unyo/domain/entities/media/title.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
@@ -53,14 +57,19 @@ void main() {
     when(() => userRepository.updateUserInfo(any())).thenAnswer((_) async {});
     wire = MalWireDouble();
     sl.registerSingleton<MalUserRateService>(MalUserRateService(client: wire.createClient()));
+    sl.registerSingleton<MalMetadataService>(MalMetadataService(client: wire.createClient()));
     repository = AnimeRepositoryMal();
   });
 
-  MalUserModel malUser() {
+  Map<String, dynamic> fixture(String name) {
+    return jsonDecode(File('test/data/fixtures/mal/$name').readAsStringSync()) as Map<String, dynamic>;
+  }
+
+  MalUserModel malUser({bool enableNsfwContent = false}) {
     return MalUserModel(
       id: '56789',
       name: 'tester',
-      settings: SettingsModel.empty(),
+      settings: SettingsModel.empty().copyWith(enableNsfwContent: enableNsfwContent),
       avatarImage: '',
       bannerImage: '',
       accessToken: 'stored-access',
@@ -209,24 +218,325 @@ void main() {
       expect(wire.requests, isEmpty);
       expect(auth.refreshes, 0);
     });
+  });
 
-    test('metadata methods are deliberate stubs, not fabricated data', () async {
-      await expectLater(
-        repository.getAnimeDetails(anime(), malUser()),
-        throwsA(isA<UnimplementedError>().having(
-          (UnimplementedError e) => e.message,
-          'message',
-          contains('tracker-only provider'),
-        )),
+  group('AnimeRepositoryMal browse lists', () {
+    test('trending asks /v2/anime/ranking?ranking_type=airing and maps the node', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('anime_ranking.json')))];
+
+      final (bool ok, List<Anime> animes) = await repository.getTrendingAnimes(1, malUser());
+
+      expect(ok, isTrue);
+      expect(animes, hasLength(1), reason: 'the adult entry is dropped while NSFW is off');
+      final RecordedMalRequest request = wire.requests.single;
+      expect(request.method, 'GET');
+      expect(request.url.path, '/v2/anime/ranking');
+      expect(request.url.queryParameters['ranking_type'], 'airing');
+      expect(request.url.queryParameters['limit'], '${AnimeRepositoryMal.pageSize}');
+      expect(request.url.queryParameters['offset'], '0');
+      expect(request.url.queryParameters['fields'], MalMetadataService.animeListFields);
+      expect(request.headers.containsKey('authorization'), isFalse, reason: 'browse reads are anonymous');
+
+      final Anime fmab = animes.single;
+      expect(fmab.id, 5114);
+      expect(fmab.idMal, 5114, reason: 'the MAL native id is identity addressing');
+      expect(fmab.title.userPreferred, 'Fullmetal Alchemist: Brotherhood');
+      expect(fmab.averageScore, 91);
+      expect(fmab.meanScore, 91, reason: 'mean 9.1 × 10');
+      expect(fmab.startDate, '5/4/2009');
+      expect(fmab.endDate, '4/7/2010');
+      expect(fmab.genres, <String>['Action', 'Fantasy']);
+      expect(fmab.isAdult, isFalse, reason: 'rating=r is R-17+, not MAL adult (rx/r+)');
+    });
+
+    test('popular asks ranking_type=bypopularity and keeps adult titles when NSFW is on', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('anime_ranking.json')))];
+
+      final (bool ok, List<Anime> animes) = await repository.getPopularAnimes(1, malUser(enableNsfwContent: true));
+
+      expect(ok, isTrue);
+      expect(animes, hasLength(2));
+      expect(wire.requests.single.url.queryParameters['ranking_type'], 'bypopularity');
+      final Anime adult = animes.last;
+      expect(adult.isAdult, isTrue, reason: 'rating=rx / nsfw=black');
+    });
+
+    test('recently released asks status=currently_airing sorted by start date desc', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('anime_catalog.json')))];
+
+      final (bool ok, List<Anime> animes) = await repository.getRecentlyReleasedAnimes(1, malUser());
+
+      expect(ok, isTrue);
+      expect(animes, hasLength(1));
+      final Map<String, String> query = wire.requests.single.url.queryParameters;
+      expect(wire.requests.single.url.path, '/v2/anime');
+      expect(query['status'], 'currently_airing');
+      expect(query['sort'], '-anime_start_date');
+      expect(query['nsfw'], 'false');
+      expect(query['limit'], '${AnimeRepositoryMal.pageSize}');
+      expect(query['fields'], MalMetadataService.animeListFields);
+      expect(animes.single.title.userPreferred, 'Kusuriya no Hitorigoto');
+      expect(animes.single.status, 'FINISHED');
+    });
+
+    test('recently completed asks status=finished_airing sorted by end date desc', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('anime_catalog.json')))];
+
+      await repository.getRecentlyCompletedAnimes(1, malUser());
+
+      final Map<String, String> query = wire.requests.single.url.queryParameters;
+      expect(query['status'], 'finished_airing');
+      expect(query['sort'], '-anime_end_date');
+    });
+
+    test('upcoming asks status=not_yet_aired sorted by start date ascending', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('anime_catalog.json')))];
+
+      await repository.getUpcomingAnimes(1, malUser());
+
+      final Map<String, String> query = wire.requests.single.url.queryParameters;
+      expect(query['status'], 'not_yet_aired');
+      expect(query['sort'], 'anime_start_date');
+    });
+
+    test('page N maps onto limit/offset and the NSFW opt-in onto nsfw=true', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('anime_catalog.json')))];
+
+      await repository.getUpcomingAnimes(3, malUser(enableNsfwContent: true));
+
+      final Map<String, String> query = wire.requests.single.url.queryParameters;
+      expect(query['limit'], '${AnimeRepositoryMal.pageSize}');
+      expect(query['offset'], '${2 * AnimeRepositoryMal.pageSize}');
+      expect(query['nsfw'], 'true', reason: 'MAL defaults to the safe catalog, so the opt-in must be explicit');
+    });
+
+    test('a non-2xx browse answer degrades to (false, [])', () async {
+      wire.answers = <Object>[(500, '{"error":"server_error"}')];
+
+      final (bool trendingOk, List<Anime> trending) = await repository.getTrendingAnimes(1, malUser());
+      wire.answers = <Object>[(503, '{}')];
+      final (bool popularOk, List<Anime> popular) = await repository.getPopularAnimes(1, malUser());
+
+      expect(trendingOk, isFalse);
+      expect(trending, isEmpty);
+      expect(popularOk, isFalse);
+      expect(popular, isEmpty);
+    });
+  });
+
+  group('AnimeRepositoryMal details', () {
+    test('asks /v2/anime/{id} with the details fields, authenticated, and maps the extras', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('anime_details.json')))];
+
+      final (bool ok, AnimeDetails details) = await repository.getAnimeDetails(anime(id: 58514), malUser());
+
+      expect(ok, isTrue);
+      final RecordedMalRequest request = wire.requests.single;
+      expect(request.url.path, '/v2/anime/58514');
+      expect(request.url.queryParameters['fields'], MalMetadataService.animeDetailsFields);
+      expect(request.headers['authorization'], 'Bearer stored-access');
+      expect(details.mediaListEntry.status, 'CURRENT');
+      expect(details.mediaListEntry.progress, 7);
+      expect(details.mediaListEntry.score, 9);
+      expect(details.recommendedAnimes, hasLength(1), reason: 'related_manga must not become a phantom anime');
+      expect(details.recommendedAnimes.single.id, 61000);
+      expect(details.recommendedAnimes.single.title.romaji, 'Kusuriya no Hitorigoto 2nd Season');
+      expect(details.characters, isEmpty, reason: 'MAL v2 serves no characters');
+    });
+
+    test('a non-MAL account reads details anonymously and gets the empty entry', () async {
+      final Map<String, dynamic> payload = fixture('anime_details.json')..remove('my_list_status');
+      wire.answers = <Object>[(200, jsonEncode(payload))];
+
+      final (bool ok, AnimeDetails details) = await repository.getAnimeDetails(anime(id: 58514), UserModel.empty());
+
+      expect(ok, isTrue, reason: 'the public part of the page still renders');
+      expect(wire.requests.single.headers.containsKey('authorization'), isFalse);
+      expect(details.mediaListEntry.status, MediaListEntryModel.empty().status);
+      expect(details.recommendedAnimes, hasLength(1));
+    });
+
+    test('a 404 details answer degrades to the empty details model', () async {
+      wire.answers = <Object>[(404, '{"error":"not_found"}')];
+
+      final (bool ok, AnimeDetails details) = await repository.getAnimeDetails(anime(id: 1), malUser());
+
+      expect(ok, isFalse);
+      expect(details.recommendedAnimes, isEmpty);
+      expect(details.characters, isEmpty);
+      expect(details.mediaListEntry.status, MediaListEntryModel.empty().status);
+    });
+
+    test('a non-positive id skips the call instead of letting the service throw', () async {
+      final (bool ok, AnimeDetails details) = await repository.getAnimeDetails(anime(id: 0), malUser());
+
+      expect(ok, isFalse);
+      expect(details.recommendedAnimes, isEmpty);
+      expect(details.mediaListEntry.status, MediaListEntryModel.empty().status);
+      expect(wire.requests, isEmpty);
+    });
+  });
+
+  group('AnimeRepositoryMal search', () {
+    test('translates the search filters onto /v2/anime and drops season/year', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('anime_catalog.json')))];
+
+      final List<Anime> results = await repository.performAnimeAdvancedSearch(
+        '   ',
+        <String>['Shounen', 'Seinen'],
+        'Fall',
+        'TV',
+        2023,
+        'Airing',
+        'SCORE_DESC',
+        2,
+        malUser(),
       );
-      await expectLater(
-        repository.getTrendingAnimes(1, malUser()),
-        throwsA(isA<UnimplementedError>()),
+
+      expect(results, hasLength(1));
+      expect(results.single.id, 58514);
+      final Map<String, String> query = wire.requests.single.url.queryParameters;
+      expect(wire.requests.single.url.path, '/v2/anime');
+      expect(query.containsKey('q'), isFalse, reason: 'a blank query is not a filter');
+      expect(query['type'], 'tv');
+      expect(query['status'], 'currently_airing');
+      expect(query['genre'], '27,42', reason: 'genre labels become MAL ids');
+      expect(query['sort'], '-anime_score');
+      expect(query['nsfw'], 'false');
+      expect(query['limit'], '${AnimeRepositoryMal.pageSize}');
+      expect(query['offset'], '${AnimeRepositoryMal.pageSize}');
+      expect(query.containsKey('season'), isFalse, reason: 'MAL /anime has no season filter');
+      expect(query.containsKey('year'), isFalse, reason: 'MAL /anime has no year filter');
+      expect(query['fields'], MalMetadataService.animeListFields);
+    });
+
+    test('a query plus ascending members sort and NSFW opt-in', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('anime_catalog.json')))];
+
+      await repository.performAnimeAdvancedSearch(
+        '  hitorigoto ',
+        <String>[],
+        null,
+        'tv',
+        null,
+        'currently_airing',
+        'MEMBERS_ASC',
+        1,
+        malUser(enableNsfwContent: true),
       );
-      await expectLater(
-        repository.getMediaCoverImages(malUser()),
-        throwsA(isA<UnimplementedError>()),
+
+      final Map<String, String> query = wire.requests.single.url.queryParameters;
+      expect(query['q'], 'hitorigoto');
+      expect(query['type'], 'tv');
+      expect(query['status'], 'currently_airing');
+      expect(query['sort'], 'anime_num_list_users');
+      expect(query.containsKey('genre'), isFalse);
+      expect(query['nsfw'], 'true', reason: 'MAL defaults to the safe catalog, so the opt-in must be explicit');
+    });
+
+    test('an unknown sort field is dropped instead of sent', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('anime_catalog.json')))];
+
+      await repository.performAnimeAdvancedSearch('x', <String>[], null, null, null, null, 'NOPE_DESC', 1, malUser());
+
+      expect(wire.requests.single.url.queryParameters.containsKey('sort'), isFalse);
+    });
+
+    test('a non-2xx search answer degrades to an empty list', () async {
+      wire.answers = <Object>[(400, '{"error":"bad_request"}')];
+
+      final List<Anime> results = await repository.performAnimeAdvancedSearch(
+        'x', <String>[], null, null, null, null, 'SCORE_DESC', 1, malUser());
+
+      expect(results, isEmpty);
+    });
+
+    test('the filter map is the static MAL vocabulary with sortOrders hidden', () async {
+      final Map<String, (bool, List<String>)> filters =
+          await repository.getUserAnimeAdvancedSearchFilters(malUser());
+
+      expect(wire.requests, isEmpty, reason: 'MAL has no genre dictionary endpoint');
+      expect(filters['genres']!.$1, isTrue);
+      expect(filters['genres']!.$2, MalMetadataVocabularies.animeGenreNames);
+      expect(filters['formats']!.$2, containsAll(<String>['TV', 'Movie', 'OVA']));
+      expect(filters['airingStatuses']!.$2, containsAll(<String>['Airing', 'Finished', 'Not Yet Aired']));
+      expect(filters['ratings']!.$2, contains('Rx - Hentai'));
+      expect(filters['sortOptions']!.$2, containsAll(<String>['Score', 'Members', 'Start Date', 'End Date']));
+      expect(filters['sortOrders']!.$1, isFalse, reason: 'direction rides the - prefix on the sort field');
+    });
+  });
+
+  group('AnimeRepositoryMal covers', () {
+    test('covers come from the popular ranking and empty images are dropped', () async {
+      final Map<String, dynamic> payload = fixture('anime_ranking.json');
+      final List<dynamic> data = payload['data'] as List<dynamic>;
+      ((data.first as Map<String, dynamic>)['node'] as Map<String, dynamic>)['main_picture'] =
+          <String, dynamic>{'medium': '', 'large': ''};
+      wire.answers = <Object>[(200, jsonEncode(payload))];
+
+      final List<String> covers = await repository.getMediaCoverImages(malUser(enableNsfwContent: true));
+
+      expect(covers, hasLength(1), reason: 'the empty cover is dropped, the adult one is kept');
+      expect(covers.single, 'https://cdn.myanimelist.net/images/anime/1/1l.jpg');
+      expect(wire.requests.single.url.queryParameters['ranking_type'], 'bypopularity');
+    });
+  });
+
+  group('AnimeRepositoryMal calendar', () {
+    List<Object> weekAnswers() => <Object>[
+          for (int i = 0; i < 7; i++) (200, jsonEncode(fixture('anime_schedule.json'))),
+        ];
+
+    test('fetches the seven Jikan weekday pages and buckets them by weekday', () async {
+      wire.answers = weekAnswers();
+
+      final Map<String, List<Anime>> calendar = await repository.getCalendarReleases(1, malUser());
+
+      expect(wire.requests, hasLength(7));
+      expect(
+        wire.requests.map((RecordedMalRequest request) => request.url.host).toSet(),
+        <String>{'api.jikan.moe'},
       );
+      expect(
+        wire.requests.map((RecordedMalRequest request) => request.url.queryParameters['filter']).toList(),
+        <String>['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+      );
+      for (final RecordedMalRequest request in wire.requests) {
+        expect(request.url.path, '/v4/schedules');
+        expect(request.url.queryParameters['limit'], '25');
+        expect(request.url.queryParameters['page'], '1');
+        expect(request.headers.containsKey('authorization'), isFalse);
+      }
+
+      expect(calendar.keys, <String>['Monday', 'Tuesday'], reason: 'chronological weekday buckets');
+      expect(calendar['Monday'], hasLength(1), reason: 'the Rx entry is dropped while NSFW is off');
+      final Anime bleach = calendar['Monday']!.single;
+      expect(bleach.id, 269);
+      expect(bleach.idMal, 269);
+      expect(bleach.title.userPreferred, 'Bleach');
+      expect(bleach.meanScore, 82);
+      expect(bleach.startDate, '5/10/2004');
+      expect(bleach.status, 'FINISHED');
+      expect(bleach.format, 'TV');
+      expect(bleach.isAdult, isFalse, reason: "Jikan's R-17+ prefix maps to rating=r");
+      final Anime frieren = calendar['Tuesday']!.single;
+      expect(frieren.status, 'FINISHED');
+      expect(frieren.isAdult, isFalse);
+    });
+
+    test('NSFW on keeps adult entries and each day is sorted by broadcast time', () async {
+      wire.answers = weekAnswers();
+
+      final Map<String, List<Anime>> calendar = await repository.getCalendarReleases(1, malUser(enableNsfwContent: true));
+
+      expect(calendar['Monday'], hasLength(2));
+      expect(calendar['Monday']!.first.id, 9999, reason: '22:00 sorts before 23:30');
+      expect(calendar['Monday']!.first.isAdult, isTrue);
+      expect(calendar['Monday']!.last.id, 269);
+    });
+
+    test('page 2 is empty because the Jikan week is fetched whole', () async {
+      expect(await repository.getCalendarReleases(2, malUser()), isEmpty);
       expect(wire.requests, isEmpty);
     });
   });

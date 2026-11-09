@@ -10,11 +10,11 @@ import 'package:unyo/core/services/api/dto/mal/mal_my_list_status_entity.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/core/services/api/mal/mal_auth_service.dart';
 import 'package:unyo/data/models/mal/media/mal_list_status_policy.dart';
+import 'package:unyo/data/models/mal/media/mal_media_mapper.dart';
 import 'package:unyo/core/services/api/mal/mal_rate_limiter.dart';
 import 'package:unyo/data/models/mal/user/mal_user_model.dart';
 import 'package:unyo/data/repositories/user_repository_mal.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
-import 'package:unyo/presentation/widgets/text/text_utils.dart';
 
 /// List-entry reads and writes against the MyAnimeList REST API v2 (WP #156).
 ///
@@ -226,18 +226,10 @@ class MalUserRateService {
     return payload;
   }
 
+  /// Fold shared with the metadata details models (`MalMediaMapper.listEntry`),
+  /// so the tracker and the details page cannot disagree on an entry.
   MediaListEntry _toEntry(MalMyListStatusEntity status, MalListTarget target) {
-    return MediaListEntryModel(
-      progress: target == MalListTarget.manga ? status.numChaptersRead : status.numEpisodesWatched,
-      progressVolumes: target == MalListTarget.manga ? status.numVolumesRead : 0,
-      score: status.score.toDouble(),
-      repeat: MalListStatusPolicy.repeatFor(
-        target == MalListTarget.manga ? status.numTimesReread : status.numTimesRewatched,
-      ),
-      status: MalListStatusPolicy.toUnified(status.status),
-      startedAt: TextUtils.formatISO8601DateTime(status.startDate),
-      completedAt: TextUtils.formatISO8601DateTime(status.finishDate),
-    );
+    return MalMediaMapper.listEntry(status, target: target) ?? MediaListEntryModel.empty();
   }
 
   Future<http.Response> _send(

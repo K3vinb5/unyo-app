@@ -1,0 +1,97 @@
+{
+  "id": 2,
+  "title": "Berserk",
+  "main_picture": {
+    "medium": "https://cdn.myanimelist.net/images/manga/1/157897t.jpg",
+    "large": "https://cdn.myanimelist.net/images/manga/1/157897l.jpg"
+  },
+  "alternative_titles": {
+    "synonyms": ["Berserk: The Prototype"],
+    "en": "Berserk",
+    "ja": ""
+  },
+  "start_date": "1989-08-25",
+  "end_date": "",
+  "synopsis": "Guts, a former mercenary now known as the Black Swordsman...",
+  "mean": 9.47,
+  "rank": 1,
+  "popularity": 2,
+  "num_list_users": 250000,
+  "num_scoring_users": 42000,
+  "nsfw": "black",
+  "created_at": "2004-11-03T00:00:00+00:00",
+  "updated_at": "2024-06-01T00:00:00+00:00",
+  "media_type": "manga",
+  "status": "currently_publishing",
+  "genres": [
+    {"id": 1, "name": "Action"},
+    {"id": 42, "name": "Seinen"}
+  ],
+  "my_list_status": {
+    "status": "reading",
+    "score": 9,
+    "num_volumes_read": 3,
+    "num_chapters_read": 120,
+    "is_rereading": false,
+    "num_times_reread": 1,
+    "start_date": "2024-01-05T00:00:00+00:00",
+    "finish_date": ""
+  },
+  "num_volumes": 0,
+  "num_chapters": 0,
+  "authors": [],
+  "pictures": [],
+  "background": "",
+  "related_manga": [
+    {
+      "relation_type": "alternative",
+      "relation_type_formatted": "Alternative",
+      "node": {
+        "id": 3009,
+        "title": "Berserk (2016)",
+        "main_picture": {
+          "medium": "https://cdn.myanimelist.net/images/manga/2/3009t.jpg",
+          "large": "https://cdn.myanimelist.net/images/manga/2/3009l.jpg"
+        },
+        "start_date": "2016-07-01",
+        "end_date": "2017-01-01",
+        "synopsis": "An illustrated alternative retelling.",
+        "mean": 6.1,
+        "media_type": "manga",
+        "status": "finished",
+        "rating": "r+",
+        "nsfw": "black",
+        "genres": [{"id": 42, "name": "Seinen"}],
+        "num_volumes": 5,
+        "num_chapters": 40,
+        "popularity": 1000
+      }
+    },
+    {
+      "relation_type": "side_story",
+      "relation_type_formatted": "Side story",
+      "node": {
+        "id": 25515,
+        "title": "Berserk: The Prototype",
+        "main_picture": {
+          "medium": "https://cdn.myanimelist.net/images/manga/1/25515t.jpg",
+          "large": "https://cdn.myanimelist.net/images/manga/1/25515l.jpg"
+        },
+        "start_date": "1988-01-01",
+        "end_date": "",
+        "synopsis": "The original one-shot.",
+        "mean": 7.2,
+        "media_type": "one_shot",
+        "status": "finished",
+        "rating": "r",
+        "nsfw": "gray",
+        "genres": [{"id": 1, "name": "Action"}],
+        "num_volumes": 0,
+        "num_chapters": 1,
+        "popularity": 2000
+      }
+    }
+  ],
+  "recommendations": [],
+  "serialization": [{"name": "Young Animal"}]
+}

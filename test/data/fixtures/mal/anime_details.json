@@ -1,0 +1,105 @@
+{
+  "id": 58514,
+  "title": "Kusuriya no Hitorigoto",
+  "main_picture": {
+    "medium": "https://cdn.myanimelist.net/images/anime/1708/138033.jpg",
+    "large": "https://cdn.myanimelist.net/images/anime/1708/138033l.jpg"
+  },
+  "alternative_titles": {
+    "synonyms": [],
+    "en": "The Apothecary Diaries",
+    "ja": ""
+  },
+  "start_date": "2023-10-22",
+  "end_date": "2024-03-24",
+  "synopsis": "Maomao solves cases in the imperial palace.",
+  "mean": 8.7,
+  "rank": 100,
+  "popularity": 120,
+  "num_list_users": 300000,
+  "num_scoring_users": 150000,
+  "nsfw": "white",
+  "created_at": "2023-01-01T00:00:00+00:00",
+  "updated_at": "2024-04-01T00:00:00+00:00",
+  "media_type": "tv",
+  "status": "finished_airing",
+  "genres": [
+    {
+      "id": 7,
+      "name": "Mystery"
+    },
+    {
+      "id": 8,
+      "name": "Drama"
+    }
+  ],
+  "my_list_status": {
+    "status": "watching",
+    "score": 9,
+    "num_episodes_watched": 7,
+    "is_rewatching": false,
+    "num_times_rewatched": 1,
+    "updated_at": "2024-04-01T00:00:00+00:00"
+  },
+  "num_episodes": 24,
+  "start_season": {
+    "year": 2023,
+    "season": "fall"
+  },
+  "broadcast": {
+    "day_of_the_week": "sunday",
+    "start_time": "01:05"
+  },
+  "source": "manga",
+  "average_episode_duration": 1380,
+  "rating": "pg_13",
+  "pictures": [],
+  "background": "",
+  "related_anime": [
+    {
+      "relation_type": "sequel",
+      "relation_type_formatted": "Sequel",
+      "node": {
+        "id": 61000,
+        "title": "Kusuriya no Hitorigoto 2nd Season",
+        "main_picture": {
+          "medium": "https://cdn.myanimelist.net/images/anime/2/2.jpg",
+          "large": "https://cdn.myanimelist.net/images/anime/2/2l.jpg"
+        },
+        "start_date": "2025-01-10",
+        "end_date": "",
+        "synopsis": "The palace physician returns.",
+        "mean": 8.9,
+        "media_type": "tv",
+        "status": "not_yet_aired",
+        "rating": "pg_13",
+        "nsfw": "white",
+        "genres": [
+          {
+            "id": 7,
+            "name": "Mystery"
+          }
+        ],
+        "num_episodes": 24,
+        "popularity": 500
+      }
+    }
+  ],
+  "related_manga": [
+    {
+      "relation_type": "adaptation",
+      "relation_type_formatted": "Adaptation",
+      "node": {
+        "id": 160000,
+        "title": "Kusuriya no Hitorigoto (manga)"
+      }
+    }
+  ],
+  "recommendations": [],
+  "studios": [
+    {
+      "id": 43,
+      "name": "TOHO animation"
+    }
+  ]
+}
