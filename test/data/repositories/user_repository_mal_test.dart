@@ -214,6 +214,7 @@ void main() {
           );
         }),
       );
+      addTearDown(repository.closeLoginServer);
 
       await repository.attemptCreateUser();
       final http.Response redirect = await http.get(
@@ -261,7 +262,7 @@ void main() {
       expect(all.map((MalUserModel user) => user.name), <String>['tester']);
     });
 
-    test('a state mismatch is rejected before any token exchange', () async {
+    test('a state mismatch is rejected before any token exchange and keeps the server up', () async {
       int tokenCalls = 0;
       final MalAuthService auth = FixedPkceMalAuthService(
         client: MockClient((http.Request request) async {
@@ -275,6 +276,7 @@ void main() {
         UserNotifier(),
         client: MockClient((http.Request request) async => http.Response('{}', 200, headers: <String, String>{'content-type': 'application/json; charset=utf-8'})),
       );
+      addTearDown(repository.closeLoginServer);
 
       await repository.attemptCreateUser();
       final http.Response redirect = await http.get(
@@ -283,9 +285,17 @@ void main() {
 
       expect(redirect.statusCode, 400);
       expect(tokenCalls, 0);
+
+      // WP #163: the mismatch is not a fatal request — the real redirect can
+      // still arrive on the same server.
+      final http.Response again = await http.get(
+        Uri.parse('http://localhost:9998/mal-auth?code=the-code&state=not-the-state'),
+      );
+      expect(again.statusCode, 400);
+      expect(tokenCalls, 0);
     });
 
-    test('a redirect without a code is a bad request', () async {
+    test('a redirect without a code is a bad request and keeps the server up', () async {
       final MalAuthService auth = FixedPkceMalAuthService(
         client: MockClient((http.Request request) async => http.Response('{}', 200, headers: <String, String>{'content-type': 'application/json; charset=utf-8'})),
       );
@@ -295,6 +305,7 @@ void main() {
         UserNotifier(),
         client: MockClient((http.Request request) async => http.Response('{}', 200, headers: <String, String>{'content-type': 'application/json; charset=utf-8'})),
       );
+      addTearDown(repository.closeLoginServer);
 
       await repository.attemptCreateUser();
       final http.Response redirect = await http.get(
@@ -302,6 +313,132 @@ void main() {
       );
 
       expect(redirect.statusCode, 400);
+
+      // WP #163: a favicon/probe/mistyped URL must not close the callback
+      // server, or the OAuth redirect that follows can never be answered.
+      final http.Response again = await http.get(
+        Uri.parse('http://localhost:9998/mal-auth?state=${FixedPkceMalAuthService.state}'),
+      );
+      expect(again.statusCode, 400, reason: 'the server must still be listening');
+    });
+
+    test('a code-less probe followed by the real redirect logs in and then closes the server', () async {
+      late http.Request tokenRequest;
+      late http.Request profileRequest;
+      final MalAuthService auth = FixedPkceMalAuthService(
+        client: MockClient((http.Request request) async {
+          tokenRequest = request;
+          return http.Response(
+            jsonEncode(<String, dynamic>{
+              'token_type': 'Bearer',
+              'expires_in': 3600,
+              'access_token': 'access-1',
+              'refresh_token': 'refresh-1',
+            }),
+            200,
+            headers: <String, String>{'content-type': 'application/json; charset=utf-8'},
+          );
+        }),
+      );
+      replaceAuth(auth);
+      final UserNotifier newUser = UserNotifier();
+      final UserNotifier loggedUser = UserNotifier();
+      final UserRepositoryMal repository = UserRepositoryMal(
+        newUser,
+        loggedUser,
+        client: MockClient((http.Request request) async {
+          profileRequest = request;
+          return http.Response(
+            jsonEncode(<String, dynamic>{
+              'id': 56789,
+              'name': 'tester',
+              'picture': 'https://cdn.myanimelist.net/images/user/56789.jpg',
+            }),
+            200,
+            headers: <String, String>{'content-type': 'application/json; charset=utf-8'},
+          );
+        }),
+      );
+      addTearDown(repository.closeLoginServer);
+
+      await repository.attemptCreateUser();
+      final http.Response probe = await http.get(Uri.parse('http://localhost:9998/mal-auth'));
+      expect(probe.statusCode, 400);
+
+      final http.Response redirect = await http.get(
+        Uri.parse('http://localhost:9998/mal-auth?code=the-code&state=${FixedPkceMalAuthService.state}'),
+      );
+      expect(redirect.statusCode, 200, reason: redirect.body);
+
+      expect(tokenRequest.url.toString(), config.malTokenEndpoint);
+      expect(tokenRequest.bodyFields['code'], 'the-code');
+      expect(tokenRequest.bodyFields['code_verifier'], FixedPkceMalAuthService.verifier);
+      expect(profileRequest.url.toString(), '${config.malApiBase}/users/@me');
+      expect(profileRequest.headers['authorization'], 'Bearer access-1');
+
+      final Box<MalUserModel> box = await Hive.openBox<MalUserModel>(UserRepositoryMal.usersBoxName);
+      expect(box.get('tester')?.name, 'tester');
+      expect(loggedUser.currentUser.name, 'tester');
+
+      // A successful login is the one request that does close the callback.
+      await expectLater(
+        http.get(Uri.parse('http://localhost:9998/mal-auth')),
+        throwsA(anyOf(isA<http.ClientException>(), isA<SocketException>())),
+      );
+    });
+
+    test('a second attemptCreateUser replaces the previous listener instead of failing', () async {
+      final MalAuthService auth = FixedPkceMalAuthService(
+        client: MockClient((http.Request request) async => http.Response('{}', 200, headers: <String, String>{'content-type': 'application/json; charset=utf-8'})),
+      );
+      replaceAuth(auth);
+      final UserRepositoryMal repository = UserRepositoryMal(
+        UserNotifier(),
+        UserNotifier(),
+        client: MockClient((http.Request request) async => http.Response('{}', 200, headers: <String, String>{'content-type': 'application/json; charset=utf-8'})),
+      );
+      addTearDown(repository.closeLoginServer);
+
+      await repository.attemptCreateUser();
+      expect((await http.get(Uri.parse('http://localhost:9998/mal-auth'))).statusCode, 400);
+
+      // LoginCubit re-invokes the login on every dialog confirm: :9998 is not
+      // `shared`, so the previous listener must be closed first or this bind
+      // throws "address in use" and the old handler keeps answering.
+      await repository.attemptCreateUser();
+      expect((await http.get(Uri.parse('http://localhost:9998/mal-auth'))).statusCode, 400);
+    });
+
+    test('an abandoned login server is reaped by the timeout', () async {
+      final MalAuthService auth = FixedPkceMalAuthService(
+        client: MockClient((http.Request request) async => http.Response('{}', 200, headers: <String, String>{'content-type': 'application/json; charset=utf-8'})),
+      );
+      replaceAuth(auth);
+      final UserRepositoryMal repository = UserRepositoryMal(
+        UserNotifier(),
+        UserNotifier(),
+        loginServerTimeout: const Duration(milliseconds: 100),
+        client: MockClient((http.Request request) async => http.Response('{}', 200, headers: <String, String>{'content-type': 'application/json; charset=utf-8'})),
+      );
+      addTearDown(repository.closeLoginServer);
+
+      await repository.attemptCreateUser();
+      final Uri callback = Uri.parse('http://localhost:9998/mal-auth');
+      expect((await http.get(callback)).statusCode, 400, reason: 'the server is up before the timeout');
+
+      Object? closedBy;
+      final DateTime deadline = DateTime.now().add(const Duration(seconds: 3));
+      while (DateTime.now().isBefore(deadline)) {
+        try {
+          await http.get(callback);
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+        } catch (e) {
+          closedBy = e;
+          break;
+        }
+      }
+      expect(closedBy, isA<Object>(), reason: 'the timer must close a login nobody finishes');
+      expect(closedBy, anyOf(isA<http.ClientException>(), isA<SocketException>()));
     });
   });
 
