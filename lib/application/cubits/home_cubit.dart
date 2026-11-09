@@ -88,12 +88,16 @@ class HomeCubit extends Cubit<HomeState> with EffectMixin<HomeState> {
     _newLoggedUserSubscription = _loggedUserNotifier.userStream.listen((
       loggedUser,
     ) async {
+      if (isClosed) return;
       emit(
         state.copyWith(loggedUser: loggedUser),
       );
       if (!state.userLoaded) {
         await _getUserInfo(loggedUser);
         await _getMediaCoverImages(loggedUser);
+        // The listener outlives the cubit: a fetch still in flight when the
+        // cubit closes would otherwise emit on a closed cubit (StateError).
+        if (isClosed) return;
         _menuBarNotifier.showMenuBar(true);
         emit(state.copyWith(userLoaded: true, isLoading: false));
       }
@@ -148,6 +152,7 @@ class HomeCubit extends Cubit<HomeState> with EffectMixin<HomeState> {
               .getUserWatchingList(user, ignoreCache: ignoreCacheAnime);
           List<Manga> readingList = await _userRepository
               .getUserReadingList(user, ignoreCache: ignoreCacheManga);
+          if (isClosed) return;
           emit(
             state.copyWith(
               continueWatching: watchingList,
@@ -157,8 +162,12 @@ class HomeCubit extends Cubit<HomeState> with EffectMixin<HomeState> {
         case LocalUserModel _:
       }
     } catch (e, stackTrace) {
+      // A failed list fetch is a transient network/parse failure, not a logout:
+      // report it and keep the user on Home with empty Continue rows. Bouncing
+      // to /login here threw logged-in users out of the app
+      // (docs: dart-code-style §8 — failing network paths degrade silently).
+      // Same shape as _getMediaCoverImages' catch below.
       handleError("Error fetching user info: $e", stackTrace: stackTrace);
-      replaceRouteEffect(path: "/login");
     }
   }
 
@@ -166,6 +175,7 @@ class HomeCubit extends Cubit<HomeState> with EffectMixin<HomeState> {
     try {
       _logger.i("Fetching Media Cover Images");
       List<String> mediaCoverImages = await _animeRepository.getMediaCoverImages(loggedUser, ignoreCache: ignoreCache);
+      if (isClosed) return;
       emit(state.copyWith(mediaCoverImages: mediaCoverImages));
     } catch (e, stackTrace) {
       handleError("Error fetching media cover images: $e", stackTrace: stackTrace);
