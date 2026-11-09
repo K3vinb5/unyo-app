@@ -14,6 +14,7 @@ import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/card_row_frame.dart';
 import 'package:unyo/presentation/widgets/styled/manga_card_list.dart';
 import 'package:unyo/presentation/widgets/styled/media_button.dart';
+import 'package:unyo/presentation/widgets/styled/media_hero_art.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_banner_carousel.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
 
@@ -135,9 +136,7 @@ class _MangaViewState extends State<_MangaView> {
                       onPressed: () => context.read<MangaCubit>().navigateToAdvancedSearch(context),
                       image:
                           state.banners.isNotEmpty
-                              ? state
-                                  .banners[0]
-                                  .bannerImage
+                              ? state.banners[0].heroArt
                               : "",
                       text: context.tr('common_advanced_search'),
                     ),

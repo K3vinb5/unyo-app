@@ -13,6 +13,7 @@ import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/anime_card_list.dart';
 import 'package:unyo/presentation/widgets/styled/card_row_frame.dart';
 import 'package:unyo/presentation/widgets/styled/media_button.dart';
+import 'package:unyo/presentation/widgets/styled/media_hero_art.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_banner_carousel.dart';
 
 @RoutePage()
@@ -105,14 +106,14 @@ class _AnimeViewState extends State<_AnimeView> {
                     MediaButton(
                       onPressed: () => context.read<AnimeCubit>().navigateToCalendar(context),
                       image:
-                          state.banners.isNotEmpty ? state.banners[0].bannerImage : "",
+                          state.banners.isNotEmpty ? state.banners[0].heroArt : "",
                       text: context.tr('common_calendar'),
                     ),
                     const SizedBox(width: 30,),
                     MediaButton(
                       onPressed: () => context.read<AnimeCubit>().navigateToAdvancedSearch(context),
                       image:
-                          state.banners.length > 1 ? state.banners[1].bannerImage : "",
+                          state.banners.length > 1 ? state.banners[1].heroArt : "",
                       text: context.tr('common_advanced_search'),
                     ),
                   ],

@@ -6,6 +6,7 @@ import 'package:unyo/core/enums/media_type.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/list/media_list.dart';
+import 'package:unyo/presentation/widgets/styled/media_hero_art.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_network_image.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
@@ -239,13 +240,9 @@ class _UnyoBannerCarouselState extends State<UnyoBannerCarousel> {
   String _artAt(int index) {
     final animeList = widget.animeList;
     if (animeList != null && index < animeList.length) {
-      final Anime anime = animeList[index];
-      return anime.bannerImage.isNotEmpty
-          ? anime.bannerImage
-          : anime.coverImage;
+      return animeList[index].heroArt;
     }
-    final Manga manga = widget.mangaList![index];
-    return manga.bannerImage.isNotEmpty ? manga.bannerImage : manga.coverImage;
+    return widget.mangaList![index].heroArt;
   }
 
   void _openMedia(int index) {
@@ -283,10 +280,7 @@ class _UnyoBannerCarouselState extends State<UnyoBannerCarousel> {
               fit: StackFit.expand,
               children: [
                 // The image
-                UnyoNetworkImage(
-                  url: _artAt(index),
-                  fit: BoxFit.cover,
-                ),
+                UnyoNetworkImage(url: _artAt(index), fit: BoxFit.cover),
 
                 // Dark overlay
                 Container(
