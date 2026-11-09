@@ -17,7 +17,9 @@ import 'package:unyo/core/services/api/graphql/graphql_service.dart';
 import 'package:unyo/data/models/anilist/media/anilist_manga_details.dart';
 import 'package:unyo/data/models/anilist/media/anilist_manga_model.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
+import 'package:unyo/data/repositories/anilist_media_list_entry_requests.dart';
 import 'package:unyo/data/repositories/repository_mixin.dart';
+import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/media/manga_details.dart';
 import 'package:unyo/domain/entities/user/user.dart';
@@ -30,6 +32,9 @@ class MangaRepositoryAnilist with RepositoryMixin implements MangaRepository {
   final GraphQLService _anilistGraphQLService = sl<GraphQLService>(
     instanceName: config.anilistGraphQlService,
   );
+
+  late final AnilistMediaListEntryRequests _mediaListEntryRequests =
+      AnilistMediaListEntryRequests(_anilistGraphQLService);
 
   @override
   Future<(bool, List<Manga>)> getPopularMangas(int page, User loggedUser, {bool ignoreCache = false}) async {
@@ -304,6 +309,31 @@ class MangaRepositoryAnilist with RepositoryMixin implements MangaRepository {
       mediaDetailsMediaListEntry.data,
     );
     return (true, mangaDetails);
+  }
+
+  /// The viewer's manga entry (WP #167). Shares AniList's list-entry calls with
+  /// [AnimeRepositoryAnilist]: the API identifies the title by media id, so the
+  /// media kind only decides what `progress` counts.
+  @override
+  Future<MediaListEntry> getMediaListEntry(Manga selectedManga, User loggedUser, {bool ignoreCache = false}) {
+    return _mediaListEntryRequests.read(selectedManga.id, loggedUser, ignoreCache: ignoreCache);
+  }
+
+  /// Writes the viewer's manga entry — see
+  /// [AnilistMediaListEntryRequests.write]; a statusless draft is refused, it
+  /// never becomes a deletion.
+  @override
+  Future<MediaListEntry> updateMediaListEntry(
+    MediaListEntry newMediaListEntry,
+    Manga selectedManga,
+    User loggedUser,
+  ) {
+    return _mediaListEntryRequests.write(newMediaListEntry, selectedManga.id, loggedUser);
+  }
+
+  @override
+  Future<MediaListEntry> deleteMediaListEntry(Manga selectedManga, User loggedUser) {
+    return _mediaListEntryRequests.remove(selectedManga.id, loggedUser);
   }
 }
 

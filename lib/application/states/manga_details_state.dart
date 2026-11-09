@@ -20,6 +20,9 @@ abstract class MangaDetailsState with _$MangaDetailsState implements HasEffects{
     required MediaList selectedMediaList,
     required Manga selectedManga,
     required MediaListEntry mediaListEntry,
+    /// The editor's draft copy (WP #167): seeded from [mediaListEntry] when the
+    /// entry loads and mutated by the dialog's sliders until Confirm writes it.
+    required MediaListEntry newMediaListEntry,
     required (bool, List<MediaCharacter>) characters,
     required (bool, List<Manga>) recommendations,
     required List<String> banners,

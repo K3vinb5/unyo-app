@@ -38,6 +38,9 @@ class MediaDetailsMediaListEntryMedia {
 
 @JsonSerializable()
 class MediaDetailsMediaListEntryMediaMediaListEntry {
+	/// The *list entry* id, which is what `DeleteMediaListEntry` addresses —
+	/// the media id identifies the title, not the user's entry (WP #167).
+	int id = 0;
 	int progress = 0;
 	double score = 0.0;
 	int repeat = 0;

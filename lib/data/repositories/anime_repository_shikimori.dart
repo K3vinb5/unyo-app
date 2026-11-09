@@ -395,6 +395,14 @@ class AnimeRepositoryShikimori with RepositoryMixin implements AnimeRepository {
     Anime selectedAnime,
     User loggedUser,
   ) async {
+    // The rate service reads an empty status as `DELETE /user_rates/:id`, so a
+    // save must never carry one down: deletion is [deleteMediaListEntry]'s job
+    // (WP #167 review).
+    if (MediaListEntryModel.isNoStatus(newMediaListEntry.status)) {
+      throw StateError(
+        'Refusing to save a Shikimori rate with no status: a save never deletes, use deleteMediaListEntry().',
+      );
+    }
     _logger.i("Updating Media List Entry to $newMediaListEntry on Shikimori");
     final ShikimoriUserModel? account = _shikimoriAccount(loggedUser);
     if (account == null) return MediaListEntryModel.empty();
@@ -403,6 +411,21 @@ class AnimeRepositoryShikimori with RepositoryMixin implements AnimeRepository {
       targetId: selectedAnime.id,
       target: ShikimoriUserRateTarget.anime,
       entry: newMediaListEntry,
+    );
+  }
+
+  /// The explicit delete route (WP #167): the rate service already deletes on
+  /// an empty status, so removal reuses it while the save path refuses one.
+  @override
+  Future<MediaListEntry> deleteMediaListEntry(Anime selectedAnime, User loggedUser) async {
+    _logger.i("Removing Media List Entry of ${selectedAnime.title.userPreferred} on Shikimori");
+    final ShikimoriUserModel? account = _shikimoriAccount(loggedUser);
+    if (account == null) return MediaListEntryModel.empty();
+    return _userRateService.updateEntry(
+      user: account,
+      targetId: selectedAnime.id,
+      target: ShikimoriUserRateTarget.anime,
+      entry: MediaListEntryModel.empty(),
     );
   }
 

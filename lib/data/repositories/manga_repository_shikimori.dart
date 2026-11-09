@@ -297,14 +297,20 @@ class MangaRepositoryShikimori with RepositoryMixin implements MangaRepository {
   /// `user_rates`; manga progress lives in `chapters` (and `volumes` in
   /// `volumes`), which the rate service maps.
   ///
-  /// Deliberately **not** on [MangaRepository]: the interface has no list-entry
-  /// API yet (manga entries are not editable in the v1 UI), so this stays a
-  /// concrete capability the factory does not route to.
+  /// On the interface since WP #167 gave manga an editor. A statusless draft is
+  /// refused: the rate service reads it as `DELETE`, and saving must never
+  /// delete.
+  @override
   Future<MediaListEntry> updateMediaListEntry(
     MediaListEntry newMediaListEntry,
     Manga selectedManga,
     User loggedUser,
   ) async {
+    if (MediaListEntryModel.isNoStatus(newMediaListEntry.status)) {
+      throw StateError(
+        'Refusing to save a Shikimori rate with no status: a save never deletes, use deleteMediaListEntry().',
+      );
+    }
     _logger.i("Updating Media List Entry to $newMediaListEntry on Shikimori");
     final ShikimoriUserModel? account = _shikimoriAccount(loggedUser);
     if (account == null) return MediaListEntryModel.empty();
@@ -316,6 +322,22 @@ class MangaRepositoryShikimori with RepositoryMixin implements MangaRepository {
     );
   }
 
+  /// The explicit delete route (WP #167); the rate service deletes an empty
+  /// status, which only this path may pass down.
+  @override
+  Future<MediaListEntry> deleteMediaListEntry(Manga selectedManga, User loggedUser) async {
+    _logger.i("Removing Media List Entry of ${selectedManga.title.userPreferred} on Shikimori");
+    final ShikimoriUserModel? account = _shikimoriAccount(loggedUser);
+    if (account == null) return MediaListEntryModel.empty();
+    return _userRateService.updateEntry(
+      user: account,
+      targetId: selectedManga.id,
+      target: ShikimoriUserRateTarget.manga,
+      entry: MediaListEntryModel.empty(),
+    );
+  }
+
+  @override
   Future<MediaListEntry> getMediaListEntry(
     Manga selectedManga,
     User loggedUser, {

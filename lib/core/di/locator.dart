@@ -274,6 +274,7 @@ void setupLocator() async{
       sl<MediaListNotifier>(),
       sl<ExtensionRepositoryAniyomi>(),
       sl<UserRepository>(),
+      sl<ReloadNotifier>(),
     ),
   );
   sl.registerFactory<SettingsCubit>(

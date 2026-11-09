@@ -14,7 +14,6 @@ import 'package:unyo/core/services/api/dto/anilist/media_collection_trendingOrPo
 import 'package:unyo/core/services/api/dto/anilist/media_collection_upcoming_graphql_entity.dart';
 import 'package:unyo/core/services/api/dto/anilist/media_details_graphql_entity.dart';
 import 'package:unyo/core/services/api/dto/anilist/media_details_media_list_entry_entity.dart';
-import 'package:unyo/core/services/api/dto/anilist/save_media_list_entry_entity.dart';
 import 'package:unyo/core/services/api/graphql/queries/anilist_queries.dart' as anilist_queries;
 import 'package:unyo/core/services/api/dto/anilist/media_collection_recently_released_graphql_entity.dart';
 import 'package:unyo/core/services/api/graphql/graphql_response.dart';
@@ -22,6 +21,7 @@ import 'package:unyo/core/services/api/graphql/graphql_service.dart';
 import 'package:unyo/data/models/anilist/media/anilist_anime_details.dart';
 import 'package:unyo/data/models/anilist/media/anilist_anime_model.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
+import 'package:unyo/data/repositories/anilist_media_list_entry_requests.dart';
 import 'package:unyo/data/repositories/repository_mixin.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/anime_details.dart';
@@ -34,6 +34,9 @@ class AnimeRepositoryAnilist with RepositoryMixin implements AnimeRepository {
   final GraphQLService _anilistGraphQLService = sl<GraphQLService>(
     instanceName: config.anilistGraphQlService,
   );
+
+  late final AnilistMediaListEntryRequests _mediaListEntryRequests =
+      AnilistMediaListEntryRequests(_anilistGraphQLService);
 
   @override
   Future<(bool, List<Anime>)> getPopularAnimes(int page, User loggedUser, {bool ignoreCache = false}) async {
@@ -395,53 +398,18 @@ class AnimeRepositoryAnilist with RepositoryMixin implements AnimeRepository {
   }
 
   @override
-    Future<MediaListEntry> updateMediaListEntry(MediaListEntry newMediaListEntry, Anime selectedAnime, User loggedUser) async {
-      Map<String, String>? graphQlHeaders =
-      loggedUser is AnilistUserModel ? {"Authorization": "Bearer ${(loggedUser).accessToken}"} : null;
-      ApiGraphQLResponse<SaveMediaListEntryEntity> saveMediaListEntry = await _anilistGraphQLService
-          .mutation<SaveMediaListEntryEntity>(
-        query: anilist_queries.updateMediaEntryQuery,
-        fromJson: SaveMediaListEntryEntity.fromJson,
-        variables: {
-          "mediaId": selectedAnime.id,
-          "status": newMediaListEntry.status.toUpperCase() != "ADD TO LIST" ? newMediaListEntry.status.toUpperCase() : null,
-          if (newMediaListEntry.progress != -1)
-            "progress": newMediaListEntry.progress,
-          if (newMediaListEntry.score != -1.0)
-            "score": newMediaListEntry.score,
-          "startedAt": {
-            "day": int.tryParse(newMediaListEntry.startedAt[0]),
-            "month": int.tryParse(newMediaListEntry.startedAt[1]),
-            "year": int.tryParse(newMediaListEntry.startedAt[2]),
-          },
-          "completedAt": {
-            "day": int.tryParse(newMediaListEntry.completedAt[0]),
-            "month": int.tryParse(newMediaListEntry.completedAt[1]),
-            "year": int.tryParse(newMediaListEntry.completedAt[2]),
-          },
-        },
-        headers: graphQlHeaders,
-      );
-      throwIfGraphQlError(saveMediaListEntry);
-      return MediaListEntryModel.fromSaveMediaListEntryEntity(saveMediaListEntry.data.saveMediaListEntry);
-    }
+  Future<MediaListEntry> updateMediaListEntry(MediaListEntry newMediaListEntry, Anime selectedAnime, User loggedUser) {
+    return _mediaListEntryRequests.write(newMediaListEntry, selectedAnime.id, loggedUser);
+  }
 
   @override
-  Future<MediaListEntry> getMediaListEntry(Anime selectedAnime, User loggedUser, {bool ignoreCache = false}) async {
-    Map<String, String>? graphQlHeaders =
-    loggedUser is AnilistUserModel ? {"Authorization": "Bearer ${(loggedUser).accessToken}"} : null;
-    ApiGraphQLResponse<MediaDetailsMediaListEntryEntity> mediaDetailsMediaListEntry =
-    await _anilistGraphQLService.query<MediaDetailsMediaListEntryEntity>(
-        query: anilist_queries.mediaListEntryQuery,
-        fromJson: MediaDetailsMediaListEntryEntity.fromJson,
-        variables: {
-         "mediaId": selectedAnime.id,
-        },
-        headers: graphQlHeaders,
-        ignoreCache: ignoreCache,
-      );
-    throwIfGraphQlError(mediaDetailsMediaListEntry);
-    return MediaListEntryModel.fromMediaDetailsMediaListEntryEntity(mediaDetailsMediaListEntry.data);
+  Future<MediaListEntry> getMediaListEntry(Anime selectedAnime, User loggedUser, {bool ignoreCache = false}) {
+    return _mediaListEntryRequests.read(selectedAnime.id, loggedUser, ignoreCache: ignoreCache);
+  }
+
+  @override
+  Future<MediaListEntry> deleteMediaListEntry(Anime selectedAnime, User loggedUser) {
+    return _mediaListEntryRequests.remove(selectedAnime.id, loggedUser);
   }
 }
 

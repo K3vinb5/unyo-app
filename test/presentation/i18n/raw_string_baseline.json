@@ -12,30 +12,6 @@
     "text": "Shikimori"
   },
   {
-    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
-    "text": "Completed"
-  },
-  {
-    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
-    "text": "Current"
-  },
-  {
-    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
-    "text": "Dropped"
-  },
-  {
-    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
-    "text": "Paused"
-  },
-  {
-    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
-    "text": "Planning"
-  },
-  {
-    "file": "lib/presentation/dialogs/anime_details_media_entry_dialog.dart",
-    "text": "Repeating"
-  },
-  {
     "file": "lib/presentation/dialogs/character_dialog.dart",
     "text": "Not available"
   },

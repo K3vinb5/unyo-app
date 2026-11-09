@@ -475,6 +475,7 @@ const mediaListEntryQuery =
 query Page(\$mediaId: Int) {
   Media(id: \$mediaId) {
     mediaListEntry {
+      id
       progress
       score
       repeat
@@ -495,6 +496,20 @@ query Page(\$mediaId: Int) {
   }
 }
 ''';
+/// Removes the viewer's list entry (WP #167).
+///
+/// `SaveMediaListEntry` cannot delete: its `status` is an enum, and omitting a
+/// field means "leave it alone", so a removal is this separate mutation. It is
+/// addressed by the *list entry* id — the one [mediaListEntryQuery] now selects.
+const deleteMediaListEntryQuery =
+'''
+mutation DeleteMediaListEntry(\$id: Int) {
+  DeleteMediaListEntry(id: \$id) {
+    deleted
+  }
+}
+''';
+
 // {
 //   "page": 1,
 //   "perPage": 5,

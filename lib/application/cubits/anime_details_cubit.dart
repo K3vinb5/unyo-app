@@ -492,13 +492,56 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     if (savedProgress != desiredMediaListEntry.progress) {
       desiredMediaListEntry = (desiredMediaListEntry as MediaListEntryModel).copyWith(progress: savedProgress);
     }
-    try {
-      _logger.i("Updating Media List Entry to $desiredMediaListEntry");
-      await _animeRepository.updateMediaListEntry(
+    // A save never deletes: a draft with no list status is the *removal* signal,
+    // and removal is exclusive to [removeMediaListEntry] (the editor's trash
+    // action). Refuse loudly and keep the editor open instead of writing — or
+    // deleting — behind the user's back (WP #167 review).
+    if (MediaListEntryModel.isNoStatus(desiredMediaListEntry.status)) {
+      _refuseStatuslessSave();
+      return;
+    }
+    await _applyListChange(
+      context,
+      operation: "Updating",
+      write: () => _animeRepository.updateMediaListEntry(
         desiredMediaListEntry,
         state.selectedAnime,
         state.loggedUser,
-      );
+      ),
+    );
+  }
+
+  /// Removes the entry from the user's list — the trash action's only path, and
+  /// the only delete route the editor has.
+  Future<void> removeMediaListEntry(BuildContext context) async {
+    await _applyListChange(
+      context,
+      operation: "Removing",
+      write: () => _animeRepository.deleteMediaListEntry(state.selectedAnime, state.loggedUser),
+    );
+  }
+
+  /// The loud refusal of a statusless save — the same warning shape as the
+  /// unmatched-entry refusal, so the editor stays open and nothing is written.
+  void _refuseStatuslessSave() {
+    _logger.w("Refused a list save without a status; pick one or use the trash action");
+    showSnackBarEffect(
+      'error_list_not_updated',
+      messageKey: 'error_entry_needs_status',
+      contentType: ContentType.warning,
+    );
+  }
+
+  /// Runs one list change (a save or the explicit delete) and owns the reload
+  /// emissions, the refusals and the dialog close, so both routes behave alike.
+  Future<void> _applyListChange(
+    BuildContext context, {
+    required String operation,
+    required Future<MediaListEntry> Function() write,
+  }) async {
+    try {
+      _logger.i("$operation Media List Entry");
+      await write();
       _reloadNotifier.emitReload(ReloadType.animeMediaListEntryUpdated);
       // Home renders the user's current list (and its progress), so *every*
       // successful write has to reload it — a new entry, a status change and a

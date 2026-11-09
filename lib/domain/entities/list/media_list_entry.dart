@@ -51,10 +51,23 @@ abstract class MediaListEntryModel with _$MediaListEntryModel implements MediaLi
     progressVolumes: -1,
     score: -1.0,
     repeat: -1,
-    status: 'ADD TO LIST',
+    status: MediaListEntryModel.noStatus,
     startedAt: ["~", "~", "~"],
     completedAt: ["~", "~", "~"],
   );
+
+  /// The status an entry carries when the title is on none of the user's
+  /// lists. It is also the removal signal of the write path: a tracker update
+  /// that receives an entry with no status deletes the stored entry instead of
+  /// writing one (Shikimori `DELETE /user_rates/:id`, AniList
+  /// `DeleteMediaListEntry`).
+  static const String noStatus = 'ADD TO LIST';
+
+  /// Whether [status] means "not on any list" — the removal signal above.
+  static bool isNoStatus(String status) {
+    final String normalized = status.trim().toUpperCase();
+    return normalized.isEmpty || normalized == noStatus;
+  }
 
   factory MediaListEntryModel.fromSaveMediaListEntryEntity(
     SaveMediaListEntrySaveMediaListEntry saveMediaListEntry,

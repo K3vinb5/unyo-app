@@ -53,6 +53,10 @@ extension MediaDetailsMediaListEntryMediaExtension on MediaDetailsMediaListEntry
 
 MediaDetailsMediaListEntryMediaMediaListEntry $MediaDetailsMediaListEntryMediaMediaListEntryFromJson(Map<String, dynamic> json) {
 	final MediaDetailsMediaListEntryMediaMediaListEntry mediaDetailsMediaListEntryMediaMediaListEntry = MediaDetailsMediaListEntryMediaMediaListEntry();
+	final int? id = jsonConvert.convert<int>(json['id']);
+	if (id != null) {
+		mediaDetailsMediaListEntryMediaMediaListEntry.id = id;
+	}
 	final int? progress = jsonConvert.convert<int>(json['progress']);
 	if (progress != null) {
 		mediaDetailsMediaListEntryMediaMediaListEntry.progress = progress;
@@ -91,6 +95,7 @@ MediaDetailsMediaListEntryMediaMediaListEntry $MediaDetailsMediaListEntryMediaMe
 
 Map<String, dynamic> $MediaDetailsMediaListEntryMediaMediaListEntryToJson(MediaDetailsMediaListEntryMediaMediaListEntry entity) {
 	final Map<String, dynamic> data = <String, dynamic>{};
+	data['id'] = entity.id;
 	data['progress'] = entity.progress;
 	data['score'] = entity.score;
 	data['repeat'] = entity.repeat;
@@ -104,6 +109,7 @@ Map<String, dynamic> $MediaDetailsMediaListEntryMediaMediaListEntryToJson(MediaD
 
 extension MediaDetailsMediaListEntryMediaMediaListEntryExtension on MediaDetailsMediaListEntryMediaMediaListEntry {
 	MediaDetailsMediaListEntryMediaMediaListEntry copyWith({
+	int? id,
 	int? progress,
 	double? score,
 	int? repeat,
@@ -114,6 +120,7 @@ extension MediaDetailsMediaListEntryMediaMediaListEntryExtension on MediaDetails
 	int? progressVolumes,
 	}) {
 		return MediaDetailsMediaListEntryMediaMediaListEntry()
+			..id = id ?? this.id
 			..progress = progress ?? this.progress
 			..score = score ?? this.score
 			..repeat = repeat ?? this.repeat

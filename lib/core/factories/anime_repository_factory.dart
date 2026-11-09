@@ -330,6 +330,26 @@ class AnimeRepositoryFactory implements AnimeRepository {
     }
   }
 
+  /// The explicit delete route (WP #167): the editor's trash action is its only
+  /// caller, and the save path never reaches it.
+  @override
+  Future<MediaListEntry> deleteMediaListEntry(Anime selectedAnime, User loggedUser) async {
+    final Anime userRecord = await _asUserProviderRecord(selectedAnime, loggedUser, operation: "delete");
+    switch (loggedUser.settings.userService) {
+      case Service.anilist:
+        _logger.i("Removing Media List Entry of ${selectedAnime.title.userPreferred} on Anilist");
+        return _animeRepositoryAnilist.deleteMediaListEntry(userRecord, loggedUser);
+      case Service.shikimori:
+        _logger.i("Removing Media List Entry of ${selectedAnime.title.userPreferred} on Shikimori");
+        return _animeRepositoryShikimori.deleteMediaListEntry(userRecord, loggedUser);
+      case Service.mal:
+      case Service.kitsu:
+      case Service.simkl:
+        _logger.i("Removing a list entry is not available on ${loggedUser.settings.userService.name}");
+        return MediaListEntryModel.empty();
+    }
+  }
+
   @override
   Future<MediaListEntry> getMediaListEntry(
     Anime selectedAnime,

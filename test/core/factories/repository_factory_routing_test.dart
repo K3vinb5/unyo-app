@@ -10,6 +10,7 @@ import 'package:unyo/core/factories/manga_repository_factory.dart';
 import 'package:unyo/core/factories/user_repository_factory.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
+import 'package:unyo/data/models/shikimori/media/shikimori_manga_model.dart';
 import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/user_repository_anilist.dart';
 import 'package:unyo/data/repositories/user_repository_shikimori.dart';
@@ -182,6 +183,106 @@ void main() {
   });
 
   group('MangaRepositoryFactory routing', () {
+    ShikimoriMangaModel shikimoriMangaRecord() => ShikimoriMangaModel(
+          id: 16001,
+          idMal: 16001,
+          title: TitleModel.empty(),
+          averageScore: 0,
+          bannerImage: '',
+          chapters: 12,
+          countryOfOrigin: 'JP',
+          coverImage: '',
+          description: '',
+          endDate: '',
+          startDate: '',
+          genres: const <String>[],
+          format: 'manga',
+          isAdult: false,
+          popularity: 0,
+          meanScore: 0,
+          status: 'RELEASING',
+          isFavourite: false,
+        );
+
+    ShikimoriUserModel shikimoriAccount({Service metadataService = Service.shikimori}) => ShikimoriUserModel(
+          id: '23456789',
+          name: 'shikimori-tester',
+          settings: SettingsModel.empty().copyWith(
+            userService: Service.shikimori,
+            metadataService: metadataService,
+          ),
+          avatarImage: '',
+          bannerImage: '',
+          accessToken: 'stored-access',
+          refreshToken: 'stored-refresh',
+          accessTokenExpiresAt: '2099-01-01T00:00:00.000',
+          profileUrl: '',
+        );
+
+    test('the delete route reaches the AniList repository and the save route stays untouched', () async {
+      when(() => anilistManga.deleteMediaListEntry(any(), any()))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+
+      await mangaFactory.deleteMediaListEntry(MangaModel.empty(), userWith());
+
+      verify(() => anilistManga.deleteMediaListEntry(any(), any())).called(1);
+      verifyNever(() => anilistManga.updateMediaListEntry(any(), any(), any()));
+    });
+
+    test('list writes reach the AniList repository when the record is AniList-sourced', () async {
+      when(() => anilistManga.updateMediaListEntry(any(), any(), any())).thenAnswer(
+        (_) async => MediaListEntryModel.empty().copyWith(status: 'CURRENT'),
+      );
+      final AnilistUserModel user = userWith();
+
+      final MediaListEntry written = await mangaFactory.updateMediaListEntry(
+        MediaListEntryModel.empty().copyWith(status: 'Current'),
+        MangaModel.empty(),
+        user,
+      );
+
+      expect(written.status, 'CURRENT');
+      verify(() => anilistManga.updateMediaListEntry(any(), any(), user)).called(1);
+      verifyNever(() => shikimoriManga.updateMediaListEntry(any(), any(), any()));
+    });
+
+    test('list writes reach the Shikimori repository for a Shikimori record and account', () async {
+      when(() => shikimoriManga.updateMediaListEntry(any(), any(), any()))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+
+      await mangaFactory.updateMediaListEntry(
+        MediaListEntryModel.empty().copyWith(status: 'Current'),
+        shikimoriMangaRecord(),
+        shikimoriAccount(),
+      );
+
+      verify(() => shikimoriManga.updateMediaListEntry(any(), any(), any())).called(1);
+      verifyNever(() => anilistManga.updateMediaListEntry(any(), any(), any()));
+    });
+
+    test('a foreign-provenance record is refused instead of written to a guessed id', () async {
+      final AnilistUserModel user = userWith();
+
+      await expectLater(
+        mangaFactory.updateMediaListEntry(
+          MediaListEntryModel.empty().copyWith(status: 'Current'),
+          shikimoriMangaRecord(),
+          user,
+        ),
+        throwsA(isA<MediaLinkUnresolvedException>()),
+      );
+      verifyNever(() => anilistManga.updateMediaListEntry(any(), any(), any()));
+      verifyNever(() => shikimoriManga.updateMediaListEntry(any(), any(), any()));
+    });
+
+    test('a foreign-provenance record reads as the empty entry', () async {
+      final MediaListEntry entry = await mangaFactory.getMediaListEntry(shikimoriMangaRecord(), userWith());
+
+      expect(MediaListEntryModel.isNoStatus(entry.status), isTrue);
+      verifyNever(() => anilistManga.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')));
+      verifyNever(() => shikimoriManga.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')));
+    });
+
     test('details reads follow the metadata provider', () async {
       when(() => shikimoriManga.getMangaDetails(any(), any()))
           .thenAnswer((_) async => (true, MangaDetailsModel.empty()));
@@ -324,6 +425,16 @@ void main() {
           isFavourite: false,
           nextAiringEpisode: AiringEpisodeModel.empty(),
         );
+
+    test('the delete route reaches the AniList repository and the save route stays untouched', () async {
+      when(() => anilistAnime.deleteMediaListEntry(any(), any()))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+
+      await animeFactory.deleteMediaListEntry(AnimeModel.empty(), userWith());
+
+      verify(() => anilistAnime.deleteMediaListEntry(any(), any())).called(1);
+      verifyNever(() => anilistAnime.updateMediaListEntry(any(), any(), any()));
+    });
 
     test('list entry writes reach the Shikimori repository instead of an empty stub', () async {
       when(() => shikimoriAnime.updateMediaListEntry(any(), any(), any()))
