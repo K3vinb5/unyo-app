@@ -6,7 +6,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // Internal dependencies
 import 'package:unyo/application/cubits/settings_cubit.dart';
-import 'package:unyo/application/cubits/tabs_cubit.dart';
 import 'package:unyo/application/states/settings_state.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/episode_service.dart';
@@ -15,14 +14,13 @@ import 'package:unyo/core/i18n/locale_switcher.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/core/services/media/episode_service.dart';
 import 'package:unyo/core/services/media/media_service.dart';
-import 'package:unyo/presentation/widgets/styled/shikimori_account_settings.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_language_dropdown.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_category.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_dialog.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_dropdown.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_slider.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_toggle.dart';
-import 'package:unyo/presentation/widgets/styled/unyo_settings_version.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_settings_update_badge.dart';
 import 'package:unyo/presentation/widgets/text/text_body_large.dart';
 import 'package:unyo/presentation/widgets/text/text_headline_medium.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
@@ -104,55 +102,12 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                 child: ListView(
                   children: [
                     UnyoSettingsCategory(
-                      title: context.tr("settings_accounts_title"),
-                      description: context.tr("settings_accounts_description"),
-                      icon: Icons.person_rounded,
-                      alignment: "top",
-                      childAlignment: "center",
-                      settingsOptions: [
-                        UnyoSettingsCategory(
-                          title: "Anilist",
-                          description: context.tr("settings_anilist_accounts_description"),
-                          icon: Icons.format_list_bulleted_rounded,
-                          alignment: "",
-                          childAlignment: "",
-                          isChild: true,
-                          settingsOptions: const [
-                            // TODO - Anilist account settings go here
-                          ],
-                        ),
-                        UnyoSettingsCategory(
-                          title: "MyAnimeList",
-                          description: context.tr("settings_myanimelist_accounts_description"),
-                          icon: Icons.format_list_bulleted_rounded,
-                          alignment: "",
-                          childAlignment: "",
-                          isChild: true,
-                          settingsOptions: const [
-                            // TODO - MyAnimeList account settings go here
-                          ],
-                        ),
-                        UnyoSettingsCategory(
-                          title: "Shikimori",
-                          description: context.tr("settings_shikimori_accounts_description"),
-                          icon: Icons.format_list_bulleted_rounded,
-                          alignment: "",
-                          childAlignment: "",
-                          isChild: true,
-                          settingsOptions: [
-                            ShikimoriAccountSettings(
-                              loggedUser: state.loggedUser,
-                              onLogout: () => context.read<TabsCubit>().logoutUser(),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    UnyoSettingsCategory(
                       title: context.tr("settings_common_title"),
                       description: context.tr("settings_common_description"),
                       icon: Icons.lightbulb_rounded,
-                      alignment: "",
+                      // First row of the list: keeps the rounded top the
+                      // removed Accounts section used to own (WP #151).
+                      alignment: "top",
                       childAlignment: "",
                       settingsOptions: [
                         UnyoSettingsSelectionDropdown(
@@ -313,7 +268,17 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                       icon: Icons.my_library_books_rounded,
                       alignment: "",
                       childAlignment: "",
-                      settingsOptions: const [],
+                      // WP #148: the category has no settings until the manga
+                      // reader ships; one explanatory row beats an empty box
+                      // that reads like a rendering bug.
+                      settingsOptions: [
+                        UnyoSettingsSelectionDialog(
+                          title: context.tr("settings_reader_title"),
+                          description: context.tr("settings_reader_description"),
+                          icon: Icons.my_library_books_rounded,
+                          openDialog: context.read<SettingsCubit>().openReaderSettingsDialog,
+                        ),
+                      ],
                     ),
                     UnyoSettingsCategory(
                       title: context.tr("settings_extensions_title"),
@@ -336,14 +301,17 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                         ),
                       ],
                     ),
-                    // Probably have a custom widget here with my information and a link to my social media and ko-fi
+                    // WP #150: same row as before, but it activates the About
+                    // card instead of expanding into a lone version string.
                     UnyoSettingsCategory(
                       title: context.tr("settings_about_title"),
                       description: context.tr("settings_about_description"),
                       icon: Icons.info_rounded,
                       alignment: "bottom",
                       childAlignment: "bottom",
-                      settingsOptions: const [UnyoSettingsVersion()],
+                      badge: const UnyoSettingsUpdateBadge(),
+                      onActivate: context.read<SettingsCubit>().openAboutDialog,
+                      settingsOptions: const [],
                     ),
                   ],
                 ),

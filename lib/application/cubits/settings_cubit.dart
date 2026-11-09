@@ -26,6 +26,8 @@ import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/core/i18n/app_locales.dart';
 import 'package:unyo/domain/repositories/user_repository.dart';
+import 'package:unyo/presentation/dialogs/about_dialog.dart';
+import 'package:unyo/presentation/dialogs/coming_soon_dialog.dart';
 import 'package:unyo/presentation/dialogs/extensions_dialog.dart';
 import 'package:unyo/presentation/dialogs/theme_color_picker_dialog.dart';
 
@@ -322,6 +324,24 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
           }
         },
       ),
+    );
+  }
+
+  /// Settings → About is a single activating row (WP #150): it opens the About
+  /// card, whose content is read from the build stamp and the update verdict
+  /// already in memory — no request is made here.
+  void openAboutDialog() {
+    _logger.i("Opening the about dialog");
+    showWidgetDialogEffect(dialog: const UnyoAboutDialog());
+  }
+
+  /// The Reader category has no settings until the manga reader ships (WP
+  /// #148). Its single row opens the shared coming-soon notice instead of
+  /// leaving an empty box that reads like a rendering bug.
+  void openReaderSettingsDialog() {
+    _logger.i("Opening the reader settings coming-soon notice");
+    showWidgetDialogEffect(
+      dialog: const ComingSoonDialog(feature: ComingSoonFeature.mangaReaderSettings),
     );
   }
 

@@ -1,6 +1,7 @@
 // External dependencies
 import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:unyo_lib/jmodels/jsmanga.dart';
@@ -22,7 +23,9 @@ import 'package:unyo/domain/entities/media/title.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/repositories/manga_repository.dart';
+import 'package:unyo/presentation/dialogs/coming_soon_dialog.dart';
 import '../../core/di/locator.dart' show setupTestLocator;
+import '../../support/localized_app.dart';
 
 class MockBuildContext extends Mock implements BuildContext {}
 
@@ -193,21 +196,39 @@ void main() {
       );
     });
 
-    test('explains that the manga reader is not available with an extension selected', () async {
+    testWidgets('opens the single coming-soon notice instead of a snackbar when an extension is selected', (
+      WidgetTester tester,
+    ) async {
       when(() => userRepository.updateUserInfo(any())).thenAnswer((_) async {});
       when(() => extensionRepository.getMangaSearchResults(any(), any())).thenAnswer((_) async => []);
       await cubit.selectMangaExtension(testExtension.name);
 
-      cubit.openMangaServerSelectionDrawer(MockBuildContext(), 0);
-
-      final List<ShowSnackbarEffect> snackbars = cubit.state.effects.whereType<ShowSnackbarEffect>().toList();
-      expect(
-        snackbars.any(
-          (effect) =>
-              effect.titleKey == 'common_manga_reader' && effect.messageKey == 'error_manga_reader_unavailable',
+      await tester.pumpWidget(
+        ScreenUtilInit(
+          designSize: const Size(1280, 720),
+          minTextAdapt: true,
+          splitScreenMode: true,
+          child: localizedApp(home: const Scaffold(body: SizedBox.shrink())),
         ),
-        isTrue,
       );
+      await tester.pumpAndSettle();
+
+      cubit.openMangaServerSelectionDrawer(tester.element(find.byType(Scaffold)), 0);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(ComingSoonDialog.dialogKey(ComingSoonFeature.mangaReader)),
+        findsOneWidget,
+      );
+      expect(
+        cubit.state.effects.whereType<ShowSnackbarEffect>(),
+        isEmpty,
+        reason: 'the chapter tap must produce one message, not a snackbar plus a dialog',
+      );
+
+      await tester.tap(find.byKey(ComingSoonDialog.dismissKey));
+      await tester.pumpAndSettle();
+      expect(find.byType(ComingSoonDialog), findsNothing);
     });
   });
 

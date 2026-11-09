@@ -32,6 +32,7 @@ import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/presentation/dialogs/character_dialog.dart';
+import 'package:unyo/presentation/dialogs/coming_soon_dialog.dart';
 
 class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaDetailsState> {
   // Repositories
@@ -377,8 +378,8 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
   /// Handles a tap on a chapter button in the manga details page.
   ///
   /// Named after the anime-side equivalent (`openAnimeServerSelectionDrawer`).
-  /// There is no manga reader in the app yet, so this only gives feedback
-  /// instead of silently swallowing the tap.
+  /// There is no manga reader in the app yet (WP #148), so this opens the
+  /// single coming-soon notice instead of silently swallowing the tap.
   void openMangaServerSelectionDrawer(BuildContext context, int chapterIndex) {
     if (isClosed) return;
     _logger.i("Chapter ${chapterIndex + 1} pressed for ${state.selectedManga.title.userPreferred}");
@@ -402,11 +403,7 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
       );
       return;
     }
-    showSnackBarEffect(
-      'common_manga_reader',
-      messageKey: 'error_manga_reader_unavailable',
-      contentType: ContentType.warning,
-    );
+    ComingSoonDialog.show(context, ComingSoonFeature.mangaReader);
   }
 
   Future<void> _setSelectedExtension(

@@ -10,6 +10,7 @@ import 'package:unyo/core/services/api/dto/anilist/media_collection_graphql_enti
 import 'package:unyo/data/models/anilist/media/anilist_anime_model.dart';
 import 'package:unyo/data/models/anilist/media/anilist_manga_model.dart';
 import 'package:unyo/data/repositories/repository_mixin.dart';
+import 'package:unyo/data/repositories/user_provider_reconciliation.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
@@ -24,11 +25,14 @@ import 'package:unyo/core/services/api/graphql/graphql_response.dart';
 import 'package:unyo/core/services/api/graphql/graphql_service.dart';
 import 'package:unyo/core/services/api/http/api_response.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
+import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/domain/repositories/repositories.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 
 class UserRepositoryAnilist with RepositoryMixin implements UserRepository {
+  static const String usersBoxName = "anilistUsers";
+
   final Logger _logger = sl<Logger>();
   final HttpService _httpService = sl<HttpService>();
   final GraphQLService _anilistGraphQLService = sl<GraphQLService>(
@@ -43,8 +47,13 @@ class UserRepositoryAnilist with RepositoryMixin implements UserRepository {
 
   @override
   Future<List<User>> fetchAllLoggedInUsers() async {
-    _anilistUsersBox = await Hive.openBox<AnilistUserModel>("anilistUsers");
-    return [..._anilistUsersBox.values];
+    _anilistUsersBox = await Hive.openBox<AnilistUserModel>(usersBoxName);
+    return UserProviderReconciliation.reconcile<AnilistUserModel>(
+      box: _anilistUsersBox,
+      provider: Service.anilist,
+      logger: _logger,
+      withSettings: (AnilistUserModel user, SettingsModel settings) => user.copyWith(settings: settings),
+    );
   }
 
   @override
@@ -73,7 +82,7 @@ class UserRepositoryAnilist with RepositoryMixin implements UserRepository {
 
   @override
   Future<void> updateUserInfo(User user) async {
-    _anilistUsersBox = await Hive.openBox<AnilistUserModel>("anilistUsers");
+    _anilistUsersBox = await Hive.openBox<AnilistUserModel>(usersBoxName);
     if (_anilistUsersBox.containsKey(user.name)) {
       _logger.w("User ${user.name} already exists in the registered anilist users, updating info");
       await _anilistUsersBox.put(user.name, user as AnilistUserModel);
@@ -82,6 +91,18 @@ class UserRepositoryAnilist with RepositoryMixin implements UserRepository {
       await _anilistUsersBox.put(user.name, user as AnilistUserModel);
     }
     _loggedUserNotifier.updateUser(user);
+  }
+
+  /// Drops the row [updateUserInfo] wrote: the box is keyed by `user.name`.
+  @override
+  Future<void> removeUser(User user) async {
+    _anilistUsersBox = await Hive.openBox<AnilistUserModel>(usersBoxName);
+    if (!_anilistUsersBox.containsKey(user.name)) {
+      _logger.w("User ${user.name} is not stored in the registered anilist users, nothing to remove");
+      return;
+    }
+    await _anilistUsersBox.delete(user.name);
+    _logger.i("Removed user ${user.name} from the registered anilist users");
   }
 
   @override
@@ -217,7 +238,7 @@ class UserRepositoryAnilist with RepositoryMixin implements UserRepository {
   }
 
   Future<void> _createUser(String accessCode) async {
-    _anilistUsersBox = await Hive.openBox<AnilistUserModel>("anilistUsers");
+    _anilistUsersBox = await Hive.openBox<AnilistUserModel>(usersBoxName);
     ApiResponse<AuthTokenEntity> authToken = await getAuthToken(accessCode);
     Map<String, String> graphQlHeaders = {"Authorization": "Bearer ${authToken.data.accessToken}"};
     ApiGraphQLResponse<ViewerGraphqlEntity> viewerDto = await _anilistGraphQLService

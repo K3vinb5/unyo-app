@@ -148,6 +148,16 @@ abstract class SettingsModel with _$SettingsModel implements Settings {
     return settings.copyWith(metadataService: settings.service);
   }
 
+  /// Read-time rule for the account provider (WP #123): the account record that
+  /// owns these settings — which user box and model it was read from — is the
+  /// source of truth for [userService], not the persisted value. Rows written
+  /// before the field existed (or before a provider existed) carry the AniList
+  /// default even when the account is Shikimori-backed.
+  static SettingsModel reconcileUserService(SettingsModel settings, Service provider) {
+    if (settings.userService == provider) return settings;
+    return settings.copyWith(userService: provider);
+  }
+
   /// Keeps the legacy `service` field a mirror of [metadataService] on every
   /// write, so [reconcileLegacyService] never has to guess between a genuine
   /// post-split AniList choice and stale pre-split data.
