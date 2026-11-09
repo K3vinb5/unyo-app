@@ -45,15 +45,20 @@ void main() {
   late MockUserRepositoryMal malRepo;
   late UserNotifier loggedUser;
   late UserNotifier newUser;
+  late MockColorImageService colorImageService;
+  late MockThemeService themeService;
   late LoginCubit cubit;
 
-  MalUserModel malUser({String accessToken = 'stored-access'}) {
+  MalUserModel malUser({
+    String accessToken = 'stored-access',
+    bool useWallpaperAsThemeColor = false,
+  }) {
     return MalUserModel(
       id: '56789',
       name: 'tester',
       settings: SettingsModel.empty().copyWith(
         userService: Service.mal,
-        useWallpaperAsThemeColor: false,
+        useWallpaperAsThemeColor: useWallpaperAsThemeColor,
       ),
       avatarImage: '',
       bannerImage: '',
@@ -66,6 +71,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(malUser());
+    registerFallbackValue(const NetworkImage('https://example.test/fallback.png'));
   });
 
   setUp(() async {
@@ -77,14 +83,16 @@ void main() {
     malRepo = MockUserRepositoryMal();
     loggedUser = UserNotifier();
     newUser = UserNotifier();
+    colorImageService = MockColorImageService();
+    themeService = MockThemeService();
     cubit = LoginCubit(
       localRepo,
       loggedUser,
       newUser,
       anilistRepo,
       shikimoriRepo,
-      MockColorImageService(),
-      MockThemeService(),
+      colorImageService,
+      themeService,
       userRepositoryMal: malRepo,
     );
   });
@@ -136,6 +144,22 @@ void main() {
       reason: 'MyAnimeList accounts sort with the other providers, before the local stubs',
     );
     expect(cubit.state.isLoading, isFalse);
+  });
+
+  test('setUsersTheme keeps the stored preference for a MAL account with no banner', () async {
+    final MalUserModel user = malUser(useWallpaperAsThemeColor: true);
+
+    cubit.setUsersTheme(user);
+    await pumpEventQueue();
+
+    verify(
+      () => themeService.updateThemeFromColors(
+        loggedUser: user,
+        useWallpaperAsThemeColor: true,
+        primary: user.settings.themeColor,
+      ),
+    ).called(1);
+    verifyNever(() => colorImageService.getColorsFromPalleteGenerator(any()));
   });
 
   test('a dead MAL repository degrades to the other accounts instead of failing the screen', () async {

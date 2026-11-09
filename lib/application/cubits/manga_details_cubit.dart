@@ -19,6 +19,7 @@ import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
+import 'package:unyo/data/models/mal/user/mal_user_model.dart';
 import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/extension_repository_aniyomi.dart';
 import 'package:unyo/domain/repositories/manga_repository.dart';
@@ -235,6 +236,19 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
           } catch (e, stackTrace) {
             _logger.w("Failed to persist the selected extension: $e", stackTrace: stackTrace);
           }
+        case MalUserModel malUserModel:
+          try {
+            SettingsModel userSettings = malUserModel.settings as SettingsModel;
+            Map<String, Extension> mediaExtensionsConfigUpdated = Map.from(userSettings.mediaExtensionConfigs);
+            mediaExtensionsConfigUpdated.addAll({state.selectedManga.id.toString(): selectedExtension});
+            await _userRepository.updateUserInfo(
+              malUserModel.copyWith(
+                settings: userSettings.copyWith(mediaExtensionConfigs: mediaExtensionsConfigUpdated),
+              ),
+            );
+          } catch (e, stackTrace) {
+            _logger.w("Failed to persist the selected extension: $e", stackTrace: stackTrace);
+          }
         case LocalUserModel _:
       }
       if (isClosed) return;
@@ -417,11 +431,10 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
     try {
       Extension? savedExtension;
       switch (loggedUser) {
-        case AnilistUserModel anilistUserModel:
-          SettingsModel userSettings = anilistUserModel.settings as SettingsModel;
-          savedExtension = userSettings.mediaExtensionConfigs[selectedManga.id.toString()];
-        case ShikimoriUserModel shikimoriUserModel:
-          SettingsModel userSettings = shikimoriUserModel.settings as SettingsModel;
+        case AnilistUserModel _:
+        case ShikimoriUserModel _:
+        case MalUserModel _:
+          SettingsModel userSettings = loggedUser.settings as SettingsModel;
           savedExtension = userSettings.mediaExtensionConfigs[selectedManga.id.toString()];
         case LocalUserModel _:
       }

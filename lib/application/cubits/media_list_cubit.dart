@@ -13,6 +13,7 @@ import 'package:unyo/core/notification/media_list_notifier.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
+import 'package:unyo/data/models/mal/user/mal_user_model.dart';
 import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
@@ -93,6 +94,7 @@ class MediaListCubit extends Cubit<MediaListState>
       switch (user) {
         case AnilistUserModel _:
         case ShikimoriUserModel _:
+        case MalUserModel _:
           _logger.i("Fetching user lists");
           Map<String, List<Anime>> userAnimeLists = await _userRepository
               .getUserAnimeLists(user);

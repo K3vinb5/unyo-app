@@ -8,11 +8,13 @@ import 'package:unyo_lib/jmodels/jsmanga.dart';
 import 'package:unyo/application/cubits/manga_details_cubit.dart';
 import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/application/states/manga_details_state.dart';
+import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/notification/manga_genres_notifier.dart';
 import 'package:unyo/core/notification/manga_notifier.dart';
 import 'package:unyo/core/notification/media_list_notifier.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
+import 'package:unyo/data/models/mal/user/mal_user_model.dart';
 import 'package:unyo/data/repositories/extension_repository_aniyomi.dart';
 import 'package:unyo/data/repositories/user_repository_anilist.dart';
 import 'package:unyo/domain/entities/extension/extension.dart';
@@ -73,6 +75,21 @@ void main() {
     accessCode: '',
     accessToken: '',
     refreshToken: '',
+  );
+
+  /// A real MAL account shape: `userService` is MAL and the token fields are
+  /// present, so the cubit's user-type switch sees the same object the app hands
+  /// it after a `/login` tap.
+  final MalUserModel malUser = const MalUserModel(
+    id: '56789',
+    name: 'tester',
+    settings: SettingsModel(userService: Service.mal),
+    avatarImage: '',
+    bannerImage: '',
+    accessToken: 'access-token',
+    refreshToken: 'stored-refresh',
+    accessTokenExpiresAt: '2099-01-01T00:00:00.000',
+    profileUrl: '',
   );
 
   setUpAll(() {
@@ -158,6 +175,19 @@ void main() {
       verify(() => userRepository.updateUserInfo(any())).called(1);
       verify(() => extensionRepository.getMangaSearchResults(any(), any())).called(1);
       expect(cubit.state.selectedExtension, same(testExtension));
+    });
+
+    test('persists the selection for a MyAnimeList user through the user repository', () async {
+      when(() => userRepository.updateUserInfo(any())).thenAnswer((_) async {});
+      when(() => extensionRepository.getMangaSearchResults(any(), any())).thenAnswer((_) async => []);
+
+      userStreamController.add(malUser);
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.selectMangaExtension(testExtension.name);
+
+      final MalUserModel saved = verify(() => userRepository.updateUserInfo(captureAny())).captured.single as MalUserModel;
+      expect(saved.settings.mediaExtensionConfigs[cubit.state.selectedManga.id.toString()], same(testExtension));
     });
   });
 
@@ -255,12 +285,27 @@ void main() {
       );
     }
 
+    MalUserModel malUserWith(Map<String, Extension> mediaExtensionConfigs) {
+      return MalUserModel(
+        id: '56789',
+        name: 'tester',
+        settings: SettingsModel(userService: Service.mal, mediaExtensionConfigs: mediaExtensionConfigs),
+        avatarImage: '',
+        bannerImage: '',
+        accessToken: 'access-token',
+        refreshToken: 'stored-refresh',
+        accessTokenExpiresAt: '2099-01-01T00:00:00.000',
+        profileUrl: '',
+      );
+    }
+
     /// Wires the streams/repository stubs and pushes [savedMappings] as the
     /// logged user, leaving the page without a selected title. Pass
     /// [pendingExtensions] to hold the installed-extension load open.
     Future<void> startDetailsPage(
       Map<String, Extension> savedMappings, {
       Completer<Set<Extension>>? pendingExtensions,
+      User? loggedUser,
     }) async {
       await cubit.close();
       mangaStreamController = StreamController<Manga>.broadcast();
@@ -295,7 +340,7 @@ void main() {
         userRepository,
       );
       await pumpEventQueue();
-      userStreamController.add(anilistUserWith(savedMappings));
+      userStreamController.add(loggedUser ?? anilistUserWith(savedMappings));
       await pumpEventQueue();
     }
 
@@ -317,6 +362,18 @@ void main() {
         .whereType<ShowSnackbarEffect>()
         .where((effect) => effect.titleKey == 'error_no_extension_selected')
         .length;
+
+    test('restores a saved mapping for a MyAnimeList user instead of prompting', () async {
+      final Map<String, Extension> mapping = <String, Extension>{secondManga.id.toString(): testExtension};
+      await startDetailsPage(mapping, loggedUser: malUserWith(mapping));
+
+      mangaStreamController.add(secondManga);
+      await pumpEventQueue();
+
+      expect(cubit.state.selectedExtension, same(testExtension));
+      expect(searchQueries, contains(secondTitle.userPreferred));
+      expect(noExtensionPrompts(), 0);
+    });
 
     test('a saved mapping for the new title re-resolves the extension on the cleared state', () async {
       await openDetailsPageWithFirstManga(<String, Extension>{secondManga.id.toString(): testExtension});
