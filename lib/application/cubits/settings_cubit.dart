@@ -250,6 +250,17 @@ class SettingsCubit extends Cubit<SettingsState> with EffectMixin<SettingsState>
         case LocalUserModel _:
           _logger.d("Getting local user's theme");
       }
+      // No usable wallpaper (Shikimori/local has no banner; an Anilist banner can
+      // fail to load), so there is nothing to sample: keep the requested intent
+      // and apply the account's own colour instead of indexing an empty list.
+      if (wallpaperColors.length < 3) {
+        _themeService.updateThemeFromColors(
+          loggedUser: state.loggedUser,
+          useWallpaperAsThemeColor: enable,
+          primary: state.loggedUser.settings.themeColor,
+        );
+        return;
+      }
       _themeService.updateThemeFromColors(
         loggedUser: state.loggedUser,
         useWallpaperAsThemeColor: true,
