@@ -185,9 +185,17 @@ class MangaCubit extends Cubit<MangaState> with EffectMixin<MangaState> {
       if (page == 1) {
         emit(
           state.copyWith(
+            // Hero art means "a banner, or a cover when the provider ships no
+            // banner" (MAL/Jikan v4: `bannerImage` is always ''). Keeping only
+            // banners left MAL with an empty banner slot (WP #166 evidence §1
+            // 3a); the carousel paints the cover in that case.
             banners:
                 trending.$2
-                    .where((manga) => manga.bannerImage != "")
+                    .where(
+                      (manga) =>
+                          manga.bannerImage.isNotEmpty ||
+                          manga.coverImage.isNotEmpty,
+                    )
                     .toList(),
           ),
         );

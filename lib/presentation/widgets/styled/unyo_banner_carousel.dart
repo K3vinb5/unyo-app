@@ -12,6 +12,46 @@ import 'package:unyo/presentation/widgets/text/text_utils.dart';
 import 'package:unyo/presentation/widgets/text/texts.dart';
 import 'package:unyo/presentation/widgets/text/media_title_text.dart';
 
+/// What the browse screens' banner slot shows.
+///
+/// Every provider resolves hero art now: the banner when the API has one, else
+/// the card's cover (MAL/Jikan v4 exposes no banner asset at all —
+/// `MalAnimeModel.fromNode` sets `bannerImage: ''` — so before covers counted,
+/// the slot shimmered forever for that provider; WP #166 live evidence
+/// `research/unyo-166-mal-metadata-proof/EVIDENCE.md` §1 3a).
+enum BannerHeaderMode {
+  /// First load in flight and no art yet.
+  skeleton,
+
+  /// The loaded provider has hero art.
+  carousel,
+
+  /// Loaded and the provider returned no art at all (neither banner nor
+  /// cover on any card): the slot collapses instead of reserving an empty
+  /// band, so the page starts at the button row.
+  hidden,
+}
+
+/// Resolves the banner slot state from the cubit's flags. Pulled out of the two
+/// screens so the rule is one place and directly testable.
+///
+/// [isLoading] is the cubits' first-load flag (false once the first refresh
+/// settled, success or failure); a provider switch clears the lists without
+/// flipping it back, so a switch shows the collapsed slot rather than a shimmer.
+BannerHeaderMode bannerHeaderMode({
+  required bool isLoading,
+  required bool hasBanners,
+}) {
+  if (hasBanners) return BannerHeaderMode.carousel;
+  return isLoading ? BannerHeaderMode.skeleton : BannerHeaderMode.hidden;
+}
+
+/// The browse screens' hero carousel: page art with the title, the 0-10 score
+/// and the description underneath.
+///
+/// The art per page is [Anime.bannerImage] when the provider has one, else
+/// [Anime.coverImage] — see [_UnyoBannerCarouselState._artAt]. The cubits keep
+/// only cards with at least one of them, so every page has art.
 class UnyoBannerCarousel extends StatefulWidget {
   final List<Anime>? animeList;
   final List<Manga>? mangaList;
@@ -189,12 +229,23 @@ class _UnyoBannerCarouselState extends State<UnyoBannerCarousel> {
     return widget.mangaList![index].description;
   }
 
-  String _bannerImageAt(int index) {
+  /// The hero art of a page: the real banner when the provider has one, else
+  /// the card's cover, painted with the same [BoxFit.cover] center-crop the
+  /// banners get. MAL/Jikan v4 ships no banner asset (`bannerImage: ''`), and a
+  /// banner slot with nothing in it read as a broken app (WP #166 evidence §1
+  /// 3a), so the cover is the honest hero art for that provider. Nothing is
+  /// copied between the two fields: the models stay truthful, the choice is
+  /// made here at render time.
+  String _artAt(int index) {
     final animeList = widget.animeList;
     if (animeList != null && index < animeList.length) {
-      return animeList[index].bannerImage;
+      final Anime anime = animeList[index];
+      return anime.bannerImage.isNotEmpty
+          ? anime.bannerImage
+          : anime.coverImage;
     }
-    return widget.mangaList![index].bannerImage;
+    final Manga manga = widget.mangaList![index];
+    return manga.bannerImage.isNotEmpty ? manga.bannerImage : manga.coverImage;
   }
 
   void _openMedia(int index) {
@@ -233,7 +284,7 @@ class _UnyoBannerCarouselState extends State<UnyoBannerCarousel> {
               children: [
                 // The image
                 UnyoNetworkImage(
-                  url: _bannerImageAt(index),
+                  url: _artAt(index),
                   fit: BoxFit.cover,
                 ),
 

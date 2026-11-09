@@ -11,7 +11,6 @@ import 'package:unyo/application/states/manga_state.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
-import 'package:unyo/presentation/widgets/styled/banner_carousel_fallback.dart';
 import 'package:unyo/presentation/widgets/styled/card_row_frame.dart';
 import 'package:unyo/presentation/widgets/styled/manga_card_list.dart';
 import 'package:unyo/presentation/widgets/styled/media_button.dart';
@@ -112,7 +111,7 @@ class _MangaViewState extends State<_MangaView> {
                 hasBanners: state.banners.isNotEmpty,
               )) {
                 BannerHeaderMode.skeleton => const BannerCarouselSkeleton(),
-                BannerHeaderMode.fallback => const BannerCarouselFallback(),
+                BannerHeaderMode.hidden => const SizedBox.shrink(),
                 BannerHeaderMode.carousel => UnyoBannerCarousel(
                   mangaList: state.banners,
                   onTapManga: context.read<MangaCubit>().navigateToMangaDetails,

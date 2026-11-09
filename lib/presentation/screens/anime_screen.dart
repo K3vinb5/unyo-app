@@ -11,7 +11,6 @@ import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/presentation/widgets/skeleton/skeletons.dart';
 import 'package:unyo/presentation/widgets/styled/anime_card_list.dart';
-import 'package:unyo/presentation/widgets/styled/banner_carousel_fallback.dart';
 import 'package:unyo/presentation/widgets/styled/card_row_frame.dart';
 import 'package:unyo/presentation/widgets/styled/media_button.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_banner_carousel.dart';
@@ -91,7 +90,7 @@ class _AnimeViewState extends State<_AnimeView> {
                 hasBanners: state.banners.isNotEmpty,
               )) {
                 BannerHeaderMode.skeleton => const BannerCarouselSkeleton(),
-                BannerHeaderMode.fallback => const BannerCarouselFallback(),
+                BannerHeaderMode.hidden => const SizedBox.shrink(),
                 BannerHeaderMode.carousel => UnyoBannerCarousel(
                   animeList: state.banners,
                   onTapAnime: context.read<AnimeCubit>().navigateToAnimeDetails,
@@ -113,7 +112,7 @@ class _AnimeViewState extends State<_AnimeView> {
                     MediaButton(
                       onPressed: () => context.read<AnimeCubit>().navigateToAdvancedSearch(context),
                       image:
-                          state.banners.isNotEmpty ? state.banners[1].bannerImage : "",
+                          state.banners.length > 1 ? state.banners[1].bannerImage : "",
                       text: context.tr('common_advanced_search'),
                     ),
                   ],
