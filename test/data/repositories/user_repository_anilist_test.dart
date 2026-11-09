@@ -1,5 +1,6 @@
 // External dependencies
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/services.dart' show MethodCall, MethodChannel;
 import 'package:flutter_test/flutter_test.dart';
@@ -12,12 +13,15 @@ import 'package:retry/retry.dart';
 // Internal dependencies
 import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/core/di/locator.dart' show sl;
+import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/core/services/api/graphql/graphql_service.dart';
 import 'package:unyo/core/services/api/http/api_response.dart';
 import 'package:unyo/core/services/api/http/http_service.dart';
 import 'package:unyo/data/adapters/type_adapters/color_adapter.dart';
+import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/repositories/user_repository_anilist.dart';
+import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/hive_registrar.g.dart';
 
 class MockLogger extends Mock implements Logger {}
@@ -87,6 +91,110 @@ class UnusedHttpService implements HttpService {
   }) {
     throw UnimplementedError('the login callback server is under test, not a transport');
   }
+}
+
+/// Answers the two posts an AniList login makes: the OAuth token exchange and
+/// the `Viewer` query. The viewer payload keeps AniList's top-level `Viewer`
+/// key, which is what `ViewerGraphqlEntity.fromJson` reads.
+class LoginHttpService implements HttpService {
+  @override
+  http.Client get client => throw UnimplementedError('the fake answers post() only');
+
+  @override
+  Duration get timeout => const Duration(seconds: 10);
+
+  @override
+  RetryOptions get retryOptions => const RetryOptions(maxAttempts: 1);
+
+  @override
+  Duration get cacheTtl => const Duration(minutes: 20);
+
+  @override
+  Future<ApiResponse<T>> get<T>(
+    String endpoint, {
+    Map<String, String>? headers,
+    bool ignoreCache = false,
+    required T Function(Map<String, dynamic>) fromJson,
+  }) {
+    throw UnimplementedError('a login only posts');
+  }
+
+  @override
+  Future<ApiResponse<T>> post<T>(
+    String endpoint, {
+    Map<String, String>? headers,
+    Object? body,
+    bool ignoreCache = false,
+    required T Function(Map<String, dynamic>) fromJson,
+  }) async {
+    if (endpoint == config.anilistOAuthEndpoint) {
+      return ApiResponse<T>(
+        data: fromJson(<String, dynamic>{
+          'access_token': 'access-1',
+          'refresh_token': 'refresh-1',
+        }),
+        bodyBytes: Uint8List(0),
+        statusCode: 200,
+        headers: const <String, String>{},
+      );
+    }
+    return ApiResponse<T>(
+      data: fromJson(<String, dynamic>{
+        'data': <String, dynamic>{
+          'Viewer': <String, dynamic>{
+            'id': 1234567,
+            'bannerImage': 'https://anilist.co/banner.jpg',
+            'avatar': <String, dynamic>{'medium': 'https://anilist.co/avatar.jpg'},
+            'mediaListOptions': <String, dynamic>{
+              'animeList': <String, dynamic>{'customLists': <String>[]},
+              'mangaList': <String, dynamic>{'customLists': <dynamic>[]},
+              'scoreFormat': 'POINT_10',
+            },
+            'name': 'tester',
+          },
+        },
+      }),
+      bodyBytes: Uint8List(0),
+      statusCode: 200,
+      headers: const <String, String>{},
+    );
+  }
+
+  @override
+  Future<ApiResponse<T>> patch<T>(
+    String endpoint, {
+    Map<String, String>? headers,
+    Object? body,
+    required T Function(Map<String, dynamic>) fromJson,
+  }) {
+    throw UnimplementedError('a login never patches');
+  }
+
+  @override
+  Future<ApiResponse<T>> put<T>(
+    String endpoint, {
+    Map<String, String>? headers,
+    Object? body,
+    required T Function(Map<String, dynamic>) fromJson,
+  }) {
+    throw UnimplementedError('a login never puts');
+  }
+
+  @override
+  Future<ApiResponse<T>> delete<T>(
+    String endpoint, {
+    Map<String, String>? headers,
+    required T Function(Map<String, dynamic>) fromJson,
+  }) {
+    throw UnimplementedError('a login never deletes');
+  }
+}
+
+/// `UserRepositoryAnilist` resolves both transports from the locator at
+/// construction, so the login test swaps the `HttpService` before it builds one.
+void replaceHttp(HttpService service) {
+  if (sl.isRegistered<HttpService>()) sl.unregister<HttpService>();
+  sl.registerSingleton<HttpService>(service);
 }
 
 /// Both the AniList and the Shikimori suite drive the shared `:9999` callback,
@@ -220,6 +328,30 @@ void main() {
       }
       expect(closedBy, isNotNull, reason: 'the timer must close a login nobody finishes');
       expect(closedBy, anyOf(isA<http.ClientException>(), isA<SocketException>()));
+    });
+
+    /// WP #164: a brand-new account must browse through its own provider. The
+    /// AniList site is the `metadataService == userService` half of the rule.
+    test('a login persists an account that browses AniList metadata', () async {
+      replaceHttp(LoginHttpService());
+      final UserNotifier newUser = UserNotifier();
+      final UserNotifier loggedUser = UserNotifier();
+      final UserRepositoryAnilist repository = UserRepositoryAnilist(newUser, loggedUser);
+      addTearDown(repository.closeLoginServer);
+      await bindLoginServer(repository.attemptCreateUser);
+
+      final http.Response redirect =
+          await http.get(Uri.parse('${config.anilistRedirectUri}?code=the-code'));
+      expect(redirect.statusCode, 200, reason: redirect.body);
+
+      final Box<AnilistUserModel> box = await Hive.openBox<AnilistUserModel>('anilistUsers');
+      final AnilistUserModel? stored = box.get('tester');
+      expect(stored, isNotNull, reason: 'the box is keyed by user.name');
+      final SettingsModel settings = stored!.settings as SettingsModel;
+      expect(settings.userService, Service.anilist);
+      expect(settings.metadataService, Service.anilist,
+          reason: 'AniList is a metadata provider, so the new account browses AniList details');
+      expect(loggedUser.currentUser.name, 'tester');
     });
   });
 }

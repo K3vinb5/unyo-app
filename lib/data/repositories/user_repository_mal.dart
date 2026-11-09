@@ -410,7 +410,14 @@ class UserRepositoryMal implements UserRepository {
       name: me.name,
       // The account provider setting is what every factory routes on; a
       // MyAnimeList account must carry it from the moment it is created.
-      settings: SettingsModel.empty().copyWith(userService: Service.mal),
+      // WP #164: MAL is tracker-only (not in
+      // ProviderCapabilities.metadataProviders) — its Anime/MangaRepositoryMal
+      // metadata methods are UnimplementedError stubs, so a MAL account keeps
+      // the working AniList default for details/presentation.
+      settings: SettingsModel.empty().copyWith(
+        userService: Service.mal,
+        metadataService: Service.anilist,
+      ),
       avatarImage: me.picture,
       bannerImage: '',
       accessToken: token.accessToken,

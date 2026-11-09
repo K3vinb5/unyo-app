@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:hive_ce/hive.dart';
 import 'package:logger/logger.dart';
 import 'package:unyo/core/di/locator.dart';
+import 'package:unyo/core/enums/service.dart';
 import 'package:shelf/shelf.dart' as shelf;
 import 'package:shelf/shelf_io.dart' as shelfio;
 import 'package:unyo/core/services/api/dto/anilist/auth_token_dto.dart';
@@ -289,7 +290,12 @@ class UserRepositoryAnilist with RepositoryMixin implements UserRepository {
     AnilistUserModel newAnilistUser = AnilistUserModel(
       id: viewerDto.data.viewer.id.toString(),
       name: viewerDto.data.viewer.name,
-      settings: SettingsModel.empty(),
+      // WP #164: a new account browses through its own provider. AniList is in
+      // ProviderCapabilities.metadataProviders, so both roles are the same.
+      settings: SettingsModel.empty().copyWith(
+        userService: Service.anilist,
+        metadataService: Service.anilist,
+      ),
       avatarImage: viewerDto.data.viewer.avatar.medium,
       bannerImage: viewerDto.data.viewer.bannerImage,
       accessCode: accessCode,
