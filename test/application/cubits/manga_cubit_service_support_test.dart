@@ -6,6 +6,7 @@ import 'package:mocktail/mocktail.dart';
 
 // Internal dependencies
 import 'package:unyo/application/cubits/manga_cubit.dart';
+import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/notification/manga_genres_notifier.dart';
@@ -19,6 +20,7 @@ import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/repositories/manga_repository.dart';
+import 'package:unyo/presentation/dialogs/coming_soon_dialog.dart';
 
 class MockMangaRepository extends Mock implements MangaRepository {}
 
@@ -173,6 +175,28 @@ void main() {
       );
       expect(cubit.state.trending.$2, isEmpty, reason: 'the previous provider\'s rows must not survive the switch');
       verifyNever(() => mangaRepository.getPopularMangas(1, any(), ignoreCache: true));
+    });
+
+    test('shows the coming-soon notice once for an unsupported provider', () async {
+      cubit = buildCubit();
+      userStreamController.add(userWith(Service.mal));
+      await pumpEventQueue();
+
+      List<ShowWidgetDialogEffect> dialogs() =>
+          cubit.state.effects.whereType<ShowWidgetDialogEffect>().toList();
+      expect(dialogs(), hasLength(1));
+      expect(
+        (dialogs().single.dialog as ComingSoonDialog).feature,
+        ComingSoonFeature.mangaProviderMissing,
+      );
+
+      reloadStreamController.add(ReloadType.newMetadataService);
+      await pumpEventQueue();
+      expect(
+        dialogs(),
+        hasLength(1),
+        reason: 'a provider-switch reload must not queue a second notice',
+      );
     });
   });
 }

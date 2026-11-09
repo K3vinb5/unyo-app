@@ -268,7 +268,17 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                       icon: Icons.my_library_books_rounded,
                       alignment: "",
                       childAlignment: "",
-                      settingsOptions: const [],
+                      // WP #148: the category has no settings until the manga
+                      // reader ships; one explanatory row beats an empty box
+                      // that reads like a rendering bug.
+                      settingsOptions: [
+                        UnyoSettingsSelectionDialog(
+                          title: context.tr("settings_reader_title"),
+                          description: context.tr("settings_reader_description"),
+                          icon: Icons.my_library_books_rounded,
+                          openDialog: context.read<SettingsCubit>().openReaderSettingsDialog,
+                        ),
+                      ],
                     ),
                     UnyoSettingsCategory(
                       title: context.tr("settings_extensions_title"),

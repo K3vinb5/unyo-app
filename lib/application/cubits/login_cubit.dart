@@ -22,6 +22,7 @@ import 'package:unyo/data/repositories/repositories.dart';
 import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/presentation/dialogs/account_creation_dialog.dart';
+import 'package:unyo/presentation/dialogs/coming_soon_dialog.dart';
 
 class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
   // Repositories
@@ -162,9 +163,15 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
         _logger.i("Attempting to create Shikimori User");
         await _createShikimoriUser();
       case LoginCardType.mal:
+        // Not implemented yet (WP #148): say so instead of closing the dialog
+        // and leaving the user staring at the login screen again.
         _logger.i("Attempting to create MyAnimeList User");
+        ComingSoonDialog.show(context, ComingSoonFeature.malAccounts);
+        return;
       case LoginCardType.local:
         _logger.i("Attempting to create Local User");
+        ComingSoonDialog.show(context, ComingSoonFeature.localAccounts);
+        return;
     }
     if (context.mounted) closeDialogEffect(context);
   }

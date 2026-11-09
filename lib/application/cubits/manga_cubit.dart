@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:logger/logger.dart';
 import 'package:unyo/application/effects/app_effects.dart';
 import 'package:unyo/application/states/manga_state.dart';
+import 'package:unyo/presentation/dialogs/coming_soon_dialog.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/service.dart';
@@ -33,6 +34,13 @@ class MangaCubit extends Cubit<MangaState> with EffectMixin<MangaState> {
   bool _refreshInFlight = false;
   bool _refreshQueued = false;
   bool _queuedProviderSwitch = false;
+
+  /// A coming-soon notice for an unsupported metadata provider fires once per
+  /// cubit instance (WP #148). The Manga tab keeps its cubit for the session,
+  /// so dismissing the notice is not undone by a provider-switch reload.
+  static const bool _showUnsupportedProviderDialogOnce = true;
+  bool _unsupportedProviderDialogShown = false;
+
   final Logger _logger = sl<Logger>();
 
   MangaCubit(
@@ -142,6 +150,12 @@ class MangaCubit extends Cubit<MangaState> with EffectMixin<MangaState> {
           banners: [],
         ),
       );
+      if (_showUnsupportedProviderDialogOnce && !_unsupportedProviderDialogShown) {
+        _unsupportedProviderDialogShown = true;
+        showWidgetDialogEffect(
+          dialog: const ComingSoonDialog(feature: ComingSoonFeature.mangaProviderMissing),
+        );
+      }
       return;
     }
     emit(state.copyWith(metadataServiceSupported: true));
