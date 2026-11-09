@@ -365,6 +365,37 @@ void main() {
       expect(query['sort'], 'asc');
     });
 
+    test('an empty upcoming page is a loaded empty row, not a failure', () async {
+      // WP #169: Tenrai's catalog carries no upcoming manga at all —
+      // `/manga?status=upcoming` answers 200 with `total: 0` for every ordering
+      // and for `not_yet_published`/`top?filter=upcoming` too, while the
+      // controls (`publishing`, `complete`, `hiatus`, `discontinued`, anime
+      // `upcoming`) all return rows. The row therefore renders empty by data, so
+      // the repository must report a successful empty load in one bounded
+      // request rather than a failed fetch or a retry loop.
+      wire.answers = <Object>[
+        (200, jsonEncode(<String, dynamic>{
+          'pagination': <String, dynamic>{
+            'last_visible_page': 1,
+            'has_next_page': false,
+            'current_page': 1,
+            'items': <String, dynamic>{'count': 0, 'total': 0, 'per_page': 25},
+          },
+          'data': <Object>[],
+        })),
+      ];
+
+      final (bool ok, List<Manga> mangas) = await repository.getUpcomingMangas(1, malUser());
+
+      expect(ok, isTrue, reason: 'an empty catalog page is a loaded row, not a failed fetch');
+      expect(mangas, isEmpty);
+      expect(wire.requests, hasLength(1), reason: 'one request per refresh, no retry on an empty page');
+      final Map<String, String> query = wire.requests.single.url.queryParameters;
+      expect(query['status'], 'upcoming');
+      expect(query['order_by'], 'start_date');
+      expect(query['sort'], 'asc');
+    });
+
     test('the NSFW setting drives sfw on the Jikan feeds and nsfw nowhere', () async {
       wire.answers = <Object>[
         (200, jsonEncode(fixture('jikan_manga.json'))),

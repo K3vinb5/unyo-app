@@ -174,9 +174,25 @@ class MangaRepositoryMal with RepositoryMixin implements MangaRepository {
     );
   }
 
-  /// Jikan `/v4/manga?status=upcoming&order_by=start_date&sort=asc` — announced
-  /// series, nearest start date first. `ranking_type=upcoming` is not a valid
-  /// v2 manga ranking type (probed: 400), so this is the SPEC's Jikan fallback.
+  /// Jikan `/v4/manga?status=upcoming&order_by=start_date&sort=asc` — the shape
+  /// SPEC §2 keeps for announced manga. **Disposition (WP #169, probed
+  /// 2026-11-09): this source carries no upcoming manga, so the row is empty on
+  /// purpose, not broken.** `status=upcoming` answers 200 with `total: 0` for
+  /// every variant (`order_by=members|start_date` × `sort=asc|desc`, `sfw=true`,
+  /// `type=manga`, page 2), `status=not_yet_published` is also 0, and
+  /// `/top/manga?filter=upcoming` is 0. Controls prove the filter is honoured:
+  /// `publishing` 13 417, `complete` 71 870, `hiatus` 520, `discontinued` 266,
+  /// while anime `status=upcoming` returns 538 — so 0 is data, not a rejected
+  /// parameter. The catalog's latest `published.from` across all 86 073 manga is
+  /// today+1, so filtering future start dates client-side would be empty too.
+  ///
+  /// No proxy replaces it: `publishing` sorted by newest `start_date` is the
+  /// manga analogue of the anime Recently Released row
+  /// (`status=airing&order_by=start_date&sort=desc`), i.e. "already serializing",
+  /// which is not "upcoming" — it would put a different claim under this label.
+  /// The call itself is kept — one request, ~0.4 s, `(true, <Manga>[])` — so a
+  /// backfilled catalog starts filling the row with no code change, and a
+  /// failed request still degrades to `(false, [])`.
   @override
   Future<(bool, List<Manga>)> getUpcomingMangas(
     int page,
