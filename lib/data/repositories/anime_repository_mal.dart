@@ -7,6 +7,7 @@ import 'package:logger/logger.dart';
 // Internal dependencies
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/service.dart';
+import 'package:unyo/core/services/api/dto/jikan/jikan_media_entity.dart';
 import 'package:unyo/core/services/api/dto/jikan/jikan_schedule_entity.dart';
 import 'package:unyo/core/services/api/dto/mal/mal_anime_node.dart';
 import 'package:unyo/core/services/api/dto/mal/mal_media_list_entity.dart';
@@ -17,6 +18,7 @@ import 'package:unyo/core/services/api/mal/mal_user_rate_service.dart';
 import 'package:unyo/data/models/mal/media/mal_anime_details_model.dart';
 import 'package:unyo/data/models/mal/media/mal_anime_model.dart';
 import 'package:unyo/data/models/mal/media/mal_list_status_policy.dart';
+import 'package:unyo/data/models/mal/media/mal_media_mapper.dart';
 import 'package:unyo/data/models/mal/user/mal_user_model.dart';
 import 'package:unyo/data/repositories/repository_mixin.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
@@ -27,13 +29,15 @@ import 'package:unyo/domain/repositories/anime_repository.dart';
 
 /// MyAnimeList anime provider: metadata **and** tracker (WP #156 + WP #166).
 ///
-/// Metadata reads go through [MalMetadataService] (MAL API v2; Jikan only for
-/// the weekly calendar, because MAL v2 has no schedule endpoint), mirroring
-/// `AnimeRepositoryShikimori`'s method-by-method shape: browse lists are one
-/// page of nodes, search is `/anime` with the selected filters, details is
-/// `GET /anime/{id}`, covers come from the popular ranking. The transport owns
-/// the rate-limiter grant, the explicit `fields=` sets and the `nsfw` parameter,
-/// so every read here shares the tracker's budget and honours the app's
+/// Metadata reads go through [MalMetadataService], mirroring
+/// `AnimeRepositoryShikimori`'s method-by-method shape. Per the amended SPEC §2
+/// map the source is hybrid: MAL v2 serves the ranking feeds, details and
+/// covers (`/anime` cannot filter anything but `q`, which is required), while
+/// Jikan serves the two date-ordered catalog feeds, the schedule and the
+/// advanced search — the only source that can filter and order. The transport
+/// owns the rate-limiter grants (MAL and Jikan have separate budgets), the
+/// explicit `fields=` sets, the `X-MAL-CLIENT-ID` header and the `nsfw`/`sfw`
+/// parameters, so every read shares the platform's budget and honours the app's
 /// NSFW preference (SPEC §2/§4).
 ///
 /// List-entry reads/writes stay on [MalUserRateService]; the logged account has
@@ -48,8 +52,12 @@ import 'package:unyo/domain/repositories/anime_repository.dart';
 /// [MalUserRateService] rejects non-positive ids. Metadata results carry the
 /// same MAL-native id in both `id` and `idMal` (SPEC §3).
 class AnimeRepositoryMal with RepositoryMixin implements AnimeRepository {
-  /// One MAL `/anime` page. MAL's documented default is 50.
+  /// One MAL `/anime/ranking` page. MAL's documented default is 50.
   static const int pageSize = MalMetadataService.defaultLimit;
+
+  /// One Jikan feed/search page. Jikan caps `limit` at 25 on every list
+  /// endpoint, so a Jikan page is smaller than a MAL one by contract.
+  static const int jikanPageSize = MalMetadataService.jikanMaxLimit;
 
   /// Jikan weekday filters, in calendar order. `/v4/schedules` returns at most
   /// 25 entries per page, so a full week is seven filtered pages.
@@ -119,9 +127,13 @@ class AnimeRepositoryMal with RepositoryMixin implements AnimeRepository {
   }
 
   // ------------------------------------------------------------- browse
-  // SPEC §2: hot-now ≈ AniList trending, `bypopularity` ≈ popular. The ranking
-  // endpoint has no `nsfw` parameter (unlike `/anime`), so adult entries are
-  // dropped client-side with the AniList calendar's expression.
+  // SPEC §2 (amended): v2 serves only what it can serve. Trending/popular come
+  // from `/anime/ranking` (`airing` is the closest trending equivalent,
+  // `bypopularity` the popularity ranking); `upcoming` is a valid ranking type
+  // (probed live); the two date-ordered feeds need a `status` + `order_by`
+  // filter, which v2 ignores, so they are Jikan reads. The ranking endpoint has
+  // no `nsfw` parameter, so adult entries are dropped client-side with the
+  // AniList calendar's expression.
 
   @override
   Future<(bool, List<Anime>)> getTrendingAnimes(
@@ -143,36 +155,47 @@ class AnimeRepositoryMal with RepositoryMixin implements AnimeRepository {
     return _rankingAnimes('bypopularity', page, loggedUser);
   }
 
+  /// Jikan `/v4/anime?status=airing&order_by=start_date&sort=desc` — newest
+  /// premieres first. MAL v2 `/anime` silently ignores `status`, so this feed
+  /// cannot be served by v2 (SPEC §2).
   @override
   Future<(bool, List<Anime>)> getRecentlyReleasedAnimes(
     int page,
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
-    _logger.i("Fetching MyAnimeList recently released animes");
-    return _catalogAnimes(
+    _logger.i("Fetching MyAnimeList recently released animes (Jikan)");
+    return _jikanAnimes(
       page: page,
       loggedUser: loggedUser,
-      status: 'currently_airing',
-      sort: '-anime_start_date',
+      status: 'airing',
+      orderBy: 'start_date',
+      direction: 'desc',
+      reason: 'recently released animes',
     );
   }
 
+  /// Jikan `/v4/anime?status=complete&order_by=end_date&sort=desc` — most
+  /// recently finished first (see [getRecentlyReleasedAnimes] for why Jikan).
   @override
   Future<(bool, List<Anime>)> getRecentlyCompletedAnimes(
     int page,
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
-    _logger.i("Fetching MyAnimeList recently completed animes");
-    return _catalogAnimes(
+    _logger.i("Fetching MyAnimeList recently completed animes (Jikan)");
+    return _jikanAnimes(
       page: page,
       loggedUser: loggedUser,
-      status: 'finished_airing',
-      sort: '-anime_end_date',
+      status: 'complete',
+      orderBy: 'end_date',
+      direction: 'desc',
+      reason: 'recently completed animes',
     );
   }
 
+  /// `GET /anime/ranking?ranking_type=upcoming` — probed live: a valid ranking
+  /// type whose every row is `not_yet_aired`, exactly the announced series.
   @override
   Future<(bool, List<Anime>)> getUpcomingAnimes(
     int page,
@@ -180,12 +203,7 @@ class AnimeRepositoryMal with RepositoryMixin implements AnimeRepository {
     bool ignoreCache = false,
   }) async {
     _logger.i("Fetching MyAnimeList upcoming animes");
-    return _catalogAnimes(
-      page: page,
-      loggedUser: loggedUser,
-      status: 'not_yet_aired',
-      sort: 'anime_start_date',
-    );
+    return _rankingAnimes('upcoming', page, loggedUser);
   }
 
   Future<(bool, List<Anime>)> _rankingAnimes(String rankingType, int page, User loggedUser) async {
@@ -202,25 +220,46 @@ class AnimeRepositoryMal with RepositoryMixin implements AnimeRepository {
     }
   }
 
-  Future<(bool, List<Anime>)> _catalogAnimes({
+  /// One Jikan `/v4/anime` page (browse feed or search); a non-2xx answer —
+  /// including a 429 that survived the transport's single backoff — degrades to
+  /// `(false, [])` like the other provider repositories.
+  Future<(bool, List<Anime>)> _jikanAnimes({
     required int page,
     required User loggedUser,
+    required String reason,
     String? status,
-    String? sort,
+    String? type,
+    String? orderBy,
+    String? direction,
+    String? q,
+    List<int>? genreIds,
   }) async {
     try {
-      final MalAnimeListEntity catalog = await _metadataService.getAnimeCatalog(
+      final JikanMediaListEntity feed = await _metadataService.getJikanAnimeList(
+        q: q,
         status: status,
-        sort: sort,
+        type: type,
+        genreIds: genreIds,
+        orderBy: orderBy,
+        sort: direction,
         nsfwAllowed: loggedUser.settings.enableNsfwContent,
         page: page,
-        limit: pageSize,
+        limit: jikanPageSize,
       );
-      return (true, _visible(_mapNodes(catalog), loggedUser));
+      return (true, _visible(_mapJikanNodes(feed), loggedUser));
     } on HttpServerException catch (e) {
-      _logger.e("MyAnimeList browse page failed (${e.statusCode}), status=$status sort=$sort");
+      _logger.e("Jikan $reason failed (${e.statusCode}), status=$status type=$type");
       return (false, <Anime>[]);
     }
+  }
+
+  /// Jikan page → domain records. The node id is the MAL-native `mal_id`, so a
+  /// Jikan-sourced record addresses exactly like a v2 one (SPEC §3).
+  List<Anime> _mapJikanNodes(JikanMediaListEntity entity) {
+    return entity.data
+        .where((JikanMediaData node) => node.malId > 0)
+        .map((JikanMediaData node) => MalAnimeModel.fromJikanNode(node))
+        .toList();
   }
 
   List<Anime> _mapNodes(MalAnimeListEntity entity) {
@@ -269,15 +308,20 @@ class AnimeRepositoryMal with RepositoryMixin implements AnimeRepository {
 
   // ------------------------------------------------------------- search
 
-  /// MAL's filter values are fixed enums (no genre-dictionary endpoint), so the
-  /// dictionary is the static [MalMetadataVocabularies] map — same
-  /// `(isVisible, values)` shape the shared search screen renders. There is no
-  /// season/year entry: `/anime` cannot filter by either (SPEC §2).
+  /// Jikan's filter values are the enums its validator accepts — MAL v2
+  /// `/anime` has no filter axes at all (SPEC §2) — so the dictionary is the
+  /// static [MalMetadataVocabularies] map, in the same `(isVisible, values)`
+  /// shape the shared search screen renders. There is no season/year entry:
+  /// Jikan's `/anime` search cannot filter by either (the seasonal endpoint is a
+  /// separate call), so the screen does not offer them.
   @override
   Future<Map<String, (bool, List<String>)>> getUserAnimeAdvancedSearchFilters(User loggedUser) async {
     return MalMetadataVocabularies.animeFilterMap();
   }
 
+  /// One Jikan `/v4/anime` search page. `selectedSeason`/`selectedYear` have no
+  /// counterpart on that endpoint and are logged and dropped rather than mapped
+  /// onto `start_date`/`end_date` — a year is not a date range the user picked.
   @override
   Future<List<Anime>> performAnimeAdvancedSearch(
     String query,
@@ -290,66 +334,48 @@ class AnimeRepositoryMal with RepositoryMixin implements AnimeRepository {
     int page,
     User loggedUser,
   ) async {
-    _logger.i("Performing advanced anime search on MyAnimeList");
+    _logger.i("Performing advanced anime search on MyAnimeList (Jikan)");
     if (selectedSeason != null || selectedYear != null) {
       _logger.w(
-        "MyAnimeList /anime has no season/year filter (season=$selectedSeason, year=$selectedYear); "
-        "ignoring both — the seasonal endpoint /anime/season/{year}/{season} is a separate call",
+        "Jikan /anime has no season/year filter (season=$selectedSeason, year=$selectedYear); "
+        "ignoring both — the seasonal endpoint /seasons/{year}/{season} is a separate call",
       );
     }
     final String? genreIds = selectedGenres.isEmpty
         ? null
         : MalMetadataVocabularies.genreIdsFor(selectedGenres, manga: false);
-    final List<int>? genreIdList = genreIds?.split(',').map(int.parse).toList();
-    try {
-      final MalAnimeListEntity catalog = await _metadataService.getAnimeCatalog(
-        q: query.trim().isEmpty ? null : query.trim(),
-        status: _wireChoice(selectedAiringStatus, MalMetadataVocabularies.animeStatusLabels,
-            MalMetadataVocabularies.animeStatuses),
-        mediaType: _wireChoice(
-            selectedFormat, MalMetadataVocabularies.animeFormatLabels, MalMetadataVocabularies.animeFormats),
-        sort: _searchSort(sort),
-        genreIds: genreIdList,
-        nsfwAllowed: loggedUser.settings.enableNsfwContent,
-        page: page,
-        limit: pageSize,
-      );
-      return _mapNodes(catalog);
-    } on HttpServerException catch (e) {
-      _logger.e("MyAnimeList search failed (${e.statusCode})");
-      return <Anime>[];
-    }
+    final ({String orderBy, String direction})? order = MalMetadataVocabularies.orderFor(sort);
+    final (bool _, List<Anime> results) = await _jikanAnimes(
+      q: query.trim().isEmpty ? null : query.trim(),
+      status: _wireChoice(selectedAiringStatus, MalMetadataVocabularies.animeStatusLabels),
+      type: _wireChoice(selectedFormat, MalMetadataVocabularies.animeFormatLabels),
+      genreIds: genreIds?.split(',').map(int.parse).toList(),
+      orderBy: order?.orderBy,
+      direction: order?.direction,
+      page: page,
+      loggedUser: loggedUser,
+      reason: 'anime search',
+    );
+    return results;
   }
 
-  /// Label → wire value, keeping the shared screen's display strings out of the
-  /// query string. A value already in the wire vocabulary is accepted too.
-  String? _wireChoice(String? selected, Map<String, String> labels, List<String> allowed) {
+  /// Label ("Airing") or wire value ("airing") → the Jikan wire value; an
+  /// unknown selection is dropped instead of guessed, so the screen never sends
+  /// a display string to the API.
+  String? _wireChoice(String? selected, Map<String, String> labels) {
     if (selected == null) return null;
     final String trimmed = selected.trim();
     if (trimmed.isEmpty) return null;
-    final String? labelled = labels[trimmed];
-    if (labelled != null) return labelled;
-    final String normalized = trimmed.toLowerCase().replaceAll(RegExp(r'[\s-]+'), '_');
-    return allowed.contains(normalized) ? normalized : null;
-  }
-
-  /// `SCORE_DESC` (what the shared screen sends) → MAL's `-anime_score`. An
-  /// unknown field drops the sort entirely and lets MAL's own default order
-  /// stand, mirroring the "do not filter" rule for the other parameters.
-  String? _searchSort(String sort) {
-    final String normalized = sort.trim().toLowerCase().replaceAll(RegExp(r'[\s-]+'), '_');
-    final bool descending = normalized.endsWith('_desc');
-    final String base = normalized.replaceAll(RegExp(r'_(asc|desc)$'), '');
-    String? wireField;
-    for (final MapEntry<String, String> entry in MalMetadataVocabularies.animeSortLabels.entries) {
-      final String label = entry.key.toLowerCase().replaceAll(RegExp(r'[\s-]+'), '_');
-      if (label == base) {
-        wireField = entry.value;
-        break;
-      }
+    final String lower = trimmed.toLowerCase();
+    for (final MapEntry<String, String> entry in labels.entries) {
+      if (entry.key.toLowerCase() == lower) return entry.value;
     }
-    if (wireField == null) return null;
-    return MalMetadataVocabularies.sortFor(wireField, descending: descending);
+    final String normalized = lower.replaceAll(RegExp(r'[\s-]+'), '_');
+    for (final String wire in labels.values) {
+      if (wire == normalized) return wire;
+    }
+    _logger.w("Unknown MyAnimeList anime filter value '$selected'; sending no filter");
+    return null;
   }
 
   // -------------------------------------------------------------- covers
@@ -435,41 +461,13 @@ class AnimeRepositoryMal with RepositoryMixin implements AnimeRepository {
       episodes: entry.episodes,
       genres: const <String>[],
       mediaType: entry.type.toLowerCase(),
-      status: _jikanStatus(entry.status),
-      rating: _jikanRating(entry.rating),
+      status: MalMediaMapper.animeStatusFromJikan(entry.status),
+      rating: MalMediaMapper.ratingFromJikan(entry.rating),
       nsfw: '',
       popularity: 0,
       season: '',
       duration: 0,
     );
-  }
-
-  /// Jikan spells statuses as prose (`Currently Airing`) while the mapper reads
-  /// MAL's wire enum; fold the prose back onto the wire value first.
-  String _jikanStatus(String status) {
-    switch (status.trim().toLowerCase()) {
-      case 'currently airing':
-        return 'currently_airing';
-      case 'finished airing':
-        return 'finished_airing';
-      case 'not yet aired':
-        return 'not_yet_aired';
-      default:
-        return status.trim().toLowerCase().replaceAll(RegExp(r'\s+'), '_');
-    }
-  }
-
-  /// Jikan ratings are prose (`Rx - Hentai`, `PG-13 - Teens 13 or older`); the
-  /// mapper's adult test reads MAL's short code, so take the prefix.
-  String _jikanRating(String rating) {
-    final String normalized = rating.trim().toLowerCase();
-    if (normalized.startsWith('rx')) return 'rx';
-    if (normalized.startsWith('r+')) return 'r+';
-    if (normalized.startsWith('pg-13')) return 'pg_13';
-    if (normalized.startsWith('pg')) return 'pg';
-    if (normalized.startsWith('r')) return 'r';
-    if (normalized.startsWith('g')) return 'g';
-    return '';
   }
 
   /// Groups by weekday (Monday → Sunday, chronological) and sorts each bucket by

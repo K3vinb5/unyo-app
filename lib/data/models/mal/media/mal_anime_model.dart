@@ -2,6 +2,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 // Internal dependencies
+import 'package:unyo/core/services/api/dto/jikan/jikan_media_entity.dart';
 import 'package:unyo/core/services/api/dto/mal/mal_anime_node.dart';
 import 'package:unyo/data/models/mal/media/mal_media_mapper.dart';
 import 'package:unyo/domain/entities/media/airing_episode.dart';
@@ -74,6 +75,40 @@ abstract class MalAnimeModel with _$MalAnimeModel implements Anime {
       popularity: node.popularity,
       season: node.startSeason.season,
       duration: node.averageEpisodeDuration,
+    );
+  }
+
+  /// One `data[]` node of a Jikan `/v4/anime` page (catalog feeds and advanced
+  /// search — the only source that can filter/order, SPEC §2).
+  ///
+  /// The id is the MAL-native id (`mal_id`), so a Jikan-sourced record addresses
+  /// exactly like a v2 one (SPEC §3). Fields Jikan does not carry (banner,
+  /// `rank`-based popularity is `popularity`, next episode) stay at their
+  /// sentinels — nothing is invented.
+  factory MalAnimeModel.fromJikanNode(JikanMediaData node) {
+    return MalAnimeModel.fromParts(
+      id: node.malId,
+      title: node.title,
+      english: node.titleEnglish,
+      nativeTitle: node.titleJapanese,
+      largePicture: node.images.jpg.largeImageUrl,
+      mediumPicture: node.images.jpg.imageUrl,
+      description: node.synopsis,
+      mean: node.score,
+      startDate: node.aired.from,
+      endDate: node.aired.to,
+      episodes: node.episodes,
+      genres: <String>[
+        ...node.genres.map((JikanMediaDataGenre genre) => genre.name),
+        ...node.explicitGenres.map((JikanMediaDataGenre genre) => genre.name),
+      ],
+      mediaType: node.type,
+      status: MalMediaMapper.animeStatusFromJikan(node.status),
+      rating: MalMediaMapper.ratingFromJikan(node.rating),
+      nsfw: '',
+      popularity: node.popularity,
+      season: node.season,
+      duration: MalMediaMapper.durationSeconds(node.duration),
     );
   }
 

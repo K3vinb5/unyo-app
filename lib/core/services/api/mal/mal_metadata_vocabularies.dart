@@ -7,20 +7,30 @@ import 'package:collection/collection.dart';
 /// enums, so — unlike Shikimori, which fetches `genres(entryType:)` — these are
 /// constants.
 ///
+/// The filter values are **Jikan's**, not MAL v2's: since the amended SPEC §2
+/// the advanced search runs on `api.jikan.moe/v4/anime|manga`, because MAL's
+/// `/anime` and `/manga` accept only a required `q` plus paging and silently
+/// ignore every other filter. Only the axes Jikan actually filters are exposed
+/// (`type`, `status`, `genres`, `order_by` + `sort`); a value Jikan does not
+/// define is never sent.
+///
 /// Sources:
 /// * genre ids/names: MAL's official genre list (the ids are stable and shared
-///   by the anime and manga spaces for the classic 44 entries; spot-checked
-///   against live genre links on `myanimelist.net` — Action 1, Adventure 2,
-///   Drama 8, Fantasy 10, Shounen 27, Military 38).
-/// * statuses/ratings/formats/sort keys: the official v2 reference
-///   (<https://myanimelist.net/apiconfig/references/api/v2>) plus the node
-///   enums (`finished_airing`, `currently_airing`, `not_yet_aired`).
+///   by the anime and manga spaces for the classic 44 entries; Jikan's
+///   `genres` filter takes the same ids — spot-checked against live genre links
+///   on `myanimelist.net` — Action 1, Adventure 2, Drama 8, Fantasy 10,
+///   Shounen 27, Military 38).
+/// * filter enums: `app/Enums/*Enum.php` of the Jikan reference implementation
+///   (`AnimeStatusEnum`, `MangaStatusEnum`, `AnimeTypeEnum`, `MangaTypeEnum`,
+///   `AnimeOrderByEnum`/`MangaOrderByEnum`, `SortDirection`), i.e. the exact
+///   values its validator accepts.
 /// * ranking types: the `ranking_type` table of `/anime/ranking` and
-///   `/manga/ranking`.
+///   `/manga/ranking` (v2; probed live — `publishing`/`upcoming` are NOT
+///   valid manga ranking types).
 abstract final class MalMetadataVocabularies {
   // ---------------------------------------------------------------- genres
 
-  /// Anime genre **name** → MAL genre id (the `genre=` filter takes ids only).
+  /// Anime genre **name** → MAL genre id (Jikan's `genres` filter takes ids).
   static const Map<String, int> animeGenreIdsByName = <String, int>{
     'Action': 1,
     'Adventure': 2,
@@ -68,10 +78,9 @@ abstract final class MalMetadataVocabularies {
     'Gender Bender': 44,
   };
 
-  /// Manga genre **name** → MAL genre id. MAL reuses the anime numbering for
-  /// the shared genres; the manga-only ids are not needed by the v2 filter, so
-  /// the same 44-entry table is exposed (a label unknown to MAL is simply not
-  /// sent — see [genreIdsFor]).
+  /// Manga genre **name** → MAL genre id. MAL (and therefore Jikan) reuses the
+  /// anime numbering for the shared genres, so the same 44-entry table applies
+  /// (a label unknown to MAL is simply not sent — see [genreIdsFor]).
   static const Map<String, int> mangaGenreIdsByName = animeGenreIdsByName;
 
   /// Genre labels for the dropdown, sorted by name.
@@ -79,7 +88,7 @@ abstract final class MalMetadataVocabularies {
 
   static List<String> get mangaGenreNames => mangaGenreIdsByName.keys.toList()..sort();
 
-  /// Labels → the comma-joined id list MAL's `genre=` accepts, or `null` when
+  /// Labels → the comma-joined id list Jikan's `genres=` accepts, or `null` when
   /// nothing matches (an empty filter means "do not filter").
   static String? genreIdsFor(List<String> labels, {required bool manga}) {
     final Map<String, int> table = manga ? mangaGenreIdsByName : animeGenreIdsByName;
@@ -96,48 +105,84 @@ abstract final class MalMetadataVocabularies {
     return ids.join(',');
   }
 
-  // ----------------------------------------------------------------- types
+  // ------------------------------------------------------- filters (Jikan)
 
-  /// `type=` of `/anime`.
-  static const List<String> animeFormats = <String>['tv', 'movie', 'ova', 'special', 'ona', 'music'];
+  /// UI label → `type=` value on Jikan `/v4/anime`.
+  ///
+  /// Human labels the search UI renders → wire values. Keeping the label and the
+  /// value apart means the screens never send a display string to the API.
+  static const Map<String, String> animeFormatLabels = <String, String>{
+    'TV': 'tv',
+    'Movie': 'movie',
+    'OVA': 'ova',
+    'Special': 'special',
+    'ONA': 'ona',
+    'Music': 'music',
+  };
 
-  /// `type=` of `/manga`.
-  static const List<String> mangaFormats = <String>['manga', 'novel', 'one_shot', 'doujin', 'manhwa', 'manhua'];
+  /// UI label → `type=` value on Jikan `/v4/manga` (`lightnovel` has no
+  /// underscore; `oneshot` is not MAL's `one_shot`).
+  static const Map<String, String> mangaFormatLabels = <String, String>{
+    'Manga': 'manga',
+    'Novel': 'novel',
+    'Light Novel': 'lightnovel',
+    'One Shot': 'oneshot',
+    'Doujinshi': 'doujin',
+    'Manhwa': 'manhwa',
+    'Manhua': 'manhua',
+  };
 
-  // -------------------------------------------------------------- statuses
+  /// UI label → `status=` value on Jikan `/v4/anime` (`airing|complete|upcoming`,
+  /// not MAL's `currently_airing|finished_airing|not_yet_aired`).
+  static const Map<String, String> animeStatusLabels = <String, String>{
+    'Airing': 'airing',
+    'Finished': 'complete',
+    'Upcoming': 'upcoming',
+  };
 
-  /// `status=` of `/anime` (same enum the node's `status` carries).
-  static const List<String> animeStatuses = <String>['currently_airing', 'finished_airing', 'not_yet_aired'];
+  /// UI label → `status=` value on Jikan `/v4/manga`.
+  static const Map<String, String> mangaStatusLabels = <String, String>{
+    'Publishing': 'publishing',
+    'Finished': 'complete',
+    'Upcoming': 'upcoming',
+    'On Hiatus': 'hiatus',
+    'Discontinued': 'discontinued',
+  };
 
-  /// `status=` of `/manga`.
-  static const List<String> mangaStatuses = <String>['publishing', 'finished', 'not_yet_published'];
+  /// UI label → `order_by=` value. Jikan names the column (`score`, `members`,
+  /// `start_date`, `end_date`), not MAL's `anime_score`/`manga_score`; direction
+  /// is a separate `sort=asc|desc` parameter, so there is no second list.
+  static const Map<String, String> animeSortLabels = <String, String>{
+    'Popularity': 'popularity',
+    'Score': 'score',
+    'Members': 'members',
+    'Start Date': 'start_date',
+    'End Date': 'end_date',
+  };
 
-  // --------------------------------------------------------------- ratings
+  static const Map<String, String> mangaSortLabels = animeSortLabels;
 
-  /// `rating=` of `/anime`: all-ages → hentai.
-  static const List<String> animeRatings = <String>['g', 'pg', 'pg_13', 'r', 'r+', 'rx'];
-
-  // ----------------------------------------------------------------- sorts
-
-  /// `sort=` of `/anime`; prefix `-` for descending.
-  static const List<String> animeSorts = <String>[
-    'anime_score',
-    'anime_num_list_users',
-    'anime_start_date',
-    'anime_end_date',
-  ];
-
-  /// `sort=` of `/manga`; prefix `-` for descending.
-  static const List<String> mangaSorts = <String>[
-    'manga_score',
-    'manga_num_list_users',
-    'manga_start_date',
-    'manga_end_date',
-  ];
+  /// `SCORE_DESC` (what the shared search screen sends) → Jikan's
+  /// `order_by`/`sort` pair, or `null` for an option Jikan does not define
+  /// (both parameters are then dropped and Jikan's own order stands).
+  static ({String orderBy, String direction})? orderFor(String sort) {
+    final String normalized = sort.trim().toLowerCase().replaceAll(RegExp(r'[\s-]+'), '_');
+    if (normalized.isEmpty) return null;
+    final bool descending = normalized.endsWith('_desc');
+    final String base = normalized.replaceAll(RegExp(r'_(asc|desc)$'), '');
+    if (base.isEmpty) return null;
+    for (final MapEntry<String, String> entry in animeSortLabels.entries) {
+      final String label = entry.key.toLowerCase().replaceAll(RegExp(r'[\s-]+'), '_');
+      if (label == base || entry.value == base) {
+        return (orderBy: entry.value, direction: descending ? 'desc' : 'asc');
+      }
+    }
+    return null;
+  }
 
   // -------------------------------------------------------------- rankings
 
-  /// `ranking_type=` of `/anime/ranking`.
+  /// `ranking_type=` of `/anime/ranking` (v2 reference; `upcoming` probed live).
   static const List<String> animeRankingTypes = <String>[
     'all',
     'airing',
@@ -150,7 +195,8 @@ abstract final class MalMetadataVocabularies {
     'favorite',
   ];
 
-  /// `ranking_type=` of `/manga/ranking`.
+  /// `ranking_type=` of `/manga/ranking`. `publishing`/`upcoming` are **not**
+  /// in the reference and probe as `400 invalid ranking_type`.
   static const List<String> mangaRankingTypes = <String>[
     'all',
     'manga',
@@ -163,76 +209,12 @@ abstract final class MalMetadataVocabularies {
     'favorite',
   ];
 
-  // ------------------------------------------------------- UI label → value
-
-  /// Human labels the search UI renders → wire values. Keeping the label and the
-  /// value apart means the screens never send a display string to MAL.
-  static const Map<String, String> animeFormatLabels = <String, String>{
-    'TV': 'tv',
-    'Movie': 'movie',
-    'OVA': 'ova',
-    'Special': 'special',
-    'ONA': 'ona',
-    'Music': 'music',
-  };
-
-  static const Map<String, String> mangaFormatLabels = <String, String>{
-    'Manga': 'manga',
-    'Novel': 'novel',
-    'One Shot': 'one_shot',
-    'Doujinshi': 'doujin',
-    'Manhwa': 'manhwa',
-    'Manhua': 'manhua',
-  };
-
-  static const Map<String, String> animeStatusLabels = <String, String>{
-    'Airing': 'currently_airing',
-    'Finished': 'finished_airing',
-    'Not Yet Aired': 'not_yet_aired',
-  };
-
-  static const Map<String, String> mangaStatusLabels = <String, String>{
-    'Publishing': 'publishing',
-    'Finished': 'finished',
-    'Not Yet Published': 'not_yet_published',
-  };
-
-  static const Map<String, String> ratingLabels = <String, String>{
-    'G - All Ages': 'g',
-    'PG - Children': 'pg',
-    'PG-13 - Teens 13+': 'pg_13',
-    'R - 17+': 'r',
-    'R+ - Mild Nudity': 'r+',
-    'Rx - Hentai': 'rx',
-  };
-
-  static const Map<String, String> animeSortLabels = <String, String>{
-    'Score': 'anime_score',
-    'Members': 'anime_num_list_users',
-    'Start Date': 'anime_start_date',
-    'End Date': 'anime_end_date',
-  };
-
-  static const Map<String, String> mangaSortLabels = <String, String>{
-    'Score': 'manga_score',
-    'Members': 'manga_num_list_users',
-    'Start Date': 'manga_start_date',
-    'End Date': 'manga_end_date',
-  };
-
-  /// `-` prefix = descending, mirroring Shikimori's two-dictionary split (sort
-  /// field + direction).
-  static String sortFor(String field, {required bool descending}) {
-    final String normalized = field.trim().toLowerCase();
-    if (normalized.isEmpty) return '';
-    return descending ? '-$normalized' : normalized;
-  }
-
   //
   // Filter dictionaries shaped exactly like `getUserAnimeAdvancedSearchFilters`
-  // (Shikimori): `(isVisible, values)`. `sortOrders` stays hidden: MAL expresses
-  // direction with the `-` prefix on the sort field, so there is no second list
-  // to pick from.
+  // (Shikimori): `(isVisible, values)`. `sortOrders` stays hidden: Jikan takes
+  // the direction inside the sort string the screen already sends, so there is
+  // no second list to pick from. No `ratings` entry: the search cubit never
+  // reads one, and Jikan's rating codes (`pg13`/`r17`) are not MAL's.
   //
 
   static Map<String, (bool, List<String>)> animeFilterMap() {
@@ -240,7 +222,6 @@ abstract final class MalMetadataVocabularies {
       'genres': (true, animeGenreNames),
       'formats': (true, animeFormatLabels.keys.toList()),
       'airingStatuses': (true, animeStatusLabels.keys.toList()),
-      'ratings': (true, ratingLabels.keys.toList()),
       'sortOptions': (true, animeSortLabels.keys.toList()),
       'sortOrders': (false, <String>[]),
     };
@@ -251,7 +232,6 @@ abstract final class MalMetadataVocabularies {
       'genres': (true, mangaGenreNames),
       'formats': (true, mangaFormatLabels.keys.toList()),
       'airingStatuses': (true, mangaStatusLabels.keys.toList()),
-      'ratings': (true, ratingLabels.keys.toList()),
       'sortOptions': (true, mangaSortLabels.keys.toList()),
       'sortOrders': (false, <String>[]),
     };

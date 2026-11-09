@@ -17,6 +17,7 @@ import 'package:unyo/core/notification/manga_notifier.dart';
 import 'package:unyo/core/notification/media_list_notifier.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
+import 'package:unyo/core/services/media/media_provenance.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
 import 'package:unyo/data/models/mal/user/mal_user_model.dart';
@@ -266,9 +267,14 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
   Future<void> _getMangaDetails(User loggedUser, Manga selectedManga) async {
     try {
       _logger.i("Fetching Manga Details for ${state.selectedManga.title.userPreferred}");
+      // Route by the record's own provenance, exactly like AnimeDetailsCubit's
+      // details read: a Shikimori-sourced record rendered while MAL is the
+      // configured metadata service still carries a Shikimori native id, and the
+      // factory would otherwise send it to MAL as a MAL id (wrong entry).
       (bool, MangaDetails) mangaDetails = await _mangaRepository.getMangaDetails(
         selectedManga,
         loggedUser,
+        service: MediaProvenance.ofManga(selectedManga),
       );
       emit(
         state.copyWith(

@@ -1,0 +1,71 @@
+{
+  "pagination": {
+    "last_visible_page": 1,
+    "has_next_page": false,
+    "current_page": 1,
+    "items": { "count": 2, "total": 2, "per_page": 25 }
+  },
+  "data": [
+    {
+      "mal_id": 2,
+      "url": "https://myanimelist.net/manga/2/Berserk",
+      "images": {
+        "jpg": {
+          "image_url": "https://cdn.myanimelist.net/images/manga/1/157897.jpg",
+          "small_image_url": "https://cdn.myanimelist.net/images/manga/1/157897s.jpg",
+          "large_image_url": "https://cdn.myanimelist.net/images/manga/1/157897l.jpg"
+        }
+      },
+      "title": "Berserk",
+      "title_english": "Berserk",
+      "title_japanese": "Berserk (JP)",
+      "type": "manga",
+      "status": "Publishing",
+      "synopsis": "Guts, a former mercenary now known as the Black Swordsman.",
+      "score": 9.47,
+      "chapters": null,
+      "volumes": null,
+      "published": { "from": "1989-08-25T00:00:00+00:00", "to": null },
+      "popularity": 14,
+      "members": 420000,
+      "genres": [
+        { "mal_id": 1, "type": "manga", "name": "Action", "url": "" },
+        { "mal_id": 14, "type": "manga", "name": "Horror", "url": "" }
+      ],
+      "explicit_genres": [],
+      "themes": [
+        { "mal_id": 58, "type": "manga", "name": "Gore", "url": "" }
+      ],
+      "demographics": []
+    },
+    {
+      "mal_id": 99990,
+      "url": "https://myanimelist.net/manga/99990/Adult_Manga",
+      "images": {
+        "jpg": {
+          "image_url": "https://cdn.myanimelist.net/images/manga/9/99990.jpg",
+          "small_image_url": "https://cdn.myanimelist.net/images/manga/9/99990s.jpg",
+          "large_image_url": "https://cdn.myanimelist.net/images/manga/9/99990l.jpg"
+        }
+      },
+      "title": "Adult Manga",
+      "title_english": "",
+      "title_japanese": "",
+      "type": "manga",
+      "status": "Finished",
+      "synopsis": "Adult entry.",
+      "score": 6.5,
+      "chapters": 12,
+      "volumes": 2,
+      "published": { "from": "2019-01-01T00:00:00+00:00", "to": "2020-01-01T00:00:00+00:00" },
+      "popularity": 5000,
+      "members": 4321,
+      "genres": [],
+      "explicit_genres": [
+        { "mal_id": 12, "type": "manga", "name": "Hentai", "url": "" }
+      ],
+      "themes": [],
+      "demographics": []
+    }
+  ]
+}

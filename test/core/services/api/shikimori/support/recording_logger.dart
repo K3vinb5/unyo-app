@@ -7,9 +7,15 @@ class RecordingLogger extends Logger {
   RecordingLogger() : super(filter: ProductionFilter());
 
   final List<String> debugLines = <String>[];
+  final List<String> warningLines = <String>[];
 
   @override
   void d(dynamic message, {DateTime? time, Object? error, StackTrace? stackTrace}) {
     debugLines.add(message.toString());
+  }
+
+  @override
+  void w(dynamic message, {DateTime? time, Object? error, StackTrace? stackTrace}) {
+    warningLines.add(message.toString());
   }
 }

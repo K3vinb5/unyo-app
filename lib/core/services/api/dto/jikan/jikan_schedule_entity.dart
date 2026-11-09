@@ -5,9 +5,10 @@ export 'package:unyo/generated/json/jikan_schedule_entity.g.dart';
 
 /// `GET https://api.jikan.moe/v4/schedules` (WP #166, calendar only).
 ///
-/// Jikan is a third-party mirror of MyAnimeList: MAL v2 has no schedule
-/// endpoint, and this is the only Jikan call in the app (its own rate limits —
-/// 3/s, 60/min — are why nothing else uses it). Read-only, anonymous, and the
+/// Jikan is a third-party mirror of MyAnimeList. MAL v2 has no schedule
+/// endpoint; since the amended SPEC §2 map Jikan also serves the catalog feeds
+/// and the advanced search (`JikanMediaListEntity`), all of it under one
+/// `JikanRateLimiter` (60/min, 429 = throttle). Read-only, anonymous, and the
 /// node is trimmed to what a calendar card needs.
 @JsonSerializable()
 class JikanScheduleEntity {

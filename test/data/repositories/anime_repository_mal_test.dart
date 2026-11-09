@@ -10,6 +10,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/core/di/locator.dart' show sl;
 import 'package:unyo/core/services/api/mal/mal_auth_service.dart';
+import 'package:unyo/core/services/api/jikan/jikan_rate_limiter.dart';
 import 'package:unyo/core/services/api/mal/mal_metadata_service.dart';
 import 'package:unyo/core/services/api/mal/mal_metadata_vocabularies.dart';
 import 'package:unyo/core/services/api/mal/mal_rate_limiter.dart';
@@ -57,7 +58,12 @@ void main() {
     when(() => userRepository.updateUserInfo(any())).thenAnswer((_) async {});
     wire = MalWireDouble();
     sl.registerSingleton<MalUserRateService>(MalUserRateService(client: wire.createClient()));
-    sl.registerSingleton<MalMetadataService>(MalMetadataService(client: wire.createClient()));
+    sl.registerSingleton<MalMetadataService>(MalMetadataService(
+      client: wire.createClient(),
+      // Jikan's pacing is proven by its own tests; here it must not spend real
+      // seconds between the seven calendar calls and the feeds.
+      jikanRateLimiter: JikanRateLimiter(wait: (_) async {}, logger: Logger(level: Level.off)),
+    ));
     repository = AnimeRepositoryMal();
   });
 
@@ -236,6 +242,7 @@ void main() {
       expect(request.url.queryParameters['offset'], '0');
       expect(request.url.queryParameters['fields'], MalMetadataService.animeListFields);
       expect(request.headers.containsKey('authorization'), isFalse, reason: 'browse reads are anonymous');
+      expect(request.headers['x-mal-client-id'], config.malClientId, reason: 'v2 403s without the public client id');
 
       final Anime fmab = animes.single;
       expect(fmab.id, 5114);
@@ -261,53 +268,78 @@ void main() {
       expect(adult.isAdult, isTrue, reason: 'rating=rx / nsfw=black');
     });
 
-    test('recently released asks status=currently_airing sorted by start date desc', () async {
-      wire.answers = <Object>[(200, jsonEncode(fixture('anime_catalog.json')))];
+    test('recently released asks Jikan for airing titles sorted by start date desc', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('jikan_anime.json')))];
 
       final (bool ok, List<Anime> animes) = await repository.getRecentlyReleasedAnimes(1, malUser());
 
       expect(ok, isTrue);
-      expect(animes, hasLength(1));
-      final Map<String, String> query = wire.requests.single.url.queryParameters;
-      expect(wire.requests.single.url.path, '/v2/anime');
-      expect(query['status'], 'currently_airing');
-      expect(query['sort'], '-anime_start_date');
-      expect(query['nsfw'], 'false');
-      expect(query['limit'], '${AnimeRepositoryMal.pageSize}');
-      expect(query['fields'], MalMetadataService.animeListFields);
-      expect(animes.single.title.userPreferred, 'Kusuriya no Hitorigoto');
-      expect(animes.single.status, 'FINISHED');
+      expect(animes, hasLength(1), reason: 'the Rx entry is dropped while NSFW is off');
+      final RecordedMalRequest request = wire.requests.single;
+      expect(request.url.host, 'api.jikan.moe');
+      expect(request.url.path, '/v4/anime');
+      final Map<String, String> query = request.url.queryParameters;
+      expect(query['status'], 'airing', reason: 'Jikan status vocabulary, not MAL\'s currently_airing');
+      expect(query['order_by'], 'start_date');
+      expect(query['sort'], 'desc');
+      expect(query['page'], '1');
+      expect(query['limit'], '${AnimeRepositoryMal.jikanPageSize}');
+      expect(query['sfw'], 'true');
+      expect(request.headers.containsKey('x-mal-client-id'), isFalse, reason: 'Jikan is not a MAL host');
+
+      final Anime apothecary = animes.single;
+      expect(apothecary.id, 58514);
+      expect(apothecary.idMal, 58514, reason: 'the MAL native id is identity addressing');
+      expect(apothecary.title.userPreferred, 'Kusuriya no Hitorigoto 2nd Season');
+      expect(apothecary.averageScore, 88, reason: '8.75 × 10 rounds to 88');
+      expect(apothecary.startDate, '10/1/2025');
+      expect(apothecary.endDate, '0/0/0', reason: 'a null "to" is the unset sentinel, not today');
+      expect(apothecary.duration, 1380, reason: '"23 min per ep" lands on the seconds scale');
+      expect(apothecary.status, 'RELEASING', reason: 'Jikan prose "Currently Airing" folds onto MAL\'s enum');
+      expect(apothecary.season, 'WINTER');
+      expect(apothecary.genres, containsAll(<String>['Drama', 'Slice of Life']));
+      expect(apothecary.genres, isNot(contains('Historical')), reason: 'themes are not genres');
+      expect(apothecary.isAdult, isFalse);
     });
 
-    test('recently completed asks status=finished_airing sorted by end date desc', () async {
-      wire.answers = <Object>[(200, jsonEncode(fixture('anime_catalog.json')))];
+    test('recently completed asks Jikan for complete titles sorted by end date desc', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('jikan_anime.json')))];
 
-      await repository.getRecentlyCompletedAnimes(1, malUser());
+      final (bool ok, List<Anime> animes) = await repository.getRecentlyCompletedAnimes(1, malUser());
 
+      expect(ok, isTrue);
       final Map<String, String> query = wire.requests.single.url.queryParameters;
-      expect(query['status'], 'finished_airing');
-      expect(query['sort'], '-anime_end_date');
+      expect(wire.requests.single.url.path, '/v4/anime');
+      expect(query['status'], 'complete');
+      expect(query['order_by'], 'end_date');
+      expect(query['sort'], 'desc');
+      expect(animes.single.status, 'RELEASING');
     });
 
-    test('upcoming asks status=not_yet_aired sorted by start date ascending', () async {
-      wire.answers = <Object>[(200, jsonEncode(fixture('anime_catalog.json')))];
+    test('upcoming asks the v2 upcoming ranking (probed valid) with the client id', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('anime_ranking.json')))];
 
       await repository.getUpcomingAnimes(1, malUser());
 
-      final Map<String, String> query = wire.requests.single.url.queryParameters;
-      expect(query['status'], 'not_yet_aired');
-      expect(query['sort'], 'anime_start_date');
+      final RecordedMalRequest request = wire.requests.single;
+      expect(request.url.path, '/v2/anime/ranking');
+      expect(request.url.queryParameters['ranking_type'], 'upcoming');
+      expect(request.url.queryParameters['limit'], '${AnimeRepositoryMal.pageSize}');
+      expect(request.headers['x-mal-client-id'], config.malClientId);
     });
 
-    test('page N maps onto limit/offset and the NSFW opt-in onto nsfw=true', () async {
-      wire.answers = <Object>[(200, jsonEncode(fixture('anime_catalog.json')))];
+    test('page N maps onto Jikan page/limit and the NSFW opt-in omits sfw', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('jikan_anime.json')))];
 
-      await repository.getUpcomingAnimes(3, malUser(enableNsfwContent: true));
+      final (bool ok, List<Anime> animes) = await repository.getRecentlyReleasedAnimes(3, malUser(enableNsfwContent: true));
 
+      expect(ok, isTrue);
+      expect(animes, hasLength(2), reason: 'the adult entry is kept when NSFW is on');
       final Map<String, String> query = wire.requests.single.url.queryParameters;
-      expect(query['limit'], '${AnimeRepositoryMal.pageSize}');
-      expect(query['offset'], '${2 * AnimeRepositoryMal.pageSize}');
-      expect(query['nsfw'], 'true', reason: 'MAL defaults to the safe catalog, so the opt-in must be explicit');
+      expect(query['page'], '3');
+      expect(query['limit'], '${AnimeRepositoryMal.jikanPageSize}');
+      expect(query.containsKey('sfw'), isFalse, reason: 'Jikan includes adult entries unless sfw=true');
+      expect(animes.last.isAdult, isTrue, reason: 'explicit_genres: Hentai');
     });
 
     test('a non-2xx browse answer degrades to (false, [])', () async {
@@ -315,12 +347,12 @@ void main() {
 
       final (bool trendingOk, List<Anime> trending) = await repository.getTrendingAnimes(1, malUser());
       wire.answers = <Object>[(503, '{}')];
-      final (bool popularOk, List<Anime> popular) = await repository.getPopularAnimes(1, malUser());
+      final (bool releasedOk, List<Anime> released) = await repository.getRecentlyReleasedAnimes(1, malUser());
 
       expect(trendingOk, isFalse);
       expect(trending, isEmpty);
-      expect(popularOk, isFalse);
-      expect(popular, isEmpty);
+      expect(releasedOk, isFalse);
+      expect(released, isEmpty);
     });
   });
 
@@ -378,8 +410,8 @@ void main() {
   });
 
   group('AnimeRepositoryMal search', () {
-    test('translates the search filters onto /v2/anime and drops season/year', () async {
-      wire.answers = <Object>[(200, jsonEncode(fixture('anime_catalog.json')))];
+    test('translates the search filters onto Jikan and drops season/year', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('jikan_anime.json')))];
 
       final List<Anime> results = await repository.performAnimeAdvancedSearch(
         '   ',
@@ -393,25 +425,27 @@ void main() {
         malUser(),
       );
 
-      expect(results, hasLength(1));
+      expect(results, hasLength(1), reason: 'the adult entry is dropped while NSFW is off');
       expect(results.single.id, 58514);
-      final Map<String, String> query = wire.requests.single.url.queryParameters;
-      expect(wire.requests.single.url.path, '/v2/anime');
+      final RecordedMalRequest request = wire.requests.single;
+      expect(request.url.host, 'api.jikan.moe');
+      expect(request.url.path, '/v4/anime');
+      final Map<String, String> query = request.url.queryParameters;
       expect(query.containsKey('q'), isFalse, reason: 'a blank query is not a filter');
       expect(query['type'], 'tv');
-      expect(query['status'], 'currently_airing');
-      expect(query['genre'], '27,42', reason: 'genre labels become MAL ids');
-      expect(query['sort'], '-anime_score');
-      expect(query['nsfw'], 'false');
-      expect(query['limit'], '${AnimeRepositoryMal.pageSize}');
-      expect(query['offset'], '${AnimeRepositoryMal.pageSize}');
-      expect(query.containsKey('season'), isFalse, reason: 'MAL /anime has no season filter');
-      expect(query.containsKey('year'), isFalse, reason: 'MAL /anime has no year filter');
-      expect(query['fields'], MalMetadataService.animeListFields);
+      expect(query['status'], 'airing');
+      expect(query['genres'], '27,42', reason: 'genre labels become MAL/Jikan ids');
+      expect(query['order_by'], 'score');
+      expect(query['sort'], 'desc');
+      expect(query['sfw'], 'true');
+      expect(query['page'], '2');
+      expect(query['limit'], '${AnimeRepositoryMal.jikanPageSize}');
+      expect(query.containsKey('season'), isFalse, reason: 'Jikan /anime has no season filter');
+      expect(query.containsKey('year'), isFalse, reason: 'Jikan /anime has no year filter');
     });
 
-    test('a query plus ascending members sort and NSFW opt-in', () async {
-      wire.answers = <Object>[(200, jsonEncode(fixture('anime_catalog.json')))];
+    test('a query plus ascending members sort and the NSFW opt-in', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('jikan_anime.json')))];
 
       await repository.performAnimeAdvancedSearch(
         '  hitorigoto ',
@@ -419,7 +453,7 @@ void main() {
         null,
         'tv',
         null,
-        'currently_airing',
+        'airing',
         'MEMBERS_ASC',
         1,
         malUser(enableNsfwContent: true),
@@ -428,22 +462,37 @@ void main() {
       final Map<String, String> query = wire.requests.single.url.queryParameters;
       expect(query['q'], 'hitorigoto');
       expect(query['type'], 'tv');
-      expect(query['status'], 'currently_airing');
-      expect(query['sort'], 'anime_num_list_users');
-      expect(query.containsKey('genre'), isFalse);
-      expect(query['nsfw'], 'true', reason: 'MAL defaults to the safe catalog, so the opt-in must be explicit');
+      expect(query['status'], 'airing');
+      expect(query['order_by'], 'members');
+      expect(query['sort'], 'asc');
+      expect(query.containsKey('genres'), isFalse);
+      expect(query.containsKey('sfw'), isFalse, reason: 'Jikan includes adult entries unless sfw=true');
     });
 
-    test('an unknown sort field is dropped instead of sent', () async {
-      wire.answers = <Object>[(200, jsonEncode(fixture('anime_catalog.json')))];
+    test('the screen\'s default Popularity/Desc sort becomes order_by=popularity&sort=desc', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('jikan_anime.json')))];
 
-      await repository.performAnimeAdvancedSearch('x', <String>[], null, null, null, null, 'NOPE_DESC', 1, malUser());
+      await repository.performAnimeAdvancedSearch('', <String>[], null, null, null, null, 'POPULARITY_DESC', 1, malUser());
 
-      expect(wire.requests.single.url.queryParameters.containsKey('sort'), isFalse);
+      final Map<String, String> query = wire.requests.single.url.queryParameters;
+      expect(query['order_by'], 'popularity');
+      expect(query['sort'], 'desc');
+    });
+
+    test('an unknown sort field or filter value is dropped instead of sent', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('jikan_anime.json')))];
+
+      await repository.performAnimeAdvancedSearch('x', <String>[], null, 'NOPE', null, 'chilling', 'NOPE_DESC', 1, malUser());
+
+      final Map<String, String> query = wire.requests.single.url.queryParameters;
+      expect(query.containsKey('order_by'), isFalse);
+      expect(query.containsKey('sort'), isFalse);
+      expect(query.containsKey('type'), isFalse);
+      expect(query.containsKey('status'), isFalse);
     });
 
     test('a non-2xx search answer degrades to an empty list', () async {
-      wire.answers = <Object>[(400, '{"error":"bad_request"}')];
+      wire.answers = <Object>[(400, '{"message":"bad request"}')];
 
       final List<Anime> results = await repository.performAnimeAdvancedSearch(
         'x', <String>[], null, null, null, null, 'SCORE_DESC', 1, malUser());
@@ -451,18 +500,19 @@ void main() {
       expect(results, isEmpty);
     });
 
-    test('the filter map is the static MAL vocabulary with sortOrders hidden', () async {
+    test('the filter map is Jikan\'s vocabulary, with only the axes it filters', () async {
       final Map<String, (bool, List<String>)> filters =
           await repository.getUserAnimeAdvancedSearchFilters(malUser());
 
-      expect(wire.requests, isEmpty, reason: 'MAL has no genre dictionary endpoint');
-      expect(filters['genres']!.$1, isTrue);
+      expect(wire.requests, isEmpty, reason: 'the vocabularies are static');
       expect(filters['genres']!.$2, MalMetadataVocabularies.animeGenreNames);
       expect(filters['formats']!.$2, containsAll(<String>['TV', 'Movie', 'OVA']));
-      expect(filters['airingStatuses']!.$2, containsAll(<String>['Airing', 'Finished', 'Not Yet Aired']));
-      expect(filters['ratings']!.$2, contains('Rx - Hentai'));
+      expect(filters['airingStatuses']!.$2, <String>['Airing', 'Finished', 'Upcoming']);
       expect(filters['sortOptions']!.$2, containsAll(<String>['Score', 'Members', 'Start Date', 'End Date']));
-      expect(filters['sortOrders']!.$1, isFalse, reason: 'direction rides the - prefix on the sort field');
+      expect(filters['sortOrders']!.$1, isFalse, reason: 'the direction rides the sort string');
+      expect(filters.containsKey('ratings'), isFalse, reason: 'the search UI never reads one; Jikan codes are not MAL\'s');
+      expect(filters.containsKey('seasons'), isFalse, reason: 'Jikan /anime search cannot filter by season');
+      expect(filters.containsKey('years'), isFalse);
     });
   });
 

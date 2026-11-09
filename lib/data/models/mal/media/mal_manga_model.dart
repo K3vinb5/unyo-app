@@ -2,6 +2,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 // Internal dependencies
+import 'package:unyo/core/services/api/dto/jikan/jikan_media_entity.dart';
 import 'package:unyo/core/services/api/dto/mal/mal_manga_node.dart';
 import 'package:unyo/data/models/mal/media/mal_media_mapper.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
@@ -59,6 +60,39 @@ abstract class MalMangaModel with _$MalMangaModel implements Manga {
       status: node.status,
       rating: node.rating,
       nsfw: node.nsfw,
+      popularity: node.popularity,
+    );
+  }
+
+  /// One `data[]` node of a Jikan `/v4/manga` page (catalog feeds and advanced
+  /// search — MAL v2 `/manga` cannot filter/order, SPEC §2).
+  ///
+  /// `published` is the manga date range (anime uses `aired`); adult entries are
+  /// marked by Jikan's `explicit_genres`, since manga has no `rating`. The id is
+  /// the MAL-native `mal_id` (SPEC §3).
+  factory MalMangaModel.fromJikanNode(JikanMediaData node) {
+    return MalMangaModel.fromParts(
+      id: node.malId,
+      title: node.title,
+      english: node.titleEnglish,
+      nativeTitle: node.titleJapanese,
+      largePicture: node.images.jpg.largeImageUrl,
+      mediumPicture: node.images.jpg.imageUrl,
+      description: node.synopsis,
+      mean: node.score,
+      startDate: node.published.from,
+      endDate: node.published.to,
+      chapters: node.chapters,
+      genres: <String>[
+        ...node.genres.map((JikanMediaDataGenre genre) => genre.name),
+        ...node.explicitGenres.map((JikanMediaDataGenre genre) => genre.name),
+      ],
+      mediaType: node.type,
+      status: MalMediaMapper.mangaStatusFromJikan(node.status),
+      rating: MalMediaMapper.mangaRatingFromJikan(
+        node.explicitGenres.map((JikanMediaDataGenre genre) => genre.name),
+      ),
+      nsfw: '',
       popularity: node.popularity,
     );
   }

@@ -20,6 +20,7 @@ import 'package:unyo/core/services/api/dto/anizip/anizip_id_mappings_entity.dart
 import 'package:unyo/core/services/api/dto/extensions/aniyomi_repo_json_entity.dart';
 import 'package:unyo/core/services/api/dto/extensions/tachiyomi_repo_json_entity.dart';
 import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
+import 'package:unyo/core/services/api/dto/jikan/jikan_media_entity.dart';
 import 'package:unyo/core/services/api/dto/jikan/jikan_schedule_entity.dart';
 import 'package:unyo/core/services/api/dto/mal/mal_anime_node.dart';
 import 'package:unyo/core/services/api/dto/mal/mal_manga_node.dart';
@@ -450,6 +451,30 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		}
 		if(<GithubReleaseAssets>[] is M){
 			return data.map<GithubReleaseAssets>((Map<String, dynamic> e) => GithubReleaseAssets.fromJson(e)).toList() as M;
+		}
+		if(<JikanMediaListEntity>[] is M){
+			return data.map<JikanMediaListEntity>((Map<String, dynamic> e) => JikanMediaListEntity.fromJson(e)).toList() as M;
+		}
+		if(<JikanMediaData>[] is M){
+			return data.map<JikanMediaData>((Map<String, dynamic> e) => JikanMediaData.fromJson(e)).toList() as M;
+		}
+		if(<JikanMediaDataImages>[] is M){
+			return data.map<JikanMediaDataImages>((Map<String, dynamic> e) => JikanMediaDataImages.fromJson(e)).toList() as M;
+		}
+		if(<JikanMediaDataImagesJpg>[] is M){
+			return data.map<JikanMediaDataImagesJpg>((Map<String, dynamic> e) => JikanMediaDataImagesJpg.fromJson(e)).toList() as M;
+		}
+		if(<JikanMediaDataAired>[] is M){
+			return data.map<JikanMediaDataAired>((Map<String, dynamic> e) => JikanMediaDataAired.fromJson(e)).toList() as M;
+		}
+		if(<JikanMediaDataGenre>[] is M){
+			return data.map<JikanMediaDataGenre>((Map<String, dynamic> e) => JikanMediaDataGenre.fromJson(e)).toList() as M;
+		}
+		if(<JikanMediaPagination>[] is M){
+			return data.map<JikanMediaPagination>((Map<String, dynamic> e) => JikanMediaPagination.fromJson(e)).toList() as M;
+		}
+		if(<JikanMediaPaginationItems>[] is M){
+			return data.map<JikanMediaPaginationItems>((Map<String, dynamic> e) => JikanMediaPaginationItems.fromJson(e)).toList() as M;
 		}
 		if(<JikanScheduleEntity>[] is M){
 			return data.map<JikanScheduleEntity>((Map<String, dynamic> e) => JikanScheduleEntity.fromJson(e)).toList() as M;
@@ -884,6 +909,14 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		(TachiyomiRepoJsonSources).toString(): TachiyomiRepoJsonSources.fromJson,
 		(GithubReleaseEntity).toString(): GithubReleaseEntity.fromJson,
 		(GithubReleaseAssets).toString(): GithubReleaseAssets.fromJson,
+		(JikanMediaListEntity).toString(): JikanMediaListEntity.fromJson,
+		(JikanMediaData).toString(): JikanMediaData.fromJson,
+		(JikanMediaDataImages).toString(): JikanMediaDataImages.fromJson,
+		(JikanMediaDataImagesJpg).toString(): JikanMediaDataImagesJpg.fromJson,
+		(JikanMediaDataAired).toString(): JikanMediaDataAired.fromJson,
+		(JikanMediaDataGenre).toString(): JikanMediaDataGenre.fromJson,
+		(JikanMediaPagination).toString(): JikanMediaPagination.fromJson,
+		(JikanMediaPaginationItems).toString(): JikanMediaPaginationItems.fromJson,
 		(JikanScheduleEntity).toString(): JikanScheduleEntity.fromJson,
 		(JikanScheduleData).toString(): JikanScheduleData.fromJson,
 		(JikanScheduleDataImages).toString(): JikanScheduleDataImages.fromJson,

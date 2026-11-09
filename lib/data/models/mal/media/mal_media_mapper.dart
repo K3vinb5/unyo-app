@@ -137,6 +137,91 @@ abstract final class MalMediaMapper {
     }
   }
 
+  /// Jikan spells statuses as prose (`Currently Airing`, `Finished Airing`)
+  /// while the mapper reads MAL's wire enum; fold the prose back onto the wire
+  /// value first. Shared by the calendar and the Jikan catalog feeds so the two
+  /// cannot drift.
+  static String animeStatusFromJikan(String status) {
+    switch (status.trim().toLowerCase()) {
+      case 'currently airing':
+      case 'airing':
+        return animeStatus('currently_airing');
+      case 'finished airing':
+      case 'finished':
+      case 'complete':
+        return animeStatus('finished_airing');
+      case 'not yet aired':
+      case 'upcoming':
+        return animeStatus('not_yet_aired');
+      default:
+        return animeStatus(_jikanEnum(status));
+    }
+  }
+
+  /// Manga counterpart of [animeStatusFromJikan].
+  static String mangaStatusFromJikan(String status) {
+    switch (status.trim().toLowerCase()) {
+      case 'publishing':
+      case 'currently publishing':
+        return mangaStatus('currently_publishing');
+      case 'finished':
+      case 'complete':
+        return mangaStatus('finished');
+      case 'not yet published':
+      case 'upcoming':
+        return mangaStatus('not_yet_published');
+      case 'on hiatus':
+      case 'hiatus':
+        return mangaStatus('on_hiatus');
+      case 'discontinued':
+        return mangaStatus('discontinued');
+      default:
+        return mangaStatus(_jikanEnum(status));
+    }
+  }
+
+  /// Jikan ratings are prose (`Rx - Hentai`, `PG-13 - Teens 13 or older`); the
+  /// adult test reads MAL's short code, so take the prefix. Jikan's codes are
+  /// not MAL's (`r17`/`pg13` on Jikan, `r`/`pg_13` on MAL) but both fold to the
+  /// same threshold.
+  static String ratingFromJikan(String rating) {
+    final String normalized = rating.trim().toLowerCase();
+    if (normalized.startsWith('rx')) return 'rx';
+    if (normalized.startsWith('r+')) return 'r+';
+    if (normalized.startsWith('pg-13') || normalized.startsWith('pg13')) return 'pg_13';
+    if (normalized.startsWith('pg')) return 'pg';
+    if (normalized.startsWith('r')) return 'r';
+    if (normalized.startsWith('g')) return 'g';
+    return '';
+  }
+
+  /// Manga has no `rating` on Jikan; adult entries are marked by the genres
+  /// Jikan moved into `explicit_genres`. Only hentai counts as adult — ecchi
+  /// stays non-adult, mirroring MAL's `gray` threshold ([isAdult]).
+  static String mangaRatingFromJikan(Iterable<String> explicitGenres) {
+    for (final String genre in explicitGenres) {
+      if (genre.trim().toLowerCase() == 'hentai') return 'rx';
+    }
+    return '';
+  }
+
+  /// Jikan `duration` prose (`23 min per ep`, `1 hr 52 min`) → seconds, the
+  /// unit MAL's `average_episode_duration` uses. Unparseable prose stays `0`
+  /// rather than inventing a runtime.
+  static int durationSeconds(String prose) {
+    final String normalized = prose.trim().toLowerCase();
+    if (normalized.isEmpty) return 0;
+    final RegExpMatch? hours = RegExp(r'(\d+)\s*hr').firstMatch(normalized);
+    final RegExpMatch? minutes = RegExp(r'(\d+)\s*min').firstMatch(normalized);
+    final int seconds = (hours == null ? 0 : int.parse(hours.group(1)!) * 3600) +
+        (minutes == null ? 0 : int.parse(minutes.group(1)!) * 60);
+    return seconds;
+  }
+
+  /// `Currently Airing` / `On Hiatus` → `currently_airing` / `on_hiatus`.
+  static String _jikanEnum(String status) =>
+      status.trim().toLowerCase().replaceAll(RegExp(r'\s+'), '_');
+
   /// `start_season.season` (`winter|spring|summer|fall`) → AniList vocabulary.
   static String season(String season) {
     final String trimmed = season.trim();

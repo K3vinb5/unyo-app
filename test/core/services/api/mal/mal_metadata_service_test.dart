@@ -7,8 +7,10 @@ import 'package:http/testing.dart';
 import 'package:logger/logger.dart';
 
 // Internal dependencies
+import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/core/di/locator.dart' show sl;
 import 'package:unyo/core/services/api/http/http_exception.dart';
+import 'package:unyo/core/services/api/jikan/jikan_rate_limiter.dart';
 import 'package:unyo/core/services/api/mal/mal_auth_service.dart';
 import 'package:unyo/core/services/api/mal/mal_metadata_service.dart';
 import 'package:unyo/core/services/api/mal/mal_rate_limiter.dart';
@@ -30,6 +32,26 @@ class CountingMalRateLimiter extends MalRateLimiter {
   }
 }
 
+/// Jikan budget double: records grants and backoffs without spending real time.
+class CountingJikanRateLimiter extends JikanRateLimiter {
+  CountingJikanRateLimiter() : super(wait: (_) async {}, logger: Logger(level: Level.off));
+
+  int acquires = 0;
+  int backoffs = 0;
+  final List<String> reasons = <String>[];
+
+  @override
+  Future<void> acquire({String reason = 'request'}) async {
+    acquires++;
+    reasons.add(reason);
+  }
+
+  @override
+  Future<void> backoff({String reason = 'request'}) async {
+    backoffs++;
+  }
+}
+
 /// Transport-level harness: records the request the service produced and
 /// answers with one scripted `(status, body)`.
 void main() {
@@ -37,6 +59,7 @@ void main() {
   late int status;
   late String body;
   late CountingMalRateLimiter limiter;
+  late CountingJikanRateLimiter jikanLimiter;
   late MalMetadataService service;
 
   setUp(() async {
@@ -44,16 +67,20 @@ void main() {
     sl.registerSingleton<Logger>(Logger(level: Level.off));
     limiter = CountingMalRateLimiter();
     sl.registerSingleton<MalRateLimiter>(limiter);
+    jikanLimiter = CountingJikanRateLimiter();
     sl.registerSingleton<MalAuthService>(MalAuthService(client: MockClient((http.Request request) async {
       return http.Response('{}', 200);
     })));
     requests = <http.Request>[];
     status = 200;
     body = jsonEncode(<String, dynamic>{'data': <Object>[], 'paging': <String, dynamic>{}});
-    service = MalMetadataService(client: MockClient((http.Request request) async {
-      requests.add(request);
-      return http.Response(body, status);
-    }));
+    service = MalMetadataService(
+      client: MockClient((http.Request request) async {
+        requests.add(request);
+        return http.Response(body, status);
+      }),
+      jikanRateLimiter: jikanLimiter,
+    );
   });
 
   MalUserModel malUser() {
@@ -72,19 +99,57 @@ void main() {
 
   http.Request single() => requests.single;
 
+  group('X-MAL-CLIENT-ID (public-client auth)', () {
+    test('an anonymous ranking read always carries the client id', () async {
+      await service.getAnimeRanking('airing');
+
+      final http.Request request = single();
+      expect(request.headers['X-MAL-CLIENT-ID'], config.malClientId,
+          reason: 'MAL v2 answers 403 to an anonymous read without the client id');
+      expect(request.headers.containsKey('Authorization'), isFalse);
+      expect(limiter.acquires, 1);
+    });
+
+    test('an anonymous details read carries the client id and no bearer token', () async {
+      body = jsonEncode(<String, dynamic>{'id': 5114, 'title': 'Fullmetal Alchemist: Brotherhood'});
+      await service.getAnimeDetails(5114);
+
+      final http.Request request = single();
+      expect(request.headers['X-MAL-CLIENT-ID'], config.malClientId);
+      expect(request.headers.containsKey('Authorization'), isFalse);
+    });
+
+    test('an anonymous manga read carries the client id and no bearer token', () async {
+      body = jsonEncode(<String, dynamic>{'id': 2, 'title': 'Berserk'});
+      await service.getMangaDetails(2);
+
+      final http.Request request = single();
+      expect(request.headers['X-MAL-CLIENT-ID'], config.malClientId);
+      expect(request.headers.containsKey('Authorization'), isFalse);
+    });
+
+    test('a logged account sends the client id AND the bearer token', () async {
+      await service.getAnimeRanking('airing', user: malUser());
+
+      final http.Request request = single();
+      expect(request.headers['X-MAL-CLIENT-ID'], config.malClientId);
+      expect(request.headers['Authorization'], 'Bearer access-token-1');
+    });
+  });
+
   group('getAnimeRanking', () {
-    test('asks /v2/anime/ranking with ranking_type, paging and explicit fields, anonymously', () async {
+    test('asks /v2/anime/ranking with ranking_type, paging and explicit fields', () async {
       await service.getAnimeRanking('airing');
 
       final http.Request request = single();
       expect(request.method, 'GET');
+      expect(request.url.host, 'api.myanimelist.net');
       expect(request.url.path, '/v2/anime/ranking');
       expect(request.url.queryParameters['ranking_type'], 'airing');
       expect(request.url.queryParameters['limit'], '50');
       expect(request.url.queryParameters['offset'], '0');
       expect(request.url.queryParameters['fields'], MalMetadataService.animeListFields);
       expect(request.url.queryParameters.containsKey('nsfw'), isFalse, reason: 'the ranking endpoint has no nsfw parameter');
-      expect(request.headers.containsKey('Authorization'), isFalse);
       expect(limiter.acquires, 1);
     });
 
@@ -96,70 +161,13 @@ void main() {
       expect(query['offset'], '40');
     });
 
-    test('rejects a ranking type MAL does not define instead of sending it', () async {
+    test('accepts the probed upcoming ranking type and rejects one MAL does not define', () async {
+      await service.getAnimeRanking('upcoming');
+      expect(single().url.queryParameters['ranking_type'], 'upcoming');
+
+      requests.clear();
       expect(() => service.getAnimeRanking('trending'), throwsArgumentError);
       expect(requests, isEmpty);
-    });
-  });
-
-  group('getAnimeCatalog', () {
-    test('sends every filter the caller set, and nsfw=false when adult titles are forbidden', () async {
-      await service.getAnimeCatalog(
-        status: 'currently_airing',
-        sort: '-anime_start_date',
-        q: 'hitorigoto',
-        mediaType: 'tv',
-        rating: 'pg_13',
-        genreIds: <int>[1, 4],
-        nsfwAllowed: false,
-        page: 2,
-        limit: 10,
-      );
-
-      final http.Request request = single();
-      final Map<String, String> query = request.url.queryParameters;
-      expect(request.url.path, '/v2/anime');
-      expect(query['status'], 'currently_airing');
-      expect(query['sort'], '-anime_start_date');
-      expect(query['q'], 'hitorigoto');
-      expect(query['type'], 'tv');
-      expect(query['rating'], 'pg_13');
-      expect(query['genre'], '1,4');
-      expect(query['nsfw'], 'false');
-      expect(query['limit'], '10');
-      expect(query['offset'], '10');
-      expect(query['fields'], MalMetadataService.animeListFields);
-      expect(limiter.acquires, 1);
-    });
-
-    test('sends nsfw=true when adult titles are allowed and omits empty filters', () async {
-      await service.getAnimeCatalog(nsfwAllowed: true, genreIds: const <int>[]);
-
-      final Map<String, String> query = single().url.queryParameters;
-      expect(query['nsfw'], 'true', reason: 'MAL defaults to the safe catalog, so opt-in must be explicit');
-      expect(query.containsKey('genre'), isFalse);
-      expect(query.containsKey('status'), isFalse);
-      expect(query.containsKey('q'), isFalse);
-    });
-
-    test('omits nsfw only when the caller has no preference', () async {
-      await service.getAnimeCatalog();
-
-      expect(single().url.queryParameters.containsKey('nsfw'), isFalse);
-    });
-
-    test('logs and drops season/year (MAL /anime has no such filter)', () async {
-      await service.getAnimeCatalog(season: 'spring', year: 2024);
-
-      final Map<String, String> query = single().url.queryParameters;
-      expect(query.containsKey('season'), isFalse);
-      expect(query.containsKey('year'), isFalse);
-      expect(query.containsKey('start_date'), isFalse);
-    });
-
-    test('sends the caller token only when a user is passed', () async {
-      await service.getAnimeCatalog(user: malUser());
-      expect(single().headers['Authorization'], 'Bearer access-token-1');
     });
   });
 
@@ -169,6 +177,7 @@ void main() {
       final dynamic node = await service.getAnimeDetails(5114);
 
       final http.Request request = single();
+      expect(request.url.host, 'api.myanimelist.net');
       expect(request.url.path, '/v2/anime/5114');
       final String fields = request.url.queryParameters['fields']!;
       for (final String required in <String>[
@@ -191,14 +200,8 @@ void main() {
       ]) {
         expect(fields, contains(required), reason: 'details fields must request $required');
       }
-      expect(request.headers.containsKey('Authorization'), isFalse);
       expect(node.id, 5114);
       expect(limiter.acquires, 1);
-    });
-
-    test('adds the auth header when a user is passed', () async {
-      await service.getAnimeDetails(5114, malUser());
-      expect(single().headers['Authorization'], 'Bearer access-token-1');
     });
 
     test('throws HttpServerException on a non-2xx answer', () async {
@@ -215,51 +218,24 @@ void main() {
     });
   });
 
-  group('manga', () {
+  group('manga ranking / details', () {
     test('getMangaRanking asks /v2/manga/ranking with the manga field set', () async {
-      await service.getMangaRanking('all');
+      await service.getMangaRanking('bypopularity');
 
       final http.Request request = single();
       expect(request.url.path, '/v2/manga/ranking');
-      expect(request.url.queryParameters['ranking_type'], 'all');
+      expect(request.url.queryParameters['ranking_type'], 'bypopularity');
       expect(request.url.queryParameters['fields'], MalMetadataService.mangaListFields);
       expect(request.url.queryParameters['fields'], isNot(contains('rating')));
       expect(request.url.queryParameters.containsKey('nsfw'), isFalse, reason: 'the ranking endpoint has no nsfw parameter');
+      expect(request.headers['X-MAL-CLIENT-ID'], config.malClientId);
       expect(limiter.acquires, 1);
     });
 
-    test('getMangaCatalog sends nsfw=true when adult titles are allowed', () async {
-      await service.getMangaCatalog(nsfwAllowed: true);
-
-      final Map<String, String> query = single().url.queryParameters;
-      expect(query['nsfw'], 'true', reason: 'MAL defaults to the safe catalog, so opt-in must be explicit');
-      expect(query['fields'], isNot(contains('rating')), reason: 'manga has no rating field; adult comes from nsfw');
-    });
-
-    test('getMangaCatalog sends nsfw=false when adult titles are forbidden', () async {
-      await service.getMangaCatalog(nsfwAllowed: false);
-
-      expect(single().url.queryParameters['nsfw'], 'false');
-    });
-
-    test('getMangaCatalog sends manga filters and keeps nsfw absent by default', () async {
-      await service.getMangaCatalog(
-        status: 'publishing',
-        sort: '-manga_start_date',
-        q: 'berserk',
-        mediaType: 'manga',
-        page: 2,
-        limit: 50,
-      );
-
-      final Map<String, String> query = single().url.queryParameters;
-      expect(single().url.path, '/v2/manga');
-      expect(query['status'], 'publishing');
-      expect(query['sort'], '-manga_start_date');
-      expect(query['q'], 'berserk');
-      expect(query['type'], 'manga');
-      expect(query['offset'], '50');
-      expect(query.containsKey('nsfw'), isFalse);
+    test('rejects the manga ranking types that probe as 400', () async {
+      expect(() => service.getMangaRanking('publishing'), throwsArgumentError);
+      expect(() => service.getMangaRanking('upcoming'), throwsArgumentError);
+      expect(requests, isEmpty);
     });
 
     test('getMangaDetails asks /v2/manga/{id} with chapter/volume and list-status fields', () async {
@@ -277,8 +253,121 @@ void main() {
     });
   });
 
+  group('getJikanAnimeList', () {
+    test('asks api.jikan.moe/v4/anime with the filter set, no MAL headers and no MAL grant', () async {
+      body = jsonEncode(<String, dynamic>{'data': <Object>[], 'pagination': <String, dynamic>{}});
+      await service.getJikanAnimeList(
+        status: 'airing',
+        orderBy: 'start_date',
+        sort: 'desc',
+        page: 2,
+        limit: 10,
+      );
+
+      final http.Request request = single();
+      expect(request.url.host, 'api.jikan.moe');
+      expect(request.url.path, '/v4/anime');
+      final Map<String, String> query = request.url.queryParameters;
+      expect(query['status'], 'airing');
+      expect(query['order_by'], 'start_date');
+      expect(query['sort'], 'desc');
+      expect(query['page'], '2');
+      expect(query['limit'], '10');
+      expect(query.containsKey('q'), isFalse, reason: 'an empty query means browse');
+      expect(query.containsKey('sfw'), isFalse, reason: 'Jikan includes adult entries unless sfw=true');
+      expect(query.containsKey('fields'), isFalse, reason: 'Jikan has no fields= parameter');
+      expect(request.headers.containsKey('X-MAL-CLIENT-ID'), isFalse, reason: 'not a MAL host');
+      expect(request.headers.containsKey('Authorization'), isFalse);
+      expect(limiter.acquires, 0, reason: 'Jikan has its own budget');
+      expect(jikanLimiter.acquires, 1);
+      expect(jikanLimiter.reasons.single, contains('anime'));
+    });
+
+    test('sends q, type, rating and genre ids, and sfw=true when adult titles are forbidden', () async {
+      await service.getJikanAnimeList(
+        q: 'hitorigoto',
+        type: 'tv',
+        rating: 'pg13',
+        genreIds: <int>[1, 4],
+        nsfwAllowed: false,
+      );
+
+      final Map<String, String> query = single().url.queryParameters;
+      expect(query['q'], 'hitorigoto');
+      expect(query['type'], 'tv');
+      expect(query['rating'], 'pg13');
+      expect(query['genres'], '1,4');
+      expect(query['sfw'], 'true');
+      expect(query['limit'], '25', reason: "Jikan's list cap");
+    });
+
+    test('omits sfw when adult titles are allowed', () async {
+      await service.getJikanAnimeList(nsfwAllowed: true);
+      expect(single().url.queryParameters.containsKey('sfw'), isFalse);
+      expect(jikanLimiter.acquires, 1);
+    });
+
+    test('clamps the limit to Jikan 25 and never sends a zero page', () async {
+      await service.getJikanAnimeList(limit: 100, page: 0);
+      final Map<String, String> query = single().url.queryParameters;
+      expect(query['limit'], '25');
+      expect(query['page'], '1');
+    });
+
+    test('retries once after a 429, then succeeds', () async {
+      final List<int> statuses = <int>[429, 200];
+      service = MalMetadataService(
+        client: MockClient((http.Request request) async {
+          requests.add(request);
+          final int answer = statuses.removeAt(0);
+          return http.Response(jsonEncode(<String, dynamic>{'data': <Object>[]}), answer);
+        }),
+        jikanRateLimiter: jikanLimiter,
+      );
+
+      await service.getJikanAnimeList(status: 'airing');
+
+      expect(requests, hasLength(2), reason: 'one backoff, one retry');
+      expect(jikanLimiter.backoffs, 1);
+      expect(jikanLimiter.acquires, 2);
+    });
+
+    test('a second 429 surfaces as HttpServerException so the caller can degrade', () async {
+      status = 429;
+      body = '{"message":"rate limited"}';
+
+      await expectLater(service.getJikanAnimeList(), throwsA(isA<HttpServerException>()));
+      expect(requests, hasLength(2));
+      expect(jikanLimiter.backoffs, 1);
+    });
+  });
+
+  group('getJikanMangaList', () {
+    test('asks api.jikan.moe/v4/manga without the anime-only rating filter', () async {
+      await service.getJikanMangaList(
+        status: 'publishing',
+        orderBy: 'members',
+        sort: 'desc',
+        genreIds: <int>[1],
+        nsfwAllowed: false,
+      );
+
+      final http.Request request = single();
+      expect(request.url.path, '/v4/manga');
+      final Map<String, String> query = request.url.queryParameters;
+      expect(query['status'], 'publishing');
+      expect(query['order_by'], 'members');
+      expect(query['sort'], 'desc');
+      expect(query['genres'], '1');
+      expect(query['sfw'], 'true');
+      expect(query.containsKey('rating'), isFalse, reason: 'manga has no rating filter');
+      expect(limiter.acquires, 0);
+      expect(jikanLimiter.acquires, 1);
+    });
+  });
+
   group('getSchedules (Jikan)', () {
-    test('asks api.jikan.moe/v4/schedules with the day filter and takes no MAL grant', () async {
+    test('asks api.jikan.moe/v4/schedules with the day filter, on the Jikan budget', () async {
       body = jsonEncode(<String, dynamic>{'data': <Object>[], 'pagination': <String, dynamic>{}});
       await service.getSchedules(day: 'Monday');
 
@@ -289,8 +378,9 @@ void main() {
       expect(request.url.queryParameters['limit'], '25');
       expect(request.url.queryParameters['page'], '1');
       expect(request.headers.containsKey('Authorization'), isFalse);
-      expect(limiter.acquires, 0, reason: 'Jikan has its own limits and must not spend MAL budget');
+      expect(limiter.acquires, 0, reason: 'Jikan must not spend MAL budget');
       expect(limiter.reasons, isEmpty);
+      expect(jikanLimiter.acquires, 1, reason: 'Jikan has its own 60/min budget');
     });
 
     test('clamps the limit to Jikan\'s 25', () async {
@@ -300,8 +390,8 @@ void main() {
     });
 
     test('throws HttpServerException on a non-2xx answer', () async {
-      status = 429;
-      body = '{"message":"rate limited"}';
+      status = 500;
+      body = '{"message":"server error"}';
       await expectLater(service.getSchedules(), throwsA(isA<HttpServerException>()));
     });
   });

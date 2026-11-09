@@ -10,6 +10,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/core/di/locator.dart' show sl;
 import 'package:unyo/core/services/api/mal/mal_auth_service.dart';
+import 'package:unyo/core/services/api/jikan/jikan_rate_limiter.dart';
 import 'package:unyo/core/services/api/mal/mal_metadata_service.dart';
 import 'package:unyo/core/services/api/mal/mal_rate_limiter.dart';
 import 'package:unyo/core/services/api/mal/mal_user_rate_service.dart';
@@ -55,7 +56,12 @@ void main() {
     when(() => userRepository.updateUserInfo(any())).thenAnswer((_) async {});
     wire = MalWireDouble();
     sl.registerSingleton<MalUserRateService>(MalUserRateService(client: wire.createClient()));
-    sl.registerSingleton<MalMetadataService>(MalMetadataService(client: wire.createClient()));
+    sl.registerSingleton<MalMetadataService>(MalMetadataService(
+      client: wire.createClient(),
+      // Jikan's pacing is proven by its own tests; here it must not spend real
+      // seconds between the seven calendar calls and the feeds.
+      jikanRateLimiter: JikanRateLimiter(wait: (_) async {}, logger: Logger(level: Level.off)),
+    ));
     repository = MangaRepositoryMal();
   });
 
@@ -229,6 +235,7 @@ void main() {
       expect(query['fields'], MalMetadataService.mangaListFields);
       expect(query.containsKey('nsfw'), isFalse, reason: 'the ranking endpoint has no nsfw parameter');
       expect(request.headers.containsKey('authorization'), isFalse);
+      expect(request.headers['x-mal-client-id'], config.malClientId, reason: 'v2 403s without the public client id');
 
       expect(mangas.any((Manga manga) => manga.id == 2), isFalse, reason: 'Berserk is nsfw:black');
 
@@ -279,61 +286,89 @@ void main() {
       expect(query['offset'], '100');
     });
 
-    test('trending browses the publishing catalog ordered by members', () async {
-      wire.answers = <Object>[(200, jsonEncode(fixture('manga_list_popular.json')))];
+    test('trending asks Jikan for publishing titles ordered by members', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('jikan_manga.json')))];
 
       final (bool ok, List<Manga> mangas) = await repository.getTrendingMangas(1, malUser());
 
       expect(ok, isTrue);
-      expect(mangas, hasLength(1), reason: 'the adult catalog entry is gated out with NSFW off');
+      expect(mangas, hasLength(1), reason: 'the hentai entry is gated out with NSFW off');
       final RecordedMalRequest request = wire.requests.single;
-      expect(request.url.path, '/v2/manga');
+      expect(request.url.host, 'api.jikan.moe');
+      expect(request.url.path, '/v4/manga');
       final Map<String, String> query = request.url.queryParameters;
-      expect(query['status'], 'publishing');
-      expect(query['sort'], '-manga_num_list_users');
-      expect(query['nsfw'], 'false');
-      expect(query['limit'], '50');
-      expect(query['offset'], '0');
-      expect(query['fields'], MalMetadataService.mangaListFields);
+      expect(query['status'], 'publishing', reason: 'v2 /manga/ranking rejects ranking_type=publishing (400)');
+      expect(query['order_by'], 'members');
+      expect(query['sort'], 'desc');
+      expect(query['page'], '1');
+      expect(query['limit'], '${MangaRepositoryMal.jikanPageSize}');
+      expect(query['sfw'], 'true');
+      expect(request.headers.containsKey('x-mal-client-id'), isFalse, reason: 'Jikan is not a MAL host');
+
+      final Manga berserk = mangas.single;
+      expect(berserk.id, 2);
+      expect(berserk.idMal, 2, reason: 'the MAL native id is identity addressing');
+      expect(berserk.title.userPreferred, 'Berserk');
+      expect(berserk.averageScore, 95, reason: '9.47 × 10 rounds to 95');
+      expect(berserk.startDate, '25/8/1989', reason: 'manga dates come from published.from');
+      expect(berserk.endDate, '0/0/0');
+      expect(berserk.status, 'RELEASING', reason: 'Jikan prose "Publishing" folds to RELEASING');
+      expect(berserk.genres, containsAll(<String>['Action', 'Horror']));
+      expect(berserk.isAdult, isFalse);
+      expect(berserk.coverImage, contains('157897l.jpg'));
     });
 
-    test('recently completed asks finished titles sorted by end date desc', () async {
-      wire.answers = <Object>[(200, jsonEncode(fixture('manga_list_popular.json')))];
+    test('recently completed asks Jikan for complete titles sorted by end date desc', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('jikan_manga.json')))];
 
-      await repository.getRecentlyCompletedMangas(1, malUser());
+      final (bool ok, List<Manga> mangas) = await repository.getRecentlyCompletedMangas(1, malUser());
 
+      expect(ok, isTrue);
       final Map<String, String> query = wire.requests.single.url.queryParameters;
-      expect(wire.requests.single.url.path, '/v2/manga');
-      expect(query['status'], 'finished');
-      expect(query['sort'], '-manga_end_date');
+      expect(wire.requests.single.url.path, '/v4/manga');
+      expect(query['status'], 'complete');
+      expect(query['order_by'], 'end_date');
+      expect(query['sort'], 'desc');
+      expect(mangas.single.id, 2);
     });
 
-    test('upcoming asks unpublished titles sorted by start date asc', () async {
-      wire.answers = <Object>[(200, jsonEncode(fixture('manga_list_popular.json')))];
+    test('upcoming asks Jikan for upcoming titles sorted by start date asc', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('jikan_manga.json')))];
 
       await repository.getUpcomingMangas(1, malUser());
 
       final Map<String, String> query = wire.requests.single.url.queryParameters;
-      expect(wire.requests.single.url.path, '/v2/manga');
-      expect(query['status'], 'not_yet_published');
-      expect(query['sort'], 'manga_start_date');
+      expect(wire.requests.single.url.path, '/v4/manga');
+      expect(query['status'], 'upcoming', reason: 'v2 /manga/ranking rejects ranking_type=upcoming (400)');
+      expect(query['order_by'], 'start_date');
+      expect(query['sort'], 'asc');
     });
 
-    test('the NSFW setting drives nsfw both ways on /manga', () async {
+    test('the NSFW setting drives sfw on the Jikan feeds and nsfw nowhere', () async {
       wire.answers = <Object>[
-        (200, jsonEncode(fixture('manga_list_popular.json'))),
-        (200, jsonEncode(fixture('manga_list_popular.json'))),
+        (200, jsonEncode(fixture('jikan_manga.json'))),
+        (200, jsonEncode(fixture('jikan_manga.json'))),
       ];
 
       await repository.getTrendingMangas(1, malUser());
-      expect(wire.requests.first.url.queryParameters['nsfw'], 'false');
+      expect(wire.requests.first.url.queryParameters['sfw'], 'true');
 
       await repository.getTrendingMangas(
         1,
         malUser().copyWith(settings: SettingsModel.empty().copyWith(enableNsfwContent: true)),
       );
-      expect(wire.requests.last.url.queryParameters['nsfw'], 'true',
-          reason: 'MAL defaults to the safe catalog, so opt-in must be explicit');
+      expect(wire.requests.last.url.queryParameters.containsKey('sfw'), isFalse,
+          reason: 'Jikan includes adult entries unless sfw=true');
+    });
+
+    test('a Jikan page N maps onto page and keeps the 25-entry cap', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('jikan_manga.json')))];
+
+      await repository.getTrendingMangas(3, malUser());
+
+      final Map<String, String> query = wire.requests.single.url.queryParameters;
+      expect(query['page'], '3');
+      expect(query['limit'], '${MangaRepositoryMal.jikanPageSize}');
     });
 
     test('a non-2xx browse answer degrades to (false, [])', () async {
@@ -430,7 +465,7 @@ void main() {
   });
 
   group('MangaRepositoryMal advanced search filters', () {
-    test('returns the MAL vocabularies in the Shikimori map shape', () async {
+    test('returns Jikan\'s vocabularies in the Shikimori map shape', () async {
       final Map<String, (bool, List<String>)> filters =
           await repository.getUserMangaAdvancedSearchFilters(malUser());
 
@@ -438,10 +473,12 @@ void main() {
       expect(filters['genres']!.$2, containsAll(<String>['Action', 'Seinen', 'Shounen']));
       expect(filters['formats']!.$1, isTrue);
       expect(filters['formats']!.$2, containsAll(<String>['Manga', 'One Shot', 'Doujinshi']));
-      expect(filters['airingStatuses']!.$2, containsAll(<String>['Publishing', 'Finished', 'Not Yet Published']));
+      expect(filters['airingStatuses']!.$2,
+          <String>['Publishing', 'Finished', 'Upcoming', 'On Hiatus', 'Discontinued']);
       expect(filters['sortOptions']!.$2, containsAll(<String>['Score', 'Start Date']));
-      expect(filters['countries']!.$1, isFalse, reason: 'MAL v2 has no manga country filter');
-      expect(filters['sortOrders']!.$1, isFalse, reason: 'direction rides the - prefix on the sort field');
+      expect(filters['countries']!.$1, isFalse, reason: 'neither MAL nor Jikan has a manga country filter');
+      expect(filters['sortOrders']!.$1, isFalse, reason: 'the direction rides the sort string');
+      expect(filters.containsKey('ratings'), isFalse, reason: 'manga has no rating filter on Jikan');
       for (final MapEntry<String, (bool, List<String>)> entry in filters.entries) {
         if (entry.value.$1) {
           expect(entry.value.$2, isNotEmpty, reason: '${entry.key} is enabled but has no options');
@@ -452,8 +489,8 @@ void main() {
   });
 
   group('MangaRepositoryMal advanced search', () {
-    test('maps q, genre ids, format, status and sort, and drops the country', () async {
-      wire.answers = <Object>[(200, jsonEncode(fixture('manga_search.json')))];
+    test('maps q, genre ids, format, status and sort onto Jikan, and drops the country', () async {
+      wire.answers = <Object>[(200, jsonEncode(fixture('jikan_manga.json')))];
 
       final List<Manga> results = await repository.performMangaAdvancedSearch(
         '  Berserk  ',
@@ -466,32 +503,32 @@ void main() {
         malUser(),
       );
 
-      expect(results, hasLength(1));
+      expect(results, hasLength(1), reason: 'the hentai entry is dropped while NSFW is off');
       final RecordedMalRequest request = wire.requests.single;
-      expect(request.url.path, '/v2/manga');
+      expect(request.url.host, 'api.jikan.moe');
+      expect(request.url.path, '/v4/manga');
       final Map<String, String> query = request.url.queryParameters;
       expect(query['q'], 'Berserk');
-      expect(query['genre'], '27,1');
-      expect(query['type'], 'one_shot');
+      expect(query['genres'], '27,1', reason: 'genre labels become MAL/Jikan ids');
+      expect(query['type'], 'oneshot', reason: "Jikan spells it without the underscore");
       expect(query['status'], 'publishing');
-      expect(query['sort'], '-manga_score');
-      expect(query['limit'], '50');
-      expect(query['offset'], '50');
-      expect(query['nsfw'], 'false');
-      expect(query['fields'], MalMetadataService.mangaListFields);
-      expect(query.containsKey('country'), isFalse, reason: 'a country is not a MAL filter');
-      expect(query.containsKey('origin'), isFalse);
+      expect(query['order_by'], 'score');
+      expect(query['sort'], 'desc');
+      expect(query['page'], '2');
+      expect(query['limit'], '${MangaRepositoryMal.jikanPageSize}');
+      expect(query['sfw'], 'true');
+      expect(query.containsKey('country'), isFalse, reason: 'a country is not a Jikan filter');
+      expect(query.containsKey('offset'), isFalse, reason: 'Jikan pages by page number');
 
-      expect(results.single.id, 13);
-      expect(results.single.idMal, 13);
-      expect(results.single.title.userPreferred, 'One Piece');
-      expect(results.single.chapters, 1100);
-      expect(results.single.averageScore, 92);
+      expect(results.single.id, 2);
+      expect(results.single.idMal, 2);
+      expect(results.single.title.userPreferred, 'Berserk');
+      expect(results.single.averageScore, 95);
       expect(results.single.status, 'RELEASING');
     });
 
     test('accepts wire values, keeps empty filters off the wire and honours the NSFW setting', () async {
-      wire.answers = <Object>[(200, jsonEncode(fixture('manga_search.json')))];
+      wire.answers = <Object>[(200, jsonEncode(fixture('jikan_manga.json')))];
 
       await repository.performMangaAdvancedSearch(
         '',
@@ -506,28 +543,30 @@ void main() {
 
       final Map<String, String> query = wire.requests.single.url.queryParameters;
       expect(query['type'], 'manga');
-      expect(query['sort'], 'manga_start_date');
+      expect(query['order_by'], 'start_date');
+      expect(query['sort'], 'asc');
       expect(query.containsKey('q'), isFalse);
       expect(query.containsKey('status'), isFalse);
-      expect(query.containsKey('genre'), isFalse);
-      expect(query['nsfw'], 'true', reason: 'MAL defaults to the safe catalog, so opt-in must be explicit');
+      expect(query.containsKey('genres'), isFalse);
+      expect(query.containsKey('sfw'), isFalse, reason: 'Jikan includes adult entries unless sfw=true');
     });
 
     test('an unknown sort or filter value is dropped instead of guessed', () async {
-      wire.answers = <Object>[(200, jsonEncode(fixture('manga_search.json')))];
+      wire.answers = <Object>[(200, jsonEncode(fixture('jikan_manga.json')))];
 
       await repository.performMangaAdvancedSearch('', <String>[], 'Unknown Kind', null, 'Unknown Status', 'Name_Desc', 1, malUser());
 
       final Map<String, String> query = wire.requests.single.url.queryParameters;
       expect(query.containsKey('type'), isFalse);
       expect(query.containsKey('status'), isFalse);
+      expect(query.containsKey('order_by'), isFalse);
       expect(query.containsKey('sort'), isFalse);
     });
 
     test('advanced search drops adult results while NSFW is off', () async {
       wire.answers = <Object>[
-        (200, jsonEncode(fixture('manga_list_popular.json'))),
-        (200, jsonEncode(fixture('manga_list_popular.json'))),
+        (200, jsonEncode(fixture('jikan_manga.json'))),
+        (200, jsonEncode(fixture('jikan_manga.json'))),
       ];
 
       final List<Manga> off = await repository.performMangaAdvancedSearch(
@@ -543,7 +582,7 @@ void main() {
         malUser().copyWith(settings: SettingsModel.empty().copyWith(enableNsfwContent: true)),
       );
 
-      expect(off.map((Manga manga) => manga.id), <int>[116778]);
+      expect(off.map((Manga manga) => manga.id), <int>[2]);
       expect(on, hasLength(2));
       expect(on.any((Manga manga) => manga.isAdult), isTrue);
     });

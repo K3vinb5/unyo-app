@@ -6,11 +6,13 @@ import 'package:logger/logger.dart';
 // Internal dependencies
 import 'package:unyo/config/config.dart' as config;
 import 'package:unyo/core/di/locator.dart';
+import 'package:unyo/core/services/api/dto/jikan/jikan_media_entity.dart';
 import 'package:unyo/core/services/api/dto/jikan/jikan_schedule_entity.dart';
 import 'package:unyo/core/services/api/dto/mal/mal_anime_node.dart';
 import 'package:unyo/core/services/api/dto/mal/mal_manga_node.dart';
 import 'package:unyo/core/services/api/dto/mal/mal_media_list_entity.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
+import 'package:unyo/core/services/api/jikan/jikan_rate_limiter.dart';
 import 'package:unyo/core/services/api/mal/mal_auth_service.dart';
 import 'package:unyo/core/services/api/mal/mal_metadata_vocabularies.dart';
 import 'package:unyo/core/services/api/mal/mal_rate_limiter.dart';
@@ -24,36 +26,54 @@ import 'package:unyo/data/models/mal/user/mal_user_model.dart';
 ///
 /// ## Rules this class encodes (SPEC §2/§4)
 ///
+/// * **every** `api.myanimelist.net` read carries `X-MAL-CLIENT-ID` — MAL's v2
+///   answers **403** to an anonymous read without it (probed live), so the
+///   public client id is not optional, and `Authorization: Bearer` is added
+///   **only** when a [MalUserModel] with a token is passed (personalises
+///   `my_list_status`);
 /// * **every** `api.myanimelist.net` read takes a grant from [MalRateLimiter]
 ///   first — the same budget the tracker writes use (2 rps, 403 = throttle);
 /// * `fields=` is always explicit. The constants below are the only field sets,
 ///   so a metadata read never depends on MAL's trimmed-by-default answer;
-/// * the `Authorization` header is added **only** when a [MalUserModel] is
-///   passed (personalises `my_list_status`); public reads go out anonymously;
-/// * `nsfw` is sent both ways: `false` when the caller forbids adult titles and
-///   `true` when it allows them. MAL's documented default is the **safe**
-///   catalogue ("By default, some APIs don't return nsfw content"), so omitting
-///   the parameter would leave the account's opt-in inert. Only a `null`
-///   preference (no setting at all) omits it. The ranking endpoints have no
-///   such parameter, so they never get it;
-/// * `page`/`limit` are the caller's units: `offset = (page - 1) * limit`.
+/// * `/anime` and `/manga` are **not called at all**: their only accepted
+///   input is a required `q` (probed: `400 {"message":"invalid q"}`) plus
+///   paging and `fields`, and status/type/genre/sort are silently ignored
+///   (probed: `status=not_yet_aired` answered `finished_airing` rows). Catalog
+///   browse and search therefore run on Jikan, which filters;
+/// * adult content is excluded by `sfw=true` on the Jikan reads when the caller
+///   forbids it and left to Jikan's own default when it allows it, and is
+///   additionally gated client-side per node (`rating`/`explicit_genres`); the
+///   ranking endpoints have no such parameter, so that gate is the only one
+///   there;
+/// * `page`/`limit` are the caller's units: `offset = (page - 1) * limit` on
+///   MAL, a 1-based `page` and a 25-capped `limit` on Jikan.
 ///
 /// ## Jikan
 ///
-/// [getSchedules] is the **only** Jikan call in the app (MAL v2 has no
-/// schedule endpoint). Jikan is not MyAnimeList: it has its own rate limits
-/// (3/s, 60/min) and serves public data anonymously, so it deliberately does
-/// **not** acquire [MalRateLimiter]. Nothing else may use Jikan (SPEC §4).
+/// MAL v2 has no schedule endpoint and cannot filter or order a catalog, so
+/// [getSchedules] and the [getJikanAnimeList]/[getJikanMangaList] feeds are
+/// served by Jikan — a third-party mirror of MyAnimeList — which can filter
+/// (`q`, `type`, `status`, `rating`, `genres`, `order_by`, `sort`). Jikan is
+/// **not** MyAnimeList: it has its own rate limits (3/s, 60/min) and serves
+/// public data anonymously, so it takes a [JikanRateLimiter] grant (never a
+/// [MalRateLimiter] one) and no MAL headers. It is read-only and every call is
+/// listed here — nothing else may use it (SPEC §2/§4).
 class MalMetadataService {
   static const int defaultLimit = 50;
 
   /// MAL's documented hard cap for `/anime` and `/manga`.
   static const int maxLimit = 100;
 
-  /// Jikan's `/v4/schedules` endpoint — calendar only (see class doc).
+  /// Jikan's `/v4/schedules` endpoint — the weekly calendar.
   static const String jikanScheduleEndpoint = 'https://api.jikan.moe/v4/schedules';
 
-  /// Jikan caps `limit` at 25 on the schedules endpoint.
+  /// Jikan's filtered anime catalog (`/v4/anime`).
+  static const String jikanAnimeEndpoint = 'https://api.jikan.moe/v4/anime';
+
+  /// Jikan's filtered manga catalog (`/v4/manga`).
+  static const String jikanMangaEndpoint = 'https://api.jikan.moe/v4/manga';
+
+  /// Jikan caps `limit` at 25 on every list endpoint.
   static const int jikanMaxLimit = 25;
 
   /// Carousel/search node fields: exactly what [MalAnimeModel] fills.
@@ -88,11 +108,16 @@ class MalMetadataService {
   final http.Client _client;
   final Logger _logger = sl<Logger>();
 
+  /// Jikan's own budget; one instance per service (see [JikanRateLimiter]).
+  final JikanRateLimiter _jikanRateLimiter;
+
   /// Shared MyAnimeList budget; lazy so pure-mapping tests need not register it.
   MalRateLimiter get _rateLimiter => sl<MalRateLimiter>();
   MalAuthService get _authService => sl<MalAuthService>();
 
-  MalMetadataService({http.Client? client}) : _client = client ?? http.Client();
+  MalMetadataService({http.Client? client, JikanRateLimiter? jikanRateLimiter})
+      : _client = client ?? http.Client(),
+        _jikanRateLimiter = jikanRateLimiter ?? JikanRateLimiter();
 
   // ------------------------------------------------------------------ anime
 
@@ -118,50 +143,6 @@ class MalMetadataService {
     );
   }
 
-  /// `GET /anime` — one browse/search page.
-  ///
-  /// `sort` takes a MAL sort key ([MalMetadataVocabularies.animeSorts]) with an
-  /// optional `-` prefix for descending. `season`/`year` have **no** filter on
-  /// this endpoint (MAL only offers `/anime/season/{year}/{season}`), so they
-  /// are logged and ignored here rather than sent as a made-up parameter.
-  Future<MalAnimeListEntity> getAnimeCatalog({
-    String? status,
-    String? sort,
-    String? q,
-    String? mediaType,
-    String? rating,
-    String? season,
-    int? year,
-    List<int>? genreIds,
-    bool? nsfwAllowed,
-    int page = 1,
-    int limit = defaultLimit,
-    MalUserModel? user,
-  }) async {
-    if (season != null || year != null) {
-      _logger.w(
-        "MAL /anime has no season/year filter (season=$season, year=$year); "
-        "the seasonal endpoint /anime/season/{year}/{season} is a separate call",
-      );
-    }
-    final Map<String, String> query = <String, String>{
-      ..._pagingQuery(page, limit),
-      'fields': animeListFields,
-      ..._optional(<String, String?>{
-        'status': status,
-        'sort': sort,
-        'q': q,
-        'type': mediaType,
-        'rating': rating,
-        'genre': _genreQuery(genreIds),
-      }),
-      ..._nsfwQuery(nsfwAllowed),
-    };
-    return MalAnimeListEntity.fromJson(
-      await _getJson(_listUri(path: 'anime', query: query), user: user, reason: 'GET anime'),
-    );
-  }
-
   /// `GET /anime/{id}` with the full details field set.
   Future<MalAnimeNode> getAnimeDetails(int id, [MalUserModel? user]) async {
     _validateId(id);
@@ -175,6 +156,11 @@ class MalMetadataService {
   // ------------------------------------------------------------------ manga
 
   /// `GET /manga/ranking?ranking_type=…`.
+  ///
+  /// The reference table lists nine ranking types; `publishing` and `upcoming`
+  /// are **not** among them (probed live: `400 invalid ranking_type`), so no
+  /// method here asks for them — the manga browse feeds that would need those
+  /// filters are served by [getJikanMangaList] (SPEC §2).
   Future<MalMangaListEntity> getMangaRanking(
     String rankingType, {
     int page = 1,
@@ -195,38 +181,6 @@ class MalMetadataService {
     );
   }
 
-  /// `GET /manga` — one browse/search page. `sort` takes a
-  /// [MalMetadataVocabularies.mangaSorts] key with an optional `-` prefix.
-  Future<MalMangaListEntity> getMangaCatalog({
-    String? status,
-    String? sort,
-    String? q,
-    String? mediaType,
-    String? rating,
-    List<int>? genreIds,
-    bool? nsfwAllowed,
-    int page = 1,
-    int limit = defaultLimit,
-    MalUserModel? user,
-  }) async {
-    final Map<String, String> query = <String, String>{
-      ..._pagingQuery(page, limit),
-      'fields': mangaListFields,
-      ..._optional(<String, String?>{
-        'status': status,
-        'sort': sort,
-        'q': q,
-        'type': mediaType,
-        'rating': rating,
-        'genre': _genreQuery(genreIds),
-      }),
-      ..._nsfwQuery(nsfwAllowed),
-    };
-    return MalMangaListEntity.fromJson(
-      await _getJson(_listUri(path: 'manga', query: query), user: user, reason: 'GET manga'),
-    );
-  }
-
   /// `GET /manga/{id}` with the full details field set.
   Future<MalMangaNode> getMangaDetails(int id, [MalUserModel? user]) async {
     _validateId(id);
@@ -237,14 +191,81 @@ class MalMetadataService {
     );
   }
 
-  // --------------------------------------------------------------- calendar
+  // ----------------------------------------------------------------- Jikan
+
+  /// One `GET https://api.jikan.moe/v4/anime` page — the only place the app can
+  /// **filter and order** a catalog (MAL v2 `/anime` accepts `q` + paging only;
+  /// SPEC §2).
+  ///
+  /// Every argument is optional and an absent/blank one is simply not sent, so
+  /// `q` empty means "browse". `page` is 1-based, `limit` is clamped to
+  /// [jikanMaxLimit]. `nsfwAllowed == false` adds `sfw=true`, which excludes
+  /// adult entries server-side; when the user allows them the parameter is
+  /// omitted (Jikan's default includes every entry).
+  Future<JikanMediaListEntity> getJikanAnimeList({
+    String? q,
+    String? status,
+    String? type,
+    String? rating,
+    List<int>? genreIds,
+    String? orderBy,
+    String? sort,
+    bool? nsfwAllowed,
+    int page = 1,
+    int limit = jikanMaxLimit,
+  }) {
+    return _getJikanList(
+      jikanAnimeEndpoint,
+      reason: 'GET jikan anime',
+      filters: <String, String?>{
+        'q': q,
+        'type': type,
+        'status': status,
+        'rating': rating,
+        'order_by': orderBy,
+        'sort': sort,
+        'genres': _genreQuery(genreIds),
+      },
+      nsfwAllowed: nsfwAllowed,
+      page: page,
+      limit: limit,
+    );
+  }
+
+  /// One `GET https://api.jikan.moe/v4/manga` page (see [getJikanAnimeList]).
+  /// Manga has no `rating` filter — adult entries are excluded by `sfw` only.
+  Future<JikanMediaListEntity> getJikanMangaList({
+    String? q,
+    String? status,
+    String? type,
+    List<int>? genreIds,
+    String? orderBy,
+    String? sort,
+    bool? nsfwAllowed,
+    int page = 1,
+    int limit = jikanMaxLimit,
+  }) {
+    return _getJikanList(
+      jikanMangaEndpoint,
+      reason: 'GET jikan manga',
+      filters: <String, String?>{
+        'q': q,
+        'type': type,
+        'status': status,
+        'order_by': orderBy,
+        'sort': sort,
+        'genres': _genreQuery(genreIds),
+      },
+      nsfwAllowed: nsfwAllowed,
+      page: page,
+      limit: limit,
+    );
+  }
 
   /// `GET https://api.jikan.moe/v4/schedules` — the calendar feed.
   ///
   /// [day] is a Jikan weekday filter (`monday` … `sunday`, or `unknown`/
-  /// `other`); omit it for the whole week. This is the only Jikan call in the
-  /// app, and it does **not** take a [MalRateLimiter] grant: Jikan has its own
-  /// limits and is read anonymously (SPEC §4).
+  /// `other`); omit it for the whole week.
   Future<JikanScheduleEntity> getSchedules({
     String? day,
     int page = 1,
@@ -252,18 +273,37 @@ class MalMetadataService {
   }) async {
     final Uri uri = Uri.parse(jikanScheduleEndpoint).replace(
       queryParameters: <String, String>{
-        'page': page.toString(),
+        'page': page < 1 ? '1' : page.toString(),
         'limit': limit.clamp(1, jikanMaxLimit).toString(),
         ..._optional(<String, String?>{'filter': day?.toLowerCase()}),
       },
     );
     _logger.i("Fetching the weekly schedule from Jikan (day=${day ?? 'all'})");
-    final http.Response response = await _client.get(uri);
-    _expectOk(response);
-    return JikanScheduleEntity.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return JikanScheduleEntity.fromJson(
+      await _getJikanJson(uri, reason: 'GET jikan schedules ${day ?? 'all'}'),
+    );
   }
 
   // --------------------------------------------------------------- internal
+
+  Future<JikanMediaListEntity> _getJikanList(
+    String endpoint, {
+    required String reason,
+    required Map<String, String?> filters,
+    required bool? nsfwAllowed,
+    required int page,
+    required int limit,
+  }) async {
+    final Uri uri = Uri.parse(endpoint).replace(
+      queryParameters: <String, String>{
+        ..._optional(filters),
+        'page': page < 1 ? '1' : page.toString(),
+        'limit': limit.clamp(1, jikanMaxLimit).toString(),
+        if (nsfwAllowed == false) 'sfw': 'true',
+      },
+    );
+    return JikanMediaListEntity.fromJson(await _getJikanJson(uri, reason: reason));
+  }
 
   Uri _listUri({required String path, required Map<String, String> query}) {
     return Uri.parse('${config.malApiBase}/$path').replace(queryParameters: query);
@@ -279,15 +319,6 @@ class MalMetadataService {
     };
   }
 
-  /// `nsfw=false` when adult titles are forbidden, `nsfw=true` when they are
-  /// allowed, absent for a `null` preference. MAL's default is the safe
-  /// catalogue, so `true` must be explicit — the Shikimori
-  /// `censored: enableNsfw ? null : false` trick does not carry over.
-  Map<String, String> _nsfwQuery(bool? nsfwAllowed) {
-    if (nsfwAllowed == null) return const <String, String>{};
-    return <String, String>{'nsfw': nsfwAllowed ? 'true' : 'false'};
-  }
-
   String? _genreQuery(List<int>? genreIds) {
     if (genreIds == null || genreIds.isEmpty) return null;
     return genreIds.where((int id) => id > 0).join(',');
@@ -301,9 +332,15 @@ class MalMetadataService {
     return present;
   }
 
+  /// MAL v2 headers: the public client id **always** (an anonymous v2 read
+  /// without it is a 403), plus the account token when there is one.
   Map<String, String> _headers(MalUserModel? user) {
-    if (user == null || user.accessToken.trim().isEmpty) return const <String, String>{};
-    return _authService.authorizationHeaders(user.accessToken);
+    final Map<String, String> headers = <String, String>{
+      'X-MAL-CLIENT-ID': config.malClientId,
+    };
+    if (user == null || user.accessToken.trim().isEmpty) return headers;
+    headers.addAll(_authService.authorizationHeaders(user.accessToken));
+    return headers;
   }
 
   Future<Map<String, dynamic>> _getJson(
@@ -313,6 +350,22 @@ class MalMetadataService {
   }) async {
     await _rateLimiter.acquire(reason: reason);
     final http.Response response = await _client.get(uri, headers: _headers(user));
+    _expectOk(response);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// One Jikan read: a [JikanRateLimiter] grant, no MAL headers, and a single
+  /// retry after Jikan's 429 (its documented failure mode). A second 429 is
+  /// surfaced as an ordinary [HttpServerException] and the caller degrades to
+  /// an empty page — never a hot retry loop.
+  Future<Map<String, dynamic>> _getJikanJson(Uri uri, {required String reason}) async {
+    await _jikanRateLimiter.acquire(reason: reason);
+    http.Response response = await _client.get(uri);
+    if (response.statusCode == 429) {
+      await _jikanRateLimiter.backoff(reason: reason);
+      await _jikanRateLimiter.acquire(reason: reason);
+      response = await _client.get(uri);
+    }
     _expectOk(response);
     return jsonDecode(response.body) as Map<String, dynamic>;
   }

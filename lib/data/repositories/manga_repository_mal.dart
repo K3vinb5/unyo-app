@@ -7,6 +7,7 @@ import 'package:logger/logger.dart';
 // Internal dependencies
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/service.dart';
+import 'package:unyo/core/services/api/dto/jikan/jikan_media_entity.dart';
 import 'package:unyo/core/services/api/dto/mal/mal_manga_node.dart';
 import 'package:unyo/core/services/api/dto/mal/mal_media_list_entity.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
@@ -24,17 +25,19 @@ import 'package:unyo/domain/entities/media/manga_details.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/repositories/manga_repository.dart';
 
-/// MyAnimeList manga repository: metadata (`GET /manga`, `/manga/ranking`,
-/// `/manga/{id}` through [MalMetadataService]) plus the WP #156 list-entry
-/// tracker half ([MalUserRateService]).
+/// MyAnimeList manga repository: metadata (`GET /manga/ranking`, `/manga/{id}`
+/// and Jikan `/v4/manga` through [MalMetadataService]) plus the WP #156
+/// list-entry tracker half ([MalUserRateService]).
 ///
-/// Mirror of `MangaRepositoryShikimori` method-by-method: browse lists map one
-/// `/manga` page, details fold `my_list_status` onto the shared entry and
-/// `related_manga` onto `recommendedMangas`, advanced search reuses the same
-/// `/manga` catalog with MAL's static [MalMetadataVocabularies] filters, and
-/// covers come from the popular page. List reads are anonymous (MAL needs no
-/// token for catalog data); the details call carries the logged account so
-/// `my_list_status` is populated, and a non-MAL user simply reads anonymously.
+/// Mirror of `MangaRepositoryShikimori` method-by-method. The amended SPEC §2
+/// map is hybrid: MAL v2 serves the popularity ranking, details and covers,
+/// while Jikan serves the status-ordered feeds and the advanced search (v2
+/// `/manga` has no `publishing`/`upcoming` ranking type — probed 400 — and
+/// ignores `status`/`sort` on `/manga`). Details fold `my_list_status` onto the
+/// shared entry and `related_manga` onto `recommendedMangas`; covers come from
+/// the popular page. List reads are anonymous (MAL needs no token for catalog
+/// data); the details call carries the logged account so `my_list_status` is
+/// populated, and a non-MAL user simply reads anonymously.
 ///
 /// Record ids are MAL native ids (SPEC §3), so `id`/`idMal` both carry the node
 /// id; cross-service addressing rides `MediaMappingRepositoryMal`'s
@@ -44,6 +47,10 @@ class MangaRepositoryMal with RepositoryMixin implements MangaRepository {
   /// MAL's documented hard cap for `/manga` is 100; 50 matches Shikimori's page
   /// size so the shared carousels advance the same way.
   static const int pageSize = MalMetadataService.defaultLimit;
+
+  /// One Jikan feed/search page. Jikan caps `limit` at 25 on every list
+  /// endpoint, so a Jikan page is smaller than a MAL one by contract.
+  static const int jikanPageSize = MalMetadataService.jikanMaxLimit;
 
   /// Resolved on first use so metadata-only tests can build this repository
   /// without the rate service registered (mirror of the Shikimori repos).
@@ -103,24 +110,29 @@ class MangaRepositoryMal with RepositoryMixin implements MangaRepository {
   }
 
   // ---------------------------------------------------------------- metadata
+  // SPEC §2 (amended): `/manga/ranking` has no `publishing` or `upcoming`
+  // ranking type (probed live: `400 invalid ranking_type`), and `/manga` cannot
+  // filter by `status`/`sort` (only a required `q` plus paging). So the three
+  // status-ordered feeds are Jikan reads and only the popularity ranking stays
+  // on v2.
 
-  /// `GET /manga?status=publishing&sort=-manga_num_list_users`.
-  ///
-  /// MAL has no `airing` ranking type for manga (the anime feed's "hot now"
-  /// equivalent), so trending is the currently-publishing catalog ordered by
-  /// member count — the set of series people are reading right now.
+  /// Jikan `/v4/manga?status=publishing&order_by=members&sort=desc` — the set of
+  /// series people are reading right now. MAL has no `airing` ranking type for
+  /// manga, and `status=publishing` on v2 `/manga` is ignored, so this feed
+  /// needs Jikan (SPEC §2).
   @override
   Future<(bool, List<Manga>)> getTrendingMangas(
     int page,
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
-    _logger.i("Fetching MyAnimeList trending mangas");
-    return _fetchCatalog(
+    _logger.i("Fetching MyAnimeList trending mangas (Jikan)");
+    return _jikanMangas(
       page: page,
       loggedUser: loggedUser,
       status: 'publishing',
-      sort: MalMetadataVocabularies.sortFor('manga_num_list_users', descending: true),
+      orderBy: 'members',
+      direction: 'desc',
       reason: 'trending mangas',
     );
   }
@@ -142,38 +154,41 @@ class MangaRepositoryMal with RepositoryMixin implements MangaRepository {
     );
   }
 
-  /// `GET /manga?status=finished&sort=-manga_end_date` — finished series, most
-  /// recently ended first (mirror of the anime `finished_airing` feed).
+  /// Jikan `/v4/manga?status=complete&order_by=end_date&sort=desc` — finished
+  /// series, most recently ended first (mirror of the anime feed).
   @override
   Future<(bool, List<Manga>)> getRecentlyCompletedMangas(
     int page,
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
-    _logger.i("Fetching MyAnimeList recently completed mangas");
-    return _fetchCatalog(
+    _logger.i("Fetching MyAnimeList recently completed mangas (Jikan)");
+    return _jikanMangas(
       page: page,
       loggedUser: loggedUser,
-      status: 'finished',
-      sort: MalMetadataVocabularies.sortFor('manga_end_date', descending: true),
+      status: 'complete',
+      orderBy: 'end_date',
+      direction: 'desc',
       reason: 'recently completed mangas',
     );
   }
 
-  /// `GET /manga?status=not_yet_published&sort=manga_start_date` — announced
-  /// series, nearest start date first.
+  /// Jikan `/v4/manga?status=upcoming&order_by=start_date&sort=asc` — announced
+  /// series, nearest start date first. `ranking_type=upcoming` is not a valid
+  /// v2 manga ranking type (probed: 400), so this is the SPEC's Jikan fallback.
   @override
   Future<(bool, List<Manga>)> getUpcomingMangas(
     int page,
     User loggedUser, {
     bool ignoreCache = false,
   }) async {
-    _logger.i("Fetching MyAnimeList upcoming mangas");
-    return _fetchCatalog(
+    _logger.i("Fetching MyAnimeList upcoming mangas (Jikan)");
+    return _jikanMangas(
       page: page,
       loggedUser: loggedUser,
-      status: 'not_yet_published',
-      sort: MalMetadataVocabularies.sortFor('manga_start_date', descending: false),
+      status: 'upcoming',
+      orderBy: 'start_date',
+      direction: 'asc',
       reason: 'upcoming mangas',
     );
   }
@@ -209,12 +224,14 @@ class MangaRepositoryMal with RepositoryMixin implements MangaRepository {
     }
   }
 
-  /// MAL's static manga vocabulary shaped exactly like Shikimori's filter map.
+  /// Jikan's manga filter vocabulary shaped exactly like Shikimori's filter map
+  /// (see [AnimeRepositoryMal] for why the filters are Jikan's).
   ///
-  /// `countries` stays hidden: MAL has no country filter on `/manga` (the value
-  /// is dropped by [performMangaAdvancedSearch]). `sortOrders` stays hidden
-  /// because MAL expresses direction with the `-` prefix on the sort field, so
-  /// there is no second list to pick from.
+  /// `countries` stays hidden: neither Jikan nor MAL has a country filter. The
+  /// search never reads a `ratings` entry (Jikan's codes differ from MAL's and
+  /// manga has no `rating=` axis at all), so none is exposed. `sortOrders` stays
+  /// hidden because the direction rides the sort string the screen already
+  /// sends (`SCORE_DESC` → `order_by=score&sort=desc`).
   @override
   Future<Map<String, (bool, List<String>)>> getUserMangaAdvancedSearchFilters(User loggedUser) async {
     final Map<String, (bool, List<String>)> filters = MalMetadataVocabularies.mangaFilterMap();
@@ -222,9 +239,9 @@ class MangaRepositoryMal with RepositoryMixin implements MangaRepository {
     return filters;
   }
 
-  /// One `GET /manga` page with every filter MAL accepts.
+  /// One Jikan `/v4/manga` search page.
   ///
-  /// `selectedCountry` has no counterpart in MAL v2 (SPEC §2), so the value is
+  /// `selectedCountry` has no counterpart on Jikan either, so the value is
   /// logged and dropped rather than mapped onto an unrelated parameter — the
   /// same degradation Shikimori's repository documents.
   @override
@@ -238,24 +255,23 @@ class MangaRepositoryMal with RepositoryMixin implements MangaRepository {
     int page,
     User loggedUser,
   ) async {
-    _logger.i("Performing advanced manga search on MyAnimeList");
+    _logger.i("Performing advanced manga search on MyAnimeList (Jikan)");
     if (selectedCountry != null && selectedCountry.trim().isNotEmpty) {
       _logger.w("MyAnimeList has no manga country filter; ignoring '$selectedCountry'");
     }
-    final MalMangaListEntity response = await _metadataService.getMangaCatalog(
+    final ({String orderBy, String direction})? order = MalMetadataVocabularies.orderFor(sort);
+    final (bool _, List<Manga> results) = await _jikanMangas(
       q: query.trim().isEmpty ? null : query.trim(),
       status: _wireValue(selectedAiringStatus, MalMetadataVocabularies.mangaStatusLabels),
-      sort: _sortFor(sort),
-      mediaType: _wireValue(selectedFormat, MalMetadataVocabularies.mangaFormatLabels),
+      type: _wireValue(selectedFormat, MalMetadataVocabularies.mangaFormatLabels),
       genreIds: _genreIds(selectedGenres),
-      nsfwAllowed: loggedUser.settings.enableNsfwContent,
+      orderBy: order?.orderBy,
+      direction: order?.direction,
       page: page,
-      limit: pageSize,
+      loggedUser: loggedUser,
+      reason: 'manga search',
     );
-    return _visible(
-      response.data.map((MalMangaListEntityData entry) => MalMangaModel.fromNode(entry.node)).toList(),
-      loggedUser,
-    );
+    return results;
   }
 
   /// Mirror of Shikimori: the popular page's covers, empty strings dropped and
@@ -273,31 +289,40 @@ class MangaRepositoryMal with RepositoryMixin implements MangaRepository {
 
   // ---------------------------------------------------------------- internal
 
-  /// One anonymous (metadata is public) `/manga` page; a non-2xx answer
-  /// degrades to `(false, [])` like the other provider repositories.
-  Future<(bool, List<Manga>)> _fetchCatalog({
+  /// One Jikan `/v4/manga` page (browse feed or search); a non-2xx answer —
+  /// including a 429 that survived the transport's single backoff — degrades to
+  /// `(false, [])` like the other provider repositories.
+  Future<(bool, List<Manga>)> _jikanMangas({
     required int page,
     required User loggedUser,
     required String reason,
     String? status,
-    String? sort,
+    String? type,
+    String? orderBy,
+    String? direction,
+    String? q,
+    List<int>? genreIds,
   }) async {
     try {
-      final MalMangaListEntity response = await _metadataService.getMangaCatalog(
+      final JikanMediaListEntity feed = await _metadataService.getJikanMangaList(
+        q: q,
         status: status,
-        sort: sort,
+        type: type,
+        genreIds: genreIds,
+        orderBy: orderBy,
+        sort: direction,
         nsfwAllowed: loggedUser.settings.enableNsfwContent,
         page: page,
-        limit: pageSize,
+        limit: jikanPageSize,
       );
-      return (true, _visible(_mapNodes(response), loggedUser));
+      return (true, _visible(_mapJikanNodes(feed), loggedUser));
     } on HttpServerException catch (e) {
-      _logger.e("MyAnimeList $reason failed: $e");
-      return (false, const <Manga>[]);
+      _logger.e("Jikan $reason failed (${e.statusCode}), status=$status type=$type");
+      return (false, <Manga>[]);
     }
   }
 
-  /// One anonymous `/manga/ranking` page (see [_fetchCatalog] for degradation).
+  /// One anonymous `/manga/ranking` page (see [_jikanMangas] for degradation).
   Future<(bool, List<Manga>)> _fetchRanking({
     required String rankingType,
     required int page,
@@ -317,6 +342,15 @@ class MangaRepositoryMal with RepositoryMixin implements MangaRepository {
     }
   }
 
+  /// Jikan page → domain records. The node id is the MAL-native `mal_id`, so a
+  /// Jikan-sourced record addresses exactly like a v2 one (SPEC §3).
+  List<Manga> _mapJikanNodes(JikanMediaListEntity entity) {
+    return entity.data
+        .where((JikanMediaData node) => node.malId > 0)
+        .map((JikanMediaData node) => MalMangaModel.fromJikanNode(node))
+        .toList();
+  }
+
   List<Manga> _mapNodes(MalMangaListEntity response) {
     return response.data
         .where((MalMangaListEntityData entry) => entry.node.id > 0)
@@ -325,17 +359,17 @@ class MangaRepositoryMal with RepositoryMixin implements MangaRepository {
   }
 
   /// The NSFW gate every manga list applies: adult titles only when the user
-  /// opted in. `/manga/ranking` has no `nsfw` parameter, and `nsfw` on
-  /// `/manga` is a request hint rather than a guarantee, so the mapped
-  /// `isAdult` (from `nsfw: black` — manga has no `rating` field) is the final
-  /// word, mirroring `AnimeRepositoryMal._visible`.
+  /// opted in. `/manga/ranking` has no `nsfw` parameter, and Jikan's `sfw=true`
+  /// is a request-side filter rather than a guarantee on a mapped node, so the
+  /// mapped `isAdult` (v2 `nsfw: black`, Jikan's `explicit_genres: Hentai`) is
+  /// the final word, mirroring `AnimeRepositoryMal._visible`.
   List<Manga> _visible(List<Manga> mangas, User loggedUser) {
     return mangas
         .where((Manga manga) => !manga.isAdult || loggedUser.settings.enableNsfwContent)
         .toList();
   }
 
-  /// UI label ("One Shot") or wire value ("one_shot") → the MAL wire value; an
+  /// UI label ("One Shot") or wire value ("oneshot") → the Jikan wire value; an
   /// unknown selection is dropped instead of guessed.
   String? _wireValue(String? selected, Map<String, String> labels) {
     if (selected == null) return null;
@@ -353,31 +387,7 @@ class MangaRepositoryMal with RepositoryMixin implements MangaRepository {
     return null;
   }
 
-  /// `"Score_Desc"` / `"START_DATE_ASC"` → the MAL sort key with the `-`
-  /// descending prefix; unknown options are dropped.
-  String? _sortFor(String sort) {
-    final String normalized = _normalize(sort.toLowerCase());
-    if (normalized.isEmpty) return null;
-    final bool descending = normalized.endsWith('_desc');
-    final String base = normalized.replaceAll(RegExp(r'_(asc|desc)$'), '');
-    if (base.isEmpty) return null;
-    final String? field = _sortFieldFor(base);
-    if (field == null) {
-      _logger.w("Unknown MyAnimeList manga sort '$sort'; sending no sort");
-      return null;
-    }
-    return MalMetadataVocabularies.sortFor(field, descending: descending);
-  }
-
-  /// Label ("Start Date") or wire key ("manga_start_date") → the MAL sort key.
-  String? _sortFieldFor(String base) {
-    for (final MapEntry<String, String> entry in MalMetadataVocabularies.mangaSortLabels.entries) {
-      if (_normalize(entry.key.toLowerCase()) == base) return entry.value;
-    }
-    return MalMetadataVocabularies.mangaSorts.contains(base) ? base : null;
-  }
-
-  /// Genre labels (or numeric ids) → the MAL `genre=` id list.
+  /// Genre labels (or numeric ids) → the Jikan `genres=` id list.
   List<int>? _genreIds(List<String> selectedGenres) {
     final List<int> ids = <int>[];
     for (final String selected in selectedGenres) {
