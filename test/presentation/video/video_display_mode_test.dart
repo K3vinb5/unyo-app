@@ -4,12 +4,15 @@ import 'package:mocktail/mocktail.dart';
 import 'package:material_ui/material_ui.dart';
 
 // Internal dependencies
+import 'package:unyo/core/di/locator.dart' show sl;
 import 'package:unyo/core/enums/video_display_mode.dart';
 import 'package:unyo/core/services/video/video_display_geometry.dart';
 import 'package:unyo/core/services/video/video_display_mode_store.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
+import 'package:unyo/data/models/mal/user/mal_user_model.dart';
 import 'package:unyo/data/repositories/user_repository_anilist.dart';
 import 'package:unyo/data/repositories/user_repository_local.dart';
+import 'package:unyo/data/repositories/user_repository_mal.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_video_controls.dart';
@@ -17,6 +20,8 @@ import 'package:unyo/presentation/widgets/styled/unyo_video_controls.dart';
 class _MockUserRepositoryAnilist extends Mock implements UserRepositoryAnilist {}
 
 class _MockUserRepositoryLocal extends Mock implements UserRepositoryLocal {}
+
+class _MockUserRepositoryMal extends Mock implements UserRepositoryMal {}
 
 AnilistUserModel _userWith(Settings settings) => AnilistUserModel(
       id: '1',
@@ -27,6 +32,18 @@ AnilistUserModel _userWith(Settings settings) => AnilistUserModel(
       accessCode: '',
       accessToken: '',
       refreshToken: '',
+    );
+
+MalUserModel _malUserWith(Settings settings) => MalUserModel(
+      id: '56789',
+      name: 'tester',
+      settings: settings,
+      avatarImage: '',
+      bannerImage: '',
+      accessToken: '',
+      refreshToken: '',
+      accessTokenExpiresAt: '',
+      profileUrl: '',
     );
 
 void main() {
@@ -165,6 +182,26 @@ void main() {
 
       final saved = verify(() => anilist.updateUserInfo(captureAny())).captured.single as User;
       expect(saved.settings.videoDisplayMode, VideoDisplayMode.stretch);
+      verifyNever(() => local.updateUserInfo(any()));
+    });
+
+    test('save() writes the mode onto a MyAnimeList user through its repository', () async {
+      await sl.reset();
+      final anilist = _MockUserRepositoryAnilist();
+      final local = _MockUserRepositoryLocal();
+      final mal = _MockUserRepositoryMal();
+      sl.registerSingleton<UserRepositoryMal>(mal);
+      final store = VideoDisplayModeStore(anilist, local);
+      final user = _malUserWith(SettingsModel.empty());
+
+      when(() => mal.updateUserInfo(any())).thenAnswer((_) async {});
+
+      await store.save(user, VideoDisplayMode.crop);
+
+      final saved = verify(() => mal.updateUserInfo(captureAny())).captured.single as MalUserModel;
+      expect(saved.settings.videoDisplayMode, VideoDisplayMode.crop);
+      expect(saved.id, user.id);
+      verifyNever(() => anilist.updateUserInfo(any()));
       verifyNever(() => local.updateUserInfo(any()));
     });
   });

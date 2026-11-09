@@ -2,11 +2,13 @@ import 'package:material_ui/material_ui.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
+import 'package:unyo/data/models/mal/user/mal_user_model.dart';
 import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/user_repository_shikimori.dart';
 import 'package:unyo/core/di/locator.dart' show sl;
 import 'package:unyo/data/repositories/user_repository_anilist.dart';
 import 'package:unyo/data/repositories/user_repository_local.dart';
+import 'package:unyo/data/repositories/user_repository_mal.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 
@@ -71,6 +73,10 @@ class ThemeService {
       case ShikimoriUserModel shikimoriUserModel:
         ShikimoriUserModel updatedShikimoriUserModel = shikimoriUserModel.copyWith(settings: updatedSettings);
         await sl<UserRepositoryShikimori>().updateUserInfo(updatedShikimoriUserModel);
+        break;
+      case MalUserModel malUserModel:
+        MalUserModel updatedMalUserModel = malUserModel.copyWith(settings: updatedSettings);
+        await sl<UserRepositoryMal>().updateUserInfo(updatedMalUserModel);
         break;
       case LocalUserModel localUserModel:
         LocalUserModel updatedLocalUserModel = localUserModel.copyWith(settings: updatedSettings);

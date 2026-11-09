@@ -3,9 +3,11 @@ import 'package:unyo/core/di/locator.dart' show sl;
 import 'package:unyo/core/enums/video_display_mode.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
+import 'package:unyo/data/models/mal/user/mal_user_model.dart';
 import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/user_repository_anilist.dart';
 import 'package:unyo/data/repositories/user_repository_local.dart';
+import 'package:unyo/data/repositories/user_repository_mal.dart';
 import 'package:unyo/data/repositories/user_repository_shikimori.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
@@ -32,6 +34,8 @@ class VideoDisplayModeStore {
         await _userRepositoryAnilist.updateUserInfo(anilistUser.copyWith(settings: updatedSettings));
       case ShikimoriUserModel shikimoriUser:
         await sl<UserRepositoryShikimori>().updateUserInfo(shikimoriUser.copyWith(settings: updatedSettings));
+      case MalUserModel malUser:
+        await sl<UserRepositoryMal>().updateUserInfo(malUser.copyWith(settings: updatedSettings));
       case LocalUserModel localUser:
         await _userRepositoryLocal.updateUserInfo(localUser.copyWith(settings: updatedSettings));
     }
