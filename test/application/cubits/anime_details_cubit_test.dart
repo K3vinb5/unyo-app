@@ -130,6 +130,7 @@ void main() {
     registerFallbackValue(ExtensionModel.empty());
     registerFallbackValue(AnimeModel.empty());
     registerFallbackValue(MediaListEntryModel.empty());
+    registerFallbackValue(ReloadType.empty);
     registerFallbackValue(MockJSAnime());
   });
 
@@ -1184,6 +1185,50 @@ void main() {
 
     test('returns an empty string when every title field is empty', () {
       expect(logTitleFor(TitleModel.empty()), '');
+    });
+  });
+  group('AnimeDetailsCubit.removeMediaListEntry (WP #167)', () {
+    test('removal reuses the write path with an entry that carries no status', () async {
+      when(() => animeRepository.updateMediaListEntry(any(), any(), any())).thenAnswer(
+        (_) async => MediaListEntryModel.empty(),
+      );
+      final MockBuildContext buildContext = MockBuildContext();
+      when(() => buildContext.mounted).thenReturn(false);
+      cubit = buildCubit();
+      await pumpEventQueue();
+      await cubit.updateMediaListEntryStatus('Current');
+
+      await cubit.removeMediaListEntry(buildContext);
+
+      final MediaListEntry removed = verify(
+        () => animeRepository.updateMediaListEntry(captureAny(), any(), any()),
+      ).captured.single as MediaListEntry;
+      expect(
+        MediaListEntryModel.isNoStatus(removed.status),
+        isTrue,
+        reason: 'Shikimori reads that as DELETE /user_rates/:id and AniList as DeleteMediaListEntry',
+      );
+      expect(removed.progress, -1, reason: 'a removal must not carry progress to write');
+      verify(() => reloadNotifier.emitReload(ReloadType.animeMediaListEntryUpdated)).called(1);
+      verify(() => reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated)).called(1);
+    });
+
+    test('an unresolved mapping keeps the editor open and reports it', () async {
+      when(() => animeRepository.updateMediaListEntry(any(), any(), any()))
+          .thenThrow(const MediaLinkUnresolvedException('no verified user-provider entry'));
+      cubit = buildCubit();
+      await pumpEventQueue();
+
+      await cubit.removeMediaListEntry(MockBuildContext());
+
+      final List<ShowSnackbarEffect> snackbars = snackbarsOf(cubit.state);
+      expect(
+        snackbars.any(
+          (effect) => effect.titleKey == 'error_list_not_updated' && effect.contentType == ContentType.warning,
+        ),
+        isTrue,
+      );
+      verifyNever(() => reloadNotifier.emitReload(any()));
     });
   });
 }

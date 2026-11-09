@@ -9,14 +9,18 @@ import 'package:logger/logger.dart';
 import 'package:unyo/application/cubits/effect_mixin.dart';
 import 'package:unyo/application/effects/app_effects.dart';
 import 'package:bloc/bloc.dart';
+import 'package:unyo/application/states/episode_count.dart';
 import 'package:unyo/application/states/manga_details_state.dart';
 import 'package:unyo/core/di/locator.dart';
 
 import 'package:unyo/core/notification/manga_genres_notifier.dart';
 import 'package:unyo/core/notification/manga_notifier.dart';
 import 'package:unyo/core/notification/media_list_notifier.dart';
+import 'package:unyo/core/notification/reload/reload_notifier.dart';
+import 'package:unyo/core/notification/reload/reload_type.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
+import 'package:unyo/core/services/media/media_link_exception.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/local/user/local_user_model.dart';
 import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
@@ -32,6 +36,9 @@ import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/presentation/dialogs/character_dialog.dart';
+import 'package:unyo/presentation/dialogs/manga_details_media_entry_dialog.dart';
+import 'package:unyo/presentation/widgets/styled/unyo_date_picker.dart';
+import 'package:unyo/presentation/widgets/text/text_utils.dart';
 
 class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaDetailsState> {
   // Repositories
@@ -44,6 +51,7 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
   final MangaGenresNotifier _selectedMangaAdvancedSearchGenresFilters;
   final UserNotifier _loggedUserNotifier;
   final MediaListNotifier _selectedMediaListNotifier;
+  final ReloadNotifier _reloadNotifier;
   late StreamSubscription<Manga> _selectedMangaSubscription;
   late StreamSubscription<User> _loggedUserSubscription;
   late StreamSubscription<MediaList> _selectedMediaListSubscription;
@@ -68,12 +76,14 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
     this._selectedMediaListNotifier,
     this._extensionRepositoryAniyomi,
     this._userRepository,
+    this._reloadNotifier,
   ) : super(
         MangaDetailsState(
           loggedUser: UserModel.empty(),
           selectedMediaList: MediaListModel.empty(),
           selectedManga: MangaModel.empty(),
           mediaListEntry: MediaListEntryModel.empty(),
+          newMediaListEntry: MediaListEntryModel.empty(),
           characters: (false, []),
           recommendations: (false, []),
           banners: [],
@@ -249,6 +259,156 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
     }
   }
 
+  /// Opens the manga list editor (WP #167): the same editor the anime page
+  /// has, with chapters as the progress range.
+  void openMangaDetailsMediaEntryDialog(BuildContext context) {
+    showWidgetDialogEffect(dialog: MangaDetailsMediaEntryDialog(cubit: this));
+  }
+
+  Future<void> updateMediaListEntryStatus(String? newStatus) async {
+    if (newStatus == null) return;
+    try {
+      emit(state.copyWith(newMediaListEntry: _draft.copyWith(status: newStatus)));
+    } catch (e, stackTrace) {
+      handleError("Error updating Manga Entry status: $e", stackTrace: stackTrace);
+    }
+  }
+
+  Future<void> updateMediaListEntryProgress(int? newProgress) async {
+    if (newProgress == null) return;
+    try {
+      emit(state.copyWith(newMediaListEntry: _draft.copyWith(progress: newProgress)));
+    } catch (e, stackTrace) {
+      handleError("Error updating Manga Entry progress: $e", stackTrace: stackTrace);
+    }
+  }
+
+  Future<void> updateMediaListEntryScore(double? newScore) async {
+    if (newScore == null) return;
+    try {
+      emit(state.copyWith(newMediaListEntry: _draft.copyWith(score: newScore)));
+    } catch (e, stackTrace) {
+      handleError("Error updating Manga Entry score: $e", stackTrace: stackTrace);
+    }
+  }
+
+  Future<void> updateMediaListEntryStartedAt(BuildContext context) async {
+    DateTime? selectedDateTime = await showUnyoDatePicker(
+      context: context,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (selectedDateTime == null) return;
+    try {
+      emit(state.copyWith(
+        newMediaListEntry: _draft.copyWith(
+          startedAt: [
+            selectedDateTime.day.toString(),
+            selectedDateTime.month.toString(),
+            selectedDateTime.year.toString(),
+          ],
+        ),
+      ));
+    } catch (e, stackTrace) {
+      handleError("Error updating Manga Entry started at: $e", stackTrace: stackTrace);
+    }
+  }
+
+  Future<void> updateMediaListEntryCompletedAt(BuildContext context) async {
+    DateTime? selectedDateTime = await showUnyoDatePicker(
+      context: context,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (selectedDateTime == null) return;
+    try {
+      emit(state.copyWith(
+        newMediaListEntry: _draft.copyWith(
+          completedAt: [
+            selectedDateTime.day.toString(),
+            selectedDateTime.month.toString(),
+            selectedDateTime.year.toString(),
+          ],
+        ),
+      ));
+    } catch (e, stackTrace) {
+      handleError("Error updating Manga Entry completed at: $e", stackTrace: stackTrace);
+    }
+  }
+
+  /// Persists the editor's draft.
+  Future<void> updateMediaListEntry(BuildContext context) async {
+    // The editor clamps chapters into the chapter range for display and its
+    // slider never reports that clamped initial value back, so persist what the
+    // user actually saw (same rule as the anime editor).
+    final MediaListEntry desiredMediaListEntry = _draft.copyWith(
+      progress: EpisodeCount.progressForSave(
+        progress: _draft.progress,
+        episodeCount: state.selectedManga.chapters,
+      ),
+    );
+    await _writeMediaListEntry(desiredMediaListEntry, context, operation: "Updating");
+  }
+
+  /// Removes the entry from the user's list (the editor's trash action).
+  ///
+  /// A removal is an update carrying no list status
+  /// ([MediaListEntryModel.empty]) — the signal every tracker write path
+  /// already understands (Shikimori `DELETE /user_rates/:id`, AniList
+  /// `DeleteMediaListEntry`).
+  Future<void> removeMediaListEntry(BuildContext context) async {
+    await _writeMediaListEntry(MediaListEntryModel.empty(), context, operation: "Removing");
+  }
+
+  /// The editor's draft entry. A list entry is a patch-shaped value, so the
+  /// draft is always a copy — never the stored entry itself.
+  MediaListEntryModel get _draft {
+    final MediaListEntry entry = state.newMediaListEntry;
+    return entry is MediaListEntryModel ? entry : MediaListEntryModel.empty();
+  }
+
+  Future<void> _writeMediaListEntry(
+    MediaListEntry mediaListEntry,
+    BuildContext context, {
+    required String operation,
+  }) async {
+    try {
+      _logger.i("$operation Media List Entry to $mediaListEntry");
+      final MediaListEntry stored = await _mangaRepository.updateMediaListEntry(
+        mediaListEntry,
+        state.selectedManga,
+        state.loggedUser,
+      );
+      _emitMediaListEntry(stored);
+      // Home renders the user's manga lists (and their progress), so every
+      // successful write reloads it (WP #110 rule, shared with anime).
+      _reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated);
+    } on MediaLinkUnresolvedException catch (e, stackTrace) {
+      // Writing to a guessed id would corrupt another entry: nothing was sent.
+      _logger.w("Skipped the manga list update, no verified user-provider entry: $e", stackTrace: stackTrace);
+      showSnackBarEffect(
+        'error_list_not_updated',
+        messageKey: 'error_entry_not_matched_account',
+        messageArgs: <String, String>{
+          'service': TextUtils.capitalize(state.loggedUser.settings.userService.name),
+        },
+        contentType: ContentType.warning,
+      );
+      // Keep the editor open: nothing was written, so closing it would imply a save.
+      return;
+    } on HttpServerException catch (e, stackTrace) {
+      handleError("Error updating Manga Entry:", responseBody: e.message, stackTrace: stackTrace);
+    } catch (e, stackTrace) {
+      handleError("Error updating Manga Entry: $e", stackTrace: stackTrace);
+    }
+    if (!context.mounted) return;
+    popRouteEffect(context);
+  }
+
+  void _emitMediaListEntry(MediaListEntry mediaListEntry) {
+    emit(state.copyWith(mediaListEntry: mediaListEntry, newMediaListEntry: mediaListEntry));
+  }
+
   Future<void> _getMangaDetails(User loggedUser, Manga selectedManga) async {
     try {
       _logger.i("Fetching Manga Details for ${state.selectedManga.title.userPreferred}");
@@ -256,9 +416,17 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
         selectedManga,
         loggedUser,
       );
+      // List state always belongs to the user provider (WP #61 decision 3): a
+      // metadata-provider payload must never seed the list editor, or a save
+      // would write that provider's (possibly empty) values.
+      final MediaListEntry listEntry =
+          loggedUser.settings.metadataService == loggedUser.settings.userService
+              ? mangaDetails.$2.mediaListEntry
+              : await _getUserMediaListEntry(loggedUser, selectedManga);
       emit(
         state.copyWith(
-          mediaListEntry: mangaDetails.$2.mediaListEntry,
+          mediaListEntry: listEntry,
+          newMediaListEntry: listEntry,
           characters: (mangaDetails.$2.characters.isNotEmpty, mangaDetails.$2.characters),
           recommendations: (
             mangaDetails.$2.recommendedMangas.isNotEmpty,
@@ -275,6 +443,18 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
     } catch (e, stackTrace) {
       handleError("Error fetching Manga Details: $e", stackTrace: stackTrace);
     }
+  }
+
+  Future<MediaListEntry> _getUserMediaListEntry(User loggedUser, Manga selectedManga) async {
+    try {
+      _logger.i("Fetching User Media List Entry for ${selectedManga.title.userPreferred}");
+      return await _mangaRepository.getMediaListEntry(selectedManga, loggedUser);
+    } on HttpServerException catch (e, stackTrace) {
+      handleError("Error fetching User Media List entry:", responseBody: e.message, stackTrace: stackTrace);
+    } catch (e, stackTrace) {
+      handleError("Error fetching User Media List Entry: $e", stackTrace: stackTrace);
+    }
+    return MediaListEntryModel.empty();
   }
 
   Future<void> _loadInstalledExtensions() async {

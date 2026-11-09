@@ -492,10 +492,29 @@ class AnimeDetailsCubit extends Cubit<AnimeDetailsState> with EffectMixin<AnimeD
     if (savedProgress != desiredMediaListEntry.progress) {
       desiredMediaListEntry = (desiredMediaListEntry as MediaListEntryModel).copyWith(progress: savedProgress);
     }
+    await _writeMediaListEntry(desiredMediaListEntry, context, operation: "Updating");
+  }
+
+  /// Removes the entry from the user's list (the editor's trash action).
+  ///
+  /// A removal is an update carrying no list status
+  /// ([MediaListEntryModel.empty]) — the one signal every tracker write path
+  /// already understands (Shikimori turns it into `DELETE /user_rates/:id`,
+  /// AniList into `DeleteMediaListEntry`). Reusing the update pipeline keeps a
+  /// single write path, its reload emissions and its error handling.
+  Future<void> removeMediaListEntry(BuildContext context) async {
+    await _writeMediaListEntry(MediaListEntryModel.empty(), context, operation: "Removing");
+  }
+
+  Future<void> _writeMediaListEntry(
+    MediaListEntry mediaListEntry,
+    BuildContext context, {
+    required String operation,
+  }) async {
     try {
-      _logger.i("Updating Media List Entry to $desiredMediaListEntry");
+      _logger.i("$operation Media List Entry to $mediaListEntry");
       await _animeRepository.updateMediaListEntry(
-        desiredMediaListEntry,
+        mediaListEntry,
         state.selectedAnime,
         state.loggedUser,
       );

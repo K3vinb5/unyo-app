@@ -19,6 +19,7 @@ import 'package:unyo/presentation/widgets/styled/unyo_dropdown.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_media_banner.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_character_list.dart';
 import 'package:unyo/presentation/widgets/text/text_body_medium.dart';
+import 'package:unyo/presentation/widgets/media_list_status_chip.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_ink_well.dart';
 import 'package:unyo/presentation/widgets/text/media_title_text.dart';
@@ -233,25 +234,8 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                                                 ),
                                             ],
                                           ),
-                                          // TODO: extract to a widget
-                                          UnyoInkWell(
-                                            child: Container(
-                                              width: 120.w,
-                                              height: 40,
-                                              decoration: BoxDecoration(
-                                                color: Colors.grey.withValues(alpha: 0.3),
-                                                borderRadius: BorderRadius.circular(8.0),
-                                              ),
-                                              child: Center(
-                                                child: Text(
-                                                  state.mediaListEntry.status,
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
+                                          MediaListStatusChip(
+                                            status: state.mediaListEntry.status,
                                             onTap: () => context.read<AnimeDetailsCubit>().openAnimeDetailsMediaEntryDialog(context),
                                           ),
                                         ],

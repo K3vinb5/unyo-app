@@ -297,9 +297,9 @@ class MangaRepositoryShikimori with RepositoryMixin implements MangaRepository {
   /// `user_rates`; manga progress lives in `chapters` (and `volumes` in
   /// `volumes`), which the rate service maps.
   ///
-  /// Deliberately **not** on [MangaRepository]: the interface has no list-entry
-  /// API yet (manga entries are not editable in the v1 UI), so this stays a
-  /// concrete capability the factory does not route to.
+  /// On the interface since WP #167 gave manga an editor: an entry with no list
+  /// status is a removal, which the rate service turns into `DELETE`.
+  @override
   Future<MediaListEntry> updateMediaListEntry(
     MediaListEntry newMediaListEntry,
     Manga selectedManga,
@@ -316,6 +316,7 @@ class MangaRepositoryShikimori with RepositoryMixin implements MangaRepository {
     );
   }
 
+  @override
   Future<MediaListEntry> getMediaListEntry(
     Manga selectedManga,
     User loggedUser, {

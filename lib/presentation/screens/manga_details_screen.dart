@@ -18,6 +18,7 @@ import 'package:unyo/presentation/widgets/styled/unyo_dropdown.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_media_banner.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_character_list.dart';
 import 'package:unyo/presentation/widgets/text/text_body_medium.dart';
+import 'package:unyo/presentation/widgets/media_list_status_chip.dart';
 import 'package:unyo/presentation/widgets/text/text_utils.dart';
 import 'package:unyo/presentation/widgets/text/media_title_text.dart';
 
@@ -189,6 +190,13 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
                                                 iconData: Icons.star,
                                               ),
                                             ],
+                                          ),
+                                          // The list-editor entry point (WP #167):
+                                          // manga status/progress/score are editable
+                                          // through the same editor the anime page uses.
+                                          MediaListStatusChip(
+                                            status: state.mediaListEntry.status,
+                                            onTap: () => context.read<MangaDetailsCubit>().openMangaDetailsMediaEntryDialog(context),
                                           ),
                                         ],
                                       ),

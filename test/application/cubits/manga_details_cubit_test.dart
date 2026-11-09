@@ -1,5 +1,6 @@
 // External dependencies
 import 'dart:async';
+import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:mocktail/mocktail.dart';
@@ -11,17 +12,22 @@ import 'package:unyo/application/states/manga_details_state.dart';
 import 'package:unyo/core/notification/manga_genres_notifier.dart';
 import 'package:unyo/core/notification/manga_notifier.dart';
 import 'package:unyo/core/notification/media_list_notifier.dart';
+import 'package:unyo/core/notification/reload/reload_notifier.dart';
+import 'package:unyo/core/notification/reload/reload_type.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/repositories/extension_repository_aniyomi.dart';
 import 'package:unyo/data/repositories/user_repository_anilist.dart';
 import 'package:unyo/domain/entities/extension/extension.dart';
+import 'package:unyo/core/services/media/media_link_exception.dart';
+import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/media/manga_details.dart';
 import 'package:unyo/domain/entities/media/title.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
 import 'package:unyo/domain/repositories/manga_repository.dart';
+import 'package:unyo/presentation/dialogs/manga_details_media_entry_dialog.dart';
 import '../../core/di/locator.dart' show setupTestLocator;
 
 class MockBuildContext extends Mock implements BuildContext {}
@@ -36,6 +42,7 @@ class MockUserNotifier extends Mock implements UserNotifier {}
 class MockMangaNotifier extends Mock implements MangaNotifier {}
 class MockMangaGenresNotifier extends Mock implements MangaGenresNotifier {}
 class MockMediaListNotifier extends Mock implements MediaListNotifier {}
+class MockReloadNotifier extends Mock implements ReloadNotifier {}
 
 void main() {
   late MangaDetailsCubit cubit;
@@ -46,6 +53,7 @@ void main() {
   late MockMangaNotifier mangaNotifier;
   late MockMangaGenresNotifier mangaGenresNotifier;
   late MockMediaListNotifier mediaListNotifier;
+  late MockReloadNotifier reloadNotifier;
   late StreamController<User> userStreamController;
   // Second cubit with nothing installed, built in `setUp` on purpose: get_it 9
   // defers `sl.reset()`, so the `sl<Logger>()` registration is gone by the time
@@ -80,6 +88,8 @@ void main() {
     registerFallbackValue(UserModel.empty());
     registerFallbackValue(ExtensionModel.empty());
     registerFallbackValue(MangaModel.empty());
+    registerFallbackValue(MediaListEntryModel.empty());
+    registerFallbackValue(ReloadType.empty);
   });
 
   setUp(() async {
@@ -92,6 +102,7 @@ void main() {
     mangaNotifier = MockMangaNotifier();
     mangaGenresNotifier = MockMangaGenresNotifier();
     mediaListNotifier = MockMediaListNotifier();
+    reloadNotifier = MockReloadNotifier();
     userStreamController = StreamController<User>.broadcast();
 
     when(() => userNotifier.userStream).thenAnswer((_) => userStreamController.stream);
@@ -110,6 +121,7 @@ void main() {
       mediaListNotifier,
       extensionRepository,
       userRepository,
+      reloadNotifier,
     );
     final MockExtensionRepositoryAniyomi emptyExtensionRepository = MockExtensionRepositoryAniyomi();
     when(() => emptyExtensionRepository.getInstalledMangaExtensions(any())).thenAnswer((_) async => <Extension>{});
@@ -121,6 +133,7 @@ void main() {
       mediaListNotifier,
       emptyExtensionRepository,
       userRepository,
+      reloadNotifier,
     );
     await Future<void>.delayed(Duration.zero);
   });
@@ -293,6 +306,7 @@ void main() {
         mediaListNotifier,
         extensionRepository,
         userRepository,
+        reloadNotifier,
       );
       await pumpEventQueue();
       userStreamController.add(anilistUserWith(savedMappings));
@@ -463,6 +477,79 @@ void main() {
         <JSManga>[secondTitleResult],
         reason: 'results fetched for the previous title must be discarded, not emitted onto the new one',
       );
+    });
+  });
+  group('MangaDetailsCubit list editor (WP #167)', () {
+    test('the status chip opens the shared manga editor', () {
+      cubit.openMangaDetailsMediaEntryDialog(MockBuildContext());
+
+      final List<ShowWidgetDialogEffect> dialogs = cubit.state.effects.whereType<ShowWidgetDialogEffect>().toList();
+      expect(dialogs, hasLength(1));
+      expect(dialogs.single.dialog, isA<MangaDetailsMediaEntryDialog>());
+    });
+
+    test('saving writes the draft through the manga repository and reloads home', () async {
+      when(() => mangaRepository.updateMediaListEntry(any(), any(), any())).thenAnswer(
+        (_) async => MediaListEntryModel.empty().copyWith(status: 'CURRENT', progress: 2),
+      );
+      final MockBuildContext buildContext = MockBuildContext();
+      when(() => buildContext.mounted).thenReturn(false);
+
+      await cubit.updateMediaListEntryStatus('Current');
+      await cubit.updateMediaListEntryProgress(2);
+      await cubit.updateMediaListEntryScore(8);
+
+      await cubit.updateMediaListEntry(buildContext);
+
+      final MediaListEntry saved = verify(
+        () => mangaRepository.updateMediaListEntry(captureAny(), any(), any()),
+      ).captured.single as MediaListEntry;
+      expect(saved.status, 'Current');
+      expect(saved.progress, 2);
+      expect(saved.score, 8.0);
+      expect(
+        cubit.state.newMediaListEntry.status,
+        'CURRENT',
+        reason: 'the provider response seeds the editor again, so the chip reflects what was stored',
+      );
+      verify(() => reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated)).called(1);
+    });
+
+    test('the removal writes an entry with no list status and reloads home', () async {
+      when(() => mangaRepository.updateMediaListEntry(any(), any(), any())).thenAnswer(
+        (_) async => MediaListEntryModel.empty(),
+      );
+      final MockBuildContext buildContext = MockBuildContext();
+      when(() => buildContext.mounted).thenReturn(false);
+
+      await cubit.removeMediaListEntry(buildContext);
+
+      final MediaListEntry removed = verify(
+        () => mangaRepository.updateMediaListEntry(captureAny(), any(), any()),
+      ).captured.single as MediaListEntry;
+      expect(
+        MediaListEntryModel.isNoStatus(removed.status),
+        isTrue,
+        reason: 'an entry with no status is the removal signal every tracker write path reads',
+      );
+      verify(() => reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated)).called(1);
+    });
+
+    test('an unaddressable record keeps the editor open and writes nothing', () async {
+      when(() => mangaRepository.updateMediaListEntry(any(), any(), any()))
+          .thenThrow(const MediaLinkUnresolvedException('no verified user-provider entry'));
+
+      await cubit.updateMediaListEntryStatus('Current');
+      await cubit.updateMediaListEntry(MockBuildContext());
+
+      final List<ShowSnackbarEffect> snackbars = cubit.state.effects.whereType<ShowSnackbarEffect>().toList();
+      expect(
+        snackbars.any(
+          (effect) => effect.titleKey == 'error_list_not_updated' && effect.contentType == ContentType.warning,
+        ),
+        isTrue,
+      );
+      verifyNever(() => reloadNotifier.emitReload(any()));
     });
   });
 }

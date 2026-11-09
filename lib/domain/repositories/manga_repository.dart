@@ -1,4 +1,5 @@
 import 'package:unyo/core/enums/service.dart';
+import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/media/manga_details.dart';
 import 'package:unyo/domain/entities/user/user.dart';
@@ -23,4 +24,18 @@ abstract class MangaRepository {
     User loggedUser
   );
   Future<List<String>> getMediaCoverImages(User loggedUser, {bool ignoreCache = false});
+
+  /// The viewer's list entry for [selectedManga] (WP #167). Readers degrade to
+  /// the empty entry; only writes ever throw for an unaddressable record.
+  Future<MediaListEntry> getMediaListEntry(Manga selectedManga, User loggedUser, {bool ignoreCache = false});
+
+  /// Writes the viewer's list entry. An entry carrying no list status
+  /// (`MediaListEntryModel.noStatus`) is a **removal**, exactly like the anime
+  /// write path: every tracker expresses "off my list" that way, so deleting
+  /// does not need a second method.
+  Future<MediaListEntry> updateMediaListEntry(
+    MediaListEntry newMediaListEntry,
+    Manga selectedManga,
+    User loggedUser,
+  );
 }
