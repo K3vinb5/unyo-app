@@ -19,6 +19,7 @@ import 'package:unyo/data/repositories/anime_repository_anilist.dart';
 import 'package:unyo/data/repositories/anime_repository_mal.dart';
 import 'package:unyo/data/repositories/anime_repository_shikimori.dart';
 import 'package:unyo/data/repositories/manga_repository_anilist.dart';
+import 'package:unyo/data/repositories/manga_repository_mal.dart';
 import 'package:unyo/data/repositories/manga_repository_shikimori.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
@@ -42,6 +43,8 @@ class MockAnimeRepositoryAnilist extends Mock implements AnimeRepositoryAnilist 
 class MockAnimeRepositoryShikimori extends Mock implements AnimeRepositoryShikimori {}
 
 class MockMangaRepositoryAnilist extends Mock implements MangaRepositoryAnilist {}
+
+class MockMangaRepositoryMal extends Mock implements MangaRepositoryMal {}
 
 class MockMangaRepositoryShikimori extends Mock implements MangaRepositoryShikimori {}
 
@@ -85,6 +88,7 @@ void main() {
   late MockUserRepositoryAnilist anilistUser;
   late MockUserRepositoryMal malUser;
   late MockAnimeRepositoryMal malAnime;
+  late MockMangaRepositoryMal malManga;
   late FakeMediaMappingLookup mappingLookup;
 
   AnilistUserModel userWith({Service userService = Service.anilist, Service metadataService = Service.anilist}) {
@@ -97,6 +101,23 @@ void main() {
       accessCode: '',
       accessToken: '',
       refreshToken: '',
+    );
+  }
+
+  MalUserModel malAccount({Service metadataService = Service.anilist}) {
+    return MalUserModel(
+      id: '34567890',
+      name: 'mal-tester',
+      settings: SettingsModel.empty().copyWith(
+        userService: Service.mal,
+        metadataService: metadataService,
+      ),
+      avatarImage: '',
+      bannerImage: '',
+      accessToken: 'stored-access',
+      refreshToken: 'stored-refresh',
+      accessTokenExpiresAt: '2099-01-01T00:00:00.000',
+      profileUrl: 'https://myanimelist.net/profile/mal-tester',
     );
   }
 
@@ -126,6 +147,8 @@ void main() {
     malAnime = MockAnimeRepositoryMal();
     sl.registerSingleton<UserRepositoryMal>(malUser);
     sl.registerSingleton<AnimeRepositoryMal>(malAnime);
+    malManga = MockMangaRepositoryMal();
+    sl.registerSingleton<MangaRepositoryMal>(malManga);
     mappingLookup = FakeMediaMappingLookup();
     sl.registerLazySingleton<MediaIdService>(
       () => MediaIdService(cache: InMemoryMediaIdCache(), mappingLookup: mappingLookup),
@@ -254,9 +277,8 @@ void main() {
       verify(() => anilistManga.getPopularMangas(1, any(), ignoreCache: false)).called(1);
     });
 
-    test('mal, kitsu and simkl are explicitly unsupported metadata providers', () async {
+    test('kitsu and simkl are explicitly unsupported metadata providers', () async {
       const List<Service> unsupported = <Service>[
-        Service.mal,
         Service.kitsu,
         Service.simkl,
       ];
@@ -634,23 +656,6 @@ void main() {
   });
 
   group('MyAnimeList as the user provider (WP #156)', () {
-    MalUserModel malAccount({Service metadataService = Service.anilist}) {
-      return MalUserModel(
-        id: '34567890',
-        name: 'mal-tester',
-        settings: SettingsModel.empty().copyWith(
-          userService: Service.mal,
-          metadataService: metadataService,
-        ),
-        avatarImage: '',
-        bannerImage: '',
-        accessToken: 'stored-access',
-        refreshToken: 'stored-refresh',
-        accessTokenExpiresAt: '2099-01-01T00:00:00.000',
-        profileUrl: 'https://myanimelist.net/profile/mal-tester',
-      );
-    }
-
     Anime anilistRecord({int id = 170942, int idMal = 58514}) =>
         AnimeModel.empty().copyWith(id: id, idMal: idMal);
 
@@ -752,22 +757,237 @@ void main() {
       verifyNever(() => anilistAnime.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')));
     });
 
-    test('metadataService=mal stays a metadata miss and never reaches the MAL tracker', () async {
+    test('metadataService=mal counts as a metadata provider (WP #166)', () async {
       expect(ProviderCapabilities.isUser(Service.mal), isTrue);
-      expect(ProviderCapabilities.isMetadata(Service.mal), isFalse);
+      expect(ProviderCapabilities.isMetadata(Service.mal), isTrue);
       expect(ProviderCapabilities.userProviders, <Service>[Service.anilist, Service.shikimori, Service.mal]);
-      expect(ProviderCapabilities.metadataProviders, <Service>[Service.anilist, Service.shikimori]);
+      expect(ProviderCapabilities.metadataProviders, <Service>[Service.anilist, Service.shikimori, Service.mal]);
+      expect(MangaRepositoryFactory.supportsMetadataService(Service.mal), isTrue,
+          reason: 'MAL serves manga metadata since WP #166');
+      expect(MangaRepositoryFactory.supportsMetadataService(Service.kitsu), isFalse);
+      expect(MangaRepositoryFactory.supportsMetadataService(Service.simkl), isFalse);
+    });
+  });
 
-      final (bool ok, AnimeDetails details) = await animeFactory.getAnimeDetails(
-        anilistRecord(),
-        userWith(metadataService: Service.mal),
+  group('MyAnimeList as the metadata provider (WP #166)', () {
+    Anime malRecord({int id = 58514}) => AnimeModel.empty().copyWith(id: id, idMal: id);
+
+    Manga malMangaRecord({int id = 58514}) => MangaModel.empty().copyWith(id: id);
+
+    test('every anime browse read, the calendar and the covers reach the MyAnimeList repository', () async {
+      when(() => malAnime.getRecentlyReleasedAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (true, <Anime>[AnimeModel.empty()]));
+      when(() => malAnime.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (true, <Anime>[AnimeModel.empty()]));
+      when(() => malAnime.getPopularAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (true, <Anime>[AnimeModel.empty()]));
+      when(() => malAnime.getRecentlyCompletedAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (true, <Anime>[AnimeModel.empty()]));
+      when(() => malAnime.getUpcomingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (true, <Anime>[AnimeModel.empty()]));
+      when(() => malAnime.getCalendarReleases(any(), any()))
+          .thenAnswer((_) async => <String, List<Anime>>{'monday': <Anime>[AnimeModel.empty()]});
+      when(() => malAnime.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => <String>['mal-cover']);
+
+      final MalUserModel user = malAccount(metadataService: Service.mal);
+      final (bool trendingOk, List<Anime> trending) = await animeFactory.getTrendingAnimes(1, user);
+      final (bool releasedOk, List<Anime> released) = await animeFactory.getRecentlyReleasedAnimes(1, user);
+      final (bool popularOk, List<Anime> popular) = await animeFactory.getPopularAnimes(1, user);
+      final (bool completedOk, List<Anime> completed) = await animeFactory.getRecentlyCompletedAnimes(1, user);
+      final (bool upcomingOk, List<Anime> upcoming) = await animeFactory.getUpcomingAnimes(1, user);
+      final Map<String, List<Anime>> calendar = await animeFactory.getCalendarReleases(1, user);
+      final List<String> covers = await animeFactory.getMediaCoverImages(user);
+
+      // The whole point of the routing: MAL answers, it is never an empty default.
+      expect(<bool>[trendingOk, releasedOk, popularOk, completedOk, upcomingOk], everyElement(isTrue));
+      expect(<List<Anime>>[trending, released, popular, completed, upcoming], everyElement(hasLength(1)));
+      expect(calendar.keys, <String>['monday']);
+      expect(covers, <String>['mal-cover']);
+
+      verify(() => malAnime.getTrendingAnimes(1, any(), ignoreCache: false)).called(1);
+      verify(() => malAnime.getRecentlyReleasedAnimes(1, any(), ignoreCache: false)).called(1);
+      verify(() => malAnime.getPopularAnimes(1, any(), ignoreCache: false)).called(1);
+      verify(() => malAnime.getRecentlyCompletedAnimes(1, any(), ignoreCache: false)).called(1);
+      verify(() => malAnime.getUpcomingAnimes(1, any(), ignoreCache: false)).called(1);
+      verify(() => malAnime.getCalendarReleases(1, any())).called(1);
+      verify(() => malAnime.getMediaCoverImages(any(), ignoreCache: false)).called(1);
+      verifyNever(() => shikimoriAnime.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')));
+      verifyNever(() => shikimoriAnime.getCalendarReleases(any(), any()));
+      verifyNever(() => anilistAnime.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')));
+      verifyNever(() => shikimoriAnime.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')));
+    });
+
+    test('anime details, filters and advanced search reach the MyAnimeList repository', () async {
+      when(() => malAnime.getAnimeDetails(any(), any()))
+          .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
+      when(() => malAnime.getUserAnimeAdvancedSearchFilters(any()))
+          .thenAnswer((_) async => <String, (bool, List<String>)>{
+                'genres': (true, <String>['Action']),
+              });
+      when(() => malAnime.performAnimeAdvancedSearch(
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+          )).thenAnswer((_) async => <Anime>[AnimeModel.empty()]);
+
+      final MalUserModel user = malAccount(metadataService: Service.mal);
+      final (bool ok, AnimeDetails details) = await animeFactory.getAnimeDetails(malRecord(), user);
+      final Map<String, (bool, List<String>)> filters = await animeFactory.getUserAnimeAdvancedSearchFilters(user);
+      final List<Anime> results = await animeFactory.performAnimeAdvancedSearch(
+        'Frieren',
+        <String>['Action'],
+        null,
+        null,
+        null,
+        null,
+        'Score_Desc',
+        1,
+        user,
       );
 
-      expect(ok, isFalse);
-      expect(details.mediaListEntry.status, AnimeDetailsModel.empty().mediaListEntry.status);
-      verifyNever(() => malAnime.getAnimeDetails(any(), any()));
+      expect(ok, isTrue);
+      expect(details, isNotNull);
+      expect(filters['genres']!.$2, <String>['Action']);
+      expect(results, hasLength(1));
+      verify(() => malAnime.getAnimeDetails(any(), any())).called(1);
+      verify(() => malAnime.getUserAnimeAdvancedSearchFilters(any())).called(1);
+      verify(() => malAnime.performAnimeAdvancedSearch(
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+          )).called(1);
       verifyNever(() => anilistAnime.getAnimeDetails(any(), any()));
       verifyNever(() => shikimoriAnime.getAnimeDetails(any(), any()));
+      verifyNever(() => anilistAnime.getUserAnimeAdvancedSearchFilters(any()));
+      verifyNever(() => shikimoriAnime.getUserAnimeAdvancedSearchFilters(any()));
+    });
+
+    test('the details service parameter routes to MyAnimeList even when AniList is the metadata provider', () async {
+      // The details cubit forwards MediaIdService.detailsSource's `service`, so the
+      // branch has to honour Service.mal and not only settings.metadataService.
+      when(() => malAnime.getAnimeDetails(any(), any()))
+          .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
+
+      final (bool ok, AnimeDetails details) = await animeFactory.getAnimeDetails(
+        malRecord(),
+        userWith(metadataService: Service.anilist),
+        service: Service.mal,
+      );
+
+      expect(ok, isTrue);
+      expect(details, isNotNull);
+      verify(() => malAnime.getAnimeDetails(any(), any())).called(1);
+      verifyNever(() => anilistAnime.getAnimeDetails(any(), any()));
+      verifyNever(() => shikimoriAnime.getAnimeDetails(any(), any()));
+    });
+
+    test('every manga metadata read reaches the MyAnimeList repository', () async {
+      when(() => malManga.getTrendingMangas(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (true, <Manga>[MangaModel.empty()]));
+      when(() => malManga.getPopularMangas(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (true, <Manga>[MangaModel.empty()]));
+      when(() => malManga.getRecentlyCompletedMangas(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (true, <Manga>[MangaModel.empty()]));
+      when(() => malManga.getUpcomingMangas(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (true, <Manga>[MangaModel.empty()]));
+      when(() => malManga.getMangaDetails(any(), any()))
+          .thenAnswer((_) async => (true, MangaDetailsModel.empty()));
+      when(() => malManga.getUserMangaAdvancedSearchFilters(any()))
+          .thenAnswer((_) async => <String, (bool, List<String>)>{
+                'genres': (true, <String>['Shounen']),
+              });
+      when(() => malManga.performMangaAdvancedSearch(
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+          )).thenAnswer((_) async => <Manga>[MangaModel.empty()]);
+      when(() => malManga.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => <String>['mal-manga-cover']);
+
+      final MalUserModel user = malAccount(metadataService: Service.mal);
+      final (bool trendingOk, List<Manga> trending) = await mangaFactory.getTrendingMangas(1, user);
+      final (bool popularOk, List<Manga> popular) = await mangaFactory.getPopularMangas(1, user);
+      final (bool completedOk, List<Manga> completed) = await mangaFactory.getRecentlyCompletedMangas(1, user);
+      final (bool upcomingOk, List<Manga> upcoming) = await mangaFactory.getUpcomingMangas(1, user);
+      final (bool detailsOk, MangaDetails details) = await mangaFactory.getMangaDetails(malMangaRecord(), user);
+      final Map<String, (bool, List<String>)> filters = await mangaFactory.getUserMangaAdvancedSearchFilters(user);
+      final List<Manga> results = await mangaFactory.performMangaAdvancedSearch(
+        'Berserk',
+        <String>['Shounen'],
+        null,
+        null,
+        null,
+        'Score_Desc',
+        1,
+        user,
+      );
+      final List<String> covers = await mangaFactory.getMediaCoverImages(user);
+
+      expect(<bool>[trendingOk, popularOk, completedOk, upcomingOk, detailsOk], everyElement(isTrue));
+      expect(<List<Manga>>[trending, popular, completed, upcoming], everyElement(hasLength(1)));
+      expect(details, isNotNull);
+      expect(filters['genres']!.$2, <String>['Shounen']);
+      expect(results, hasLength(1));
+      expect(covers, <String>['mal-manga-cover']);
+
+      verify(() => malManga.getTrendingMangas(1, any(), ignoreCache: false)).called(1);
+      verify(() => malManga.getPopularMangas(1, any(), ignoreCache: false)).called(1);
+      verify(() => malManga.getRecentlyCompletedMangas(1, any(), ignoreCache: false)).called(1);
+      verify(() => malManga.getUpcomingMangas(1, any(), ignoreCache: false)).called(1);
+      verify(() => malManga.getMangaDetails(any(), any())).called(1);
+      verify(() => malManga.getUserMangaAdvancedSearchFilters(any())).called(1);
+      verify(() => malManga.performMangaAdvancedSearch(
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+          )).called(1);
+      verify(() => malManga.getMediaCoverImages(any(), ignoreCache: false)).called(1);
+      verifyNever(() => shikimoriManga.getTrendingMangas(any(), any(), ignoreCache: any(named: 'ignoreCache')));
+      verifyNever(() => anilistManga.getTrendingMangas(any(), any(), ignoreCache: any(named: 'ignoreCache')));
+      verifyNever(() => shikimoriManga.getMangaDetails(any(), any()));
+      verifyNever(() => anilistManga.getMangaDetails(any(), any()));
+      verifyNever(() => shikimoriManga.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')));
+      verifyNever(() => anilistManga.getMediaCoverImages(any(), ignoreCache: any(named: 'ignoreCache')));
+    });
+
+    test('the details service parameter routes manga details to MyAnimeList too', () async {
+      when(() => malManga.getMangaDetails(any(), any()))
+          .thenAnswer((_) async => (true, MangaDetailsModel.empty()));
+
+      final (bool ok, MangaDetails details) = await mangaFactory.getMangaDetails(
+        malMangaRecord(),
+        userWith(metadataService: Service.anilist),
+        service: Service.mal,
+      );
+
+      expect(ok, isTrue);
+      expect(details, isNotNull);
+      verify(() => malManga.getMangaDetails(any(), any())).called(1);
+      verifyNever(() => anilistManga.getMangaDetails(any(), any()));
+      verifyNever(() => shikimoriManga.getMangaDetails(any(), any()));
     });
   });
 }

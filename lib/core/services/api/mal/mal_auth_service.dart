@@ -197,7 +197,10 @@ class MalAuthService {
       Uri.parse(config.malTokenEndpoint),
     )..bodyFields = fields;
     try {
-      final http.StreamedResponse streamed = await _client.send(request);
+      // Bounded like the metadata transport: a dead host must fail the grant
+      // instead of hanging the login/refresh for the OS SYN-retry window.
+      final http.StreamedResponse streamed =
+          await _client.send(request).timeout(config.malRequestTimeout);
       final http.Response response = await http.Response.fromStream(streamed);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         _logger.e("MyAnimeList token endpoint answered ${response.statusCode}");

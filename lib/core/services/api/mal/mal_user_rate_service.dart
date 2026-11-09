@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
@@ -10,11 +12,11 @@ import 'package:unyo/core/services/api/dto/mal/mal_my_list_status_entity.dart';
 import 'package:unyo/core/services/api/http/http_exception.dart';
 import 'package:unyo/core/services/api/mal/mal_auth_service.dart';
 import 'package:unyo/data/models/mal/media/mal_list_status_policy.dart';
+import 'package:unyo/data/models/mal/media/mal_media_mapper.dart';
 import 'package:unyo/core/services/api/mal/mal_rate_limiter.dart';
 import 'package:unyo/data/models/mal/user/mal_user_model.dart';
 import 'package:unyo/data/repositories/user_repository_mal.dart';
 import 'package:unyo/domain/entities/list/media_list_entry.dart';
-import 'package:unyo/presentation/widgets/text/text_utils.dart';
 
 /// List-entry reads and writes against the MyAnimeList REST API v2 (WP #156).
 ///
@@ -226,18 +228,10 @@ class MalUserRateService {
     return payload;
   }
 
+  /// Fold shared with the metadata details models (`MalMediaMapper.listEntry`),
+  /// so the tracker and the details page cannot disagree on an entry.
   MediaListEntry _toEntry(MalMyListStatusEntity status, MalListTarget target) {
-    return MediaListEntryModel(
-      progress: target == MalListTarget.manga ? status.numChaptersRead : status.numEpisodesWatched,
-      progressVolumes: target == MalListTarget.manga ? status.numVolumesRead : 0,
-      score: status.score.toDouble(),
-      repeat: MalListStatusPolicy.repeatFor(
-        target == MalListTarget.manga ? status.numTimesReread : status.numTimesRewatched,
-      ),
-      status: MalListStatusPolicy.toUnified(status.status),
-      startedAt: TextUtils.formatISO8601DateTime(status.startDate),
-      completedAt: TextUtils.formatISO8601DateTime(status.finishDate),
-    );
+    return MalMediaMapper.listEntry(status, target: target) ?? MediaListEntryModel.empty();
   }
 
   Future<http.Response> _send(
@@ -250,8 +244,22 @@ class MalUserRateService {
     if (body != null) {
       request.bodyFields = body;
     }
-    final http.StreamedResponse streamed = await _client.send(request);
-    return http.Response.fromStream(streamed);
+    // Bounded like the metadata transport (`config.malRequestTimeout`): a dead
+    // host must not hang a list read for the OS SYN-retry window.
+    try {
+      final http.StreamedResponse streamed =
+          await _client.send(request).timeout(config.malRequestTimeout);
+      return await http.Response.fromStream(streamed);
+    } on TimeoutException {
+      _logger.e("$method $uri timed out after ${config.malRequestTimeout.inSeconds} s");
+      throw HttpTimeoutException("$method $uri timed out after ${config.malRequestTimeout.inSeconds} s");
+    } on SocketException catch (e) {
+      _logger.e("$method $uri hit a socket error: $e");
+      throw HttpNetworkException("$method $uri failed: ${e.message}");
+    } on http.ClientException catch (e) {
+      _logger.e("$method $uri hit a client error: $e");
+      throw HttpNetworkException("$method $uri failed: ${e.message}");
+    }
   }
 
   void _expectOk(http.Response response) {

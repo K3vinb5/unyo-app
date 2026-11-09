@@ -253,10 +253,9 @@ void main() {
       expect(stored.accessTokenExpiresAt, isNotEmpty);
       expect(stored.avatarImage, 'https://cdn.myanimelist.net/images/user/56789.jpg');
       expect((stored.settings as SettingsModel).userService, Service.mal);
-      expect((stored.settings as SettingsModel).metadataService, Service.anilist,
-          reason: 'WP #164: MAL is tracker-only, so a new MAL account keeps the '
-              'working AniList metadata default instead of routing details to the '
-              'UnimplementedError metadata stubs');
+      expect((stored.settings as SettingsModel).metadataService, Service.mal,
+          reason: 'WP #166: metadata defaults to the account service (WP #164 rule), '
+              'and MAL is a metadata provider now that its details/browse reads are real');
       expect(stored.profileUrl, 'https://myanimelist.net/profile/tester');
 
       expect(newUser.currentUser.name, 'tester', reason: 'the new-user notifier carries the account');

@@ -110,7 +110,7 @@ void main() {
   group('MangaCubit unsupported metadata provider', () {
     test('an unimplemented provider settles into the explicit unavailable state instead of an empty list', () async {
       cubit = buildCubit();
-      userStreamController.add(userWith(Service.mal));
+      userStreamController.add(userWith(Service.kitsu));
       await pumpEventQueue();
 
       expect(cubit.state.metadataServiceSupported, isFalse);
@@ -122,7 +122,7 @@ void main() {
 
     test('a reload after switching back to AniList clears the unavailable state and fetches', () async {
       cubit = buildCubit();
-      userStreamController.add(userWith(Service.mal));
+      userStreamController.add(userWith(Service.kitsu));
       await pumpEventQueue();
       expect(cubit.state.metadataServiceSupported, isFalse);
 
@@ -156,8 +156,8 @@ void main() {
       await pumpEventQueue();
       expect(cubit.state.userLoaded, isFalse, reason: 'the initial load is still awaiting its first fetch');
 
-      // MAL has no manga implementation, and it is picked mid-load.
-      userStreamController.add(userWith(Service.mal));
+      // Kitsu has no manga implementation, and it is picked mid-load.
+      userStreamController.add(userWith(Service.kitsu));
       await pumpEventQueue();
       reloadStreamController.add(ReloadType.newMetadataService);
       await pumpEventQueue();
@@ -169,10 +169,54 @@ void main() {
       expect(
         cubit.state.metadataServiceSupported,
         isFalse,
-        reason: 'the queued switch must re-run against MAL, not the provider the load captured',
+        reason: 'the queued switch must re-run against Kitsu, not the provider the load captured',
       );
       expect(cubit.state.trending.$2, isEmpty, reason: 'the previous provider\'s rows must not survive the switch');
       verifyNever(() => mangaRepository.getPopularMangas(1, any(), ignoreCache: true));
+    });
+  });
+
+  group('MangaCubit browse banners', () {
+    test('a MAL-shaped card lands in the banner list through its cover', () async {
+      when(
+        () => mangaRepository.getTrendingMangas(
+          any(),
+          any(),
+          ignoreCache: any(named: 'ignoreCache'),
+        ),
+      ).thenAnswer(
+        (_) async => (
+          true,
+          <Manga>[
+            // Jikan v4 has no banner asset: the MAL models set
+            // `bannerImage: ''` and only carry a cover (WP #166 evidence §1
+            // 3a). The cover is the hero art, so the card must still reach
+            // the banner slot.
+            MangaModel.empty().copyWith(
+              id: 1,
+              bannerImage: '',
+              coverImage: 'https://cdn.example.test/manga-1.jpg',
+            ),
+            MangaModel.empty().copyWith(
+              id: 2,
+              bannerImage: 'https://cdn.example.test/banner-2.jpg',
+              coverImage: '',
+            ),
+            MangaModel.empty().copyWith(id: 3, bannerImage: '', coverImage: ''),
+          ],
+        ),
+      );
+
+      cubit = buildCubit();
+      userStreamController.add(userWith(Service.mal));
+      await pumpEventQueue();
+
+      expect(
+        cubit.state.banners.map((Manga manga) => manga.id),
+        <int>[1, 2],
+        reason: 'banner or cover is hero art; a card with neither cannot fill '
+            'the slot (the screen collapses it instead)',
+      );
     });
   });
 }

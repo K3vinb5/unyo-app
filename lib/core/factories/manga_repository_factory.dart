@@ -5,6 +5,7 @@ import 'package:logger/logger.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/data/repositories/manga_repository_anilist.dart';
+import 'package:unyo/data/repositories/manga_repository_mal.dart';
 import 'package:unyo/data/repositories/manga_repository_shikimori.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/media/manga_details.dart';
@@ -17,10 +18,12 @@ import 'package:unyo/domain/repositories/manga_repository.dart';
 /// [supportsMetadataService] is the single routing table deciding support:
 /// - [Service.anilist] → delegates to [MangaRepositoryAnilist]
 /// - [Service.shikimori] → delegates to [MangaRepositoryShikimori]
-/// - All other services → returns safe empty defaults
+/// - [Service.mal] → delegates to [MangaRepositoryMal]
+/// - Kitsu/Simkl → returns safe empty defaults
 class MangaRepositoryFactory implements MangaRepository {
   final MangaRepositoryAnilist _mangaRepositoryAnilist = sl<MangaRepositoryAnilist>();
   final MangaRepositoryShikimori _mangaRepositoryShikimori = sl<MangaRepositoryShikimori>();
+  final MangaRepositoryMal _mangaRepositoryMal = sl<MangaRepositoryMal>();
   final Logger _logger = sl<Logger>();
 
   /// Whether [service] can serve manga browse lists at all.
@@ -32,8 +35,8 @@ class MangaRepositoryFactory implements MangaRepository {
     switch (service) {
       case Service.anilist:
       case Service.shikimori:
-        return true;
       case Service.mal:
+        return true;
       case Service.kitsu:
       case Service.simkl:
         return false;
@@ -65,6 +68,12 @@ class MangaRepositoryFactory implements MangaRepository {
           ignoreCache: ignoreCache,
         );
       case Service.mal:
+        _logger.i("Fetching MyAnimeList trending mangas");
+        return _mangaRepositoryMal.getTrendingMangas(
+          page,
+          loggedUser,
+          ignoreCache: ignoreCache,
+        );
       case Service.kitsu:
       case Service.simkl:
         return (false, <Manga>[]);
@@ -96,6 +105,12 @@ class MangaRepositoryFactory implements MangaRepository {
           ignoreCache: ignoreCache,
         );
       case Service.mal:
+        _logger.i("Fetching MyAnimeList popular mangas");
+        return _mangaRepositoryMal.getPopularMangas(
+          page,
+          loggedUser,
+          ignoreCache: ignoreCache,
+        );
       case Service.kitsu:
       case Service.simkl:
         return (false, <Manga>[]);
@@ -127,6 +142,12 @@ class MangaRepositoryFactory implements MangaRepository {
           ignoreCache: ignoreCache,
         );
       case Service.mal:
+        _logger.i("Fetching MyAnimeList recently completed mangas");
+        return _mangaRepositoryMal.getRecentlyCompletedMangas(
+          page,
+          loggedUser,
+          ignoreCache: ignoreCache,
+        );
       case Service.kitsu:
       case Service.simkl:
         return (false, <Manga>[]);
@@ -158,6 +179,12 @@ class MangaRepositoryFactory implements MangaRepository {
           ignoreCache: ignoreCache,
         );
       case Service.mal:
+        _logger.i("Fetching MyAnimeList upcoming mangas");
+        return _mangaRepositoryMal.getUpcomingMangas(
+          page,
+          loggedUser,
+          ignoreCache: ignoreCache,
+        );
       case Service.kitsu:
       case Service.simkl:
         return (false, <Manga>[]);
@@ -179,6 +206,8 @@ class MangaRepositoryFactory implements MangaRepository {
         _logger.i("Fetching Manga Details from Shikimori for ${selectedManga.title.userPreferred}");
         return _mangaRepositoryShikimori.getMangaDetails(selectedManga, loggedUser);
       case Service.mal:
+        _logger.i("Fetching Manga Details from MyAnimeList for ${selectedManga.title.userPreferred}");
+        return _mangaRepositoryMal.getMangaDetails(selectedManga, loggedUser);
       case Service.kitsu:
       case Service.simkl:
         return (false, MangaDetailsModel.empty());
@@ -191,8 +220,10 @@ class MangaRepositoryFactory implements MangaRepository {
       case Service.shikimori:
         _logger.i("Fetching Shikimori manga advanced search filters");
         return _mangaRepositoryShikimori.getUserMangaAdvancedSearchFilters(loggedUser);
-      case Service.anilist:
       case Service.mal:
+        _logger.i("Fetching MyAnimeList manga advanced search filters");
+        return _mangaRepositoryMal.getUserMangaAdvancedSearchFilters(loggedUser);
+      case Service.anilist:
       case Service.kitsu:
       case Service.simkl:
         _logger.i("Fetching Anilist manga advanced search filters");
@@ -238,6 +269,16 @@ class MangaRepositoryFactory implements MangaRepository {
           loggedUser,
         );
       case Service.mal:
+        return _mangaRepositoryMal.performMangaAdvancedSearch(
+          query,
+          selectedGenres,
+          selectedFormat,
+          selectedCountry,
+          selectedAiringStatus,
+          sort,
+          page,
+          loggedUser,
+        );
       case Service.simkl:
       case Service.kitsu:
         return [];
@@ -264,6 +305,11 @@ class MangaRepositoryFactory implements MangaRepository {
           ignoreCache: ignoreCache,
         );
       case Service.mal:
+        _logger.i("Fetching Media Cover Images from MyAnimeList");
+        return _mangaRepositoryMal.getMediaCoverImages(
+          loggedUser,
+          ignoreCache: ignoreCache,
+        );
       case Service.kitsu:
       case Service.simkl:
         return [];

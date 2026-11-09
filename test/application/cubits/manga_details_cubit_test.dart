@@ -375,6 +375,22 @@ void main() {
       expect(noExtensionPrompts(), 0);
     });
 
+    test('details are routed by the record provenance, not the metadata setting', () async {
+      // A MAL account (metadataService = mal) opening an AniList-shaped record:
+      // without the provenance argument the factory would ask MAL for the
+      // AniList id and render a different title's details.
+      await startDetailsPage(<String, Extension>{}, loggedUser: malUserWith(<String, Extension>{}));
+
+      mangaStreamController.add(secondManga);
+      await pumpEventQueue();
+
+      final List<Service?> requestedServices = verify(
+        () => mangaRepository.getMangaDetails(any(), any(), service: captureAny(named: 'service')),
+      ).captured.cast<Service?>();
+      expect(requestedServices, contains(Service.anilist));
+      expect(requestedServices, isNot(contains(Service.mal)));
+    });
+
     test('a saved mapping for the new title re-resolves the extension on the cleared state', () async {
       await openDetailsPageWithFirstManga(<String, Extension>{secondManga.id.toString(): testExtension});
 

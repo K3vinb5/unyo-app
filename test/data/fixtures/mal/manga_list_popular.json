@@ -1,0 +1,70 @@
+{
+  "data": [
+    {
+      "node": {
+        "id": 2,
+        "title": "Berserk",
+        "main_picture": {
+          "medium": "https://cdn.myanimelist.net/images/manga/1/157897t.jpg",
+          "large": "https://cdn.myanimelist.net/images/manga/1/157897l.jpg"
+        },
+        "alternative_titles": {
+          "synonyms": ["Berserk: The Prototype"],
+          "en": "Berserk",
+          "ja": ""
+        },
+        "start_date": "1989-08-25",
+        "end_date": "",
+        "synopsis": "Guts, a former mercenary now known as the Black Swordsman...",
+        "mean": 9.47,
+        "rank": 1,
+        "popularity": 2,
+        "media_type": "manga",
+        "status": "currently_publishing",
+        "genres": [
+          {"id": 1, "name": "Action"},
+          {"id": 42, "name": "Seinen"}
+        ],
+        "nsfw": "black",
+        "num_volumes": 0,
+        "num_chapters": 0
+      },
+      "ranking": {"rank": 1}
+    },
+    {
+      "node": {
+        "id": 116778,
+        "title": "Chainsaw Man",
+        "main_picture": {
+          "medium": "https://cdn.myanimelist.net/images/manga/3/216464t.jpg",
+          "large": "https://cdn.myanimelist.net/images/manga/3/216464l.jpg"
+        },
+        "alternative_titles": {
+          "synonyms": [],
+          "en": "Chainsaw Man",
+          "ja": ""
+        },
+        "start_date": "2018-12-03",
+        "end_date": "2020-12-14",
+        "synopsis": "Denji has a simple dream...",
+        "mean": 8.62,
+        "rank": 2,
+        "popularity": 1,
+        "media_type": "manga",
+        "status": "finished",
+        "genres": [
+          {"id": 1, "name": "Action"},
+          {"id": 27, "name": "Shounen"}
+        ],
+        "nsfw": "white",
+        "num_volumes": 11,
+        "num_chapters": 97
+      },
+      "ranking": {"rank": 2}
+    }
+  ],
+  "paging": {
+    "previous": "",
+    "next": "https://api.myanimelist.net/v2/manga/ranking?ranking_type=bypopularity&offset=50&limit=50"
+  }
+}

@@ -1,6 +1,8 @@
 // Internal dependencies
 import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/data/models/anilist/media/anilist_anime_model.dart';
+import 'package:unyo/data/models/mal/media/mal_anime_model.dart';
+import 'package:unyo/data/models/mal/media/mal_manga_model.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_manga_model.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
@@ -23,6 +25,8 @@ class MediaProvenance {
     switch (anime) {
       case ShikimoriAnimeModel _:
         return Service.shikimori;
+      case MalAnimeModel _:
+        return Service.mal;
       default:
         // AnilistAnimeModel and the plain domain AnimeModel (built by the AniList
         // repositories) are both AniList-sourced.
@@ -34,6 +38,8 @@ class MediaProvenance {
     switch (manga) {
       case ShikimoriMangaModel _:
         return Service.shikimori;
+      case MalMangaModel _:
+        return Service.mal;
       default:
         return Service.anilist;
     }
@@ -73,6 +79,7 @@ class MediaFields {
     if (anime is AnimeModel) return anime.copyWith(id: nativeId);
     if (anime is ShikimoriAnimeModel) return anime.copyWith(id: nativeId);
     if (anime is AnilistAnimeModel) return anime.copyWith(id: nativeId);
+    if (anime is MalAnimeModel) return anime.copyWith(id: nativeId);
     return anime;
   }
 

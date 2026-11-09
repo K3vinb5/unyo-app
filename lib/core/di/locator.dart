@@ -43,6 +43,7 @@ import 'package:unyo/core/services/api/shikimori/shikimori_auth_service.dart';
 import 'package:unyo/core/services/api/shikimori/shikimori_rate_limiter.dart';
 import 'package:unyo/core/services/api/shikimori/shikimori_user_rate_service.dart';
 import 'package:unyo/core/services/api/mal/mal_auth_service.dart';
+import 'package:unyo/core/services/api/mal/mal_metadata_service.dart';
 import 'package:unyo/core/services/api/mal/mal_rate_limiter.dart';
 import 'package:unyo/core/services/api/mal/mal_user_rate_service.dart';
 import 'package:unyo/core/services/settings/settings_service.dart';
@@ -109,6 +110,7 @@ void setupLocator() async{
   sl.registerLazySingleton<MalRateLimiter>(() => MalRateLimiter());
   sl.registerLazySingleton<MalAuthService>(() => MalAuthService());
   sl.registerLazySingleton<MalUserRateService>(() => MalUserRateService());
+  sl.registerLazySingleton<MalMetadataService>(() => MalMetadataService());
   sl.registerLazySingleton<AppEffectHandler>(() => AppEffectHandler());
   sl.registerLazySingleton<AppVersionProvider>(() => const AppVersionProvider());
   sl.registerLazySingleton<UpdateCheckerService>(

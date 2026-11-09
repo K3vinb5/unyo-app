@@ -32,15 +32,20 @@ class MediaButton extends StatelessWidget {
                 border: Border.all(
                     color: ColorScheme.of(context).secondary.withValues(alpha: 0.4), width: 2),
                 borderRadius: BorderRadius.circular(20),
-                image: DecorationImage(
-                  opacity: 0.35,
-                  colorFilter:
-                      ColorFilter.mode(ColorScheme.of(context).secondary, BlendMode.modulate),
-                  image: NetworkImage(
-                    image,
-                  ),
-                  fit: BoxFit.cover,
-                ),
+                // An empty url means the caller has no art (a provider without
+                // banners, e.g. MAL covers the genre buttons): a NetworkImage('')
+                // only errors, so the themed gradient/border stands alone.
+                image: image.isEmpty
+                    ? null
+                    : DecorationImage(
+                        opacity: 0.35,
+                        colorFilter: ColorFilter.mode(
+                            ColorScheme.of(context).secondary, BlendMode.modulate),
+                        image: NetworkImage(
+                          image,
+                        ),
+                        fit: BoxFit.cover,
+                      ),
               ),
               hoverDecoration: BoxDecoration(
                 gradient: const LinearGradient(
@@ -51,15 +56,17 @@ class MediaButton extends StatelessWidget {
                 border: Border.all(
                     color: ColorScheme.of(context).secondary.withValues(alpha: 0.4), width: 2),
                 borderRadius: BorderRadius.circular(20),
-                image: DecorationImage(
-                  opacity: 0.35,
-                  colorFilter:
-                      ColorFilter.mode(ColorScheme.of(context).primary, BlendMode.modulate),
-                  image: NetworkImage(
-                    image,
-                  ),
-                  fit: BoxFit.cover,
-                ),
+                image: image.isEmpty
+                    ? null
+                    : DecorationImage(
+                        opacity: 0.35,
+                        colorFilter: ColorFilter.mode(
+                            ColorScheme.of(context).primary, BlendMode.modulate),
+                        image: NetworkImage(
+                          image,
+                        ),
+                        fit: BoxFit.cover,
+                      ),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,

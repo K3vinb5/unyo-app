@@ -198,7 +198,18 @@ class AnimeCubit extends Cubit<AnimeState> with EffectMixin<AnimeState> {
           .getTrendingAnimes(page, loggedUser, ignoreCache: ignoreCache);
       emit(state.copyWith(trending: trending));
       if (page == 1) {
-        List<Anime> banners = trending.$2.where((anime) => anime.bannerImage != "").toList();
+        // Hero art means "a banner, or a cover when the provider ships no
+        // banner" (MAL/Jikan v4: `bannerImage` is always ''). Keeping only
+        // banners left MAL with an empty list and an empty banner slot
+        // (WP #166 evidence §1 3a); the carousel paints the cover in that case.
+        List<Anime> banners =
+            trending.$2
+                .where(
+                  (anime) =>
+                      anime.bannerImage.isNotEmpty ||
+                      anime.coverImage.isNotEmpty,
+                )
+                .toList();
         emit(
           state.copyWith(
             banners: banners.sublist(

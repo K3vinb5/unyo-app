@@ -185,7 +185,9 @@ class _MangaDetailsViewState extends State<_MangaDetailsView> {
                                                 iconData: Icons.calendar_month_rounded,
                                               ),
                                               UnyoBannerIcon(
-                                                text: state.selectedManga.averageScore.toString(),
+                                                text: TextUtils.scoreOutOfTen(
+                                                  state.selectedManga.averageScore,
+                                                ),
                                                 iconData: Icons.star,
                                               ),
                                             ],

@@ -213,7 +213,9 @@ class _AnimeDetailsViewState extends State<_AnimeDetailsView> {
                                                 iconData: Icons.calendar_month_rounded,
                                               ),
                                               UnyoBannerIcon(
-                                                text: state.selectedAnime.averageScore.toString(),
+                                                text: TextUtils.scoreOutOfTen(
+                                                  state.selectedAnime.averageScore,
+                                                ),
                                                 iconData: Icons.star,
                                               ),
                                               if (state.mediaLinkUnresolved)

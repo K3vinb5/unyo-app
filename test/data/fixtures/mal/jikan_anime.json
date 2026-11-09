@@ -1,0 +1,77 @@
+{
+  "pagination": {
+    "last_visible_page": 1,
+    "has_next_page": false,
+    "current_page": 1,
+    "items": { "count": 2, "total": 2, "per_page": 25 }
+  },
+  "data": [
+    {
+      "mal_id": 58514,
+      "url": "https://myanimelist.net/anime/58514/Kusuriya_no_Hitorigoto_2nd_Season",
+      "images": {
+        "jpg": {
+          "image_url": "https://cdn.myanimelist.net/images/anime/1708/138033.jpg",
+          "small_image_url": "https://cdn.myanimelist.net/images/anime/1708/138033s.jpg",
+          "large_image_url": "https://cdn.myanimelist.net/images/anime/1708/138033l.jpg"
+        }
+      },
+      "title": "Kusuriya no Hitorigoto 2nd Season",
+      "title_english": "The Apothecary Diaries Season 2",
+      "title_japanese": "Kusuriya no Hitorigoto Dai 2-ki",
+      "type": "tv",
+      "status": "Currently Airing",
+      "synopsis": "Second season of Kusuriya no Hitorigoto.",
+      "score": 8.75,
+      "rating": "PG-13 - Teens 13 or older",
+      "episodes": 24,
+      "aired": { "from": "2025-01-10T00:00:00+00:00", "to": null },
+      "duration": "23 min per ep",
+      "season": "winter",
+      "year": 2025,
+      "popularity": 120,
+      "members": 512345,
+      "genres": [
+        { "mal_id": 8, "type": "anime", "name": "Drama", "url": "https://myanimelist.net/anime/genre/8/Drama" },
+        { "mal_id": 36, "type": "anime", "name": "Slice of Life", "url": "https://myanimelist.net/anime/genre/36/Slice_of_Life" }
+      ],
+      "explicit_genres": [],
+      "themes": [
+        { "mal_id": 53, "type": "anime", "name": "Historical", "url": "" }
+      ],
+      "demographics": []
+    },
+    {
+      "mal_id": 9999,
+      "url": "https://myanimelist.net/anime/9999/Adult_Thing",
+      "images": {
+        "jpg": {
+          "image_url": "https://cdn.myanimelist.net/images/anime/9/9999.jpg",
+          "small_image_url": "https://cdn.myanimelist.net/images/anime/9/9999s.jpg",
+          "large_image_url": "https://cdn.myanimelist.net/images/anime/9/9999l.jpg"
+        }
+      },
+      "title": "Adult Thing",
+      "title_english": "",
+      "title_japanese": "",
+      "type": "ova",
+      "status": "Finished Airing",
+      "synopsis": "Adult entry.",
+      "score": 6.1,
+      "rating": "Rx - Hentai",
+      "episodes": 2,
+      "aired": { "from": "2020-05-01T00:00:00+00:00", "to": "2020-06-01T00:00:00+00:00" },
+      "duration": "30 min per ep",
+      "season": "",
+      "year": 2020,
+      "popularity": 4000,
+      "members": 12345,
+      "genres": [],
+      "explicit_genres": [
+        { "mal_id": 12, "type": "anime", "name": "Hentai", "url": "" }
+      ],
+      "themes": [],
+      "demographics": []
+    }
+  ]
+}
