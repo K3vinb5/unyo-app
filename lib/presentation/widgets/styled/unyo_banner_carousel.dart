@@ -274,13 +274,17 @@ class _UnyoBannerCarouselState extends State<UnyoBannerCarousel> {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             Container(
-              width: 50,
-              height: 25,
+              // Hugs the 0-10 score ("9.0", "10.0") instead of clipping it: the
+              // old fixed 50x25 box fit the raw "90" but not the three- and
+              // four-character form every surface now renders. The minimum keeps
+              // the badge exactly 50x25 for the production font.
+              constraints: const BoxConstraints(minWidth: 50, minHeight: 25),
               decoration: BoxDecoration(
                 color: Colors.grey.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(8.0),
               ),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   Icon(
@@ -294,7 +298,7 @@ class _UnyoBannerCarouselState extends State<UnyoBannerCarousel> {
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
-                    text: _scoreAt(index).toString(),
+                    text: TextUtils.scoreOutOfTen(_scoreAt(index)),
                   ),
                 ],
               ),
