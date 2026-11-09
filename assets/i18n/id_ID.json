@@ -131,6 +131,7 @@
   "drawer_view_profile": "Lihat Profil",
   "error_connectivity_message": "Server tidak merespons permintaan itu. Periksa koneksimu dan coba lagi.",
   "error_connectivity_title": "Tidak dapat menghubungi server",
+  "error_entry_needs_status": "Pilih status sebelum menyimpan entri ini.",
   "error_entry_not_matched_account": "Entri ini belum cocok dengan akun {service} kamu, jadi tidak ada yang ditulis.",
   "error_extension_error_title": "Kesalahan {extension}",
   "error_extension_no_results_try_again": "Tidak ada hasil dari ekstensi. Coba lagi.",

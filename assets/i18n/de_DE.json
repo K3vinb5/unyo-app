@@ -131,6 +131,7 @@
   "drawer_view_profile": "Profil ansehen",
   "error_connectivity_message": "Der Server hat nicht auf die Anfrage geantwortet. Prüfe deine Verbindung und versuch es erneut.",
   "error_connectivity_title": "Server nicht erreichbar",
+  "error_entry_needs_status": "Wähle einen Status, bevor du diesen Eintrag speicherst.",
   "error_entry_not_matched_account": "Dieser Eintrag ist noch nicht mit deinem {service}-Konto verknüpft, daher wurde nichts geschrieben.",
   "error_extension_error_title": "{extension}-Fehler",
   "error_extension_no_results_try_again": "Keine Ergebnisse von der Erweiterung. Versuch es erneut.",

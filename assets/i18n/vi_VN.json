@@ -131,6 +131,7 @@
   "drawer_view_profile": "Xem hồ sơ",
   "error_connectivity_message": "Máy chủ không phản hồi yêu cầu đó. Hãy kiểm tra kết nối và thử lại.",
   "error_connectivity_title": "Không thể kết nối đến máy chủ",
+  "error_entry_needs_status": "Chọn trạng thái trước khi lưu mục này.",
   "error_entry_not_matched_account": "Mục này chưa được liên kết với tài khoản {service} của bạn, nên chưa có gì được ghi lại.",
   "error_extension_error_title": "Lỗi {extension}",
   "error_extension_no_results_try_again": "Tiện ích không trả về kết quả nào. Hãy thử lại.",

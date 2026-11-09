@@ -219,6 +219,16 @@ void main() {
           profileUrl: '',
         );
 
+    test('the delete route reaches the AniList repository and the save route stays untouched', () async {
+      when(() => anilistManga.deleteMediaListEntry(any(), any()))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+
+      await mangaFactory.deleteMediaListEntry(MangaModel.empty(), userWith());
+
+      verify(() => anilistManga.deleteMediaListEntry(any(), any())).called(1);
+      verifyNever(() => anilistManga.updateMediaListEntry(any(), any(), any()));
+    });
+
     test('list writes reach the AniList repository when the record is AniList-sourced', () async {
       when(() => anilistManga.updateMediaListEntry(any(), any(), any())).thenAnswer(
         (_) async => MediaListEntryModel.empty().copyWith(status: 'CURRENT'),
@@ -415,6 +425,16 @@ void main() {
           isFavourite: false,
           nextAiringEpisode: AiringEpisodeModel.empty(),
         );
+
+    test('the delete route reaches the AniList repository and the save route stays untouched', () async {
+      when(() => anilistAnime.deleteMediaListEntry(any(), any()))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+
+      await animeFactory.deleteMediaListEntry(AnimeModel.empty(), userWith());
+
+      verify(() => anilistAnime.deleteMediaListEntry(any(), any())).called(1);
+      verifyNever(() => anilistAnime.updateMediaListEntry(any(), any(), any()));
+    });
 
     test('list entry writes reach the Shikimori repository instead of an empty stub', () async {
       when(() => shikimoriAnime.updateMediaListEntry(any(), any(), any()))

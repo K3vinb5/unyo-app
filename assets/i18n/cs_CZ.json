@@ -131,6 +131,7 @@
   "drawer_view_profile": "Zobrazit profil",
   "error_connectivity_message": "Server na tento požadavek neodpověděl. Zkontrolujte připojení a zkuste to znovu.",
   "error_connectivity_title": "Nelze se připojit k serveru",
+  "error_entry_needs_status": "Před uložením tohoto záznamu zvolte stav.",
   "error_entry_not_matched_account": "Tento záznam zatím není přiřazen k vašemu účtu {service}, takže nebylo nic zapsáno.",
   "error_extension_error_title": "Chyba rozšíření {extension}",
   "error_extension_no_results_try_again": "Rozšíření nevrátilo žádné výsledky. Zkuste to znovu.",

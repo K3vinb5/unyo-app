@@ -319,9 +319,9 @@ class MangaRepositoryAnilist with RepositoryMixin implements MangaRepository {
     return _mediaListEntryRequests.read(selectedManga.id, loggedUser, ignoreCache: ignoreCache);
   }
 
-  /// Writes the viewer's manga entry, and removes it when [newMediaListEntry]
-  /// carries no status — see
-  /// [AnilistMediaListEntryRequests.write].
+  /// Writes the viewer's manga entry — see
+  /// [AnilistMediaListEntryRequests.write]; a statusless draft is refused, it
+  /// never becomes a deletion.
   @override
   Future<MediaListEntry> updateMediaListEntry(
     MediaListEntry newMediaListEntry,
@@ -329,6 +329,11 @@ class MangaRepositoryAnilist with RepositoryMixin implements MangaRepository {
     User loggedUser,
   ) {
     return _mediaListEntryRequests.write(newMediaListEntry, selectedManga.id, loggedUser);
+  }
+
+  @override
+  Future<MediaListEntry> deleteMediaListEntry(Manga selectedManga, User loggedUser) {
+    return _mediaListEntryRequests.remove(selectedManga.id, loggedUser);
   }
 }
 

@@ -310,6 +310,34 @@ class MangaRepositoryFactory implements MangaRepository {
     }
   }
 
+  /// The explicit delete route (WP #167), used only by the editor's trash
+  /// action. Same identity rule as the write path: a record that is not the
+  /// user provider's own is refused instead of deleted through a guessed id.
+  @override
+  Future<MediaListEntry> deleteMediaListEntry(Manga selectedManga, User loggedUser) async {
+    final Service provenance = MediaProvenance.ofManga(selectedManga);
+    if (provenance != loggedUser.settings.userService) {
+      throw MediaLinkUnresolvedException(
+        "No verified ${loggedUser.settings.userService.name} manga entry for "
+        "${selectedManga.title.userPreferred} (${provenance.name}:${selectedManga.id}); "
+        "skipping the list delete instead of using a guessed id",
+      );
+    }
+    switch (loggedUser.settings.userService) {
+      case Service.anilist:
+        _logger.i("Removing Media List Entry of ${selectedManga.title.userPreferred} on Anilist");
+        return _mangaRepositoryAnilist.deleteMediaListEntry(selectedManga, loggedUser);
+      case Service.shikimori:
+        _logger.i("Removing Media List Entry of ${selectedManga.title.userPreferred} on Shikimori");
+        return _mangaRepositoryShikimori.deleteMediaListEntry(selectedManga, loggedUser);
+      case Service.mal:
+      case Service.kitsu:
+      case Service.simkl:
+        _logger.i("Manga list deletes are not available with ${loggedUser.settings.userService.name}");
+        return MediaListEntryModel.empty();
+    }
+  }
+
   @override
   Future<MediaListEntry> getMediaListEntry(
     Manga selectedManga,

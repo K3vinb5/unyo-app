@@ -29,13 +29,16 @@ abstract class MangaRepository {
   /// the empty entry; only writes ever throw for an unaddressable record.
   Future<MediaListEntry> getMediaListEntry(Manga selectedManga, User loggedUser, {bool ignoreCache = false});
 
-  /// Writes the viewer's list entry. An entry carrying no list status
-  /// (`MediaListEntryModel.noStatus`) is a **removal**, exactly like the anime
-  /// write path: every tracker expresses "off my list" that way, so deleting
-  /// does not need a second method.
+  /// Writes the viewer's list entry. A draft carrying no list status
+  /// (`MediaListEntryModel.noStatus`) is refused — a save never deletes
+  /// (WP #167).
   Future<MediaListEntry> updateMediaListEntry(
     MediaListEntry newMediaListEntry,
     Manga selectedManga,
     User loggedUser,
   );
+
+  /// Removes the viewer's list entry — the *only* delete route, used by the
+  /// editor's trash action after its confirmation (WP #167).
+  Future<MediaListEntry> deleteMediaListEntry(Manga selectedManga, User loggedUser);
 }

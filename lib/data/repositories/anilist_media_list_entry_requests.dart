@@ -35,16 +35,18 @@ class AnilistMediaListEntryRequests with RepositoryMixin {
     return MediaListEntryModel.fromMediaDetailsMediaListEntryEntity(mediaDetailsMediaListEntry.data);
   }
 
-  /// Applies [entry] to [mediaId].
+  /// Applies [entry] to [mediaId]. **Never deletes.**
   ///
-  /// An entry with no list status is a **removal**: `SaveMediaListEntry` cannot
-  /// delete (its `status` is an enum, and an omitted field means "leave it
-  /// alone"), so it goes through the `DeleteMediaListEntry` mutation instead —
-  /// the same empty-status signal Shikimori's write path reads as
-  /// `DELETE /user_rates/:id`.
+  /// An entry with no list status is the removal signal, and removal is
+  /// exclusive to [remove] (reached only from the editor's trash action): a
+  /// save handed one is refused here instead of being silently rewritten into a
+  /// deletion, which is what made "confirm an untouched editor" delete the
+  /// entry it was supposed to save (WP #167 review).
   Future<MediaListEntry> write(MediaListEntry entry, int mediaId, User loggedUser) async {
     if (MediaListEntryModel.isNoStatus(entry.status)) {
-      return remove(mediaId, loggedUser);
+      throw StateError(
+        'Refusing to save a list entry with no status: a save never deletes, use remove() explicitly.',
+      );
     }
     ApiGraphQLResponse<SaveMediaListEntryEntity> saveMediaListEntry = await _graphQLService
         .mutation<SaveMediaListEntryEntity>(
@@ -73,6 +75,9 @@ class AnilistMediaListEntryRequests with RepositoryMixin {
   }
 
   /// Deletes the viewer's entry for [mediaId] and reports "not on any list".
+  ///
+  /// The single AniList delete route: only the editor's trash action reaches it
+  /// (through `deleteMediaListEntry` on the repository).
   ///
   /// Reads the entry id first (fresh — a cached "still on the list" answer would
   /// delete nothing), and treats "no entry" as an already-done removal.

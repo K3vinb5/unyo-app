@@ -347,17 +347,35 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
         episodeCount: state.selectedManga.chapters,
       ),
     );
-    await _writeMediaListEntry(desiredMediaListEntry, context, operation: "Updating");
+    // A save never deletes: a draft with no list status is the *removal* signal,
+    // and removal is exclusive to [removeMediaListEntry] (the trash action).
+    // Refuse loudly and keep the editor open instead of writing — or deleting —
+    // behind the user's back (WP #167 review).
+    if (MediaListEntryModel.isNoStatus(desiredMediaListEntry.status)) {
+      _refuseStatuslessSave();
+      return;
+    }
+    final MediaListEntry? stored = await _applyListChange(
+      context,
+      operation: "Updating",
+      write: () => _mangaRepository.updateMediaListEntry(
+        desiredMediaListEntry,
+        state.selectedManga,
+        state.loggedUser,
+      ),
+    );
+    if (stored != null) _emitMediaListEntry(stored);
   }
 
-  /// Removes the entry from the user's list (the editor's trash action).
-  ///
-  /// A removal is an update carrying no list status
-  /// ([MediaListEntryModel.empty]) — the signal every tracker write path
-  /// already understands (Shikimori `DELETE /user_rates/:id`, AniList
-  /// `DeleteMediaListEntry`).
+  /// Removes the entry from the user's list — the trash action's only path, and
+  /// the only delete route the editor has.
   Future<void> removeMediaListEntry(BuildContext context) async {
-    await _writeMediaListEntry(MediaListEntryModel.empty(), context, operation: "Removing");
+    final MediaListEntry? stored = await _applyListChange(
+      context,
+      operation: "Removing",
+      write: () => _mangaRepository.deleteMediaListEntry(state.selectedManga, state.loggedUser),
+    );
+    if (stored != null) _emitMediaListEntry(stored);
   }
 
   /// The editor's draft entry. A list entry is a patch-shaped value, so the
@@ -367,19 +385,29 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
     return entry is MediaListEntryModel ? entry : MediaListEntryModel.empty();
   }
 
-  Future<void> _writeMediaListEntry(
-    MediaListEntry mediaListEntry,
+  /// The loud refusal of a statusless save — the same warning shape as the
+  /// unmatched-entry refusal, so the editor stays open and nothing is written.
+  void _refuseStatuslessSave() {
+    _logger.w("Refused a manga list save without a status; pick one or use the trash action");
+    showSnackBarEffect(
+      'error_list_not_updated',
+      messageKey: 'error_entry_needs_status',
+      contentType: ContentType.warning,
+    );
+  }
+
+  /// Runs one list change (a save or the explicit delete) and owns the reload
+  /// emissions, the refusals and the dialog close, so both routes behave alike.
+  /// Returns the stored entry, or null when nothing was written.
+  Future<MediaListEntry?> _applyListChange(
     BuildContext context, {
     required String operation,
+    required Future<MediaListEntry> Function() write,
   }) async {
+    MediaListEntry? stored;
     try {
-      _logger.i("$operation Media List Entry to $mediaListEntry");
-      final MediaListEntry stored = await _mangaRepository.updateMediaListEntry(
-        mediaListEntry,
-        state.selectedManga,
-        state.loggedUser,
-      );
-      _emitMediaListEntry(stored);
+      _logger.i("$operation Media List Entry");
+      stored = await write();
       // Home renders the user's manga lists (and their progress), so every
       // successful write reloads it (WP #110 rule, shared with anime).
       _reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated);
@@ -395,14 +423,15 @@ class MangaDetailsCubit extends Cubit<MangaDetailsState> with EffectMixin<MangaD
         contentType: ContentType.warning,
       );
       // Keep the editor open: nothing was written, so closing it would imply a save.
-      return;
+      return null;
     } on HttpServerException catch (e, stackTrace) {
       handleError("Error updating Manga Entry:", responseBody: e.message, stackTrace: stackTrace);
     } catch (e, stackTrace) {
       handleError("Error updating Manga Entry: $e", stackTrace: stackTrace);
     }
-    if (!context.mounted) return;
+    if (!context.mounted) return stored;
     popRouteEffect(context);
+    return stored;
   }
 
   void _emitMediaListEntry(MediaListEntry mediaListEntry) {

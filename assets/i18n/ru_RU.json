@@ -131,6 +131,7 @@
   "drawer_view_profile": "Профиль",
   "error_connectivity_message": "Сервер не ответил на запрос. Проверьте подключение и попробуйте снова.",
   "error_connectivity_title": "Сервер недоступен",
+  "error_entry_needs_status": "Выберите статус перед сохранением этой записи.",
   "error_entry_not_matched_account": "Эта запись ещё не сопоставлена с вашим аккаунтом {service}, поэтому ничего не было записано.",
   "error_extension_error_title": "Ошибка {extension}",
   "error_extension_no_results_try_again": "Расширение не вернуло результатов. Попробуйте снова.",

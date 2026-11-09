@@ -131,6 +131,7 @@
   "drawer_view_profile": "Zobacz profil",
   "error_connectivity_message": "Serwer nie odpowiedział na to żądanie. Sprawdź połączenie i spróbuj ponownie.",
   "error_connectivity_title": "Nie można połączyć się z serwerem",
+  "error_entry_needs_status": "Wybierz status przed zapisaniem tego wpisu.",
   "error_entry_not_matched_account": "Ten wpis nie jest jeszcze powiązany z Twoim kontem {service}, więc nic nie zostało zapisane.",
   "error_extension_error_title": "Błąd {extension}",
   "error_extension_no_results_try_again": "Brak wyników z rozszerzenia. Spróbuj ponownie.",

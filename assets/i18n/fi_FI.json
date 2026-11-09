@@ -131,6 +131,7 @@
   "drawer_view_profile": "Näytä profiili",
   "error_connectivity_message": "Palvelin ei vastannut pyyntöön. Tarkista verkkoyhteytesi ja yritä uudelleen.",
   "error_connectivity_title": "Palvelimeen ei saada yhteyttä",
+  "error_entry_needs_status": "Valitse tila ennen tämän merkinnän tallentamista.",
   "error_entry_not_matched_account": "Tätä merkintää ei ole vielä yhdistetty {service}-tiliisi, joten mitään ei tallennettu.",
   "error_extension_error_title": "{extension}-virhe",
   "error_extension_no_results_try_again": "Laajennus ei palauttanut tuloksia. Yritä uudelleen.",

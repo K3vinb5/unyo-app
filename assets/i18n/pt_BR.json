@@ -131,6 +131,7 @@
   "drawer_view_profile": "Ver perfil",
   "error_connectivity_message": "O servidor não respondeu a essa solicitação. Verifique sua conexão e tente novamente.",
   "error_connectivity_title": "Não é possível acessar o servidor",
+  "error_entry_needs_status": "Escolha um status antes de salvar esta entrada.",
   "error_entry_not_matched_account": "Esta entrada ainda não está vinculada à sua conta {service}, então nada foi salvo.",
   "error_extension_error_title": "Erro de {extension}",
   "error_extension_no_results_try_again": "A extensão não retornou resultados. Tente novamente.",

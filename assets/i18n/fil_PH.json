@@ -131,6 +131,7 @@
   "drawer_view_profile": "Tingnan ang Profile",
   "error_connectivity_message": "Hindi sumagot ang server sa request na iyon. Tingnan ang iyong koneksyon at subukan muli.",
   "error_connectivity_title": "Hindi maabot ang server",
+  "error_entry_needs_status": "Pumili ng status bago i-save ang entry na ito.",
   "error_entry_not_matched_account": "Wala pang tugma ang entry na ito sa iyong {service} account, kaya walang naisulat.",
   "error_extension_error_title": "Error sa {extension}",
   "error_extension_no_results_try_again": "Walang resulta mula sa extension. Subukan muli.",

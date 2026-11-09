@@ -131,6 +131,7 @@
   "drawer_view_profile": "प्रोफ़ाइल देखें",
   "error_connectivity_message": "सर्वर ने उस अनुरोध का उत्तर नहीं दिया। अपना कनेक्शन जाँचें और फिर से प्रयास करें।",
   "error_connectivity_title": "सर्वर से संपर्क नहीं हो सका",
+  "error_entry_needs_status": "इस प्रविष्टि को सहेजने से पहले स्थिति चुनें।",
   "error_entry_not_matched_account": "यह प्रविष्टि अभी आपके {service} खाते से मेल नहीं खाती, इसलिए कुछ भी नहीं लिखा गया।",
   "error_extension_error_title": "{extension} त्रुटि",
   "error_extension_no_results_try_again": "एक्सटेंशन से कोई परिणाम नहीं मिला। फिर से प्रयास करें।",

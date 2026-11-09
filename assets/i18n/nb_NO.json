@@ -131,6 +131,7 @@
   "drawer_view_profile": "Vis profil",
   "error_connectivity_message": "Serveren svarte ikke på forespørselen. Sjekk tilkoblingen og prøv igjen.",
   "error_connectivity_title": "Får ikke kontakt med serveren",
+  "error_entry_needs_status": "Velg en status før du lagrer dette elementet.",
   "error_entry_not_matched_account": "Denne oppføringen er ikke koblet til {service}-kontoen din ennå, så ingenting ble skrevet.",
   "error_extension_error_title": "{extension}-feil",
   "error_extension_no_results_try_again": "Ingen resultater fra utvidelsen. Prøv igjen.",

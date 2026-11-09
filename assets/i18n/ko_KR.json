@@ -131,6 +131,7 @@
   "drawer_view_profile": "프로필 보기",
   "error_connectivity_message": "서버가 요청에 응답하지 않았습니다. 연결을 확인한 후 다시 시도하세요.",
   "error_connectivity_title": "서버에 연결할 수 없습니다",
+  "error_entry_needs_status": "이 항목을 저장하기 전에 상태를 선택하세요.",
   "error_entry_not_matched_account": "이 항목은 아직 {service} 계정과 연결되지 않아 아무것도 기록되지 않았습니다.",
   "error_extension_error_title": "{extension} 오류",
   "error_extension_no_results_try_again": "확장에서 결과를 찾지 못했습니다. 다시 시도하세요.",

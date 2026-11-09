@@ -406,6 +406,11 @@ class AnimeRepositoryAnilist with RepositoryMixin implements AnimeRepository {
   Future<MediaListEntry> getMediaListEntry(Anime selectedAnime, User loggedUser, {bool ignoreCache = false}) {
     return _mediaListEntryRequests.read(selectedAnime.id, loggedUser, ignoreCache: ignoreCache);
   }
+
+  @override
+  Future<MediaListEntry> deleteMediaListEntry(Anime selectedAnime, User loggedUser) {
+    return _mediaListEntryRequests.remove(selectedAnime.id, loggedUser);
+  }
 }
 
 enum AnilistGenreFilters {

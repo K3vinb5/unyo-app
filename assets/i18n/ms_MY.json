@@ -131,6 +131,7 @@
   "drawer_view_profile": "Lihat Profil",
   "error_connectivity_message": "Pelayan tidak menjawab permintaan itu. Semak sambungan anda dan cuba lagi.",
   "error_connectivity_title": "Tidak dapat menghubungi pelayan",
+  "error_entry_needs_status": "Pilih status sebelum menyimpan entri ini.",
   "error_entry_not_matched_account": "Entri ini belum dipadankan dengan akaun {service} anda, jadi tiada apa yang ditulis.",
   "error_extension_error_title": "Ralat {extension}",
   "error_extension_no_results_try_again": "Tiada hasil daripada sambungan. Cuba lagi.",

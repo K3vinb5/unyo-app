@@ -131,6 +131,7 @@
   "drawer_view_profile": "Profili Görüntüle",
   "error_connectivity_message": "Sunucu bu isteğe yanıt vermedi. Bağlantını kontrol edip tekrar dene.",
   "error_connectivity_title": "Sunucuya ulaşılamıyor",
+  "error_entry_needs_status": "Bu girdiyi kaydetmeden önce bir durum seçin.",
   "error_entry_not_matched_account": "Bu kayıt henüz {service} hesabınla eşleştirilmedi, bu yüzden hiçbir şey yazılmadı.",
   "error_extension_error_title": "{extension} Hatası",
   "error_extension_no_results_try_again": "Uzantıdan sonuç gelmedi. Tekrar dene.",

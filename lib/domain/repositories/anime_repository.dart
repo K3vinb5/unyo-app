@@ -30,6 +30,11 @@ abstract class AnimeRepository {
     User loggedUser
   );
   Future<List<String>> getMediaCoverImages(User loggedUser, {bool ignoreCache = false});
+  /// Writes the viewer's list entry. A draft carrying no list status is
+  /// refused — a save never deletes (WP #167).
   Future<MediaListEntry> updateMediaListEntry(MediaListEntry newMediaListEntry, Anime selectedAnime, User loggedUser);
+  /// Removes the viewer's list entry — the *only* delete route, used by the
+  /// editor's trash action after its confirmation (WP #167).
+  Future<MediaListEntry> deleteMediaListEntry(Anime selectedAnime, User loggedUser);
   Future<MediaListEntry> getMediaListEntry(Anime selectedAnime, User loggedUser, {bool ignoreCache = false});
 }

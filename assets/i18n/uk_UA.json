@@ -131,6 +131,7 @@
   "drawer_view_profile": "Переглянути профіль",
   "error_connectivity_message": "Сервер не відповів на цей запит. Перевірте з'єднання та спробуйте ще раз.",
   "error_connectivity_title": "Не вдається зв'язатися з сервером",
+  "error_entry_needs_status": "Виберіть статус перед збереженням цього запису.",
   "error_entry_not_matched_account": "Цей запис ще не зіставлено з вашим акаунтом {service}, тому нічого не записано.",
   "error_extension_error_title": "Помилка розширення {extension}",
   "error_extension_no_results_try_again": "Розширення не повернуло результатів. Спробуйте ще раз.",

@@ -131,6 +131,7 @@
   "drawer_view_profile": "Vezi profilul",
   "error_connectivity_message": "Serverul nu a răspuns la această cerere. Verifică conexiunea și încearcă din nou.",
   "error_connectivity_title": "Serverul nu poate fi contactat",
+  "error_entry_needs_status": "Alegeți un status înainte de a salva această intrare.",
   "error_entry_not_matched_account": "Această intrare nu este încă asociată cu contul tău {service}, așa că nu s-a scris nimic.",
   "error_extension_error_title": "Eroare extensie {extension}",
   "error_extension_no_results_try_again": "Extensia nu a returnat rezultate. Încearcă din nou.",

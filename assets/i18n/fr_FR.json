@@ -131,6 +131,7 @@
   "drawer_view_profile": "Voir le profil",
   "error_connectivity_message": "Le serveur n'a pas répondu à cette requête. Vérifiez votre connexion et réessayez.",
   "error_connectivity_title": "Serveur injoignable",
+  "error_entry_needs_status": "Choisissez un statut avant d'enregistrer cette entrée.",
   "error_entry_not_matched_account": "Cette entrée n'est pas encore liée à votre compte {service}, rien n'a donc été enregistré.",
   "error_extension_error_title": "Erreur : {extension}",
   "error_extension_no_results_try_again": "L'extension n'a renvoyé aucun résultat. Réessayez.",

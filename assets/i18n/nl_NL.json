@@ -131,6 +131,7 @@
   "drawer_view_profile": "Profiel bekijken",
   "error_connectivity_message": "De server heeft niet op dat verzoek gereageerd. Controleer je verbinding en probeer het opnieuw.",
   "error_connectivity_title": "Server niet bereikbaar",
+  "error_entry_needs_status": "Kies een status voordat je dit item opslaat.",
   "error_entry_not_matched_account": "Dit item is nog niet gekoppeld aan je {service}-account, dus er is niets opgeslagen.",
   "error_extension_error_title": "{extension}-fout",
   "error_extension_no_results_try_again": "Geen resultaten van de extensie. Probeer het opnieuw.",

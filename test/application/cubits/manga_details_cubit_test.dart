@@ -515,8 +515,8 @@ void main() {
       verify(() => reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated)).called(1);
     });
 
-    test('the removal writes an entry with no list status and reloads home', () async {
-      when(() => mangaRepository.updateMediaListEntry(any(), any(), any())).thenAnswer(
+    test('the trash action calls the explicit delete route and reloads home', () async {
+      when(() => mangaRepository.deleteMediaListEntry(any(), any())).thenAnswer(
         (_) async => MediaListEntryModel.empty(),
       );
       final MockBuildContext buildContext = MockBuildContext();
@@ -524,15 +524,37 @@ void main() {
 
       await cubit.removeMediaListEntry(buildContext);
 
-      final MediaListEntry removed = verify(
-        () => mangaRepository.updateMediaListEntry(captureAny(), any(), any()),
-      ).captured.single as MediaListEntry;
+      verify(() => mangaRepository.deleteMediaListEntry(any(), any())).called(1);
+      verifyNever(() => mangaRepository.updateMediaListEntry(any(), any(), any()));
       expect(
-        MediaListEntryModel.isNoStatus(removed.status),
+        MediaListEntryModel.isNoStatus(cubit.state.mediaListEntry.status),
         isTrue,
-        reason: 'an entry with no status is the removal signal every tracker write path reads',
+        reason: 'the removal result seeds the chip back to "not on list"',
       );
       verify(() => reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated)).called(1);
+    });
+
+    test('confirming an editor whose draft has no status refuses and writes nothing', () async {
+      final MockBuildContext buildContext = MockBuildContext();
+      when(() => buildContext.mounted).thenReturn(false);
+
+      // The draft is the empty entry: no status has ever been picked.
+      await cubit.updateMediaListEntry(buildContext);
+
+      verifyNever(() => mangaRepository.updateMediaListEntry(any(), any(), any()));
+      verifyNever(() => mangaRepository.deleteMediaListEntry(any(), any()));
+      verifyNever(() => reloadNotifier.emitReload(any()));
+      final List<ShowSnackbarEffect> snackbars = cubit.state.effects.whereType<ShowSnackbarEffect>().toList();
+      expect(
+        snackbars.any(
+          (effect) =>
+              effect.titleKey == 'error_list_not_updated' &&
+              effect.messageKey == 'error_entry_needs_status' &&
+              effect.contentType == ContentType.warning,
+        ),
+        isTrue,
+        reason: 'the refusal must be loud: the editor stays open because nothing was written',
+      );
     });
 
     test('an unaddressable record keeps the editor open and writes nothing', () async {

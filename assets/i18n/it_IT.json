@@ -131,6 +131,7 @@
   "drawer_view_profile": "Vedi profilo",
   "error_connectivity_message": "Il server non ha risposto alla richiesta. Controlla la connessione e riprova.",
   "error_connectivity_title": "Impossibile raggiungere il server",
+  "error_entry_needs_status": "Scegli uno stato prima di salvare questa voce.",
   "error_entry_not_matched_account": "Questa voce non è ancora collegata al tuo account {service}, quindi non è stato scritto nulla.",
   "error_extension_error_title": "Errore in {extension}",
   "error_extension_no_results_try_again": "Nessun risultato dall'estensione. Riprova.",

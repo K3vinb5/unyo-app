@@ -577,6 +577,10 @@ void main() {
       ).thenThrow(const MediaLinkUnresolvedException('no verified user-provider entry'));
       cubit = buildCubit();
       await Future<void>.delayed(Duration.zero);
+      // A save needs a status (WP #167: a statusless draft is the removal
+      // signal and is refused before any repository call), so the unmatched-entry
+      // refusal has to be exercised with one picked.
+      await cubit.updateMediaListEntryStatus('Current');
 
       await cubit.updateMediaListEntry(MockBuildContext());
 
@@ -639,6 +643,7 @@ void main() {
       await pumpEventQueue();
       // A stale entry can hold more progress than the resolved count.
       await cubit.updateMediaListEntryProgress(40);
+      await cubit.updateMediaListEntryStatus('Current');
 
       await cubit.updateMediaListEntry(buildContext);
 
@@ -1187,9 +1192,9 @@ void main() {
       expect(logTitleFor(TitleModel.empty()), '');
     });
   });
-  group('AnimeDetailsCubit.removeMediaListEntry (WP #167)', () {
-    test('removal reuses the write path with an entry that carries no status', () async {
-      when(() => animeRepository.updateMediaListEntry(any(), any(), any())).thenAnswer(
+  group('AnimeDetailsCubit.delete path (WP #167)', () {
+    test('the trash action calls the explicit delete route, never the save route', () async {
+      when(() => animeRepository.deleteMediaListEntry(any(), any())).thenAnswer(
         (_) async => MediaListEntryModel.empty(),
       );
       final MockBuildContext buildContext = MockBuildContext();
@@ -1200,21 +1205,14 @@ void main() {
 
       await cubit.removeMediaListEntry(buildContext);
 
-      final MediaListEntry removed = verify(
-        () => animeRepository.updateMediaListEntry(captureAny(), any(), any()),
-      ).captured.single as MediaListEntry;
-      expect(
-        MediaListEntryModel.isNoStatus(removed.status),
-        isTrue,
-        reason: 'Shikimori reads that as DELETE /user_rates/:id and AniList as DeleteMediaListEntry',
-      );
-      expect(removed.progress, -1, reason: 'a removal must not carry progress to write');
+      verify(() => animeRepository.deleteMediaListEntry(any(), any())).called(1);
+      verifyNever(() => animeRepository.updateMediaListEntry(any(), any(), any()));
       verify(() => reloadNotifier.emitReload(ReloadType.animeMediaListEntryUpdated)).called(1);
       verify(() => reloadNotifier.emitReload(ReloadType.homeMediaListEntryUpdated)).called(1);
     });
 
     test('an unresolved mapping keeps the editor open and reports it', () async {
-      when(() => animeRepository.updateMediaListEntry(any(), any(), any()))
+      when(() => animeRepository.deleteMediaListEntry(any(), any()))
           .thenThrow(const MediaLinkUnresolvedException('no verified user-provider entry'));
       cubit = buildCubit();
       await pumpEventQueue();
@@ -1229,6 +1227,49 @@ void main() {
         isTrue,
       );
       verifyNever(() => reloadNotifier.emitReload(any()));
+    });
+  });
+
+  group('AnimeDetailsCubit statusless save (WP #167 review)', () {
+    test('confirming an editor whose draft has no status refuses and writes nothing', () async {
+      final MockBuildContext buildContext = MockBuildContext();
+      when(() => buildContext.mounted).thenReturn(false);
+      cubit = buildCubit();
+      await pumpEventQueue();
+
+      // The draft is the empty entry: no status has ever been picked.
+      await cubit.updateMediaListEntry(buildContext);
+
+      verifyNever(() => animeRepository.updateMediaListEntry(any(), any(), any()));
+      verifyNever(() => animeRepository.deleteMediaListEntry(any(), any()));
+      verifyNever(() => reloadNotifier.emitReload(any()));
+      final List<ShowSnackbarEffect> snackbars = snackbarsOf(cubit.state);
+      expect(
+        snackbars.any(
+          (effect) =>
+              effect.titleKey == 'error_list_not_updated' &&
+              effect.messageKey == 'error_entry_needs_status' &&
+              effect.contentType == ContentType.warning,
+        ),
+        isTrue,
+        reason: 'the refusal must be loud: the editor stays open because nothing was written',
+      );
+    });
+
+    test('a draft that got a status is saved through the save route', () async {
+      when(() => animeRepository.updateMediaListEntry(any(), any(), any())).thenAnswer(
+        (_) async => MediaListEntryModel.empty().copyWith(status: 'CURRENT'),
+      );
+      final MockBuildContext buildContext = MockBuildContext();
+      when(() => buildContext.mounted).thenReturn(false);
+      cubit = buildCubit();
+      await pumpEventQueue();
+      await cubit.updateMediaListEntryStatus('Current');
+
+      await cubit.updateMediaListEntry(buildContext);
+
+      verify(() => animeRepository.updateMediaListEntry(any(), any(), any())).called(1);
+      verifyNever(() => animeRepository.deleteMediaListEntry(any(), any()));
     });
   });
 }

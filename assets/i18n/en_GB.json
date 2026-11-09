@@ -131,6 +131,7 @@
   "drawer_view_profile": "View Profile",
   "error_connectivity_message": "The server did not answer that request. Check your connection and try again.",
   "error_connectivity_title": "Can't reach the server",
+  "error_entry_needs_status": "Choose a status before saving this entry.",
   "error_entry_not_matched_account": "This entry isn't matched to your {service} account yet, so nothing was written.",
   "error_extension_error_title": "{extension} Error",
   "error_extension_no_results_try_again": "No results from the extension. Try again.",

@@ -131,6 +131,7 @@
   "drawer_view_profile": "檢視個人檔案",
   "error_connectivity_message": "伺服器沒有回應該請求。請檢查你的網路連線後再試一次。",
   "error_connectivity_title": "無法連線到伺服器",
+  "error_entry_needs_status": "儲存此項目前請先選擇狀態。",
   "error_entry_not_matched_account": "這個項目尚未與你的 {service} 帳號配對，因此沒有寫入任何內容。",
   "error_extension_error_title": "{extension} 發生錯誤",
   "error_extension_no_results_try_again": "擴充功能沒有傳回任何結果。請再試一次。",

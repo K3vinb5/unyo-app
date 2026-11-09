@@ -131,6 +131,7 @@
   "drawer_view_profile": "Ver perfil",
   "error_connectivity_message": "El servidor no respondió a esa solicitud. Comprueba tu conexión e inténtalo de nuevo.",
   "error_connectivity_title": "No se puede conectar al servidor",
+  "error_entry_needs_status": "Elige un estado antes de guardar esta entrada.",
   "error_entry_not_matched_account": "Esta entrada aún no está vinculada a tu cuenta de {service}, así que no se ha guardado nada.",
   "error_extension_error_title": "Error de {extension}",
   "error_extension_no_results_try_again": "La extensión no devolvió resultados. Inténtalo de nuevo.",

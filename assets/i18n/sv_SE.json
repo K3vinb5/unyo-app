@@ -131,6 +131,7 @@
   "drawer_view_profile": "Visa profil",
   "error_connectivity_message": "Servern svarade inte på den begäran. Kontrollera din anslutning och försök igen.",
   "error_connectivity_title": "Kan inte nå servern",
+  "error_entry_needs_status": "Välj en status innan du sparar det här objektet.",
   "error_entry_not_matched_account": "Den här posten är ännu inte matchad mot ditt {service}-konto, så inget skrevs.",
   "error_extension_error_title": "{extension}-fel",
   "error_extension_no_results_try_again": "Inga resultat från tillägget. Försök igen.",

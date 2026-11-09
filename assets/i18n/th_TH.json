@@ -131,6 +131,7 @@
   "drawer_view_profile": "ดูโปรไฟล์",
   "error_connectivity_message": "เซิร์ฟเวอร์ไม่ตอบสนองต่อคำขอนั้น ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
   "error_connectivity_title": "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้",
+  "error_entry_needs_status": "เลือกสถานะก่อนบันทึกรายการนี้",
   "error_entry_not_matched_account": "รายการนี้ยังไม่ได้เชื่อมกับบัญชี {service} ของคุณ จึงยังไม่มีการบันทึกข้อมูล",
   "error_extension_error_title": "เกิดข้อผิดพลาดกับ {extension}",
   "error_extension_no_results_try_again": "ส่วนขยายไม่พบผลลัพธ์ ลองอีกครั้ง",
