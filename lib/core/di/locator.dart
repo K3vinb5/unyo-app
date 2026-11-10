@@ -199,9 +199,9 @@ void setupLocator() async{
       sl<UserNotifier>(instanceName: config.newUserNotifier),
       sl<UserRepositoryAnilist>(),
       sl<UserRepositoryShikimori>(),
+      sl<UserRepositoryMal>(),
       sl<ColorImageService>(),
       sl<ThemeService>(),
-      userRepositoryMal: sl<UserRepositoryMal>(),
     ),
   );
   sl.registerFactory<HomeCubit>(

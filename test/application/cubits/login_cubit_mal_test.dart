@@ -91,9 +91,9 @@ void main() {
       newUser,
       anilistRepo,
       shikimoriRepo,
+      malRepo,
       colorImageService,
       themeService,
-      userRepositoryMal: malRepo,
     );
   });
 

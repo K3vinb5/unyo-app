@@ -28,13 +28,7 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
   final UserRepositoryLocal _userRepositoryLocal;
   final UserRepositoryAnilist _userRepositoryAnilist;
   final UserRepositoryShikimori _userRepositoryShikimori;
-
-  /// The MAL account repository (WP #156). Optional so the `locator.dart`
-  /// registration (wave 7 DI) can supply it explicitly; while it is absent the
-  /// getter resolves from the service locator at call time and the MAL
-  /// branches degrade instead of blocking the login screen.
-  final UserRepositoryMal? _userRepositoryMalOverride;
-  UserRepositoryMal get _userRepositoryMal => _userRepositoryMalOverride ?? sl<UserRepositoryMal>();
+  final UserRepositoryMal _userRepositoryMal;
   final Logger _logger = sl<Logger>();
 
   // Notifiers / Subscriptions
@@ -52,11 +46,10 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
     this._newUserNotifier,
     this._userRepositoryAnilist,
     this._userRepositoryShikimori,
+    this._userRepositoryMal,
     this._colorImageService,
-    this._themeService, {
-    UserRepositoryMal? userRepositoryMal,
-  })  : _userRepositoryMalOverride = userRepositoryMal,
-        super(
+    this._themeService,
+  ) : super(
         const LoginState(
           availableUsers: [],
           selectedLoginCard: LoginCardType.anilist,
