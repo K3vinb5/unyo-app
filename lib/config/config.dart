@@ -2,6 +2,18 @@
 // Update check configuration
 const String unyoReleasesEndpoint = 'https://api.github.com/repos/K3vinb5/Unyo/releases/latest';
 const String unyoReleasesFallbackUrl = 'https://github.com/K3vinb5/Unyo/releases/latest';
+// Canonical destinations shown in Settings -> About (WP #150). Kept here next
+// to the release URLs so the dialog never hardcodes a link.
+const String unyoSourceUrl = 'https://github.com/K3vinb5/Unyo';
+const String unyoIssuesUrl = 'https://github.com/K3vinb5/Unyo/issues';
+const String unyoReleasesUrl = 'https://github.com/K3vinb5/Unyo/releases';
+/// Public documentation site (unyo-web Docusaurus `url`).
+const String unyoDocumentationUrl = 'https://unyo.dev';
+// Identity shown by the in-app licence browser. The product name and the
+// licence are proper nouns, so they are not translatable copy (i18n §3).
+const String unyoAppName = 'Unyo';
+/// The licence `LICENSE` grants at the repository root.
+const String unyoLicenceName = 'BSD 3-Clause License';
 // Locator configuration
 const String applicationSupportDirectory = "applicationSupportDirectory";
 const String loggedUserNotifier = 'loggedUserNotifier';

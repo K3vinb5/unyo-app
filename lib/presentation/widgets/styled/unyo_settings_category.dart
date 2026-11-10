@@ -12,6 +12,16 @@ class UnyoSettingsCategory extends StatefulWidget {
   final bool initiallyExpanded;
   final bool isChild;
 
+  /// When set the header activates this instead of expanding, and the trailing
+  /// reveal arrow becomes a plain "goes somewhere" chevron (WP #150: About opens
+  /// a dialog, it is no longer an expand/collapse container).
+  final VoidCallback? onActivate;
+
+  /// Optional marker rendered before the trailing chevron, e.g. the
+  /// update-available pill. It must collapse to zero size when inactive, so the
+  /// row keeps its default appearance.
+  final Widget? badge;
+
   const UnyoSettingsCategory({
     super.key,
     required this.title,
@@ -22,6 +32,8 @@ class UnyoSettingsCategory extends StatefulWidget {
     required this.settingsOptions,
     this.initiallyExpanded = false,
     this.isChild = false,
+    this.onActivate,
+    this.badge,
   });
 
   @override
@@ -69,7 +81,7 @@ class _UnyoSettingsCategoryState extends State<UnyoSettingsCategory> with Single
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         UnyoInkWell(
-          onTap: _toggleExpanded,
+          onTap: widget.onActivate ?? _toggleExpanded,
           child: Container(
             width: double.infinity,
             height: 75,
@@ -120,10 +132,22 @@ class _UnyoSettingsCategoryState extends State<UnyoSettingsCategory> with Single
                       ),
                     ],
                   ),
-                  AnimatedRotation(
-                    turns: _isExpanded ? 0.75 : 0.50,
-                    duration: const Duration(milliseconds: 200),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      if (widget.badge != null) ...<Widget>[
+                        widget.badge!,
+                        const SizedBox(width: 12),
+                      ],
+                      if (widget.onActivate != null)
+                        const Icon(Icons.chevron_right_rounded)
+                      else
+                        AnimatedRotation(
+                          turns: _isExpanded ? 0.75 : 0.50,
+                          duration: const Duration(milliseconds: 200),
+                          child: const Icon(Icons.arrow_back_ios_new_rounded),
+                        ),
+                    ],
                   ),
                 ],
               ),

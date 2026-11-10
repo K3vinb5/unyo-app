@@ -21,5 +21,13 @@ class UserNotifier {
 
   User get currentUser => _userSubject.value;
 
+  /// Forgets the current user. Used when an account is unlinked from the device
+  /// (WP #151): a notifier still holding the removed user would sign it back in
+  /// on the next screen that reads [currentUser].
+  void clear() {
+    _logger.d("User notifier cleared");
+    _userSubject.add(UserModel.empty());
+  }
+
   void dispose() => _userSubject.close();
 }
