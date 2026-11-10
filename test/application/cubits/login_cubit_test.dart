@@ -14,6 +14,7 @@ import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
 import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/user_repository_anilist.dart';
 import 'package:unyo/data/repositories/user_repository_local.dart';
+import 'package:unyo/data/repositories/user_repository_mal.dart';
 import 'package:unyo/data/repositories/user_repository_shikimori.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
@@ -29,6 +30,8 @@ class MockUserRepositoryLocal extends Mock implements UserRepositoryLocal {}
 class MockUserRepositoryAnilist extends Mock implements UserRepositoryAnilist {}
 
 class MockUserRepositoryShikimori extends Mock implements UserRepositoryShikimori {}
+
+class MockUserRepositoryMal extends Mock implements UserRepositoryMal {}
 
 /// The three wallpaper colours used by the happy path (distinct on purpose so
 /// a swapped primary/secondary/tertiary shows up as a mismatch).
@@ -75,6 +78,7 @@ void main() {
   late MockUserRepositoryLocal userRepositoryLocal;
   late MockUserRepositoryAnilist userRepositoryAnilist;
   late MockUserRepositoryShikimori userRepositoryShikimori;
+  late MockUserRepositoryMal userRepositoryMal;
   late MockUserNotifier loggedUserNotifier;
   late MockUserNotifier newUserNotifier;
   late MockColorImageService colorImageService;
@@ -91,6 +95,7 @@ void main() {
     userRepositoryLocal = MockUserRepositoryLocal();
     userRepositoryAnilist = MockUserRepositoryAnilist();
     userRepositoryShikimori = MockUserRepositoryShikimori();
+    userRepositoryMal = MockUserRepositoryMal();
     loggedUserNotifier = MockUserNotifier();
     newUserNotifier = MockUserNotifier();
     colorImageService = MockColorImageService();
@@ -109,6 +114,7 @@ void main() {
     newUserNotifier,
     userRepositoryAnilist,
     userRepositoryShikimori,
+    userRepositoryMal,
     colorImageService,
     themeService,
   );

@@ -5,4 +5,5 @@ export 'anilist/media/anilist_manga_model.dart';
 export 'anilist/media/anilist_media_character.dart';
 export 'anilist/user/anilist_user_model.dart';
 export 'local/user/local_user_model.dart';
+export 'mal/user/mal_user_model.dart';
 export 'shikimori/user/shikimori_user_model.dart';

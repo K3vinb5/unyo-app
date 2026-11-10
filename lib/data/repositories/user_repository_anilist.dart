@@ -1,8 +1,10 @@
 // External dependencies
+import 'dart:async';
 import 'dart:io';
 import 'package:hive_ce/hive.dart';
 import 'package:logger/logger.dart';
 import 'package:unyo/core/di/locator.dart';
+import 'package:unyo/core/enums/service.dart';
 import 'package:shelf/shelf.dart' as shelf;
 import 'package:shelf/shelf_io.dart' as shelfio;
 import 'package:unyo/core/services/api/dto/anilist/auth_token_dto.dart';
@@ -37,9 +39,29 @@ class UserRepositoryAnilist with RepositoryMixin implements UserRepository {
   final UserNotifier _newUserNotifier;
   final UserNotifier _loggedUserNotifier;
   late Box<AnilistUserModel> _anilistUsersBox;
-  late HttpServer _server;
 
-  UserRepositoryAnilist(this._newUserNotifier, this._loggedUserNotifier);
+  /// The callback listener while a login is in flight, `null` once it is closed
+  /// (or before the first login).
+  HttpServer? _server;
+
+  /// The last listener's close, kept so a later [closeLoginServer] or
+  /// [attemptCreateUser] can await it: the success path closes fire-and-forget.
+  Future<void>? _serverClose;
+
+  /// How long the shared `:9999` callback may sit without a successful login
+  /// before it closes itself (WP #163). An abandoned login must not keep the
+  /// port bound for the Shikimori twin.
+  final Duration _loginServerTimeout;
+
+  /// Reaps the login that owns the current [_server]. Cancelled by
+  /// [_closeLoginServer], and replaced by the next [attemptCreateUser].
+  Timer? _loginServerTimer;
+
+  UserRepositoryAnilist(
+    this._newUserNotifier,
+    this._loggedUserNotifier, {
+    Duration loginServerTimeout = const Duration(minutes: 10),
+  }) : _loginServerTimeout = loginServerTimeout;
 
   @override
   Future<List<User>> fetchAllLoggedInUsers() async {
@@ -50,9 +72,17 @@ class UserRepositoryAnilist with RepositoryMixin implements UserRepository {
   @override
   Future<void> attemptCreateUser() async {
     _logger.i("Creating Anilist user");
+    // LoginCubit re-invokes this on every dialog confirm: close the previous
+    // shared listener first, or it stays bound forever and its timer would
+    // later close the new one.
+    await _closeLoginServer();
     try {
       _logger.d("Opening Anilist login server at http://localhost:9999");
       _server = await shelfio.serve(_handleLoginRequest, 'localhost', 9999, shared: true);
+      _loginServerTimer = Timer(_loginServerTimeout, () {
+        _logger.i("Anilist login server timed out, closing it");
+        unawaited(_closeLoginServer());
+      });
     } catch (e, stackTrace) {
       _logger.e("Error attempting to open server: $e", stackTrace: stackTrace);
       if (await canLaunchUrl(Uri.parse(config.anilistAuthUrl))) {
@@ -199,21 +229,51 @@ class UserRepositoryAnilist with RepositoryMixin implements UserRepository {
     );
   }
 
+  /// Closes the OAuth callback server and cancels the abandonment timer.
+  ///
+  /// Safe before a server was ever started and safe to call any number of
+  /// times. The socket close is returned rather than awaited by the callers
+  /// inside [_handleLoginRequest]/the timer: `HttpServer.close()` (force: false)
+  /// waits for the in-flight response, so awaiting it from the handler would
+  /// deadlock until the client gave up.
+  Future<void> _closeLoginServer() {
+    _loginServerTimer?.cancel();
+    _loginServerTimer = null;
+    final HttpServer? server = _server;
+    if (server != null) {
+      _server = null;
+      _serverClose = server.close();
+    }
+    return _serverClose ?? Future<void>.value();
+  }
+
+  /// Closes the OAuth callback server early. Safe before the login server was
+  /// started and idempotent; used by tests/teardown.
+  Future<void> closeLoginServer() => _closeLoginServer();
+
   Future<shelf.Response> _handleLoginRequest(shelf.Request request) async {
     try {
       _logger.i("Handling login request from Anilist at ${request.requestedUri.path}");
-      String accessCode = request.requestedUri.queryParameters['code']!;
+      final String? accessCode = request.requestedUri.queryParameters['code'];
+      if (accessCode == null || accessCode.isEmpty) {
+        // WP #163: a favicon/probe/mistyped URL is not a login attempt. Answer
+        // 400 and keep serving — a code-less GET used to throw into the 500
+        // path and close the server, killing the OAuth redirect.
+        return shelf.Response.badRequest(
+          body: "Anilist did not send an authorization code: ${request.requestedUri.query}",
+        );
+      }
       await _createUser(accessCode);
-      return shelf.Response.ok('Authorization successful. You can close this window.');
     } catch (e, stackTrace) {
+      // Keep serving on a failed exchange: the redirect can be replayed.
       _logger.e("Error Handling login request: $e", stackTrace: stackTrace);
       return shelf.Response.internalServerError(
         body: "Something went wrong D:, please verify your internet connection and try again",
       );
-    } finally {
-      _logger.i("Closing Anilist login server");
-      _server.close();
     }
+    _logger.i("Closing Anilist login server");
+    unawaited(_closeLoginServer());
+    return shelf.Response.ok('Authorization successful. You can close this window.');
   }
 
   Future<void> _createUser(String accessCode) async {
@@ -230,7 +290,12 @@ class UserRepositoryAnilist with RepositoryMixin implements UserRepository {
     AnilistUserModel newAnilistUser = AnilistUserModel(
       id: viewerDto.data.viewer.id.toString(),
       name: viewerDto.data.viewer.name,
-      settings: SettingsModel.empty(),
+      // WP #164: a new account browses through its own provider. AniList is in
+      // ProviderCapabilities.metadataProviders, so both roles are the same.
+      settings: SettingsModel.empty().copyWith(
+        userService: Service.anilist,
+        metadataService: Service.anilist,
+      ),
       avatarImage: viewerDto.data.viewer.avatar.medium,
       bannerImage: viewerDto.data.viewer.bannerImage,
       accessCode: accessCode,

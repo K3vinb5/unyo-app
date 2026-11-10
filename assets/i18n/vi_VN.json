@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "Nhà cung cấp nắm giữ thông tin chi tiết: tóm tắt, ảnh bìa, thể loại và điểm số",
   "settings_media_metadata_service_title": "Dịch vụ metadata nội dung",
   "settings_myanimelist_accounts_description": "Quản lý các tài khoản MyAnimeList đã kết nối",
+  "settings_myanimelist_no_account": "Chưa có tài khoản MyAnimeList nào được kết nối",
+  "settings_myanimelist_no_account_hint": "Thêm một tài khoản từ màn hình đăng nhập để đồng bộ danh sách với MyAnimeList",
   "settings_nsfw_content_description": "Bật hoặc tắt nội dung NSFW trong toàn bộ ứng dụng",
   "settings_nsfw_content_title": "Nội dung NSFW",
   "settings_open_releases_page": "Mở trang phát hành",

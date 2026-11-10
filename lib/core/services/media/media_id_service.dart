@@ -55,6 +55,39 @@ abstract class MediaMappingLookup {
   Future<List<MediaLinkCandidate>> searchCandidates(Service target, String title);
 }
 
+/// Fan-out over the provider legs of the mapping chain (WP #61 "provider
+/// legs", WP #156 added the MAL leg next to Shikimori's).
+///
+/// Every leg implements [MediaMappingLookup] and answers only its own `target`
+/// (returning null / no candidates for the others), which is why the chain's
+/// single lookup slot can dispatch to whichever leg owns the target: the first
+/// non-null probe wins, and search candidates are gathered leg by leg in
+/// registration order. No policy lives here — each leg keeps its own
+/// verification rules.
+class CompositeMediaMappingLookup implements MediaMappingLookup {
+  final List<MediaMappingLookup> legs;
+
+  const CompositeMediaMappingLookup(this.legs);
+
+  @override
+  Future<MediaLinkCandidate?> lookupByMalId(Service target, int malId) async {
+    for (final MediaMappingLookup leg in legs) {
+      final MediaLinkCandidate? candidate = await leg.lookupByMalId(target, malId);
+      if (candidate != null) return candidate;
+    }
+    return null;
+  }
+
+  @override
+  Future<List<MediaLinkCandidate>> searchCandidates(Service target, String title) async {
+    final List<MediaLinkCandidate> candidates = <MediaLinkCandidate>[];
+    for (final MediaMappingLookup leg in legs) {
+      candidates.addAll(await leg.searchCandidates(target, title));
+    }
+    return candidates;
+  }
+}
+
 /// One run of the chain: either a mapping, or the title-search candidates the
 /// user still has to choose from. Neither means "unresolved".
 class _LinkResolution {
@@ -356,11 +389,12 @@ class MediaIdService {
 
   /// AniZip's own MAL→AniList direction.
   ///
-  /// The probe above cannot name an AniList id: the only [MediaMappingLookup]
-  /// implementation speaks Shikimori. Without this leg a Shikimori record with a
-  /// known MAL id could only reach AniList through an already-cached or a
-  /// user-confirmed link, and the miss would be cached as unresolved — poisoning
-  /// every later list read and write for that record.
+  /// The probe above cannot name an AniList id: no [MediaMappingLookup] leg
+  /// speaks AniList (Shikimori's and MAL's both answer only their own target).
+  /// Without this leg a Shikimori record with a known MAL id could only reach
+  /// AniList through an already-cached or a user-confirmed link, and the miss
+  /// would be cached as unresolved — poisoning every later list read and write
+  /// for that record.
   Future<IdMapping?> _aniZipTarget(Service target, int pivot) async {
     if (target != Service.anilist) return null;
     final int? anilistId = await _aniZipLookup?.anilistIdForMalId(pivot);

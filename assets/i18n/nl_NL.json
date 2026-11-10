@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "Provider die de details levert: synopsis, covers, genres en scores",
   "settings_media_metadata_service_title": "Metadata-service voor media",
   "settings_myanimelist_accounts_description": "Beheer je verbonden MyAnimeList-accounts",
+  "settings_myanimelist_no_account": "Geen MyAnimeList-account verbonden",
+  "settings_myanimelist_no_account_hint": "Voeg er een toe via het inlogscherm om je lijst met MyAnimeList te synchroniseren",
   "settings_nsfw_content_description": "NSFW-inhoud in de hele app in- of uitschakelen",
   "settings_nsfw_content_title": "NSFW-inhoud",
   "settings_open_releases_page": "Releasepagina openen",

@@ -1,4 +1,5 @@
 // External dependencies
+import 'dart:async';
 import 'dart:io';
 
 import 'package:hive_ce/hive.dart';
@@ -60,9 +61,29 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
   final UserNotifier _newUserNotifier;
   final UserNotifier _loggedUserNotifier;
   late Box<ShikimoriUserModel> _shikimoriUsersBox;
-  late HttpServer _server;
 
-  UserRepositoryShikimori(this._newUserNotifier, this._loggedUserNotifier);
+  /// The callback listener while a login is in flight, `null` once it is closed
+  /// (or before the first login).
+  HttpServer? _server;
+
+  /// The last listener's close, kept so a later [closeLoginServer] or
+  /// [attemptCreateUser] can await it: the success path closes fire-and-forget.
+  Future<void>? _serverClose;
+
+  /// How long the shared `:9999` callback may sit without a successful login
+  /// before it closes itself (WP #163). An abandoned login must not keep the
+  /// port bound for the AniList twin.
+  final Duration _loginServerTimeout;
+
+  /// Reaps the login that owns the current [_server]. Cancelled by
+  /// [_closeLoginServer], and replaced by the next [attemptCreateUser].
+  Timer? _loginServerTimer;
+
+  UserRepositoryShikimori(
+    this._newUserNotifier,
+    this._loggedUserNotifier, {
+    Duration loginServerTimeout = const Duration(minutes: 10),
+  }) : _loginServerTimeout = loginServerTimeout;
 
   @override
   Future<List<User>> fetchAllLoggedInUsers() async {
@@ -75,9 +96,17 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
   @override
   Future<void> attemptCreateUser() async {
     _logger.i("Creating Shikimori user");
+    // LoginCubit re-invokes this on every dialog confirm: close the previous
+    // shared listener first, or it stays bound forever and its timer would
+    // later close the new one.
+    await _closeLoginServer();
     try {
       _logger.d("Opening Shikimori login server at ${config.shikimoriRedirectUri}");
       _server = await shelfio.serve(_handleLoginRequest, 'localhost', 9999, shared: true);
+      _loginServerTimer = Timer(_loginServerTimeout, () {
+        _logger.i("Shikimori login server timed out, closing it");
+        unawaited(_closeLoginServer());
+      });
     } catch (e, stackTrace) {
       _logger.e("Error attempting to open server: $e", stackTrace: stackTrace);
       await _launchAuthorizationPage();
@@ -281,26 +310,50 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
     }
   }
 
+  /// Closes the OAuth callback server and cancels the abandonment timer.
+  ///
+  /// Safe before a server was ever started and safe to call any number of
+  /// times. The socket close is returned rather than awaited by the callers
+  /// inside [_handleLoginRequest]/the timer: `HttpServer.close()` (force: false)
+  /// waits for the in-flight response, so awaiting it from the handler would
+  /// deadlock until the client gave up.
+  Future<void> _closeLoginServer() {
+    _loginServerTimer?.cancel();
+    _loginServerTimer = null;
+    final HttpServer? server = _server;
+    if (server != null) {
+      _server = null;
+      _serverClose = server.close();
+    }
+    return _serverClose ?? Future<void>.value();
+  }
+
+  /// Closes the OAuth callback server early. Safe before the login server was
+  /// started and idempotent; used by tests/teardown.
+  Future<void> closeLoginServer() => _closeLoginServer();
+
   Future<shelf.Response> _handleLoginRequest(shelf.Request request) async {
     try {
       _logger.i("Handling login request from Shikimori at ${request.requestedUri.path}");
       final String? code = request.requestedUri.queryParameters['code'];
       if (code == null || code.isEmpty) {
+        // WP #163: a favicon/probe/mistyped URL is not a login attempt. Answer
+        // 400 and keep serving — closing here killed the OAuth redirect.
         return shelf.Response.badRequest(
           body: "Shikimori did not send an authorization code: ${request.requestedUri.query}",
         );
       }
       await _createUser(code);
-      return shelf.Response.ok('Authorization successful. You can close this window.');
     } catch (e, stackTrace) {
+      // Keep serving on a failed exchange: the redirect can be replayed.
       _logger.e("Error Handling login request: $e", stackTrace: stackTrace);
       return shelf.Response.internalServerError(
         body: "Something went wrong D:, please verify your internet connection and try again",
       );
-    } finally {
-      _logger.i("Closing Shikimori login server");
-      _server.close();
     }
+    _logger.i("Closing Shikimori login server");
+    unawaited(_closeLoginServer());
+    return shelf.Response.ok('Authorization successful. You can close this window.');
   }
 
   Future<void> _createUser(String accessCode) async {
@@ -331,7 +384,12 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
       name: currentUser.nickname,
       // The account provider setting is what every factory routes on; a
       // Shikimori account must carry it from the moment it is created.
-      settings: SettingsModel.empty().copyWith(userService: Service.shikimori),
+      // WP #164: Shikimori is in ProviderCapabilities.metadataProviders, so a
+      // new account browses Shikimori details too.
+      settings: SettingsModel.empty().copyWith(
+        userService: Service.shikimori,
+        metadataService: Service.shikimori,
+      ),
       avatarImage: currentUser.avatarUrl,
       bannerImage: '',
       accessToken: token.accessToken,

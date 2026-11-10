@@ -227,7 +227,10 @@ void main() {
   MediaListEntry entry({
     int progress = 0,
     int progressVolumes = 0,
-    double score = 0,
+    // Default to the empty() factory's "no score" sentinel so a test that
+    // forgets the score exercises the omit-the-key path instead of hiding the
+    // sentinel leak behind a plausible 0.
+    double score = -1.0,
     int repeat = 0,
     String status = 'Current',
   }) {
@@ -345,6 +348,81 @@ void main() {
       expect(written.progress, 2);
     });
 
+    test('a status-only "add to list" create omits the score key (the -1 sentinel never reaches the wire)', () async {
+      http.rate = rateJson(id: 17, status: 'watching', episodes: 0);
+
+      await service.updateEntry(
+        user: userWith(),
+        targetId: 15,
+        target: ShikimoriUserRateTarget.anime,
+        // The list editor starts from empty() and the user set only a status:
+        // every counter is still the -1 "untouched" sentinel.
+        entry: MediaListEntryModel.empty().copyWith(status: 'Current'),
+      );
+
+      final Map<String, dynamic> create =
+          http.requests.last.body!['user_rate'] as Map<String, dynamic>;
+      expect(create['status'], 'watching');
+      expect(create.containsKey('score'), isFalse,
+          reason: 'score=-1 is the domain sentinel, not a wire value');
+      expect(create['episodes'], 0);
+    });
+
+    test('auto mark-watched episode 1 on an unlisted anime omits the score key', () async {
+      http.rate = rateJson(id: 17, status: 'watching', episodes: 1);
+
+      await service.updateEntry(
+        user: userWith(),
+        targetId: 15,
+        target: ShikimoriUserRateTarget.anime,
+        // video_cubit._markEpisodeAsWatched: empty().copyWith(progress: 1, status: 'Current').
+        entry: MediaListEntryModel.empty().copyWith(progress: 1, status: 'Current'),
+      );
+
+      final Map<String, dynamic> create =
+          http.requests.last.body!['user_rate'] as Map<String, dynamic>;
+      expect(create.containsKey('score'), isFalse);
+      expect(create['episodes'], 1);
+      expect(create['status'], 'watching');
+    });
+
+    test('a real score is still sent', () async {
+      http.rate = rateJson(id: 17, status: 'watching', episodes: 5, score: 7);
+
+      await service.updateEntry(
+        user: userWith(),
+        targetId: 15,
+        target: ShikimoriUserRateTarget.anime,
+        entry: entry(progress: 5, score: 7),
+      );
+
+      expect(http.requests.last.body!['user_rate']['score'], 7);
+    });
+
+    test('scores clamp into the 0-10 range (12 -> 10, 0 stays 0)', () async {
+      http.rate = rateJson(id: 17, status: 'watching', episodes: 0, score: 10);
+
+      await service.updateEntry(
+        user: userWith(),
+        targetId: 15,
+        target: ShikimoriUserRateTarget.anime,
+        entry: entry(score: 12),
+      );
+      await service.updateEntry(
+        user: userWith(),
+        targetId: 15,
+        target: ShikimoriUserRateTarget.anime,
+        entry: entry(score: 0),
+      );
+
+      final List<RecordedRequest> creates =
+          http.requests.where((RecordedRequest r) => r.method == 'POST').toList();
+      expect(creates[0].body!['user_rate']['score'], 10,
+          reason: 'out-of-range scores clamp instead of leaking 12');
+      expect(creates[1].body!['user_rate']['score'], 0,
+          reason: 'a user-set 0 is a real value and is sent as-is');
+    });
+
     test('an existing rate is updated with PATCH on its own id (no user/target fields)', () async {
       http.getQueue = <Object>[
         <Map<String, dynamic>>[rateJson(id: 16, status: 'watching', episodes: 2)],
@@ -402,7 +480,9 @@ void main() {
         user: userWith(),
         targetId: 15,
         target: ShikimoriUserRateTarget.anime,
-        entry: entry(progress: 4, status: 'Current'),
+        // Explicit score matching the stored rate: the two-step jump must be
+        // the only reason increment is not used.
+        entry: entry(progress: 4, score: 0, status: 'Current'),
       );
 
       expect(http.requests.last.method, 'PATCH');

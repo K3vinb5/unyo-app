@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "Πάροχος που κατέχει τα στοιχεία: σύνοψη, εξώφυλλα, είδη και βαθμολογίες",
   "settings_media_metadata_service_title": "Υπηρεσία μεταδεδομένων περιεχομένου",
   "settings_myanimelist_accounts_description": "Διαχείριση συνδεδεμένων λογαριασμών MyAnimeList",
+  "settings_myanimelist_no_account": "Δεν έχει συνδεθεί λογαριασμός MyAnimeList",
+  "settings_myanimelist_no_account_hint": "Προσθέστε έναν από την οθόνη σύνδεσης για να συγχρονίσετε τη λίστα σας με το MyAnimeList",
   "settings_nsfw_content_description": "Ενεργοποίηση ή απενεργοποίηση περιεχομένου NSFW σε όλη την εφαρμογή",
   "settings_nsfw_content_title": "Περιεχόμενο NSFW",
   "settings_open_releases_page": "Άνοιγμα σελίδας εκδόσεων",

@@ -20,6 +20,10 @@ import 'package:unyo/core/services/api/dto/anizip/anizip_id_mappings_entity.dart
 import 'package:unyo/core/services/api/dto/extensions/aniyomi_repo_json_entity.dart';
 import 'package:unyo/core/services/api/dto/extensions/tachiyomi_repo_json_entity.dart';
 import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
+import 'package:unyo/core/services/api/dto/mal/mal_my_list_status_entity.dart';
+import 'package:unyo/core/services/api/dto/mal/mal_token_entity.dart';
+import 'package:unyo/core/services/api/dto/mal/mal_user_entity.dart';
+import 'package:unyo/core/services/api/dto/mal/mal_user_list_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_details_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_list_query_entity.dart';
 import 'package:unyo/core/services/api/dto/shikimori/anime_mapping_query_entity.dart';
@@ -443,6 +447,39 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		if(<GithubReleaseAssets>[] is M){
 			return data.map<GithubReleaseAssets>((Map<String, dynamic> e) => GithubReleaseAssets.fromJson(e)).toList() as M;
 		}
+		if(<MalMyListStatusEntity>[] is M){
+			return data.map<MalMyListStatusEntity>((Map<String, dynamic> e) => MalMyListStatusEntity.fromJson(e)).toList() as M;
+		}
+		if(<MalMyListStatusMediaEntity>[] is M){
+			return data.map<MalMyListStatusMediaEntity>((Map<String, dynamic> e) => MalMyListStatusMediaEntity.fromJson(e)).toList() as M;
+		}
+		if(<MalTokenEntity>[] is M){
+			return data.map<MalTokenEntity>((Map<String, dynamic> e) => MalTokenEntity.fromJson(e)).toList() as M;
+		}
+		if(<MalUserEntity>[] is M){
+			return data.map<MalUserEntity>((Map<String, dynamic> e) => MalUserEntity.fromJson(e)).toList() as M;
+		}
+		if(<MalUserListEntity>[] is M){
+			return data.map<MalUserListEntity>((Map<String, dynamic> e) => MalUserListEntity.fromJson(e)).toList() as M;
+		}
+		if(<MalUserListEntityData>[] is M){
+			return data.map<MalUserListEntityData>((Map<String, dynamic> e) => MalUserListEntityData.fromJson(e)).toList() as M;
+		}
+		if(<MalUserListEntityDataNode>[] is M){
+			return data.map<MalUserListEntityDataNode>((Map<String, dynamic> e) => MalUserListEntityDataNode.fromJson(e)).toList() as M;
+		}
+		if(<MalUserListEntityDataNodeMainPicture>[] is M){
+			return data.map<MalUserListEntityDataNodeMainPicture>((Map<String, dynamic> e) => MalUserListEntityDataNodeMainPicture.fromJson(e)).toList() as M;
+		}
+		if(<MalUserListEntityDataNodeAlternativeTitles>[] is M){
+			return data.map<MalUserListEntityDataNodeAlternativeTitles>((Map<String, dynamic> e) => MalUserListEntityDataNodeAlternativeTitles.fromJson(e)).toList() as M;
+		}
+		if(<MalUserListEntityDataNodeGenres>[] is M){
+			return data.map<MalUserListEntityDataNodeGenres>((Map<String, dynamic> e) => MalUserListEntityDataNodeGenres.fromJson(e)).toList() as M;
+		}
+		if(<MalUserListEntityPaging>[] is M){
+			return data.map<MalUserListEntityPaging>((Map<String, dynamic> e) => MalUserListEntityPaging.fromJson(e)).toList() as M;
+		}
 		if(<AnimeDetailsQueryEntity>[] is M){
 			return data.map<AnimeDetailsQueryEntity>((Map<String, dynamic> e) => AnimeDetailsQueryEntity.fromJson(e)).toList() as M;
 		}
@@ -750,6 +787,17 @@ List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}
 		(TachiyomiRepoJsonSources).toString(): TachiyomiRepoJsonSources.fromJson,
 		(GithubReleaseEntity).toString(): GithubReleaseEntity.fromJson,
 		(GithubReleaseAssets).toString(): GithubReleaseAssets.fromJson,
+		(MalMyListStatusEntity).toString(): MalMyListStatusEntity.fromJson,
+		(MalMyListStatusMediaEntity).toString(): MalMyListStatusMediaEntity.fromJson,
+		(MalTokenEntity).toString(): MalTokenEntity.fromJson,
+		(MalUserEntity).toString(): MalUserEntity.fromJson,
+		(MalUserListEntity).toString(): MalUserListEntity.fromJson,
+		(MalUserListEntityData).toString(): MalUserListEntityData.fromJson,
+		(MalUserListEntityDataNode).toString(): MalUserListEntityDataNode.fromJson,
+		(MalUserListEntityDataNodeMainPicture).toString(): MalUserListEntityDataNodeMainPicture.fromJson,
+		(MalUserListEntityDataNodeAlternativeTitles).toString(): MalUserListEntityDataNodeAlternativeTitles.fromJson,
+		(MalUserListEntityDataNodeGenres).toString(): MalUserListEntityDataNodeGenres.fromJson,
+		(MalUserListEntityPaging).toString(): MalUserListEntityPaging.fromJson,
 		(AnimeDetailsQueryEntity).toString(): AnimeDetailsQueryEntity.fromJson,
 		(AnimeDetailsQueryAnimes).toString(): AnimeDetailsQueryAnimes.fromJson,
 		(AnimeDetailsQueryAnimesUserRate).toString(): AnimeDetailsQueryAnimesUserRate.fromJson,

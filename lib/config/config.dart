@@ -48,6 +48,26 @@ const String shikimoriSiteEndpoint = 'https://shikimori.io';
 const Map<String, String> shikimoriRequestHeaders = <String, String>{
   'User-Agent': 'unyo (https://gitea.k3vinb5.dev/Unyo/unyo-app)',
 };
+// MyAnimeList API configuration
+const String malClientId = 'fef5b177b2b139f10da16fdd8455f0a3';
+/// OAuth2 authorization endpoint. Auth-code + **PKCE `plain` only** (S256 is
+/// rejected); the query is built by `MalAuthService` because `code_challenge`
+/// and `state` are per-login values (WP #156).
+const String malAuthorizeEndpoint = 'https://myanimelist.net/v1/oauth2/authorize';
+/// OAuth2 token endpoint (form-urlencoded — JSON answers
+/// `unsupported_grant_type`). Public client (App Type "Other"): **no
+/// client_secret** is ever sent.
+const String malTokenEndpoint = 'https://myanimelist.net/v1/oauth2/token';
+/// REST API base (v2). User calls use `Authorization: Bearer`; public reads
+/// use `X-MAL-CLIENT-ID`.
+const String malApiBase = 'https://api.myanimelist.net/v2';
+const String malRedirectUri = 'http://localhost:9998/mal-auth';
+/// `write:users` covers read + write of list data (the only scope needed).
+const String malOAuthScope = 'write:users';
+/// Access-token lifetime fallback (docs say 1 h; historically drifted, so the
+/// returned `expires_in` is trusted when present).
+const Duration malAccessTokenTtl = Duration(hours: 1);
+const Duration malAccessTokenExpiryMargin = Duration(minutes: 1);
 // Anizip API configuration
 const String anizipBaseEndpoint = 'https://api.ani.zip';
 // Aniski API configuration

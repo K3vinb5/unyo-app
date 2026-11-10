@@ -9,11 +9,14 @@ import 'package:unyo/core/factories/anime_repository_factory.dart';
 import 'package:unyo/core/factories/manga_repository_factory.dart';
 import 'package:unyo/core/factories/user_repository_factory.dart';
 import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
+import 'package:unyo/data/models/mal/user/mal_user_model.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
 import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/user_repository_anilist.dart';
+import 'package:unyo/data/repositories/user_repository_mal.dart';
 import 'package:unyo/data/repositories/user_repository_shikimori.dart';
 import 'package:unyo/data/repositories/anime_repository_anilist.dart';
+import 'package:unyo/data/repositories/anime_repository_mal.dart';
 import 'package:unyo/data/repositories/anime_repository_shikimori.dart';
 import 'package:unyo/data/repositories/manga_repository_anilist.dart';
 import 'package:unyo/data/repositories/manga_repository_shikimori.dart';
@@ -46,6 +49,10 @@ class MockUserRepositoryShikimori extends Mock implements UserRepositoryShikimor
 
 class MockUserRepositoryAnilist extends Mock implements UserRepositoryAnilist {}
 
+class MockUserRepositoryMal extends Mock implements UserRepositoryMal {}
+
+class MockAnimeRepositoryMal extends Mock implements AnimeRepositoryMal {}
+
 /// Target-provider leg of the MAL-pivot chain, stubbed per test.
 class FakeMediaMappingLookup implements MediaMappingLookup {
   MediaLinkCandidate? probeResult;
@@ -76,6 +83,8 @@ void main() {
   late MockMangaRepositoryShikimori shikimoriManga;
   late MockUserRepositoryShikimori shikimoriUser;
   late MockUserRepositoryAnilist anilistUser;
+  late MockUserRepositoryMal malUser;
+  late MockAnimeRepositoryMal malAnime;
   late FakeMediaMappingLookup mappingLookup;
 
   AnilistUserModel userWith({Service userService = Service.anilist, Service metadataService = Service.anilist}) {
@@ -113,6 +122,10 @@ void main() {
     anilistUser = MockUserRepositoryAnilist();
     sl.registerSingleton<UserRepositoryShikimori>(shikimoriUser);
     sl.registerSingleton<UserRepositoryAnilist>(anilistUser);
+    malUser = MockUserRepositoryMal();
+    malAnime = MockAnimeRepositoryMal();
+    sl.registerSingleton<UserRepositoryMal>(malUser);
+    sl.registerSingleton<AnimeRepositoryMal>(malAnime);
     mappingLookup = FakeMediaMappingLookup();
     sl.registerLazySingleton<MediaIdService>(
       () => MediaIdService(cache: InMemoryMediaIdCache(), mappingLookup: mappingLookup),
@@ -617,6 +630,144 @@ void main() {
             any(),
           )).called(1);
       verifyNever(() => anilistManga.getUserMangaAdvancedSearchFilters(any()));
+    });
+  });
+
+  group('MyAnimeList as the user provider (WP #156)', () {
+    MalUserModel malAccount({Service metadataService = Service.anilist}) {
+      return MalUserModel(
+        id: '34567890',
+        name: 'mal-tester',
+        settings: SettingsModel.empty().copyWith(
+          userService: Service.mal,
+          metadataService: metadataService,
+        ),
+        avatarImage: '',
+        bannerImage: '',
+        accessToken: 'stored-access',
+        refreshToken: 'stored-refresh',
+        accessTokenExpiresAt: '2099-01-01T00:00:00.000',
+        profileUrl: 'https://myanimelist.net/profile/mal-tester',
+      );
+    }
+
+    Anime anilistRecord({int id = 170942, int idMal = 58514}) =>
+        AnimeModel.empty().copyWith(id: id, idMal: idMal);
+
+    const MediaLinkCandidate malCandidate = MediaLinkCandidate(
+      service: Service.mal,
+      nativeId: '58514',
+      malId: 58514,
+      title: 'Kusuriya no Hitorigoto',
+    );
+
+    test('userService=mal with metadataService=anilist splits list ops to MAL and metadata to AniList', () async {
+      mappingLookup.probeResult = malCandidate;
+      when(() => malAnime.updateMediaListEntry(any(), any(), any()))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+      when(() => malAnime.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+      when(() => malUser.getUserAnimeLists(any()))
+          .thenAnswer((_) async => <String, List<Anime>>{'Watching': <Anime>[AnimeModel.empty()]});
+      when(() => anilistAnime.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (true, <Anime>[AnimeModel.empty()]));
+      when(() => anilistAnime.getAnimeDetails(any(), any()))
+          .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
+
+      final MalUserModel user = malAccount();
+      final Anime record = anilistRecord();
+
+      await animeFactory.updateMediaListEntry(MediaListEntryModel.empty(), record, user);
+      await animeFactory.getMediaListEntry(record, user);
+      final Map<String, List<Anime>> animeLists = await userFactory.getUserAnimeLists(user);
+      await animeFactory.getTrendingAnimes(1, user);
+      await animeFactory.getAnimeDetails(record, user);
+
+      expect(animeLists.keys, <String>['Watching']);
+      final Anime written =
+          verify(() => malAnime.updateMediaListEntry(any(), captureAny(), any())).captured.single as Anime;
+      expect(written.id, 58514,
+          reason: 'the MAL repository must receive the MAL id, never the AniList native id');
+      verify(() => malAnime.getMediaListEntry(any(), any(), ignoreCache: false)).called(1);
+      verify(() => malUser.getUserAnimeLists(any())).called(1);
+      verify(() => anilistAnime.getTrendingAnimes(1, any(), ignoreCache: false)).called(1);
+      verify(() => anilistAnime.getAnimeDetails(any(), any())).called(1);
+      verifyNever(() => anilistAnime.updateMediaListEntry(any(), any(), any()));
+      verifyNever(() => anilistAnime.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')));
+      verifyNever(() => shikimoriAnime.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')));
+      verifyNever(() => shikimoriAnime.getAnimeDetails(any(), any()));
+      verifyNever(() => anilistUser.getUserAnimeLists(any()));
+      verifyNever(() => shikimoriUser.getUserAnimeLists(any()));
+    });
+
+    test('userService=anilist with metadataService=shikimori keeps the pre-MAL split (regression)', () async {
+      when(() => anilistAnime.updateMediaListEntry(any(), any(), any()))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+      when(() => anilistAnime.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+      when(() => anilistUser.getUserMangaLists(any()))
+          .thenAnswer((_) async => <String, List<Manga>>{});
+      when(() => shikimoriAnime.getAnimeDetails(any(), any()))
+          .thenAnswer((_) async => (true, AnimeDetailsModel.empty()));
+
+      final AnilistUserModel user = userWith(metadataService: Service.shikimori);
+      final Anime record = anilistRecord();
+
+      await animeFactory.updateMediaListEntry(MediaListEntryModel.empty(), record, user);
+      await animeFactory.getMediaListEntry(record, user);
+      await userFactory.getUserMangaLists(user);
+      await animeFactory.getAnimeDetails(record, user);
+
+      verify(() => anilistAnime.updateMediaListEntry(any(), any(), any())).called(1);
+      verify(() => anilistAnime.getMediaListEntry(any(), any(), ignoreCache: false)).called(1);
+      verify(() => anilistUser.getUserMangaLists(any())).called(1);
+      verify(() => shikimoriAnime.getAnimeDetails(any(), any())).called(1);
+      verifyNever(() => malAnime.updateMediaListEntry(any(), any(), any()));
+      verifyNever(() => malAnime.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')));
+      verifyNever(() => malUser.getUserMangaLists(any()));
+    });
+
+    test('userService=mal with metadataService=shikimori splits list ops to MAL and metadata to Shikimori', () async {
+      mappingLookup.probeResult = malCandidate;
+      when(() => malAnime.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => MediaListEntryModel.empty());
+      when(() => malUser.getUserMangaLists(any()))
+          .thenAnswer((_) async => <String, List<Manga>>{'Reading': <Manga>[MangaModel.empty()]});
+      when(() => shikimoriAnime.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')))
+          .thenAnswer((_) async => (true, <Anime>[AnimeModel.empty()]));
+
+      final MalUserModel user = malAccount(metadataService: Service.shikimori);
+      final Anime record = anilistRecord();
+
+      final MediaListEntry entry = await animeFactory.getMediaListEntry(record, user);
+      final Map<String, List<Manga>> mangaLists = await userFactory.getUserMangaLists(user);
+      await animeFactory.getTrendingAnimes(1, user);
+
+      expect(entry.status, MediaListEntryModel.empty().status);
+      expect(mangaLists.keys, <String>['Reading']);
+      verify(() => malAnime.getMediaListEntry(any(), any(), ignoreCache: false)).called(1);
+      verify(() => malUser.getUserMangaLists(any())).called(1);
+      verify(() => shikimoriAnime.getTrendingAnimes(1, any(), ignoreCache: false)).called(1);
+      verifyNever(() => shikimoriAnime.getMediaListEntry(any(), any(), ignoreCache: any(named: 'ignoreCache')));
+      verifyNever(() => anilistAnime.getTrendingAnimes(any(), any(), ignoreCache: any(named: 'ignoreCache')));
+    });
+
+    test('metadataService=mal stays a metadata miss and never reaches the MAL tracker', () async {
+      expect(ProviderCapabilities.isUser(Service.mal), isTrue);
+      expect(ProviderCapabilities.isMetadata(Service.mal), isFalse);
+      expect(ProviderCapabilities.userProviders, <Service>[Service.anilist, Service.shikimori, Service.mal]);
+      expect(ProviderCapabilities.metadataProviders, <Service>[Service.anilist, Service.shikimori]);
+
+      final (bool ok, AnimeDetails details) = await animeFactory.getAnimeDetails(
+        anilistRecord(),
+        userWith(metadataService: Service.mal),
+      );
+
+      expect(ok, isFalse);
+      expect(details.mediaListEntry.status, AnimeDetailsModel.empty().mediaListEntry.status);
+      verifyNever(() => malAnime.getAnimeDetails(any(), any()));
+      verifyNever(() => anilistAnime.getAnimeDetails(any(), any()));
+      verifyNever(() => shikimoriAnime.getAnimeDetails(any(), any()));
     });
   });
 }

@@ -5,6 +5,7 @@ import 'package:logger/logger.dart';
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/data/repositories/user_repository_anilist.dart';
+import 'package:unyo/data/repositories/user_repository_mal.dart';
 import 'package:unyo/data/repositories/user_repository_shikimori.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
@@ -14,12 +15,14 @@ import 'package:unyo/domain/repositories/user_repository.dart';
 /// Factory that resolves the correct [UserRepository] implementation based on
 /// the user's selected account provider (`settings.userService`).
 ///
-/// [Service.anilist] and [Service.shikimori] are registered (WP #64 subpart (c)
-/// added the second one — see [ProviderCapabilities.userProviders]); every other
-/// value throws a [StateError] because the UI cannot produce it.
+/// [Service.anilist], [Service.shikimori] (WP #64 subpart (c)) and
+/// [Service.mal] (WP #156) are registered (see
+/// [ProviderCapabilities.userProviders]); every other value throws a
+/// [StateError] because the UI cannot produce it.
 class UserRepositoryFactory implements UserRepository {
   final UserRepositoryAnilist _userRepositoryAnilist = sl<UserRepositoryAnilist>();
   final UserRepositoryShikimori _userRepositoryShikimori = sl<UserRepositoryShikimori>();
+  final UserRepositoryMal _userRepositoryMal = sl<UserRepositoryMal>();
   final Logger _logger = sl<Logger>();
 
   @override
@@ -30,6 +33,7 @@ class UserRepositoryFactory implements UserRepository {
       case Service.shikimori:
         return _userRepositoryShikimori.fetchAllLoggedInUsers();
       case Service.mal:
+        return _userRepositoryMal.fetchAllLoggedInUsers();
       case Service.kitsu:
       case Service.simkl:
         throw _unregistered(_currentUserService);
@@ -44,6 +48,7 @@ class UserRepositoryFactory implements UserRepository {
       case Service.shikimori:
         return _userRepositoryShikimori.attemptCreateUser();
       case Service.mal:
+        return _userRepositoryMal.attemptCreateUser();
       case Service.kitsu:
       case Service.simkl:
         throw _unregistered(_currentUserService);
@@ -58,6 +63,7 @@ class UserRepositoryFactory implements UserRepository {
       case Service.shikimori:
         return _userRepositoryShikimori.updateUserInfo(user);
       case Service.mal:
+        return _userRepositoryMal.updateUserInfo(user);
       case Service.kitsu:
       case Service.simkl:
         throw _unregistered(user.settings.userService);
@@ -72,6 +78,7 @@ class UserRepositoryFactory implements UserRepository {
       case Service.shikimori:
         return _userRepositoryShikimori.getUserWatchingList(user, ignoreCache: ignoreCache);
       case Service.mal:
+        return _userRepositoryMal.getUserWatchingList(user, ignoreCache: ignoreCache);
       case Service.kitsu:
       case Service.simkl:
         throw _unregistered(user.settings.userService);
@@ -86,6 +93,7 @@ class UserRepositoryFactory implements UserRepository {
       case Service.shikimori:
         return _userRepositoryShikimori.getUserReadingList(user, ignoreCache: ignoreCache);
       case Service.mal:
+        return _userRepositoryMal.getUserReadingList(user, ignoreCache: ignoreCache);
       case Service.kitsu:
       case Service.simkl:
         throw _unregistered(user.settings.userService);
@@ -100,6 +108,7 @@ class UserRepositoryFactory implements UserRepository {
       case Service.shikimori:
         return _userRepositoryShikimori.getUserAnimeLists(user);
       case Service.mal:
+        return _userRepositoryMal.getUserAnimeLists(user);
       case Service.kitsu:
       case Service.simkl:
         throw _unregistered(user.settings.userService);
@@ -114,6 +123,7 @@ class UserRepositoryFactory implements UserRepository {
       case Service.shikimori:
         return _userRepositoryShikimori.getUserMangaLists(user);
       case Service.mal:
+        return _userRepositoryMal.getUserMangaLists(user);
       case Service.kitsu:
       case Service.simkl:
         throw _unregistered(user.settings.userService);

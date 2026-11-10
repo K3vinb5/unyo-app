@@ -10,3 +10,4 @@ const anilistMangaDetailsAdapterType = 8;
 const mediaListEntryAdapterType = 9;
 const shikimoriUserAdapterType = 10;
 const videoDisplayModeAdapterType = 11;
+const malUserAdapterType = 12;

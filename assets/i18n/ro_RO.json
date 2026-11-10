@@ -230,6 +230,8 @@
   "settings_media_metadata_service_description": "Furnizorul detaliilor: sinopsis, coperte, genuri și note",
   "settings_media_metadata_service_title": "Serviciu de metadate media",
   "settings_myanimelist_accounts_description": "Gestionează conturile MyAnimeList conectate",
+  "settings_myanimelist_no_account": "Niciun cont MyAnimeList nu este conectat",
+  "settings_myanimelist_no_account_hint": "Adaugă unul din ecranul de autentificare pentru a-ți sincroniza lista cu MyAnimeList",
   "settings_nsfw_content_description": "Activează sau dezactivează conținutul NSFW în toată aplicația",
   "settings_nsfw_content_title": "Conținut NSFW",
   "settings_open_releases_page": "Deschide pagina versiunilor",

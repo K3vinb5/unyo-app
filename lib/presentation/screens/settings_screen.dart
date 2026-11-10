@@ -16,6 +16,7 @@ import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/core/services/media/episode_service.dart';
 import 'package:unyo/core/services/media/media_service.dart';
 import 'package:unyo/presentation/widgets/styled/shikimori_account_settings.dart';
+import 'package:unyo/presentation/widgets/styled/mal_account_settings.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_language_dropdown.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_category.dart';
 import 'package:unyo/presentation/widgets/styled/unyo_settings_selection_dialog.dart';
@@ -128,8 +129,11 @@ class _SettingsViewState extends State<_SettingsView> with TickerProviderStateMi
                           alignment: "",
                           childAlignment: "",
                           isChild: true,
-                          settingsOptions: const [
-                            // TODO - MyAnimeList account settings go here
+                          settingsOptions: [
+                            MalAccountSettings(
+                              loggedUser: state.loggedUser,
+                              onLogout: () => context.read<TabsCubit>().logoutUser(),
+                            ),
                           ],
                         ),
                         UnyoSettingsCategory(

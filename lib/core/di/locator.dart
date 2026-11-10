@@ -42,6 +42,9 @@ import 'package:unyo/core/services/effects/app_effect_handler.dart';
 import 'package:unyo/core/services/api/shikimori/shikimori_auth_service.dart';
 import 'package:unyo/core/services/api/shikimori/shikimori_rate_limiter.dart';
 import 'package:unyo/core/services/api/shikimori/shikimori_user_rate_service.dart';
+import 'package:unyo/core/services/api/mal/mal_auth_service.dart';
+import 'package:unyo/core/services/api/mal/mal_rate_limiter.dart';
+import 'package:unyo/core/services/api/mal/mal_user_rate_service.dart';
 import 'package:unyo/core/services/settings/settings_service.dart';
 import 'package:unyo/core/services/torrent/torrent_service.dart';
 import 'package:unyo/core/services/update/app_version_provider.dart';
@@ -56,6 +59,7 @@ import 'package:unyo/data/repositories/anime_repository_anilist.dart';
 import 'package:unyo/data/repositories/media_mapping_repository_anizip.dart';
 import 'package:unyo/data/repositories/media_id_cache_hive.dart';
 import 'package:unyo/data/repositories/media_mapping_repository_shikimori.dart';
+import 'package:unyo/data/repositories/media_mapping_repository_mal.dart';
 import 'package:unyo/data/repositories/episode_repository_anizip.dart';
 import 'package:unyo/data/repositories/extension_repository_aniyomi.dart';
 import 'package:unyo/data/repositories/manga_repository_anilist.dart';
@@ -102,6 +106,9 @@ void setupLocator() async{
   );
   sl.registerLazySingleton<ShikimoriAuthService>(() => ShikimoriAuthService());
   sl.registerLazySingleton<ShikimoriUserRateService>(() => ShikimoriUserRateService());
+  sl.registerLazySingleton<MalRateLimiter>(() => MalRateLimiter());
+  sl.registerLazySingleton<MalAuthService>(() => MalAuthService());
+  sl.registerLazySingleton<MalUserRateService>(() => MalUserRateService());
   sl.registerLazySingleton<AppEffectHandler>(() => AppEffectHandler());
   sl.registerLazySingleton<AppVersionProvider>(() => const AppVersionProvider());
   sl.registerLazySingleton<UpdateCheckerService>(
@@ -140,6 +147,12 @@ void setupLocator() async{
       sl<UserNotifier>(instanceName: config.loggedUserNotifier),
     ),
   );
+  sl.registerLazySingleton<UserRepositoryMal>(
+    () => UserRepositoryMal(
+      sl<UserNotifier>(instanceName: config.newUserNotifier),
+      sl<UserNotifier>(instanceName: config.loggedUserNotifier),
+    ),
+  );
   sl.registerSingleton<ThemeService>(ThemeService(
     sl<UserRepositoryAnilist>(),
     sl<UserRepositoryLocal>(),
@@ -154,6 +167,8 @@ void setupLocator() async{
   sl.registerLazySingleton<MangaRepositoryAnilist>(() => MangaRepositoryAnilist());
   sl.registerLazySingleton<AnimeRepositoryShikimori>(() => AnimeRepositoryShikimori());
   sl.registerLazySingleton<MangaRepositoryShikimori>(() => MangaRepositoryShikimori());
+  sl.registerLazySingleton<AnimeRepositoryMal>(() => AnimeRepositoryMal());
+  sl.registerLazySingleton<MangaRepositoryMal>(() => MangaRepositoryMal());
   sl.registerLazySingleton<AnimeRepository>(() => AnimeRepositoryFactory());
   sl.registerLazySingleton<MangaRepository>(() => MangaRepositoryFactory());
   sl.registerLazySingleton<UserRepository>(() => UserRepositoryFactory());
@@ -162,11 +177,17 @@ void setupLocator() async{
   sl.registerLazySingleton<MediaIdCache>(() => HiveMediaIdCache());
   sl.registerLazySingleton<MediaMappingRepositoryAnizip>(() => MediaMappingRepositoryAnizip());
   sl.registerLazySingleton<MediaMappingRepositoryShikimori>(() => MediaMappingRepositoryShikimori());
+  sl.registerLazySingleton<MediaMappingRepositoryMal>(() => MediaMappingRepositoryMal());
   sl.registerLazySingleton<MediaIdService>(
     () => MediaIdService(
       cache: sl<MediaIdCache>(),
       aniZipLookup: sl<MediaMappingRepositoryAnizip>(),
-      mappingLookup: sl<MediaMappingRepositoryShikimori>(),
+      // Both legs answer only their own target, so the chain's single lookup
+      // slot dispatches to whichever leg owns it (WP #156 added MAL's).
+      mappingLookup: CompositeMediaMappingLookup(<MediaMappingLookup>[
+        sl<MediaMappingRepositoryShikimori>(),
+        sl<MediaMappingRepositoryMal>(),
+      ]),
     ),
   );
   sl.registerLazySingleton<EpisodeRepository>(() => EpisodeRepositoryFactory());
@@ -178,6 +199,7 @@ void setupLocator() async{
       sl<UserNotifier>(instanceName: config.newUserNotifier),
       sl<UserRepositoryAnilist>(),
       sl<UserRepositoryShikimori>(),
+      sl<UserRepositoryMal>(),
       sl<ColorImageService>(),
       sl<ThemeService>(),
     ),

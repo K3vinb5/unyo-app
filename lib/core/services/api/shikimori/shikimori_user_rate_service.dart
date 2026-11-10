@@ -263,10 +263,16 @@ class ShikimoriUserRateService {
     final int volumes = entry.progressVolumes < 0 ? 0 : entry.progressVolumes;
     final Map<String, dynamic> payload = <String, dynamic>{
       'status': status,
-      'score': entry.score.round(),
       'rewatches': ShikimoriListStatusPolicy.rewatchesFor(unifiedStatus: entry.status, repeat: entry.repeat),
       'volumes': volumes,
     };
+    // `-1.0` is the domain's "no score" sentinel and must never reach the wire
+    // (mirror of anime_repository_anilist.dart, which omits the key at -1.0):
+    // omitting the key leaves any stored score alone on a partial update. A
+    // real score is clamped into the 0-10 range before rounding.
+    if (entry.score != -1.0) {
+      payload['score'] = entry.score.clamp(0, 10).round();
+    }
     switch (target) {
       case ShikimoriUserRateTarget.anime:
         payload['episodes'] = progress;
