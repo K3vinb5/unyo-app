@@ -4,7 +4,11 @@ import 'package:logger/logger.dart';
 // Internal dependencies
 import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/service.dart';
+import 'package:unyo/data/models/anilist/user/anilist_user_model.dart';
+import 'package:unyo/data/models/local/user/local_user_model.dart';
+import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
 import 'package:unyo/data/repositories/user_repository_anilist.dart';
+import 'package:unyo/data/repositories/user_repository_local.dart';
 import 'package:unyo/data/repositories/user_repository_shikimori.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
@@ -20,6 +24,10 @@ import 'package:unyo/domain/repositories/user_repository.dart';
 class UserRepositoryFactory implements UserRepository {
   final UserRepositoryAnilist _userRepositoryAnilist = sl<UserRepositoryAnilist>();
   final UserRepositoryShikimori _userRepositoryShikimori = sl<UserRepositoryShikimori>();
+  /// Resolved on first use: this factory is constructed wherever a
+  /// [UserRepository] is needed (list refreshes included), and the local
+  /// repository only matters when a local account is removed from the device.
+  late final UserRepositoryLocal _userRepositoryLocal = sl<UserRepositoryLocal>();
   final Logger _logger = sl<Logger>();
 
   @override
@@ -60,6 +68,23 @@ class UserRepositoryFactory implements UserRepository {
       case Service.mal:
       case Service.kitsu:
       case Service.simkl:
+        throw _unregistered(user.settings.userService);
+    }
+  }
+
+  /// Dispatches on the concrete model, unlike the read/update paths above: a
+  /// local account can carry a provider in `settings.userService` while owning
+  /// no row in that provider's box, and removal must never guess an identity.
+  @override
+  Future<void> removeUser(User user) async {
+    switch (user) {
+      case AnilistUserModel _:
+        return _userRepositoryAnilist.removeUser(user);
+      case ShikimoriUserModel _:
+        return _userRepositoryShikimori.removeUser(user);
+      case LocalUserModel _:
+        return _userRepositoryLocal.removeUser(user);
+      default:
         throw _unregistered(user.settings.userService);
     }
   }

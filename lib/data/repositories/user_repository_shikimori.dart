@@ -24,7 +24,10 @@ import 'package:unyo/data/models/shikimori/media/shikimori_anime_model.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_list_status_policy.dart';
 import 'package:unyo/data/models/shikimori/media/shikimori_manga_model.dart';
 import 'package:unyo/data/models/shikimori/user/shikimori_user_model.dart';
+import 'package:unyo/data/oauth/oauth_callback_handler.dart';
+import 'package:unyo/data/oauth/oauth_callback_page.dart';
 import 'package:unyo/data/repositories/repository_mixin.dart';
+import 'package:unyo/data/repositories/user_provider_reconciliation.dart';
 import 'package:unyo/domain/entities/media/anime.dart';
 import 'package:unyo/domain/entities/media/manga.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
@@ -61,13 +64,23 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
   final UserNotifier _loggedUserNotifier;
   late Box<ShikimoriUserModel> _shikimoriUsersBox;
   late HttpServer _server;
+  late final OAuthCallbackHandler _loginCallbackHandler = OAuthCallbackHandler(
+    providerName: OAuthCallbackPage.shikimoriProviderName,
+    logger: _logger,
+    onFinished: () => _server.close(),
+  );
 
   UserRepositoryShikimori(this._newUserNotifier, this._loggedUserNotifier);
 
   @override
   Future<List<User>> fetchAllLoggedInUsers() async {
     _shikimoriUsersBox = await Hive.openBox<ShikimoriUserModel>(usersBoxName);
-    return [..._shikimoriUsersBox.values];
+    return UserProviderReconciliation.reconcile<ShikimoriUserModel>(
+      box: _shikimoriUsersBox,
+      provider: Service.shikimori,
+      logger: _logger,
+      withSettings: (ShikimoriUserModel user, SettingsModel settings) => user.copyWith(settings: settings),
+    );
   }
 
   /// Opens the same localhost callback AniList uses and sends the user to the
@@ -99,6 +112,18 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
     }
     await _shikimoriUsersBox.put(user.name, user);
     _loggedUserNotifier.updateUser(user);
+  }
+
+  /// Drops the row [updateUserInfo] wrote: the box is keyed by `user.name`.
+  @override
+  Future<void> removeUser(User user) async {
+    _shikimoriUsersBox = await Hive.openBox<ShikimoriUserModel>(usersBoxName);
+    if (!_shikimoriUsersBox.containsKey(user.name)) {
+      _logger.w("User ${user.name} is not stored in the registered shikimori users, nothing to remove");
+      return;
+    }
+    await _shikimoriUsersBox.delete(user.name);
+    _logger.i("Removed user ${user.name} from the registered shikimori users");
   }
 
   @override
@@ -281,26 +306,8 @@ class UserRepositoryShikimori with RepositoryMixin implements UserRepository {
     }
   }
 
-  Future<shelf.Response> _handleLoginRequest(shelf.Request request) async {
-    try {
-      _logger.i("Handling login request from Shikimori at ${request.requestedUri.path}");
-      final String? code = request.requestedUri.queryParameters['code'];
-      if (code == null || code.isEmpty) {
-        return shelf.Response.badRequest(
-          body: "Shikimori did not send an authorization code: ${request.requestedUri.query}",
-        );
-      }
-      await _createUser(code);
-      return shelf.Response.ok('Authorization successful. You can close this window.');
-    } catch (e, stackTrace) {
-      _logger.e("Error Handling login request: $e", stackTrace: stackTrace);
-      return shelf.Response.internalServerError(
-        body: "Something went wrong D:, please verify your internet connection and try again",
-      );
-    } finally {
-      _logger.i("Closing Shikimori login server");
-      _server.close();
-    }
+  Future<shelf.Response> _handleLoginRequest(shelf.Request request) {
+    return _loginCallbackHandler.handle(request, _createUser);
   }
 
   Future<void> _createUser(String accessCode) async {

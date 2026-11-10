@@ -12,6 +12,7 @@ import 'package:unyo/core/di/locator.dart';
 import 'package:unyo/core/enums/service.dart';
 import 'package:unyo/core/notification/menu_bar_notifier.dart';
 import 'package:unyo/core/notification/user_notifier.dart';
+import 'package:unyo/core/services/account/account_unlink_service.dart';
 import 'package:unyo/core/services/api/dto/github/github_release_entity.dart';
 import 'package:unyo/core/services/update/app_version_provider.dart';
 import 'package:unyo/core/services/update/update_check_result.dart';
@@ -19,6 +20,7 @@ import 'package:unyo/core/services/update/update_checker_service.dart';
 import 'package:unyo/core/theme/theme_service.dart';
 import 'package:unyo/domain/entities/user/settings.dart';
 import 'package:unyo/domain/entities/user/user.dart';
+import 'package:unyo/presentation/dialogs/unlink_account_dialog.dart';
 import 'package:unyo/presentation/dialogs/update_available_dialog.dart';
 import 'package:unyo/presentation/dialogs/user_profile_dialog.dart';
 
@@ -31,6 +33,10 @@ class MockMenuBarNotifier extends Mock implements MenuBarNotifier {}
 class MockUpdateCheckerService extends Mock implements UpdateCheckerService {}
 
 class MockAppVersionProvider extends Mock implements AppVersionProvider {}
+
+class MockAccountUnlinkService extends Mock implements AccountUnlinkService {}
+
+class _FakeUser extends Fake implements User {}
 
 /// A newer published release, shaped the way the checker's bean arrives.
 GithubReleaseEntity newerRelease({
@@ -48,8 +54,10 @@ void main() {
   late MockMenuBarNotifier menuBarNotifier;
   late MockUpdateCheckerService updateCheckerService;
   late MockAppVersionProvider versionProvider;
+  late MockAccountUnlinkService accountUnlinkService;
 
   setUpAll(() {
+    registerFallbackValue(_FakeUser());
     if (!sl.isRegistered<Logger>()) {
       sl.registerSingleton<Logger>(Logger(level: Level.off));
     }
@@ -61,6 +69,7 @@ void main() {
     menuBarNotifier = MockMenuBarNotifier();
     updateCheckerService = MockUpdateCheckerService();
     versionProvider = MockAppVersionProvider();
+    accountUnlinkService = MockAccountUnlinkService();
 
     when(
       () => loggedUserNotifier.userStream,
@@ -82,6 +91,7 @@ void main() {
     menuBarNotifier,
     updateCheckerService,
     versionProvider,
+    accountUnlinkService,
   );
 
   group('TabsCubit startup update check', () {
@@ -224,6 +234,112 @@ void main() {
       final UserProfileDialog dialog = effect.dialog as UserProfileDialog;
       expect(dialog.user.name, 'alice');
       expect(dialog.user.id, '12345');
+    });
+  });
+
+  group('TabsCubit account unlink (WP #151)', () {
+    Future<TabsCubit> withLoggedUser(StreamController<User> users, User user) async {
+      when(() => loggedUserNotifier.userStream).thenAnswer((_) => users.stream);
+      final TabsCubit cubit = createCubit();
+      addTearDown(cubit.close);
+      users.add(user);
+      await pumpEventQueue();
+      return cubit;
+    }
+
+    User account() => UserModel(
+      id: '12345',
+      name: 'alice',
+      settings: SettingsModel.empty().copyWith(userService: Service.anilist),
+      avatarImage: '',
+      bannerImage: '',
+    );
+
+    test('the confirmation names the account that will leave the device', () async {
+      final StreamController<User> users = StreamController<User>.broadcast();
+      addTearDown(users.close);
+      final TabsCubit cubit = await withLoggedUser(users, account());
+
+      cubit.confirmUnlinkUser();
+
+      final ShowWidgetDialogEffect effect = cubit.state.effects.single as ShowWidgetDialogEffect;
+      final UnlinkAccountDialog dialog = effect.dialog as UnlinkAccountDialog;
+      expect(dialog.user.name, 'alice');
+      verifyNever(() => accountUnlinkService.unlink(any()));
+    });
+
+    test('no confirmation is offered without a signed-in account', () async {
+      final TabsCubit cubit = createCubit();
+      addTearDown(cubit.close);
+
+      cubit.confirmUnlinkUser();
+
+      expect(cubit.state.effects, isEmpty);
+    });
+
+    test('unlinking routes to the pre-session screen and leaves the shell', () async {
+      final StreamController<User> users = StreamController<User>.broadcast();
+      addTearDown(users.close);
+      final TabsCubit cubit = await withLoggedUser(users, account());
+      when(() => accountUnlinkService.unlink(any())).thenAnswer(
+        (_) async => const AccountUnlinkResult(
+          remainingUsers: <User>[],
+          destination: UnlinkDestination.login,
+        ),
+      );
+
+      await cubit.unlinkUser(cubit.state.loggedUser);
+      await pumpEventQueue();
+
+      verify(() => accountUnlinkService.unlink(any())).called(1);
+      verify(() => menuBarNotifier.showMenuBar(false)).called(1);
+      expect(
+        cubit.state.effects.whereType<ReplaceRouteEffect>().single.routeName,
+        '/login',
+      );
+      expect(
+        cubit.state.loggedUser,
+        UserModel.empty(),
+        reason: 'the shell must not keep rendering the removed account',
+      );
+    });
+
+    test('a failed removal reports once and still lands on the account picker', () async {
+      final StreamController<User> users = StreamController<User>.broadcast();
+      addTearDown(users.close);
+      final TabsCubit cubit = await withLoggedUser(users, account());
+      when(() => accountUnlinkService.unlink(any())).thenAnswer(
+        (_) => Future<AccountUnlinkResult>.error(StateError('box is locked')),
+      );
+
+      await cubit.unlinkUser(cubit.state.loggedUser);
+      await pumpEventQueue();
+
+      final ShowSnackbarEffect banner = cubit.state.effects.whereType<ShowSnackbarEffect>().single;
+      expect(banner.messageKey, 'error_unlink_account_failed');
+      expect(
+        cubit.state.effects.whereType<ReplaceRouteEffect>().single.routeName,
+        '/login',
+      );
+    });
+
+    test('a double confirm removes the account once', () async {
+      final StreamController<User> users = StreamController<User>.broadcast();
+      addTearDown(users.close);
+      final TabsCubit cubit = await withLoggedUser(users, account());
+      when(() => accountUnlinkService.unlink(any())).thenAnswer(
+        (_) async => const AccountUnlinkResult(
+          remainingUsers: <User>[],
+          destination: UnlinkDestination.login,
+        ),
+      );
+
+      await Future.wait<void>(<Future<void>>[
+        cubit.unlinkUser(cubit.state.loggedUser),
+        cubit.unlinkUser(cubit.state.loggedUser),
+      ]);
+
+      verify(() => accountUnlinkService.unlink(any())).called(1);
     });
   });
 }

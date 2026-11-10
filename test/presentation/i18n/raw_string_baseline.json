@@ -128,18 +128,6 @@
     "text": "MediaList-${}"
   },
   {
-    "file": "lib/presentation/screens/settings_screen.dart",
-    "text": "Anilist"
-  },
-  {
-    "file": "lib/presentation/screens/settings_screen.dart",
-    "text": "MyAnimeList"
-  },
-  {
-    "file": "lib/presentation/screens/settings_screen.dart",
-    "text": "Shikimori"
-  },
-  {
     "file": "lib/presentation/screens/video_screen.dart",
     "text": "The video is loading"
   },
