@@ -46,6 +46,10 @@ class ColorImageService {
       maximumColorCount: 20,
     );
 
+    // An unusable/failed image can yield no colours at all; the padding loop
+    // below would then never terminate. Callers fall back to the account colour.
+    if (generator.colors.isEmpty) return const <Color>[];
+
     List<Color> sortedColors = generator.colors.toList();
     while (sortedColors.length < 20) {
       sortedColors.addAll(generator.colors.toList());

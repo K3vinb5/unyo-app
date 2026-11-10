@@ -198,6 +198,19 @@ class LoginCubit extends Cubit<LoginState> with EffectMixin<LoginState> {
         case LocalUserModel _:
           _logger.d("Getting local user's theme");
       }
+      // There is no usable wallpaper here: a Shikimori/local account carries no
+      // banner, and an Anilist banner can fail to load (the colour service then
+      // returns fewer than 3 colours). Fall back to the user's own stored colour
+      // and keep their preference, so a transient failure does not rewrite
+      // `useWallpaperAsThemeColor` to false behind their back.
+      if (wallpaperColors.length < 3) {
+        _themeService.updateThemeFromColors(
+          loggedUser: user,
+          useWallpaperAsThemeColor: user.settings.useWallpaperAsThemeColor,
+          primary: user.settings.themeColor,
+        );
+        return;
+      }
       _themeService.updateThemeFromColors(
         loggedUser: user,
         useWallpaperAsThemeColor: true,
